@@ -1,0 +1,42 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# macOS and editors
+.DS_Store
+.idea/
+.vscode/
+
+# Python / FastAPI
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+htmlcov/
+.coverage
+
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+coverage/
+
+# Xcode and Android generated files
+DerivedData/
+*.xcuserstate
+xcuserdata/
+.gradle/
+local.properties
+
+# Logs and temporary files
+*.log
+tmp/
+.tmp/
