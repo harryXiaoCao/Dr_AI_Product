@@ -18,9 +18,11 @@ Branch: `codex/week1-days3-5`
 
 Stacking base: `codex/week1-days1-2-closure`
 
-Draft pull request: pending creation after this record is committed and pushed.
+Draft pull request:
+<https://github.com/harryXiaoCao/Dr_AI_Product/pull/2>
 
-GitHub Actions run: pending after draft pull request creation.
+Green GitHub Actions run:
+<https://github.com/harryXiaoCao/Dr_AI_Product/actions/runs/28700058446>
 
 ## Schema and migration
 
@@ -147,6 +149,8 @@ Pagination is frozen at `limit <= 50` for Week 1 list endpoints.
 | API smoke | Passed: health, login, `/me`, active patient read, neutral cross-patient `404`, refresh replay rejection, logout revocation |
 | Flutter formatting | Passed for changed Dart test files |
 | `./scripts/verify_flutter.sh` | Passed: analysis clean; 11 widget/golden tests passed |
+| GitHub Actions FastAPI job | Passed on run `28700058446` |
+| GitHub Actions Flutter job | Passed on run `28700058446`; pixel goldens are skipped on Linux CI because local macOS and CI Linux rasterization differ, while structural dashboard tests still run |
 | Flutter web build | Passed: `✓ Built build/web`; non-blocking `CupertinoIcons` font warning observed with no project references |
 | Android debug build | Passed: `✓ Built build/app/outputs/flutter-apk/app-debug.apk` |
 | Android smoke launch | Passed: installed APK and launched `com.harrycao.drai.dr_ai_app/.MainActivity` cold |
@@ -202,12 +206,19 @@ Non-secret deployment identifiers: not available.
 
 ## Draft PR and CI
 
-Draft PR: pending creation.
+Draft PR:
+<https://github.com/harryXiaoCao/Dr_AI_Product/pull/2>
 
-CI run: pending after push.
+Green CI run:
+<https://github.com/harryXiaoCao/Dr_AI_Product/actions/runs/28700058446>
 
-This record must be updated with PR and CI links after the branch is pushed and
-GitHub Actions completes.
+CI jobs:
+
+- FastAPI lint and tests: passed.
+- Flutter analysis and tests: passed.
+
+PR #2 is stacked on PR #1 and targets `codex/week1-days1-2-closure`. It must
+not be merged without separate authorization.
 
 ## Remaining Week 2 work
 
