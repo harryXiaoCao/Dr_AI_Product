@@ -1,23 +1,36 @@
+import 'package:dr_ai_app/app/routing/app_role.dart';
 import 'package:dr_ai_app/design_system/dr_ai_tokens.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class UnauthorizedScreen extends StatelessWidget {
-  const UnauthorizedScreen({super.key});
+  const UnauthorizedScreen({required this.role, super.key});
+
+  final AppRole? role;
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
+    return Scaffold(
       body: Center(
         child: Padding(
-          padding: EdgeInsets.all(DrAiSpacing.lg),
+          padding: const EdgeInsets.all(DrAiSpacing.lg),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
-              Icon(Icons.lock_outline, size: 48),
-              SizedBox(height: DrAiSpacing.md),
-              Text(
-                'This preview route is not available for the selected role.',
+              const Icon(Icons.lock_outline, size: 48),
+              const SizedBox(height: DrAiSpacing.md),
+              const Text(
+                'This route is not available for your role.',
                 textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: DrAiSpacing.md),
+              FilledButton(
+                onPressed: role == null
+                    ? null
+                    : () => context.go(
+                        role == AppRole.doctor ? '/doctor' : '/patient',
+                      ),
+                child: const Text('Return to dashboard'),
               ),
             ],
           ),
