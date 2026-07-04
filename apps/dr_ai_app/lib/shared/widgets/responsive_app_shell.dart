@@ -108,17 +108,7 @@ class ResponsiveAppShell extends ConsumerWidget {
       body: SafeArea(
         child: Column(
           children: <Widget>[
-            SizedBox(height: 66, child: _header(context, ref)),
-            Container(
-              height: 80,
-              color: DrAiColors.white,
-              child: NavigationBar(
-                height: 80,
-                selectedIndex: 0,
-                labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-                destinations: destinations,
-              ),
-            ),
+            SizedBox(height: 70, child: _doctorDesktopHeader(context, ref)),
             Expanded(child: child),
           ],
         ),
@@ -190,6 +180,62 @@ class ResponsiveAppShell extends ConsumerWidget {
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _doctorDesktopHeader(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(authControllerProvider).value?.user;
+    return ColoredBox(
+      color: DrAiColors.white,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: DrAiSpacing.md),
+        child: Row(
+          children: <Widget>[
+            Semantics(
+              label: 'Dr. AI',
+              image: true,
+              child: const Icon(
+                Icons.health_and_safety_outlined,
+                color: DrAiColors.brand,
+                size: 34,
+              ),
+            ),
+            const SizedBox(width: DrAiSpacing.xl),
+            const SizedBox(
+              width: 280,
+              height: 48,
+              child: SearchBar(
+                hintText:
+                    'Search synthetic patients, cases, diagnoses, resources',
+                leading: Icon(Icons.search),
+              ),
+            ),
+            const SizedBox(width: DrAiSpacing.xl),
+            Expanded(
+              child: NavigationBar(
+                height: 52,
+                selectedIndex: 0,
+                labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+                destinations: doctorDestinations,
+              ),
+            ),
+            const SizedBox(width: DrAiSpacing.md),
+            Flexible(
+              child: Text(
+                user?.displayName ?? '',
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            IconButton(
+              key: const Key('logout-button'),
+              tooltip: 'Sign out',
+              onPressed: () =>
+                  ref.read(authControllerProvider.notifier).logout(),
+              icon: const Icon(Icons.logout),
+            ),
+          ],
+        ),
       ),
     );
   }

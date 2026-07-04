@@ -50,6 +50,18 @@ All non-2xx application responses use the frozen error envelope with a request
 ID. Cross-patient and wrong-role resource probes return neutral
 `404 not_found`.
 
+## Web hosting and CORS
+
+The first beta should prefer same-origin hosting: serve the Flutter web build
+and reverse-proxy `/api/*` to FastAPI from the same HTTPS origin. In that mode,
+leave `DR_AI_CORS_ALLOWED_ORIGINS=[]`.
+
+If the web app must be hosted on a separate HTTPS origin, set
+`DR_AI_CORS_ALLOWED_ORIGINS` to the exact allowed origin JSON array, for example
+`["https://dr-ai-web.example.test"]`. Wildcard CORS is rejected for staging and
+production. Do not enable credentials-based browser cookies; the Week 1 client
+uses bearer access tokens and a locally stored refresh token.
+
 ## Container
 
 `Dockerfile` builds the locked API image and disables HTTP access logs. Run

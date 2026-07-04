@@ -96,6 +96,35 @@ void main() {
     expect(find.text('The email or password is incorrect.'), findsOneWidget);
   });
 
+  testWidgets('login distinguishes network failures from credentials', (
+    tester,
+  ) async {
+    final repository = FakeDrAiRepository(
+      loginError: const ApiError(
+        code: 'service_unavailable',
+        message: 'The service is temporarily unavailable.',
+        statusCode: 503,
+      ),
+    );
+    await pumpApp(tester, repository);
+
+    await tester.enterText(
+      find.byKey(const Key('email-field')),
+      'doctor.demo@example.com',
+    );
+    await tester.enterText(
+      find.byKey(const Key('password-field')),
+      'test-only password',
+    );
+    await tester.tap(find.byKey(const Key('login-button')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Unable to reach Dr. AI. Check your connection and try again.'),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('a secure stored patient session restores to the patient route', (
     tester,
   ) async {
@@ -125,7 +154,32 @@ void main() {
 
     expect(repository.logoutCalled, isTrue);
     expect(find.text('Welcome to Dr. AI'), findsOneWidget);
+    expect(find.byKey(const Key('login-notice')), findsOneWidget);
+    expect(find.text('You have signed out.'), findsOneWidget);
   });
+
+  testWidgets(
+    'logout still gives local feedback when the server is unreachable',
+    (tester) async {
+      final repository = FakeDrAiRepository(
+        restoredSession: doctorSession,
+        logoutError: Exception('network unavailable'),
+      );
+      await pumpApp(tester, repository);
+
+      await tester.tap(find.byKey(const Key('logout-button')));
+      await tester.pumpAndSettle();
+
+      expect(repository.logoutCalled, isTrue);
+      expect(find.text('Welcome to Dr. AI'), findsOneWidget);
+      expect(
+        find.text(
+          'You have signed out locally. The server could not be reached.',
+        ),
+        findsOneWidget,
+      );
+    },
+  );
 
   testWidgets('patient role cannot navigate to the doctor route', (
     tester,
@@ -165,6 +219,13 @@ void main() {
     expect(find.text('Recent Activities'), findsOneWidget);
     expect(find.text('Resource Overview'), findsOneWidget);
     expect(find.text('Team Management'), findsOneWidget);
+    expect(find.byKey(const Key('doctor-panel-Quick Access')), findsOneWidget);
+    expect(
+      find.byKey(const Key('doctor-panel-Resource Overview')),
+      findsOneWidget,
+    );
+    expect(find.byIcon(Icons.logout), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('patient dashboard renders seeded mobile state at 412x917', (
@@ -186,6 +247,35 @@ void main() {
     expect(find.text('No Medical Records'), findsOneWidget);
     expect(find.text('Dashboard'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('core controls expose accessible labels and disabled states', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    try {
+      setViewport(tester, const Size(412, 917));
+      await pumpApp(
+        tester,
+        FakeDrAiRepository(
+          restoredSession: patientSession,
+          loginSession: patientSession,
+          dashboard: patientDashboard,
+        ),
+      );
+
+      expect(
+        find.bySemanticsLabel('See more recovery tasks unavailable in Week 1'),
+        findsWidgets,
+      );
+      expect(
+        find.bySemanticsLabel('Pay now unavailable in Week 1'),
+        findsOneWidget,
+      );
+      expect(find.byTooltip('Sign out'), findsOneWidget);
+    } finally {
+      semantics.dispose();
+    }
   });
 
   testWidgets('dashboard network and empty states are explicit', (

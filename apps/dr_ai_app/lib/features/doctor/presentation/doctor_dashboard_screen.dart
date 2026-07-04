@@ -48,7 +48,7 @@ class _DoctorDashboard extends StatelessWidget {
         builder: (context, constraints) {
           final desktop = constraints.maxWidth >= DrAiBreakpoints.desktop;
           return SingleChildScrollView(
-            padding: const EdgeInsets.all(DrAiSpacing.xs),
+            padding: const EdgeInsets.all(DrAiSpacing.sm),
             child: desktop
                 ? Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -507,6 +507,7 @@ class _DoctorPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      key: Key('doctor-panel-$title'),
       decoration: BoxDecoration(
         color: DrAiColors.white,
         borderRadius: BorderRadius.circular(DrAiRadii.md),
@@ -552,16 +553,26 @@ class _MutedAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return SizedBox(
       height: 32,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: DrAiColors.inkStrong,
-        borderRadius: BorderRadius.circular(DrAiRadii.md),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(color: DrAiColors.outlineMuted),
+      child: Semantics(
+        button: true,
+        enabled: false,
+        label: '$label unavailable in Week 1',
+        child: ExcludeSemantics(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: DrAiColors.inkStrong,
+              borderRadius: BorderRadius.circular(DrAiRadii.md),
+            ),
+            child: Center(
+              child: Text(
+                label,
+                style: const TextStyle(color: DrAiColors.outlineMuted),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

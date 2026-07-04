@@ -62,7 +62,7 @@ class _PatientDashboard extends StatelessWidget {
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 640),
           child: ListView(
-            padding: const EdgeInsets.all(6),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
             children: <Widget>[
               SizedBox(
                 height: 244,
@@ -259,16 +259,29 @@ class _RecoveryDay extends StatelessWidget {
                 ),
               ),
             ),
-          Container(
-            height: 20,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: DrAiColors.patientAccent,
-              borderRadius: BorderRadius.circular(DrAiRadii.pill),
-            ),
-            child: const Text(
-              '+  See More',
-              style: TextStyle(fontSize: 10, color: DrAiColors.brandDark),
+          SizedBox(
+            height: 24,
+            child: Semantics(
+              button: true,
+              enabled: false,
+              label: 'See more recovery tasks unavailable in Week 1',
+              child: ExcludeSemantics(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: DrAiColors.patientAccent,
+                    borderRadius: BorderRadius.circular(DrAiRadii.pill),
+                  ),
+                  child: const Center(
+                    child: Text(
+                      '+  See More',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: DrAiColors.brandDark,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
         ],
@@ -371,16 +384,26 @@ class _MedicalFee extends StatelessWidget {
                 ],
               ),
             ),
-          Container(
-            height: 28,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: DrAiColors.inkStrong,
-              borderRadius: BorderRadius.circular(DrAiRadii.md),
-            ),
-            child: const Text(
-              'Pay Now',
-              style: TextStyle(color: DrAiColors.outlineMuted),
+          SizedBox(
+            height: 32,
+            child: Semantics(
+              button: true,
+              enabled: false,
+              label: 'Pay now unavailable in Week 1',
+              child: ExcludeSemantics(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: DrAiColors.inkStrong,
+                    borderRadius: BorderRadius.circular(DrAiRadii.md),
+                  ),
+                  child: const Center(
+                    child: Text(
+                      'Pay Now',
+                      style: TextStyle(color: DrAiColors.outlineMuted),
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
           const SizedBox(height: 2),

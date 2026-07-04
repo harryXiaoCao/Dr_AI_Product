@@ -138,6 +138,7 @@ class FakeDrAiRepository implements DrAiRepository {
     this.loginSession = doctorSession,
     DashboardData? dashboard,
     this.loginError,
+    this.logoutError,
     this.dashboardError,
     this.loginCompleter,
   }) : dashboard = dashboard ?? doctorDashboard;
@@ -146,6 +147,7 @@ class FakeDrAiRepository implements DrAiRepository {
   AuthSession loginSession;
   DashboardData dashboard;
   ApiError? loginError;
+  Exception? logoutError;
   ApiError? dashboardError;
   Completer<AuthSession>? loginCompleter;
   bool logoutCalled = false;
@@ -167,6 +169,9 @@ class FakeDrAiRepository implements DrAiRepository {
   @override
   Future<void> logout() async {
     logoutCalled = true;
+    if (logoutError != null) {
+      throw logoutError!;
+    }
     restoredSession = null;
   }
 

@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     seed_doctor_password: SecretStr | None = None
     seed_patient_password: SecretStr | None = None
     seed_unrelated_patient_password: SecretStr | None = None
+    cors_allowed_origins: list[str] = []
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -40,6 +41,12 @@ class Settings(BaseSettings):
             raise ValueError("DR_AI_JWT_SECRET must be set for staging and production")
         if len(secret) < 32:
             raise ValueError("DR_AI_JWT_SECRET must contain at least 32 characters")
+        if self.environment in {"staging", "production"} and "*" in (
+            origin.strip() for origin in self.cors_allowed_origins
+        ):
+            raise ValueError(
+                "DR_AI_CORS_ALLOWED_ORIGINS cannot contain * in staging or production"
+            )
         return self
 
 

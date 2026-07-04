@@ -46,10 +46,19 @@ class AuthSession {
 enum AuthStatus { signedOut, signedIn }
 
 class AuthState {
-  const AuthState._({required this.status, this.user, this.errorMessage});
+  const AuthState._({
+    required this.status,
+    this.user,
+    this.errorMessage,
+    this.noticeMessage,
+  });
 
-  const AuthState.signedOut({String? errorMessage})
-    : this._(status: AuthStatus.signedOut, errorMessage: errorMessage);
+  const AuthState.signedOut({String? errorMessage, String? noticeMessage})
+    : this._(
+        status: AuthStatus.signedOut,
+        errorMessage: errorMessage,
+        noticeMessage: noticeMessage,
+      );
 
   const AuthState.signedIn(SessionUser user)
     : this._(status: AuthStatus.signedIn, user: user);
@@ -57,4 +66,5 @@ class AuthState {
   final AuthStatus status;
   final SessionUser? user;
   final String? errorMessage;
+  final String? noticeMessage;
 }

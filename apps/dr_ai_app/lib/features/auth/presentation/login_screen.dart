@@ -36,6 +36,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget build(BuildContext context) {
     final auth = ref.watch(authControllerProvider);
     final errorMessage = auth.value?.errorMessage;
+    final noticeMessage = auth.value?.noticeMessage;
     return Scaffold(
       body: SafeArea(
         child: Center(
@@ -109,6 +110,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           (value ?? '').isEmpty ? 'Enter your password.' : null,
                       onFieldSubmitted: (_) => _submit(),
                     ),
+                    if (noticeMessage != null) ...<Widget>[
+                      const SizedBox(height: DrAiSpacing.md),
+                      Semantics(
+                        liveRegion: true,
+                        child: Text(
+                          noticeMessage,
+                          key: const Key('login-notice'),
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: DrAiColors.mutedInk),
+                        ),
+                      ),
+                    ],
                     if (errorMessage != null) ...<Widget>[
                       const SizedBox(height: DrAiSpacing.md),
                       Semantics(
@@ -127,9 +140,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       child: auth.isLoading
                           ? const SizedBox.square(
                               dimension: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: DrAiColors.white,
+                              ),
                             )
                           : const Text('Sign in'),
+                    ),
+                    const SizedBox(height: DrAiSpacing.sm),
+                    TextButton(
+                      onPressed: null,
+                      child: const Text('Password reset unavailable in Week 1'),
                     ),
                     const SizedBox(height: DrAiSpacing.lg),
                     const Text(

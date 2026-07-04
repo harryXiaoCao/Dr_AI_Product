@@ -21,8 +21,8 @@ Stacking base: `codex/week1-days1-2-closure`
 Draft pull request:
 <https://github.com/harryXiaoCao/Dr_AI_Product/pull/2>
 
-Green GitHub Actions run:
-<https://github.com/harryXiaoCao/Dr_AI_Product/actions/runs/28700058446>
+Latest known green GitHub Actions run before the polish pass:
+<https://github.com/harryXiaoCao/Dr_AI_Product/actions/runs/28700149578>
 
 ## Schema and migration
 
@@ -136,6 +136,9 @@ Pagination is frozen at `limit <= 50` for Week 1 list endpoints.
   - `>=1024px`: doctor-oriented navigation and multi-column dashboard.
 - Dashboard content is seeded synthetic demonstration data only.
 - The exact non-clinical and synthetic-data labels remain visible.
+- Doctor web sign-in confidence should use the Flutter-native
+  `integration_test/auth_smoke_test.dart` Chrome route rather than brittle DOM
+  automation, because Flutter web does not expose stable HTML text/input nodes.
 
 ## Local verification evidence
 
@@ -149,8 +152,8 @@ Pagination is frozen at `limit <= 50` for Week 1 list endpoints.
 | API smoke | Passed: health, login, `/me`, active patient read, neutral cross-patient `404`, refresh replay rejection, logout revocation |
 | Flutter formatting | Passed for changed Dart test files |
 | `./scripts/verify_flutter.sh` | Passed: analysis clean; 11 widget/golden tests passed |
-| GitHub Actions FastAPI job | Passed on run `28700058446` |
-| GitHub Actions Flutter job | Passed on run `28700058446`; pixel goldens are skipped on Linux CI because local macOS and CI Linux rasterization differ, while structural dashboard tests still run |
+| GitHub Actions FastAPI job | Passed on run `28700149578` before polish |
+| GitHub Actions Flutter job | Passed on run `28700149578` before polish; pixel goldens are skipped on Linux CI because local macOS and CI Linux rasterization differ, while structural dashboard tests still run |
 | Flutter web build | Passed: `✓ Built build/web`; non-blocking `CupertinoIcons` font warning observed with no project references |
 | Android debug build | Passed: `✓ Built build/app/outputs/flutter-apk/app-debug.apk` |
 | Android smoke launch | Passed: installed APK and launched `com.harrycao.drai.dr_ai_app/.MainActivity` cold |
@@ -160,10 +163,36 @@ Pagination is frozen at `limit <= 50` for Week 1 list endpoints.
 | Dashboard visual verification | Passed: golden screenshots at `1280x832` and `412x917` inspected and committed as synthetic visual baselines |
 | Environment-template review | No committed secrets; seed passwords/invite/JWT secrets are placeholders only |
 
+## Non-Tencent polish verification
+
+Recorded: 2026-07-04 after the Days 3-5 polish pass.
+
+| Check | Result |
+|---|---|
+| Backend Ruff | Passed: `All checks passed!` |
+| Backend tests with warnings as errors | Passed: `18 passed` |
+| Targeted backend CORS/config tests | Passed: `4 passed` |
+| Alembic model drift check | Passed: `No new upgrade operations detected.` |
+| `./scripts/verify_flutter.sh` | Passed: analysis clean; `14` widget/golden tests passed |
+| Flutter web build | Passed: `✓ Built build/web`; existing non-blocking CupertinoIcons font warning observed |
+| `git diff --check` | Passed |
+| Generated build cleanup | Completed: `apps/dr_ai_app/build` removed after web build verification |
+
 Golden files:
 
 - `apps/dr_ai_app/test/goldens/doctor_dashboard_1280x832.png`
 - `apps/dr_ai_app/test/goldens/patient_dashboard_412x917.png`
+
+## Web/API staging architecture guidance
+
+Tencent staging execution is excluded from this polish pass. The preferred
+first-beta architecture is same-origin HTTPS hosting with Caddy serving Flutter
+web and reverse-proxying `/api/*` to FastAPI. In that mode,
+`DR_AI_CORS_ALLOWED_ORIGINS=[]`.
+
+If the Flutter web app is hosted on a separate HTTPS origin, configure exact
+allowed origins only. Wildcard CORS is rejected for staging and production.
+See [the web staging architecture note](Dr_AI_v1.0_Web_Staging_Architecture.md).
 
 ## Staging deployment status
 

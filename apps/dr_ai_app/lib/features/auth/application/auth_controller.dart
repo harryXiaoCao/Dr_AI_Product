@@ -40,11 +40,14 @@ class AuthController extends AsyncNotifier<AuthState> {
       final session = await ref.read(repositoryProvider).login(email, password);
       state = AsyncData(AuthState.signedIn(session.user));
     } on ApiError catch (error) {
-      state = AsyncData(AuthState.signedOut(errorMessage: error.message));
+      state = AsyncData(
+        AuthState.signedOut(errorMessage: _loginErrorMessage(error)),
+      );
     } on Exception {
       state = const AsyncData(
         AuthState.signedOut(
-          errorMessage: 'Sign in could not be completed. Please try again.',
+          errorMessage:
+              'Unable to reach Dr. AI. Check your connection and try again.',
         ),
       );
     }
@@ -52,9 +55,30 @@ class AuthController extends AsyncNotifier<AuthState> {
 
   Future<void> logout() async {
     state = const AsyncLoading();
-    await ref.read(repositoryProvider).logout();
-    state = const AsyncData(AuthState.signedOut());
+    try {
+      await ref.read(repositoryProvider).logout();
+      state = const AsyncData(
+        AuthState.signedOut(noticeMessage: 'You have signed out.'),
+      );
+    } on Exception {
+      state = const AsyncData(
+        AuthState.signedOut(
+          noticeMessage:
+              'You have signed out locally. The server could not be reached.',
+        ),
+      );
+    }
   }
+}
+
+String _loginErrorMessage(ApiError error) {
+  if (error.code == 'unauthenticated') {
+    return 'The email or password is incorrect.';
+  }
+  if (error.code == 'service_unavailable') {
+    return 'Unable to reach Dr. AI. Check your connection and try again.';
+  }
+  return error.message;
 }
 
 final dashboardProvider = FutureProvider.autoDispose<DashboardData>((
