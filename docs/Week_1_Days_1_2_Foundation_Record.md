@@ -36,8 +36,8 @@ First green CI run:
 | Flutter | `3.44.4` stable |
 | Dart | `3.12.2` |
 | Flutter/Dart shell PATH | Added to `~/.zshrc`; verified in a fresh login shell |
-| Android SDK | API 36, Build Tools `36.0.0`, Platform Tools `37.0.0` |
-| Android Emulator | `36.6.11`; `Dr_AI_API_36` Pixel 6 AVD configured |
+| Android SDK | API 36, Build Tools `36.0.0`, Platform Tools `37.0.0`; stored at `/Volumes/AndroidAVD/sdk` |
+| Android Emulator | `36.6.11`; `Dr_AI_API_36` Pixel 6 AVD configured at `/Volumes/AndroidAVD/avd` |
 | Android NDK | `28.2.13676358` |
 | CMake | `3.22.1` |
 | Java | OpenJDK `21.0.11` LTS; pinned in Flutter configuration |
@@ -158,6 +158,22 @@ Build products and Gradle/Xcode caches were removed after their successful
 results were recorded to preserve local disk space. The installed Android SDK,
 Android AVD, iOS runtime, CocoaPods, Java, Flutter configuration, and source
 remain available.
+
+After the initial toolchain closure, Android was migrated off the internal disk.
+The active Android SDK is `/Volumes/AndroidAVD/sdk`, the AVD home is
+`/Volumes/AndroidAVD/avd`, and the old Homebrew SDK location is a symlink for
+compatibility. `/Volumes/AndroidAVD` is an APFS volume backed by the external
+`PHILIPS` SSD and must be mounted before Android builds or emulator checks.
+
+Future task work should not load the Android emulator or iOS Simulator by
+default. The normal disk-conscious loop is Flutter web plus
+`./scripts/verify_flutter.sh`, with CI covering repeatable platform checks.
+Use local simulators only for milestone verification that needs native runtime
+behavior, such as secure storage, permissions, notifications, Android/iOS build
+configuration, and beta packaging. Physical iOS and Android devices are valid
+replacements for final mobile behavior checks when local disk space is limited.
+iOS simulator use should stay minimal in future phases; do not add extra iOS
+runtimes or devices unless a milestone check requires them.
 
 ## Remaining Week 1 work
 

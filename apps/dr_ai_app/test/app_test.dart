@@ -1,37 +1,219 @@
+import 'dart:async';
+
 import 'package:dr_ai_app/app/app.dart';
 import 'package:dr_ai_app/app/routing/app_role.dart';
+import 'package:dr_ai_app/app/routing/router.dart';
+import 'package:dr_ai_app/core/api/api_error.dart';
+import 'package:dr_ai_app/features/auth/application/auth_controller.dart';
+import 'package:dr_ai_app/features/auth/domain/auth_models.dart';
+import 'package:dr_ai_app/features/dashboard/domain/dashboard_data.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'fakes.dart';
+
+Future<void> pumpApp(WidgetTester tester, FakeDrAiRepository repository) async {
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [repositoryProvider.overrideWithValue(repository)],
+      child: const DrAiApp(),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
+void setViewport(WidgetTester tester, Size size) {
+  tester.view.devicePixelRatio = 1;
+  tester.view.physicalSize = size;
+  addTearDown(() {
+    tester.view.resetPhysicalSize();
+    tester.view.resetDevicePixelRatio();
+  });
+}
+
 void main() {
-  testWidgets('doctor role opens the doctor foundation', (tester) async {
-    await tester.pumpWidget(DrAiApp(role: AppRole.doctor));
-    await tester.pumpAndSettle();
+  testWidgets('signed-out users see validation before a login request', (
+    tester,
+  ) async {
+    await pumpApp(tester, FakeDrAiRepository());
 
-    expect(find.text('Doctor dashboard foundation'), findsOneWidget);
-    expect(find.textContaining('synthetic content only'), findsOneWidget);
+    expect(find.text('Welcome to Dr. AI'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('login-button')));
+    await tester.pump();
+
+    expect(find.text('Enter a valid email address.'), findsOneWidget);
+    expect(find.text('Enter your password.'), findsOneWidget);
   });
 
-  testWidgets('patient role opens the patient foundation', (tester) async {
-    await tester.pumpWidget(DrAiApp(role: AppRole.patient));
-    await tester.pumpAndSettle();
+  testWidgets('login shows loading then routes a doctor to the dashboard', (
+    tester,
+  ) async {
+    final completer = Completer<AuthSession>();
+    final repository = FakeDrAiRepository(loginCompleter: completer);
+    await pumpApp(tester, repository);
 
-    expect(find.text('Today'), findsWidgets);
-    expect(find.text('Recovery plan'), findsOneWidget);
-    expect(find.text('Dashboard'), findsOneWidget);
-    expect(find.text('Medical Service'), findsOneWidget);
-    expect(find.text('Recovery Plan'), findsOneWidget);
+    await tester.enterText(
+      find.byKey(const Key('email-field')),
+      'doctor.demo@example.com',
+    );
+    await tester.enterText(
+      find.byKey(const Key('password-field')),
+      'test-only password',
+    );
+    await tester.tap(find.byKey(const Key('login-button')));
+    await tester.pump();
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+    completer.complete(doctorSession);
+    await tester.pumpAndSettle();
+    expect(find.text('Quick Access'), findsOneWidget);
+    expect(find.text('Dr. Avery Demo'), findsWidgets);
   });
 
-  testWidgets('patient role cannot open doctor route', (tester) async {
-    final app = DrAiApp(role: AppRole.patient);
-    await tester.pumpWidget(app);
+  testWidgets('login displays the standardized safe API error', (tester) async {
+    final repository = FakeDrAiRepository(
+      loginError: const ApiError(
+        code: 'unauthenticated',
+        message: 'The email or password is incorrect.',
+        statusCode: 401,
+      ),
+    );
+    await pumpApp(tester, repository);
+
+    await tester.enterText(
+      find.byKey(const Key('email-field')),
+      'doctor.demo@example.com',
+    );
+    await tester.enterText(
+      find.byKey(const Key('password-field')),
+      'wrong test password',
+    );
+    await tester.tap(find.byKey(const Key('login-button')));
     await tester.pumpAndSettle();
 
-    app.router.go('/doctor');
+    expect(find.byKey(const Key('login-error')), findsOneWidget);
+    expect(find.text('The email or password is incorrect.'), findsOneWidget);
+  });
+
+  testWidgets('a secure stored patient session restores to the patient route', (
+    tester,
+  ) async {
+    setViewport(tester, const Size(412, 917));
+    await pumpApp(
+      tester,
+      FakeDrAiRepository(
+        restoredSession: patientSession,
+        loginSession: patientSession,
+        dashboard: patientDashboard,
+      ),
+    );
+
+    expect(find.text('Recovery Plan'), findsWidgets);
+    expect(find.text('No Medical Records'), findsOneWidget);
+    expect(find.text('No Imaging Results'), findsOneWidget);
+  });
+
+  testWidgets('logout clears the session and returns to sign in', (
+    tester,
+  ) async {
+    final repository = FakeDrAiRepository(restoredSession: doctorSession);
+    await pumpApp(tester, repository);
+
+    await tester.tap(find.byKey(const Key('logout-button')));
+    await tester.pumpAndSettle();
+
+    expect(repository.logoutCalled, isTrue);
+    expect(find.text('Welcome to Dr. AI'), findsOneWidget);
+  });
+
+  testWidgets('patient role cannot navigate to the doctor route', (
+    tester,
+  ) async {
+    final router = createRouter(AppRole.patient);
+    addTearDown(router.dispose);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          repositoryProvider.overrideWithValue(
+            FakeDrAiRepository(
+              restoredSession: patientSession,
+              dashboard: patientDashboard,
+            ),
+          ),
+        ],
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    router.go('/doctor');
     await tester.pumpAndSettle();
 
     expect(find.byIcon(Icons.lock_outline), findsOneWidget);
-    expect(find.textContaining('selected role'), findsOneWidget);
+    expect(find.textContaining('not available for your role'), findsOneWidget);
+  });
+
+  testWidgets('doctor dashboard renders seeded desktop state at 1280x832', (
+    tester,
+  ) async {
+    setViewport(tester, const Size(1280, 832));
+    await pumpApp(tester, FakeDrAiRepository(restoredSession: doctorSession));
+
+    expect(find.text('Synthetic Community Hospital'), findsOneWidget);
+    expect(find.text('Quick Access'), findsOneWidget);
+    expect(find.text('Recent Activities'), findsOneWidget);
+    expect(find.text('Resource Overview'), findsOneWidget);
+    expect(find.text('Team Management'), findsOneWidget);
+  });
+
+  testWidgets('patient dashboard renders seeded mobile state at 412x917', (
+    tester,
+  ) async {
+    setViewport(tester, const Size(412, 917));
+    await pumpApp(
+      tester,
+      FakeDrAiRepository(
+        restoredSession: patientSession,
+        loginSession: patientSession,
+        dashboard: patientDashboard,
+      ),
+    );
+
+    expect(find.text('Today'), findsOneWidget);
+    expect(find.text('Contact Doctor'), findsOneWidget);
+    expect(find.text('Medical Fee'), findsOneWidget);
+    expect(find.text('No Medical Records'), findsOneWidget);
+    expect(find.text('Dashboard'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('dashboard network and empty states are explicit', (
+    tester,
+  ) async {
+    final repository = FakeDrAiRepository(
+      restoredSession: doctorSession,
+      dashboardError: const ApiError(
+        code: 'service_unavailable',
+        message: 'Unable to reach Dr. AI.',
+        statusCode: 503,
+      ),
+    );
+    await pumpApp(tester, repository);
+
+    expect(find.byKey(const Key('dashboard-error')), findsOneWidget);
+    expect(find.text('Try again'), findsOneWidget);
+
+    repository.dashboardError = null;
+    repository.dashboard = const DashboardData(
+      role: AppRole.doctor,
+      data: <String, dynamic>{},
+    );
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(DrAiApp)),
+    );
+    container.invalidate(dashboardProvider);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('doctor-empty')), findsOneWidget);
   });
 }

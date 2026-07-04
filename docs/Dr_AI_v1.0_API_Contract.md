@@ -1,15 +1,16 @@
 # Dr. AI v1.0 API Contract
 
-Status: frozen for implementation; deferred endpoints are not yet implemented
+Status: authentication and Week 1 dashboard reads implemented; deferred
+clinical endpoints remain unavailable
 
 Contract version: `1.0.0`
 
-Recorded: 2026-07-04
+Recorded: 2026-07-04; authentication models frozen: 2026-07-04
 
 This contract defines the public HTTP boundary planned for Dr. AI v1.0. The
-current Week 1 Days 1-2 backend exposes only `GET /health`. Every `/api/v1`
-route below is reserved for later implementation and must not be inferred to be
-available yet.
+current Week 1 backend exposes the authentication, identity, assigned-patient,
+and synthetic dashboard reads identified below. Every clinical route remains
+reserved for its scheduled week and must not be inferred to be available.
 
 Dr. AI v1.0 is an invited, non-clinical beta. It uses synthetic demonstration
 content only, accepts no real patient data, and provides no diagnosis or
@@ -28,6 +29,106 @@ medical advice.
 - Secrets, raw tokens, medical content, and real patient data must not appear
   in URLs, logs, fixtures, or error messages.
 
+## Implemented authentication models
+
+Invited registration is disabled for a role when its server-side invite code is
+unset. The role comes from the accepted invitation and is persisted by the
+server; Flutter cannot elevate it.
+
+### `POST /api/v1/auth/register`
+
+Request:
+
+```json
+{
+  "email": "new.patient@example.com",
+  "password": "user-supplied minimum 12 characters",
+  "role": "patient",
+  "invite_code": "server-issued opaque invitation"
+}
+```
+
+The password is limited to 128 characters. An invalid invitation returns
+`403 forbidden`; an existing normalized email returns `409 conflict`.
+
+### `POST /api/v1/auth/login`
+
+Request:
+
+```json
+{
+  "email": "patient.demo@example.com",
+  "password": "user-supplied password"
+}
+```
+
+Unknown emails, inactive accounts, and incorrect passwords share the same
+neutral `401 unauthenticated` response.
+
+### Login, registration, and refresh response
+
+```json
+{
+  "access_token": "opaque-access-token",
+  "refresh_token": "opaque-refresh-token",
+  "token_type": "bearer",
+  "expires_in": 600,
+  "user": {
+    "id": "opaque-uuid",
+    "email": "patient.demo@example.com",
+    "role": "patient",
+    "display_name": "Riley Demo Patient"
+  }
+}
+```
+
+The access token is an HS256 JWT with issuer, audience, subject, role, session,
+issued-at, expiry, and unique token ID claims. It defaults to 10 minutes. The
+refresh token is a cryptographically random opaque value; only its SHA-256 hash
+is stored. Refresh sessions default to 14 days and are server-revocable.
+
+### `POST /api/v1/auth/refresh`
+
+Request:
+
+```json
+{
+  "refresh_token": "opaque-refresh-token"
+}
+```
+
+Every successful refresh replaces and revokes the presented token. Reusing a
+rotated token revokes its entire session family and returns neutral
+`401 unauthenticated`.
+
+### `POST /api/v1/auth/logout`
+
+Request:
+
+```json
+{
+  "refresh_token": "opaque-refresh-token"
+}
+```
+
+The request also carries the current bearer access token. Success returns
+`204 No Content`. The active refresh session is revoked, and subsequent use of
+the access token is rejected by the server-side session check.
+
+### `GET /api/v1/me`
+
+Response:
+
+```json
+{
+  "id": "opaque-uuid",
+  "email": "patient.demo@example.com",
+  "role": "patient",
+  "display_name": "Riley Demo Patient",
+  "safety_label": "Synthetic demonstration data only. Do not enter real patient data."
+}
+```
+
 ## Paths frozen for v1
 
 | Method | Path | Doctor | Patient | Purpose |
@@ -38,6 +139,7 @@ medical advice.
 | `POST` | `/api/v1/auth/refresh` | Own session | Own session | Rotate a refresh session |
 | `POST` | `/api/v1/auth/logout` | Own session | Own session | Revoke the current session |
 | `GET` | `/api/v1/me` | Own profile | Own profile | Read current identity and role |
+| `GET` | `/api/v1/me/dashboard` | Own dashboard | Own dashboard | Read the current role's synthetic seeded dashboard |
 | `GET` | `/api/v1/patients` | Assigned patients | No | List patients in an active care relationship |
 | `GET` | `/api/v1/patients/{patient_id}` | Assigned patient | Own record only | Read a patient summary |
 | `GET` | `/api/v1/patients/{patient_id}/records` | Assigned patient | Own records only | List medical-record fixtures |
@@ -54,8 +156,12 @@ medical advice.
 | `POST` | `/api/v1/consultations` | Assigned patient | No | Request asynchronous specialist review |
 | `GET` | `/api/v1/audit-events` | Administrator only | No | Read security audit metadata |
 
-The singular `/patient/me/today` path is intentional. It represents the
+The singular `/patient/me/today` path is intentional and is implemented for
+the Week 1 patient dashboard. It represents the
 current patient's own view and is distinct from doctor-scoped `/patients`.
+`GET /api/v1/patients`, `GET /api/v1/patients/{patient_id}`, and
+`GET /api/v1/me/dashboard` are also implemented for the Week 1 gate. All other
+paths in this table remain unavailable.
 
 ## Public enums
 
@@ -251,8 +357,10 @@ Collection endpoints will use cursor pagination:
 }
 ```
 
-Clients send `cursor` and `limit` query parameters. A later implementation
-record will freeze the maximum `limit` before collection endpoints ship.
+Clients send `cursor` and `limit` query parameters. The v1 default is `20` and
+the frozen maximum is `50`. The Week 1 assigned-patient list currently returns
+`next_cursor: null`; cursor continuation is added only when the dataset can
+exceed one page.
 Mutating endpoints that can be retried accept an `Idempotency-Key` header or
 the explicitly documented body key. Conflicting replays return `409 conflict`.
 
