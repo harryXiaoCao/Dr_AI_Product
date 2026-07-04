@@ -2,9 +2,8 @@
 
 Recorded: 2026-07-04
 
-Status: complete for repository implementation, local verification, and native
-runtime checks; Tencent HTTPS staging deployment is externally blocked and is
-not claimed as passed.
+Status: complete for repository implementation, local verification, native
+runtime checks, and Tencent HTTPS staging deployment.
 
 Week 2 status: not started.
 
@@ -196,31 +195,74 @@ See [the web staging architecture note](Dr_AI_v1.0_Web_Staging_Architecture.md).
 
 ## Staging deployment status
 
-Deployment manifests were added under `deploy/tencent/staging/` for the
+Recorded: 2026-07-05.
+
+Tencent staging is deployed on the existing purchased resources using the
 approved architecture:
 
-- existing Tencent Cloud compute host;
-- existing Tencent Container Registry image;
-- existing TencentDB for PostgreSQL;
+- existing Tencent CVM with Docker and Docker Compose;
+- existing Tencent Container Registry repository;
+- existing TencentDB for PostgreSQL instance;
 - Caddy-managed HTTPS;
 - one-off migration and synthetic seeding tasks before API startup.
 
-Local checks found GitHub CLI access, but no local Tencent CLI or Docker command
-was available from the current shell, and the earlier in-app browser attempt to
-open the Tencent Cloud console was blocked by browser policy. Because deploying
-or exposing a public HTTPS service is consequential, no workaround was used and
-no staging endpoint is claimed.
+Staging URL:
+<https://dr-ai.43.132.169.195.sslip.io>
 
-Staging gate blocker:
+Non-secret deployment identifiers:
 
-- Tencent Cloud console/tooling access is unavailable in this session.
-- Docker/Tencent deployment execution is unavailable locally.
-- Therefore staging `/health`, HTTPS database connectivity, and staging auth
-  smoke tests remain unverified.
+- CVM public IP: `43.132.169.195`
+- SSH user used for deployment: `ubuntu`
+- Tencent Container Registry repository:
+  `hkccr.ccs.tencentyun.com/dr-ai/dr-ai-backend`
+- API image tag: `week1-days3-5-20260704171151`
+- API image digest:
+  `hkccr.ccs.tencentyun.com/dr-ai/dr-ai-backend@sha256:ee6caeb532f80743f42ce17ad5f5a3c1e68fcfb9b5f086f6b11c6d1abdd59cbb`
+- TencentDB private endpoint: `172.19.0.10:5432`
+- TencentDB database: `dr_ai_staging`
+- TencentDB app user: `dr_ai_user`
+- CVM deployment directory: `/home/ubuntu/dr-ai/staging`
 
-Staging URL: not provisioned in this run.
+Deployment fixes applied during staging:
 
-Non-secret deployment identifiers: not available.
+- Restored the API image build to the locked `uv` runtime expected by
+  `deploy/tencent/staging/compose.yaml`.
+- Added `DR_AI_CORS_ALLOWED_ORIGINS=[]` to the Tencent staging environment
+  template.
+- Escaped percent signs before passing SQLAlchemy URLs to Alembic config so
+  percent-encoded database passwords work in staging.
+- Added local credential workbook names to `.gitignore`.
+- Created the missing `dr_ai_staging` database inside the existing TencentDB
+  instance after confirming the provided database name and credentials.
+
+Staging verification evidence:
+
+| Check | Result |
+|---|---|
+| `docker compose --env-file .env -f compose.yaml config --quiet` | Passed |
+| `docker compose --env-file .env -f compose.yaml pull` | Passed |
+| API image build and push | Passed; image digest above |
+| TencentDB database creation | Passed; missing `dr_ai_staging` database created in existing TencentDB |
+| Alembic migration | Passed; revision `20260704_0001` applied |
+| Synthetic seed command, first run | Passed: `users_created=3`, `relationships_created=2`, `dashboards_created=3` |
+| Synthetic seed command, second run | Passed: `users_created=0`, `relationships_created=0`, `dashboards_created=0` |
+| `docker compose up -d` | Passed; API and Caddy running |
+| HTTPS `/health` | Passed: `status=ok`, `environment=staging`, `database=ok` |
+| Seeded doctor login | Passed |
+| Seeded patient login | Passed |
+| Refresh-token rotation | Passed; previous refresh token rejected after rotation |
+| Logout revocation | Passed; active access session rejected after logout |
+| Cross-patient authorization | Passed; doctor probing unrelated patient returned neutral `404 not_found` |
+| Log-safety review | Passed; no passwords, raw JWTs, raw refresh tokens, request bodies, or synthetic patient-owned content observed |
+
+Remaining staging caveats:
+
+- The staging URL currently uses temporary `sslip.io` DNS because the final
+  custom DNS name was still pending. Replace
+  `DR_AI_STAGING_HOST` and Caddy certificates after final DNS is ready.
+- TencentDB reports timezone `PRC`; psycopg logs `unknown PostgreSQL timezone:
+  'PRC'; will use UTC`. Runtime health and smoke tests passed, but setting the
+  database/session timezone to `UTC` is cleaner for future work.
 
 ## Security and data review
 

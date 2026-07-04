@@ -4,6 +4,8 @@
 !.env.example
 *.pem
 *.key
+Dr_AI_Credentials.xlsx
+.~Dr_AI_Credentials.xlsx
 
 # macOS and editors
 .DS_Store
