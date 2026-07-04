@@ -1,8 +1,8 @@
 ---
 title: "Dr. AI v1.0 Implementation Plan"
-status: "Approved - Not Started"
+status: "In Progress - Week 1 (Days 1-2 complete)"
 created: "2026-07-02"
-last_updated: "2026-07-02"
+last_updated: "2026-07-04T12:11:19+08:00"
 owner: "Harry Cao"
 delivery_window: "One month / 20 focused working days"
 release_target: "Invited public beta"
@@ -32,6 +32,8 @@ This file is the durable source of truth for implementing Dr. AI v1.0. Future ch
 ## Weekly Milestone Tracker
 
 - [ ] Week 1: Foundation and design freeze
+  - [x] Days 1-2: foundation, implementation-facing design freeze, and API contract
+  - [ ] Days 3-5: data/auth shells, seeded dashboards, and Week 1 gate
 - [ ] Week 2: Complete the golden care loop
 - [ ] Week 3: Recovery, reminders, chat, and consultation
 - [ ] Week 4: Hardening and beta release
@@ -348,3 +350,6 @@ Add one row whenever implementation status, scope, architecture, or a major deci
 | Date | Status | Change | Evidence / Files | Next Step |
 |---|---|---|---|---|
 | 2026-07-02 | Approved - Not Started | Approved implementation plan recorded as the project source of truth. | `docs/Dr_AI_v1.0_Implementation_Plan.md` | Begin Week 1 foundation and design-freeze tasks. |
+| 2026-07-02 | In Progress - Week 1 | Implemented Week 1 Days 1-2 foundations: Flutter web/iOS/Android scaffold with role-aware routes and design tokens; FastAPI settings and health endpoint; environment templates; CI; design-freeze inventory and current prototype captures. Figma node metadata remains blocked by the Starter-plan MCP limit, so Week 1 is not complete. | `apps/dr_ai_app/`, `services/api/`, `.github/workflows/ci.yml`, `docs/Dr_AI_v1.0_Design_Freeze.md`, `docs/Week_1_Days_1_2_Foundation_Record.md`, `docs/design-evidence/` | Reconcile exact Figma metadata when the quota resets, then begin Week 1 Days 3-4 authentication and data foundations. |
+| 2026-07-03 | In Progress - Week 1 | Replaced device-mockup screenshots with direct 1x exports of the doctor and patient Figma frames. Confirmed the patient bottom navigation labels and preserved the Figma file by removing temporary export presets. | `docs/design-evidence/doctor-dashboard-618-1051.png`, `docs/design-evidence/patient-dashboard-663-398.png`, `docs/Dr_AI_v1.0_Design_Freeze.md` | Reconcile exact Figma hierarchy and token metadata after the monthly MCP quota resets. |
+| 2026-07-04 | Complete - Week 1 Days 1-2 | Reconciled the design freeze from the authoritative manual Figma inspection; froze the planned v1 API contract; completed Android and iOS toolchains; added a reproducible Unicode-path verification workflow; removed the supported Starlette test-client warning; and verified Flutter web/Android/iOS plus both remote CI jobs. Week 1 remains open for Days 3-5. | `docs/Dr_AI_v1.0_Design_Freeze.md`, `docs/Dr_AI_v1.0_API_Contract.md`, `docs/Week_1_Days_1_2_Foundation_Record.md`, `scripts/verify_flutter.sh`, [draft PR #1](https://github.com/harryXiaoCao/Dr_AI_Product/pull/1), [green CI run](https://github.com/harryXiaoCao/Dr_AI_Product/actions/runs/28676795816) | Begin Week 1 Days 3-4 database, authentication, authorization, and responsive-shell work without expanding the approved scope. |
