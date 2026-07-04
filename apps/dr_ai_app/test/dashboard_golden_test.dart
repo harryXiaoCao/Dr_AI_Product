@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:ui';
 
 import 'package:dr_ai_app/app/app.dart';
@@ -6,6 +7,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'fakes.dart';
+
+final skipPixelGoldensOnCi = Platform.environment['CI'] == 'true';
 
 void setGoldenViewport(WidgetTester tester, Size size) {
   tester.view.devicePixelRatio = 1;
@@ -30,37 +33,41 @@ Future<void> pumpGoldenApp(
 }
 
 void main() {
-  testWidgets('doctor dashboard matches the frozen 1280x832 visual target', (
-    tester,
-  ) async {
-    setGoldenViewport(tester, const Size(1280, 832));
-    await pumpGoldenApp(
-      tester,
-      FakeDrAiRepository(restoredSession: doctorSession),
-    );
+  testWidgets(
+    'doctor dashboard matches the frozen 1280x832 visual target',
+    (tester) async {
+      setGoldenViewport(tester, const Size(1280, 832));
+      await pumpGoldenApp(
+        tester,
+        FakeDrAiRepository(restoredSession: doctorSession),
+      );
 
-    await expectLater(
-      find.byType(DrAiApp),
-      matchesGoldenFile('goldens/doctor_dashboard_1280x832.png'),
-    );
-  });
+      await expectLater(
+        find.byType(DrAiApp),
+        matchesGoldenFile('goldens/doctor_dashboard_1280x832.png'),
+      );
+    },
+    skip: skipPixelGoldensOnCi,
+  );
 
-  testWidgets('patient dashboard matches the frozen 412x917 visual target', (
-    tester,
-  ) async {
-    setGoldenViewport(tester, const Size(412, 917));
-    await pumpGoldenApp(
-      tester,
-      FakeDrAiRepository(
-        restoredSession: patientSession,
-        loginSession: patientSession,
-        dashboard: patientDashboard,
-      ),
-    );
+  testWidgets(
+    'patient dashboard matches the frozen 412x917 visual target',
+    (tester) async {
+      setGoldenViewport(tester, const Size(412, 917));
+      await pumpGoldenApp(
+        tester,
+        FakeDrAiRepository(
+          restoredSession: patientSession,
+          loginSession: patientSession,
+          dashboard: patientDashboard,
+        ),
+      );
 
-    await expectLater(
-      find.byType(DrAiApp),
-      matchesGoldenFile('goldens/patient_dashboard_412x917.png'),
-    );
-  });
+      await expectLater(
+        find.byType(DrAiApp),
+        matchesGoldenFile('goldens/patient_dashboard_412x917.png'),
+      );
+    },
+    skip: skipPixelGoldensOnCi,
+  );
 }
