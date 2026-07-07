@@ -18,6 +18,7 @@ from app.errors import (
     safe_internal_error,
     validation_error_handler,
 )
+from app.support import router as support_router
 
 
 def create_app() -> FastAPI:
@@ -71,6 +72,7 @@ def create_app() -> FastAPI:
 
     app.include_router(auth_router)
     app.include_router(dashboard_router)
+    app.include_router(support_router)
     return app
 
 

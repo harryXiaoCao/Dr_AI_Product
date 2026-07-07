@@ -10,6 +10,11 @@ class UnauthorizedScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dashboardPath = switch (role) {
+      AppRole.doctor => '/doctor',
+      AppRole.patient => '/patient',
+      AppRole.unsupported || null => null,
+    };
     return Scaffold(
       body: Center(
         child: Padding(
@@ -25,11 +30,9 @@ class UnauthorizedScreen extends StatelessWidget {
               ),
               const SizedBox(height: DrAiSpacing.md),
               FilledButton(
-                onPressed: role == null
+                onPressed: dashboardPath == null
                     ? null
-                    : () => context.go(
-                        role == AppRole.doctor ? '/doctor' : '/patient',
-                      ),
+                    : () => context.go(dashboardPath),
                 child: const Text('Return to dashboard'),
               ),
             ],

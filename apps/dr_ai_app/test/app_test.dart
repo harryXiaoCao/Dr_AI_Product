@@ -346,6 +346,37 @@ void main() {
     expect(find.textContaining('not available for your role'), findsOneWidget);
   });
 
+  testWidgets(
+    'future unsupported roles fail closed instead of using doctor UI',
+    (tester) async {
+      expect(AppRole.fromWire('specialist'), AppRole.unsupported);
+      expect(AppRole.fromWire('admin'), AppRole.unsupported);
+
+      final router = createRouter(AppRole.unsupported);
+      addTearDown(router.dispose);
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            repositoryProvider.overrideWithValue(
+              FakeDrAiRepository(restoredSession: unsupportedRoleSession),
+            ),
+          ],
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(Icons.lock_outline), findsOneWidget);
+      expect(
+        find.textContaining('not available for your role'),
+        findsOneWidget,
+      );
+      expect(find.text('Quick Access'), findsNothing);
+      final button = tester.widget<FilledButton>(find.byType(FilledButton));
+      expect(button.onPressed, isNull);
+    },
+  );
+
   testWidgets('doctor dashboard renders seeded desktop state at 1280x832', (
     tester,
   ) async {

@@ -9,7 +9,12 @@ import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
 GoRouter createRouter(AppRole? role, {String? initialLocation}) {
-  final homePath = role == AppRole.patient ? '/patient' : '/doctor';
+  final homePath = switch (role) {
+    AppRole.doctor => '/doctor',
+    AppRole.patient => '/patient',
+    AppRole.unsupported => '/unauthorized',
+    null => '/login',
+  };
   return GoRouter(
     initialLocation: initialLocation,
     redirect: (BuildContext context, GoRouterState state) {
@@ -22,6 +27,11 @@ GoRouter createRouter(AppRole? role, {String? initialLocation}) {
       }
       if (path == '/login') {
         return homePath;
+      }
+      if (role == AppRole.unsupported) {
+        return path == '/unauthorized' || path == '/beta-support'
+            ? null
+            : '/unauthorized';
       }
       if (path.startsWith('/doctor') && role != AppRole.doctor) {
         return '/unauthorized';

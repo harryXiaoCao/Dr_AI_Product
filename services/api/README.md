@@ -1,18 +1,22 @@
 # Dr. AI API
 
-FastAPI and PostgreSQL service for the invited Dr. AI beta. Week 1 exposes
-authentication, current-user identity, assigned-patient summaries, and
-role-specific synthetic dashboard reads. Week 2 exposes read-only synthetic
-patient-care fixtures, demo upload presign metadata, deterministic simulated
-assessment results, and audit metadata events. Week 3 Days 11-12 exposes
-synthetic recovery plans, Today tasks, and task completion tracking. Week 3
-Days 13-14 exposes educational chat and asynchronous specialist-consultation
-tracking. Week 4 Days 16-17 hardening trims string request fields before
-validation, rejects unsafe consultation specialty and summary text, and expands
-log-hygiene checks across auth, refresh, upload, chat, and consultation flows.
-Week 4 Days 18-20 release prep adds Flutter/doc surfaces only; it does not
-change the API contract. Real COS upload completion, real AI/model inference,
-and real clinical workflows remain unavailable.
+FastAPI and PostgreSQL service for the Dr. AI beta foundation and production
+v1.0 planning baseline. The historical beta API exposes authentication,
+current-user identity, assigned-patient summaries, role-specific synthetic
+dashboard reads, read-only synthetic patient-care fixtures, demo upload
+presign metadata, deterministic simulated assessment results, recovery plans,
+Today tasks, educational chat, asynchronous consultation request/status
+readback, and audit metadata events.
+
+Production v1.0 Phase 0 is complete, and Phase 1 production data foundation is
+complete. Phase 1 adds schema foundations, fail-closed specialist/admin role
+boundaries, route-level RBAC helpers, and authenticated
+support/deletion/feedback submission plus requester-scoped status endpoints.
+Specialist/admin workflows, admin support/deletion/feedback queue handling,
+real COS upload completion, real notification delivery, billing workflows,
+analytics dashboards, clinic operations workflows, real AI/model inference,
+and real clinical workflows remain unavailable until later production phases
+implement and test them.
 
 Use synthetic content only. Do not submit real patient data.
 
@@ -148,7 +152,26 @@ Week 4 Days 18-20 local release prep does not add API endpoints and does not
 touch Tencent staging, production deployment, TestFlight, Android closed
 testing, web deployment, tags, tester invites, monitoring/account settings, or
 real data deletion. The Flutter Beta support account-deletion and feedback
-controls prepare local drafts only.
+controls still prepare local drafts only until the Flutter surface is wired to
+the Phase 1 backend support endpoints.
+
+Phase 1 status: migration `20260707_0006` adds production
+foundation tables for hospitals, clinics, role assignments, doctor teams,
+clinic resources/equipment, appointments/bookings, prescriptions/medication
+reminders, notifications, invoices/payment statuses/revenue summaries,
+analytics events, and support/deletion/feedback queue requests. The existing
+synthetic seed flow does not populate those production foundation tables.
+Backend `specialist` and `admin` enum values exist for RBAC preparation, but
+registration for those roles fails closed and unsupported roles cannot use the
+beta dashboard or support-request routes. Authenticated doctors and patients
+can submit support, deletion, and feedback queue requests and read only their
+own request statuses. Admin-managed support queue handling remains Phase 5.
+
+Current production planning and Phase 0 closure evidence live in
+`../../docs/Dr_AI_v1.0_Implementation_Plan.md` and
+`../../docs/Phase_0_Production_v1_Closure_Record.md`; the Phase 1 foundation
+is recorded in `../../docs/Phase_1_Production_Data_Foundation_Record.md`.
+Historical beta records live under `../../docs/beta/`.
 
 ## Web hosting and CORS
 

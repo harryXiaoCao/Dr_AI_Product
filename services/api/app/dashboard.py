@@ -614,6 +614,8 @@ def _validate_demo_asset_presign_request(request: DemoAssetPresignRequest) -> st
 
 @router.get("/me/dashboard", response_model=DashboardResponse)
 def own_dashboard(user: CurrentUser, db: DbSession) -> DashboardResponse:
+    if user.role not in {UserRole.doctor, UserRole.patient}:
+        raise ApiError(403, "forbidden", "This role is not enabled for this workflow.")
     snapshot = db.scalar(select(DashboardSnapshot).where(DashboardSnapshot.user_id == user.id))
     if snapshot is None:
         return DashboardResponse(role=user.role, data={})

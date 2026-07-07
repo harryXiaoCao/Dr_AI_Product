@@ -21,6 +21,13 @@ const patientUser = SessionUser(
   displayName: 'Riley Demo Patient',
 );
 
+const unsupportedRoleUser = SessionUser(
+  id: 'specialist-test-id',
+  email: 'specialist.future@example.com',
+  role: AppRole.unsupported,
+  displayName: 'Future Specialist User',
+);
+
 const doctorSession = AuthSession(
   accessToken: 'test-access',
   refreshToken: 'test-refresh',
@@ -31,6 +38,12 @@ const patientSession = AuthSession(
   accessToken: 'test-access',
   refreshToken: 'test-refresh',
   user: patientUser,
+);
+
+const unsupportedRoleSession = AuthSession(
+  accessToken: 'test-access',
+  refreshToken: 'test-refresh',
+  user: unsupportedRoleUser,
 );
 
 final doctorDashboard = DashboardData(

@@ -1,21 +1,20 @@
 # Dr. AI Flutter app
 
 Shared Flutter application for the doctor web and patient mobile experiences.
-Week 1 includes email/password sign-in, secure session restoration and logout,
-role-protected routes, refresh-and-retry networking, and database-backed
-synthetic dashboards. Week 2 Days 6-7 adds the doctor Patient Management
-workflow for assigned patient search/list, profile, medical history,
-medications, and doctor notes, plus a patient-side self profile/history/
-medication section. Week 2 Days 8-10 adds demo upload preparation, simulated
-assessment, result display, and failure recovery. Week 3 Days 11-12 adds the
-doctor recovery-plan editor, patient Today tasks, completion tracking, and a
-demo-only local medication notification shell. Week 3 Days 13-14 adds the
-patient educational chat surface with streaming-style response display and the
-doctor/patient specialist-consultation request/status workflow. Week 4 Days
-16-17 hardening adds deterministic focus traversal, contrast coverage, and
-patient mobile text-scaling/responsive QA without redesigning the existing
-doctor or patient workflows. Week 4 Days 18-20 adds a public pre-login Beta
-support surface with privacy notice, consent readiness, account deletion
+The current active project stage is production v1.0 after Phase 1 data
+foundation completion: the historical beta foundation is implemented, and the
+Phase 1 backend schema/RBAC/support-submission foundation is complete. Phase 2
+patient/doctor workflows and Phase 5 specialist/admin surfaces have not
+started.
+
+The historical beta app includes email/password sign-in, secure session
+restoration and logout, role-protected doctor/patient routes,
+refresh-and-retry networking, database-backed synthetic dashboards, doctor
+Patient Management, demo upload preparation, simulated assessment, recovery
+plans, patient Today tasks, educational chat, asynchronous consultation
+request/status readback, deterministic focus traversal, contrast coverage, and
+patient mobile text-scaling/responsive QA. It also includes a public pre-login
+Beta support surface with privacy notice, consent readiness, account deletion
 request preparation, feedback draft preparation, and known limitations.
 
 The app uses Riverpod for state/dependency management, Dio for HTTP, and
@@ -25,11 +24,22 @@ is permitted for development).
 
 Only synthetic patient-care fixtures, demo upload metadata, simulated
 assessment results, recovery-plan tasks, educational question-preparation chat,
-and asynchronous synthetic consultation requests are enabled. No real
-notification delivery, real COS upload completion, real model inference, or
-clinical feature is enabled. The Beta support feedback and deletion controls
-prepare local drafts only; they do not send messages, delete data, invite
-testers, or alter accounts. Do not enter real patient data.
+and asynchronous synthetic consultation requests are enabled today. Unknown,
+specialist, and admin wire roles fail closed to the unauthorized state rather
+than opening doctor UI. No specialist/admin role surface, real notification
+delivery, real COS upload completion, real model inference, billing workflow,
+analytics dashboard, clinic-operations workflow, or clinical feature is
+enabled. The backend now has authenticated doctor/patient support, deletion,
+and feedback submission plus own-status endpoints, but the Flutter Beta
+support feedback and deletion controls still prepare local drafts only until a
+later UI wiring pass; they do not send messages, delete data, invite testers,
+or alter accounts. Do not enter real patient data.
+
+Current production planning and Phase 0 closure evidence live in
+`../../docs/Dr_AI_v1.0_Implementation_Plan.md` and
+`../../docs/Phase_0_Production_v1_Closure_Record.md`; the Phase 1 foundation
+is recorded in `../../docs/Phase_1_Production_Data_Foundation_Record.md`.
+Historical beta records live under `../../docs/beta/`.
 
 ## Configuration
 
@@ -79,7 +89,7 @@ flutter build web
 
 Release-prep command shapes for TestFlight, Android closed testing, and doctor
 web live deployment are documented in
-`../../docs/Week_4_Days_18_20_Release_Gate_Checklist.md`. Do not upload,
+`../../docs/beta/Week_4_Days_18_20_Release_Gate_Checklist.md`. Do not upload,
 submit, deploy, invite testers, create tags, or change account settings without
 explicit approval.
 

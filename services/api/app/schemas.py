@@ -284,3 +284,28 @@ class ConsultationResponse(BaseModel):
 class ConsultationListResponse(BaseModel):
     items: list[ConsultationResponse]
     next_cursor: None = None
+
+
+class SupportRequestCreateRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    request_type: Literal["support", "deletion", "feedback"]
+    subject: str = Field(min_length=3, max_length=160)
+    message: str = Field(min_length=8, max_length=2000)
+
+
+class SupportRequestResponse(BaseModel):
+    request_id: UUID
+    request_type: Literal["support", "deletion", "feedback"]
+    status: Literal["queued", "reviewing", "resolved", "cancelled"]
+    subject: str
+    created_at: datetime
+    updated_at: datetime
+    safety_label: Literal["Synthetic demonstration data only. Do not enter real patient data."] = (
+        "Synthetic demonstration data only. Do not enter real patient data."
+    )
+
+
+class SupportRequestListResponse(BaseModel):
+    items: list[SupportRequestResponse]
+    next_cursor: None = None

@@ -1,11 +1,13 @@
 enum AppRole {
   doctor,
-  patient;
+  patient,
+  unsupported;
 
   static AppRole fromWire(String value) {
     return switch (value.trim().toLowerCase()) {
+      'doctor' => AppRole.doctor,
       'patient' => AppRole.patient,
-      _ => AppRole.doctor,
+      _ => AppRole.unsupported,
     };
   }
 

@@ -1,9 +1,10 @@
 import enum
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
 from sqlalchemy import (
     Boolean,
+    Date,
     DateTime,
     Enum,
     ForeignKey,
@@ -25,6 +26,8 @@ class Base(DeclarativeBase):
 class UserRole(enum.StrEnum):
     doctor = "doctor"
     patient = "patient"
+    specialist = "specialist"
+    admin = "admin"
 
 
 class User(Base):
@@ -51,6 +54,11 @@ class User(Base):
     )
     dashboard: Mapped["DashboardSnapshot | None"] = relationship(
         back_populates="user", cascade="all, delete-orphan"
+    )
+    role_assignments: Mapped[list["RoleAssignment"]] = relationship(
+        foreign_keys="RoleAssignment.user_id",
+        back_populates="user",
+        cascade="all, delete-orphan",
     )
 
 
@@ -475,3 +483,479 @@ class AuditEvent(Base):
 
     actor: Mapped[User] = relationship()
     patient: Mapped[PatientProfile | None] = relationship()
+
+
+class Hospital(Base):
+    __tablename__ = "hospitals"
+    __table_args__ = (Index("ix_hospitals_status", "status"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name: Mapped[str] = mapped_column(String(160))
+    legal_name: Mapped[str | None] = mapped_column(String(240))
+    status: Mapped[str] = mapped_column(String(40), default="active")
+    metadata_json: Mapped[dict[str, object]] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    clinics: Mapped[list["Clinic"]] = relationship(
+        back_populates="hospital", cascade="all, delete-orphan"
+    )
+
+
+class Clinic(Base):
+    __tablename__ = "clinics"
+    __table_args__ = (
+        UniqueConstraint("hospital_id", "name", name="uq_clinic_hospital_name"),
+        Index("ix_clinics_hospital_status", "hospital_id", "status"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    hospital_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("hospitals.id", ondelete="CASCADE")
+    )
+    name: Mapped[str] = mapped_column(String(160))
+    timezone: Mapped[str] = mapped_column(String(80), default="UTC")
+    status: Mapped[str] = mapped_column(String(40), default="active")
+    metadata_json: Mapped[dict[str, object]] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    hospital: Mapped[Hospital] = relationship(back_populates="clinics")
+
+
+class RoleAssignment(Base):
+    __tablename__ = "role_assignments"
+    __table_args__ = (
+        Index("ix_role_assignments_user_status", "user_id", "status"),
+        Index("ix_role_assignments_clinic_role", "clinic_id", "role"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    role: Mapped[UserRole] = mapped_column(Enum(UserRole, name="user_role", native_enum=True))
+    hospital_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("hospitals.id", ondelete="CASCADE")
+    )
+    clinic_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("clinics.id", ondelete="CASCADE")
+    )
+    assigned_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL")
+    )
+    status: Mapped[str] = mapped_column(String(40), default="active")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    user: Mapped[User] = relationship(foreign_keys=[user_id], back_populates="role_assignments")
+    assigned_by: Mapped[User | None] = relationship(foreign_keys=[assigned_by_user_id])
+    hospital: Mapped[Hospital | None] = relationship()
+    clinic: Mapped[Clinic | None] = relationship()
+
+
+class DoctorTeam(Base):
+    __tablename__ = "doctor_teams"
+    __table_args__ = (
+        UniqueConstraint("clinic_id", "name", name="uq_doctor_team_clinic_name"),
+        Index("ix_doctor_teams_clinic_status", "clinic_id", "status"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    clinic_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("clinics.id", ondelete="CASCADE"))
+    name: Mapped[str] = mapped_column(String(160))
+    status: Mapped[str] = mapped_column(String(40), default="active")
+    metadata_json: Mapped[dict[str, object]] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    clinic: Mapped[Clinic] = relationship()
+    memberships: Mapped[list["DoctorTeamMembership"]] = relationship(
+        back_populates="team", cascade="all, delete-orphan"
+    )
+
+
+class DoctorTeamMembership(Base):
+    __tablename__ = "doctor_team_memberships"
+    __table_args__ = (
+        UniqueConstraint("team_id", "user_id", name="uq_doctor_team_membership_user"),
+        Index("ix_doctor_team_memberships_user_status", "user_id", "status"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    team_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("doctor_teams.id", ondelete="CASCADE"))
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    role: Mapped[str] = mapped_column(String(80))
+    assigned_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL")
+    )
+    status: Mapped[str] = mapped_column(String(40), default="active")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    team: Mapped[DoctorTeam] = relationship(back_populates="memberships")
+    user: Mapped[User] = relationship(foreign_keys=[user_id])
+    assigned_by: Mapped[User | None] = relationship(foreign_keys=[assigned_by_user_id])
+
+
+class ClinicResource(Base):
+    __tablename__ = "clinic_resources"
+    __table_args__ = (
+        Index("ix_clinic_resources_clinic_type_status", "clinic_id", "resource_type", "status"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    clinic_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("clinics.id", ondelete="CASCADE"))
+    resource_type: Mapped[str] = mapped_column(String(80))
+    name: Mapped[str] = mapped_column(String(160))
+    status: Mapped[str] = mapped_column(String(40), default="available")
+    capacity_current: Mapped[int | None] = mapped_column(Integer)
+    capacity_total: Mapped[int | None] = mapped_column(Integer)
+    metadata_json: Mapped[dict[str, object]] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    clinic: Mapped[Clinic] = relationship()
+
+
+class Equipment(Base):
+    __tablename__ = "equipment"
+    __table_args__ = (Index("ix_equipment_clinic_status", "clinic_id", "status"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    clinic_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("clinics.id", ondelete="CASCADE"))
+    resource_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("clinic_resources.id", ondelete="SET NULL")
+    )
+    name: Mapped[str] = mapped_column(String(160))
+    equipment_type: Mapped[str] = mapped_column(String(80))
+    status: Mapped[str] = mapped_column(String(40), default="available")
+    location_label: Mapped[str | None] = mapped_column(String(160))
+    metadata_json: Mapped[dict[str, object]] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    clinic: Mapped[Clinic] = relationship()
+    resource: Mapped[ClinicResource | None] = relationship()
+
+
+class Appointment(Base):
+    __tablename__ = "appointments"
+    __table_args__ = (
+        Index("ix_appointments_patient_start", "patient_id", "scheduled_start"),
+        Index("ix_appointments_clinic_status_start", "clinic_id", "status", "scheduled_start"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    clinic_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("clinics.id", ondelete="CASCADE"))
+    patient_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("patient_profiles.id", ondelete="CASCADE")
+    )
+    doctor_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("doctor_profiles.id", ondelete="SET NULL")
+    )
+    specialist_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL")
+    )
+    status: Mapped[str] = mapped_column(String(40), default="requested")
+    scheduled_start: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    scheduled_end: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    reason_code: Mapped[str] = mapped_column(String(80))
+    metadata_json: Mapped[dict[str, object]] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    clinic: Mapped[Clinic] = relationship()
+    patient: Mapped[PatientProfile] = relationship()
+    doctor: Mapped[DoctorProfile | None] = relationship()
+    specialist: Mapped[User | None] = relationship()
+
+
+class EquipmentBooking(Base):
+    __tablename__ = "equipment_bookings"
+    __table_args__ = (
+        Index("ix_equipment_bookings_equipment_start", "equipment_id", "start_at"),
+        Index("ix_equipment_bookings_status", "status"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    equipment_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("equipment.id", ondelete="CASCADE"))
+    appointment_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("appointments.id", ondelete="SET NULL")
+    )
+    requested_by_user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE")
+    )
+    patient_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("patient_profiles.id", ondelete="SET NULL")
+    )
+    status: Mapped[str] = mapped_column(String(40), default="requested")
+    start_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    end_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    purpose: Mapped[str] = mapped_column(String(160))
+    metadata_json: Mapped[dict[str, object]] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    equipment: Mapped[Equipment] = relationship()
+    appointment: Mapped[Appointment | None] = relationship()
+    requested_by: Mapped[User] = relationship()
+    patient: Mapped[PatientProfile | None] = relationship()
+
+
+class Prescription(Base):
+    __tablename__ = "prescriptions"
+    __table_args__ = (Index("ix_prescriptions_patient_status", "patient_id", "status"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    patient_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("patient_profiles.id", ondelete="CASCADE")
+    )
+    prescribed_by_user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE")
+    )
+    status: Mapped[str] = mapped_column(String(40), default="draft")
+    issued_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    notes: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    patient: Mapped[PatientProfile] = relationship()
+    prescribed_by: Mapped[User] = relationship()
+
+
+class PrescriptionMedication(Base):
+    __tablename__ = "prescription_medications"
+    __table_args__ = (Index("ix_prescription_medications_prescription", "prescription_id"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    prescription_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("prescriptions.id", ondelete="CASCADE")
+    )
+    medication_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("medications.id", ondelete="SET NULL")
+    )
+    name: Mapped[str] = mapped_column(String(160))
+    dosage: Mapped[str] = mapped_column(String(120))
+    schedule: Mapped[str] = mapped_column(String(160))
+    start_date: Mapped[date | None] = mapped_column(Date)
+    end_date: Mapped[date | None] = mapped_column(Date)
+    metadata_json: Mapped[dict[str, object]] = mapped_column(JSONB, default=dict)
+
+    prescription: Mapped[Prescription] = relationship()
+    medication: Mapped[Medication | None] = relationship()
+
+
+class MedicationReminder(Base):
+    __tablename__ = "medication_reminders"
+    __table_args__ = (
+        Index("ix_medication_reminders_patient_status", "patient_id", "status"),
+        Index("ix_medication_reminders_next_due", "next_due_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    patient_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("patient_profiles.id", ondelete="CASCADE")
+    )
+    medication_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("medications.id", ondelete="SET NULL")
+    )
+    prescription_medication_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("prescription_medications.id", ondelete="SET NULL")
+    )
+    schedule_label: Mapped[str] = mapped_column(String(160))
+    channel: Mapped[str] = mapped_column(String(40), default="in_app")
+    status: Mapped[str] = mapped_column(String(40), default="active")
+    next_due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    metadata_json: Mapped[dict[str, object]] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    patient: Mapped[PatientProfile] = relationship()
+    medication: Mapped[Medication | None] = relationship()
+    prescription_medication: Mapped[PrescriptionMedication | None] = relationship()
+
+
+class Notification(Base):
+    __tablename__ = "notifications"
+    __table_args__ = (
+        Index("ix_notifications_user_status", "user_id", "status"),
+        Index("ix_notifications_patient_type", "patient_id", "notification_type"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    patient_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("patient_profiles.id", ondelete="CASCADE")
+    )
+    notification_type: Mapped[str] = mapped_column(String(80))
+    channel: Mapped[str] = mapped_column(String(40), default="in_app")
+    status: Mapped[str] = mapped_column(String(40), default="queued")
+    scheduled_for: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    metadata_json: Mapped[dict[str, object]] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    user: Mapped[User] = relationship()
+    patient: Mapped[PatientProfile | None] = relationship()
+
+
+class Invoice(Base):
+    __tablename__ = "invoices"
+    __table_args__ = (
+        Index("ix_invoices_patient_status", "patient_id", "status"),
+        Index("ix_invoices_clinic_status", "clinic_id", "status"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    patient_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("patient_profiles.id", ondelete="CASCADE")
+    )
+    clinic_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("clinics.id", ondelete="SET NULL")
+    )
+    status: Mapped[str] = mapped_column(String(40), default="draft")
+    currency: Mapped[str] = mapped_column(String(3), default="USD")
+    total_cents: Mapped[int] = mapped_column(Integer, default=0)
+    issued_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    metadata_json: Mapped[dict[str, object]] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    patient: Mapped[PatientProfile] = relationship()
+    clinic: Mapped[Clinic | None] = relationship()
+
+
+class PaymentStatus(Base):
+    __tablename__ = "payment_statuses"
+    __table_args__ = (Index("ix_payment_statuses_invoice_status", "invoice_id", "status"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    invoice_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("invoices.id", ondelete="CASCADE"))
+    provider: Mapped[str] = mapped_column(String(80), default="manual")
+    status: Mapped[str] = mapped_column(String(40), default="pending")
+    amount_cents: Mapped[int] = mapped_column(Integer, default=0)
+    metadata_json: Mapped[dict[str, object]] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    invoice: Mapped[Invoice] = relationship()
+
+
+class RevenueSummary(Base):
+    __tablename__ = "revenue_summaries"
+    __table_args__ = (
+        UniqueConstraint(
+            "clinic_id",
+            "period_start",
+            "period_end",
+            name="uq_revenue_summary_period",
+        ),
+        Index("ix_revenue_summaries_clinic_period", "clinic_id", "period_start", "period_end"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    clinic_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("clinics.id", ondelete="CASCADE"))
+    period_start: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    period_end: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    currency: Mapped[str] = mapped_column(String(3), default="USD")
+    invoiced_cents: Mapped[int] = mapped_column(Integer, default=0)
+    paid_cents: Mapped[int] = mapped_column(Integer, default=0)
+    outstanding_cents: Mapped[int] = mapped_column(Integer, default=0)
+    metadata_json: Mapped[dict[str, object]] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    clinic: Mapped[Clinic] = relationship()
+
+
+class AnalyticsEvent(Base):
+    __tablename__ = "analytics_events"
+    __table_args__ = (
+        Index("ix_analytics_events_type_occurred", "event_type", "occurred_at"),
+        Index("ix_analytics_events_patient_occurred", "patient_id", "occurred_at"),
+        Index("ix_analytics_events_clinic_occurred", "clinic_id", "occurred_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    actor_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL")
+    )
+    patient_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("patient_profiles.id", ondelete="CASCADE")
+    )
+    clinic_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("clinics.id", ondelete="CASCADE")
+    )
+    event_type: Mapped[str] = mapped_column(String(120))
+    resource_type: Mapped[str | None] = mapped_column(String(80))
+    resource_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    metadata_json: Mapped[dict[str, object]] = mapped_column(JSONB, default=dict)
+    occurred_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    actor: Mapped[User | None] = relationship()
+    patient: Mapped[PatientProfile | None] = relationship()
+    clinic: Mapped[Clinic | None] = relationship()
+
+
+class SupportRequest(Base):
+    __tablename__ = "support_requests"
+    __table_args__ = (
+        Index("ix_support_requests_requester_status", "requester_user_id", "status"),
+        Index("ix_support_requests_patient_type_status", "patient_id", "request_type", "status"),
+        Index("ix_support_requests_created", "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    requester_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL")
+    )
+    patient_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("patient_profiles.id", ondelete="SET NULL")
+    )
+    request_type: Mapped[str] = mapped_column(String(40))
+    status: Mapped[str] = mapped_column(String(40), default="queued")
+    subject: Mapped[str] = mapped_column(String(160))
+    body_redacted: Mapped[str] = mapped_column(Text)
+    source: Mapped[str] = mapped_column(String(80), default="authenticated_app")
+    assigned_to_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL")
+    )
+    audit_metadata_json: Mapped[dict[str, object]] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    requester: Mapped[User | None] = relationship(foreign_keys=[requester_user_id])
+    patient: Mapped[PatientProfile | None] = relationship()
+    assigned_to: Mapped[User | None] = relationship(foreign_keys=[assigned_to_user_id])

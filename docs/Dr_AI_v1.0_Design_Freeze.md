@@ -1,6 +1,8 @@
 # Dr. AI v1.0 Design Freeze - Week 1, Days 1-2
 
-Status: reconciled and complete for implementation
+Status: reconciled and complete for the historical doctor/patient beta
+foundation; still useful as production v1.0 visual evidence for existing
+doctor and patient surfaces only
 
 Recorded: 2026-07-02; reconciled: 2026-07-04
 
@@ -10,9 +12,18 @@ Doctor frame: `618:1051`
 
 Patient frame: `663:398`
 
-This is the implementation-facing design freeze for the v1.0 foundation. It
-does not redesign either target and does not claim that deferred product
-features are implemented. The Figma file was not edited.
+This is the implementation-facing design freeze for the historical v1.0 beta
+foundation. It does not redesign either target and does not claim that
+deferred product features are implemented. The Figma file was not edited.
+
+Production v1.0 Phase 0 is now closed in
+`Phase_0_Production_v1_Closure_Record.md`. This design freeze remains the
+doctor/patient visual baseline, but it does not provide specialist, admin,
+support queue, billing, analytics, clinic-operations, or production data-entry
+design evidence. Those later surfaces must follow the Phase 0 acceptance
+criteria, and they need new Figma/design evidence only when the implementation
+requires visual parity, complex multi-panel workflows, or shared design-system
+changes.
 
 ## Evidence and authority
 

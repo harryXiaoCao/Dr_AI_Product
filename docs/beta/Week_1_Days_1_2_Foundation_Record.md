@@ -103,7 +103,7 @@ for this closure and was treated as authoritative. The design freeze now:
   field without inventing values; and
 - preserves the Figma file unchanged.
 
-See [the design freeze](Dr_AI_v1.0_Design_Freeze.md) for the complete evidence
+See [the design freeze](../Dr_AI_v1.0_Design_Freeze.md) for the complete evidence
 boundary.
 
 ## Unicode-path analyzer diagnosis

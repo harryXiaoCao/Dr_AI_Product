@@ -1,11 +1,16 @@
 # Dr. AI v1.0 API Contract
 
-Status: authentication, Week 1 dashboard reads, Week 2 patient-care,
-demo-upload, simulated-assessment, and Day 10 polish endpoints, plus Week 3
-recovery-plan, Today-task, completion, educational-chat, and consultation
-endpoints implemented; Week 4 Days 18-20 release-prep surfaces add no API
-changes; later real notification delivery, account deletion, feedback
-submission, and administrator audit workflows remain unavailable
+Status: historical beta/demo API boundary is implemented for authentication,
+Week 1 dashboard reads, Week 2 patient-care, demo-upload,
+simulated-assessment, Day 10 polish, Week 3 recovery-plan, Today-task,
+completion, educational-chat, and consultation request/readback endpoints;
+Week 4 Days 18-20 release-prep surfaces add no API changes. Production v1.0
+Phase 1 is complete for production data foundation, route-level RBAC helpers,
+fail-closed future-role boundaries, and authenticated support/deletion/
+feedback submission plus requester-scoped status reads. Production v1.0 still
+needs the reserved specialist, administrator, admin support-queue handling,
+real upload, notification delivery, and audit-read workflows before those
+surfaces can be treated as available.
 
 Contract version: `1.0.0`
 
@@ -17,20 +22,50 @@ completion endpoints added: 2026-07-05; Week 3 Days 13-14 educational-chat
 and consultation endpoints added: 2026-07-05; Week 3 Day 15 duplicate
 consultation reuse and safety fixture coverage added: 2026-07-05; Week 4
 Days 16-17 validation/log-hygiene hardening added: 2026-07-06; Week 4 Days
-18-20 release-prep surfaces added no API changes: 2026-07-06
+18-20 release-prep surfaces added no API changes: 2026-07-06; Phase 1
+production data-foundation schema, future-role fail-closed boundary, and
+authenticated support/deletion/feedback submission/status endpoints added:
+2026-07-07
 
-This contract defines the public HTTP boundary planned for Dr. AI v1.0. The
-current backend exposes the authentication, identity, assigned-patient,
-synthetic dashboard, Week 2 patient-care/upload/assessment routes, Day 10
-validation polish, and Week 3 Days 11-12 recovery-plan/task routes identified
-below, plus Week 3 Days 13-14 educational-chat and consultation routes. Later
-real notification delivery, account deletion, feedback submission, and
-administrator audit workflows remain reserved for later approval and must not
-be inferred to be available.
+This contract preserves the public HTTP boundary implemented for the historical
+Dr. AI v1.0.0-beta.1 demo and records the intended shape of production v1.0
+extensions. The current backend exposes the authentication, identity,
+assigned-patient, synthetic dashboard, Week 2 patient-care/upload/assessment
+routes, Day 10 validation polish, Week 3 Days 11-12 recovery-plan/task routes,
+and Week 3 Days 13-14 educational-chat and consultation request/readback
+routes identified below. Later real notification delivery, specialist response
+workflows, admin-managed support queues, administrator audit reads, and other
+administrator workflows remain reserved production gaps and must not be
+inferred to be available.
 
-Dr. AI v1.0 is an invited, non-clinical beta. It uses synthetic demonstration
-content only, accepts no real patient data, and provides no diagnosis or
-medical advice.
+The implemented beta/demo API slice is an invited, non-clinical beta. It uses
+synthetic demonstration content only, accepts no real patient data, and
+provides no diagnosis or medical advice. Production/commercial v1.0 must keep
+those safety limits until model, data, privacy, legal, and regulatory gates
+are cleared, but the production release is not complete merely because this
+beta contract is implemented.
+
+## Contract interpretation after production re-scope
+
+- Beta guarantees in this file remain preserved for compatibility and
+  historical release evidence.
+- Reserved paths, enum values, roles, and workflows are production targets or
+  compatibility placeholders until implemented, tested, and documented.
+- Specialist and administrator behavior is contract direction, not current
+  product functionality. Backend enum values now reserve `specialist` and
+  `admin`, but registration for those roles fails closed, beta dashboard and
+  support-request access are forbidden, and Flutter routes unknown/future roles
+  to the unauthorized state instead of doctor UI.
+- `GET /api/v1/audit-events` is reserved for an administrator-only production
+  audit-search workflow; no current route or admin UI implements it.
+- Account deletion, feedback, and support submissions now persist to a backend
+  queue for authenticated doctor/patient users with requester-scoped status,
+  authorization, and audit metadata. Admin/support handling, queue assignment,
+  resolution, and UI remain reserved production gaps.
+- Real Tencent COS upload completion, real notification delivery, billing,
+  appointments, clinic operations, analytics, and production monitoring remain
+  outside the implemented beta API boundary unless explicitly added in later
+  production phases.
 
 ## Transport and representation
 
@@ -178,7 +213,10 @@ Response:
 | `POST` | `/api/v1/chat/threads/{thread_id}/messages` | Authorized thread | Own thread | Send an educational-chat message |
 | `GET` | `/api/v1/consultations` | Authorized cases | Own requests | List consultation requests |
 | `POST` | `/api/v1/consultations` | Assigned patient | No | Request asynchronous specialist review |
-| `GET` | `/api/v1/audit-events` | Administrator only | No | Read security audit metadata |
+| `POST` | `/api/v1/support-requests` | Own account | Own account | Submit authenticated support, deletion, or feedback request |
+| `GET` | `/api/v1/support-requests` | Own requests | Own requests | Read own support request statuses |
+| `GET` | `/api/v1/support-requests/{request_id}` | Own request | Own request | Read one own support request status |
+| `GET` | `/api/v1/audit-events` | Administrator only | No | Reserved production audit metadata read/search; not implemented in beta |
 
 The singular `/patient/me/today` path is intentional and is implemented for
 the Week 1 patient dashboard. It represents the
@@ -198,8 +236,11 @@ current patient's own view and is distinct from doctor-scoped `/patients`.
 `POST /api/v1/patient/me/tasks/{task_id}/completion`,
 `POST /api/v1/chat/threads/{thread_id}/messages`,
 `GET /api/v1/consultations`, `POST /api/v1/consultations`,
-`GET /api/v1/medications`, and `GET /api/v1/me/dashboard` are also
-implemented. Administrator audit reads, real notification delivery, and real
+`POST /api/v1/support-requests`, `GET /api/v1/support-requests`,
+`GET /api/v1/support-requests/{request_id}`, `GET /api/v1/medications`, and
+`GET /api/v1/me/dashboard` are also implemented. Administrator audit reads,
+specialist response workflows, admin-managed support/deletion/feedback
+handling, real notification delivery, real upload completion, and real
 clinical workflows remain unavailable.
 
 ## Public enums
@@ -207,7 +248,7 @@ clinical workflows remain unavailable.
 Wire values are lowercase strings.
 
 ```text
-UserRole = doctor | patient
+UserRole = doctor | patient | specialist | admin
 AssessmentMode = simulated | validated_model
 AssessmentStatus = queued | completed | failed
 InputCompleteness = complete | partial | insufficient
@@ -216,6 +257,9 @@ ConsultationStatus = requested | accepted | completed | cancelled
 RecoveryPlanStatus = draft | active | completed
 ```
 
+`specialist` and `admin` are reserved production roles. Their enum values exist
+for Phase 1 RBAC preparation, but they do not grant usable product workflows
+until specialist/admin authorization, routes, surfaces, and tests are added.
 `validated_model` is reserved for a future independently validated adapter. It
 must be rejected in the v1 beta until model code, weights, preprocessing,
 governance, and release approval exist. Adding a new enum value is treated as a
@@ -293,15 +337,93 @@ revealing that the resource exists would leak sensitive information.
   `CareRelationship`.
 - A patient can access only resources whose `patient_id` is their own.
 - A specialist can access only consultation data explicitly assigned to them;
-  specialist behavior is not otherwise implemented in the Days 1-2
-  foundation.
-- Only an administrator can call `/api/v1/audit-events`. No administrator UI
-  is in the v1 golden workflow.
+  specialist behavior is not otherwise implemented in the current beta/demo
+  API slice.
+- Only an administrator can call the reserved `/api/v1/audit-events` workflow
+  after an administrator role, endpoint, and UI are implemented. No
+  administrator UI exists in the current beta/demo API slice.
 - The server enforces every boundary. Flutter route guards are navigation
   assistance, not authorization.
 - Sensitive reads, mutations, uploads, assessments, consultation changes, and
   chat escalations create audit events without copying medical content into
   logs.
+
+## Authenticated support request contract
+
+Phase 1 adds a minimal backend submission/status path for signed-in doctor and
+patient accounts only. It does not add public support submission, production
+support UI integration, admin queue assignment, admin queue resolution, account
+deletion execution, or specialist/admin support workflows.
+
+### Submit support, deletion, or feedback request
+
+`POST /api/v1/support-requests`
+
+```json
+{
+  "request_type": "deletion",
+  "subject": "Synthetic account deletion review",
+  "message": "Please queue this synthetic account deletion review."
+}
+```
+
+Rules:
+
+- Only authenticated `doctor` and `patient` users can submit requests in Phase
+  1. `specialist`, `admin`, unsupported, and unauthenticated callers fail
+  closed.
+- `request_type` is `support`, `deletion`, or `feedback`.
+- The request status starts as `queued`.
+- Patients' requests are linked to their own `patient_id`; doctor requests are
+  account-scoped and not patient-scoped.
+- The message must not include contact details, clinical details, medical
+  records, imaging/scan content, medication-change requests, or real patient
+  data. Unsafe content returns `422 validation_failed`.
+- Stored queue rows keep a redacted body plus metadata such as requester role,
+  message hash, character count, body-redacted flag, identity-review flag, and
+  synthetic-data flag.
+- Audit events are metadata-only. They include request type, status,
+  requester role, and redaction flags, but not the request subject or message.
+
+Response:
+
+```json
+{
+  "request_id": "support-request-opaque-uuid",
+  "request_type": "deletion",
+  "status": "queued",
+  "subject": "Synthetic account deletion review",
+  "created_at": "2026-07-07T09:30:00Z",
+  "updated_at": "2026-07-07T09:30:00Z",
+  "safety_label": "Synthetic demonstration data only. Do not enter real patient data."
+}
+```
+
+### Read own request statuses
+
+`GET /api/v1/support-requests`
+
+`GET /api/v1/support-requests/{request_id}`
+
+Doctors and patients can read only their own submitted request statuses.
+Cross-requester probes return neutral `404 not_found`. Status reads create
+metadata-only audit events. Admin-managed queue search, assignment, resolution,
+policy review, and deletion execution remain Phase 5 production gaps.
+
+## Phase 1 production foundation tables
+
+Migration `20260707_0006` adds production foundation tables for hospitals,
+clinics, role assignments, doctor teams, clinic resources, equipment,
+appointments, equipment bookings, prescriptions, prescription medications,
+medication reminders, notifications, invoices, payment statuses, revenue
+summaries, analytics events, and support/deletion/feedback queue requests.
+
+These tables are schema foundations only until specific API routes and UI
+workflows are implemented in later Phase 1/Phase 2/Phase 4/Phase 5 slices. The
+existing synthetic beta seed flow does not populate them. Their presence does
+not make clinic operations, billing, analytics dashboards, real notification
+delivery, or admin-managed production support/deletion/feedback handling
+available.
 
 ## Demo upload presign contract
 
@@ -730,4 +852,4 @@ Related records:
 
 - [Implementation plan](Dr_AI_v1.0_Implementation_Plan.md)
 - [Design freeze](Dr_AI_v1.0_Design_Freeze.md)
-- [Week 1 Days 1-2 foundation record](Week_1_Days_1_2_Foundation_Record.md)
+- [Week 1 Days 1-2 foundation record](beta/Week_1_Days_1_2_Foundation_Record.md)

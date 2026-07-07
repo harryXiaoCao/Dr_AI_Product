@@ -1,40 +1,52 @@
 # Dr. AI
 
-Dr. AI v1.0 is an invited, non-clinical beta built with Flutter, FastAPI, and
-PostgreSQL. The repository accepts clearly synthetic demonstration data only.
-Do not enter real patient data.
+Dr. AI is moving from a completed invited, non-clinical beta foundation toward
+production/commercial v1.0. Production v1.0 Phase 1 data foundation is
+complete: Phase 0 scope reconciliation is complete, Phase 1 has added
+production schema foundations, fail-closed future-role boundaries,
+route-level RBAC helpers, and authenticated support/deletion/feedback
+submission plus requester-scoped status endpoints. Phase 2 patient/doctor
+workflows have not started.
 
-Current milestone: Week 4 Days 18-20 release prep is complete in the working
-tree, Tencent staging now serves the Flutter web app plus the refreshed API
-from the same HTTPS origin with credentialed smoke passing after the Caddy
-change, and the non-Apple closure pass has added Android upload-key release
-signing configuration plus public screenshot evidence. The app now includes
-the Week 1 authentication/authorization
-foundation, Week 2 doctor-led care loop through demo upload and simulated
-assessment, Week 3 recovery/chat/consultation workflow, and Week 4 hardening.
-Days 18-20 add a public pre-login Beta support surface for privacy notice,
-consent readiness, account deletion request preparation, feedback draft
-preparation, and known limitations, plus local release notes and release-gate
-checklists. Real COS upload completion, real model inference, TestFlight/
-Android closed-testing upload, production web/final-domain deployment, release
-tagging, tester invites, monitoring/account changes, and clinical workflows
-remain deferred until the required credentials/account access and a committed
-release point are available.
+The repository accepts clearly synthetic demonstration data only. Do not enter
+real patient data.
+
+The historical beta foundation includes authentication/authorization, seeded
+doctor and patient dashboards, the doctor-led care loop through demo upload and
+simulated assessment, recovery plans and Today tasks, educational chat,
+consultation request/status readback, same-origin Tencent staging web/API
+deployment, Android debug access, beta support surfaces, and release evidence.
+That beta foundation is not the full production v1.0 definition: real COS
+upload completion, production data models, specialist/admin roles, support/
+deletion/feedback admin queue handling, billing workflows, analytics dashboards,
+clinic operations workflows, real model inference, store uploads, final-domain
+production deployment, tester invites, monitoring/account changes, and clinical
+workflows remain gated or unstarted.
 
 ## Repository map
 
 - `apps/dr_ai_app/` - doctor web and patient mobile Flutter application.
 - `services/api/` - FastAPI, SQLAlchemy, Alembic, authentication, and seed flow.
-- `docs/` - frozen product/design/API decisions and closure evidence.
+- `docs/` - current production v1.0 plan, Phase 0 closure, design/API
+  decisions, and historical beta records under `docs/beta/`.
 - `deploy/tencent/staging/` - deployment manifests for existing Tencent Cloud
   resources; no resources are created by the repository.
 
-Release-prep records:
+Current production docs:
 
-- `docs/v1.0.0-beta.1_Release_Notes.md`
-- `docs/Week_4_Days_18_20_Release_Gate_Checklist.md`
-- `docs/Week_4_Days_18_20_Release_Closure_Record.md`
-- `docs/v1.0.0-beta.1_Non_Apple_Closure_Record.md`
+- `docs/Dr_AI_v1.0_Implementation_Plan.md`
+- `docs/Phase_0_Production_v1_Surface_Audit.md`
+- `docs/Phase_0_Production_v1_Closure_Record.md`
+- `docs/Phase_1_Production_Data_Foundation_Record.md`
+- `docs/Dr_AI_v1.0_API_Contract.md`
+- `docs/Dr_AI_v1.0_Design_Freeze.md`
+
+Historical beta records:
+
+- `docs/beta/v1.0.0-beta.1_Release_Notes.md`
+- `docs/beta/Week_4_Days_18_20_Release_Gate_Checklist.md`
+- `docs/beta/Week_4_Days_18_20_Release_Closure_Record.md`
+- `docs/beta/v1.0.0-beta.1_Non_Apple_Closure_Record.md`
 
 ## Local start
 

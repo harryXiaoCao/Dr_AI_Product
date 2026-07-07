@@ -86,9 +86,12 @@ def _create_session(
 
 
 def _expected_invite(settings: Settings, role: UserRole) -> str | None:
-    configured = (
-        settings.doctor_invite_code if role == UserRole.doctor else settings.patient_invite_code
-    )
+    if role == UserRole.doctor:
+        configured = settings.doctor_invite_code
+    elif role == UserRole.patient:
+        configured = settings.patient_invite_code
+    else:
+        return None
     return configured.get_secret_value() if configured else None
 
 

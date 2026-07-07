@@ -41,7 +41,12 @@ def clean_database(migrated_database: None) -> Generator[None]:
     with engine.begin() as connection:
         connection.execute(
             text(
-                "TRUNCATE audit_events, consultation_requests, chat_messages, chat_threads, "
+                "TRUNCATE support_requests, analytics_events, revenue_summaries, "
+                "payment_statuses, invoices, notifications, medication_reminders, "
+                "prescription_medications, prescriptions, equipment_bookings, "
+                "appointments, equipment, clinic_resources, doctor_team_memberships, "
+                "doctor_teams, role_assignments, clinics, hospitals, "
+                "audit_events, consultation_requests, chat_messages, chat_threads, "
                 "chat_rate_limits, simulated_assessments, demo_medical_assets, "
                 "recovery_task_completions, recovery_tasks, recovery_plans, "
                 "doctor_notes, medications, medical_records, "
