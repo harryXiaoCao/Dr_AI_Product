@@ -164,7 +164,48 @@ final demoPatientCareBundle = PatientCareBundle(
     relationshipLabel: 'Active synthetic care relationship',
     overview:
         'SYN-PATIENT-001 is synthetic demonstration content for the Dr. AI v1.0 invited beta.',
+    birthYear: 1988,
+    sex: 'not specified',
+    preferredLanguage: 'English',
+    contactPreference: 'in-app',
   ),
+  allergies: const <PatientAllergyItem>[
+    PatientAllergyItem(
+      id: 'allergy-test-id',
+      label: 'Synthetic pollen sensitivity',
+      reaction: 'Demo-only seasonal response',
+      severity: 'mild',
+      status: 'active',
+    ),
+  ],
+  chronicDiseases: const <ChronicDiseaseItem>[
+    ChronicDiseaseItem(
+      id: 'condition-test-id',
+      name: 'Synthetic chronic condition',
+      status: 'active',
+      diagnosedOn: '2026-07-01',
+      notes: 'Demo-only condition note.',
+    ),
+  ],
+  visitHistory: <VisitHistoryItem>[
+    VisitHistoryItem(
+      id: 'visit-test-id',
+      visitType: 'follow_up',
+      title: 'Synthetic follow-up visit',
+      summary: 'Demo-only visit summary.',
+      occurredAt: DateTime(2026, 7, 7),
+      clinicianLabel: 'Demo clinician',
+    ),
+  ],
+  diagnoses: const <DiagnosisItem>[
+    DiagnosisItem(
+      id: 'diagnosis-test-id',
+      label: 'Synthetic observation',
+      status: 'active',
+      diagnosedOn: '2026-07-07',
+      notes: 'Demo-only diagnosis note.',
+    ),
+  ],
   records: <MedicalRecordItem>[
     MedicalRecordItem(
       id: 'record-test-id',
@@ -172,6 +213,26 @@ final demoPatientCareBundle = PatientCareBundle(
       category: 'Demo visit',
       summary: 'Synthetic Week 2 fixture for care-loop navigation only.',
       recordedAt: DateTime(2026, 7, 1),
+    ),
+  ],
+  imagingAssets: <MedicalImagingAsset>[
+    MedicalImagingAsset(
+      id: 'imaging-test-id',
+      patientId: 'patient-profile-test-id',
+      storageProvider: 'tencent_cos',
+      contentType: 'image/png',
+      fileExtension: 'png',
+      sizeBytes: 4096,
+      uploadedSizeBytes: 4096,
+      uploadStatus: 'uploaded',
+      reviewStatus: 'pending_review',
+      createdAt: DateTime(2026, 7, 8, 9),
+      updatedAt: DateTime(2026, 7, 8, 9),
+      expiresAt: DateTime(2026, 7, 8, 9, 15),
+      uploadedAt: DateTime(2026, 7, 8, 9, 5),
+      reviewedAt: null,
+      safetyLabel:
+          'Synthetic demonstration data only. Do not enter real patient data.',
     ),
   ],
   medications: <MedicationItem>[
@@ -182,6 +243,47 @@ final demoPatientCareBundle = PatientCareBundle(
       schedule: 'As listed in the synthetic care plan',
       status: 'active',
       note: 'Fixture medication for UI validation; not a prescription.',
+    ),
+  ],
+  prescriptions: <PrescriptionItem>[
+    PrescriptionItem(
+      id: 'prescription-test-id',
+      status: 'issued',
+      issuedAt: DateTime(2026, 7, 7, 10),
+      notes: 'Synthetic prescription fixture.',
+      medications: const <PrescriptionMedicationItem>[
+        PrescriptionMedicationItem(
+          id: 'prescription-medication-test-id',
+          medicationId: 'medication-test-id',
+          name: 'Demo Sumatriptan Fixture',
+          dosage: '50 mg',
+          schedule: 'As listed in the synthetic care plan',
+          startDate: '2026-07-07',
+          endDate: null,
+        ),
+      ],
+    ),
+  ],
+  medicationReminders: <MedicationReminderItem>[
+    MedicationReminderItem(
+      id: 'medication-reminder-test-id',
+      reminderType: 'medication',
+      scheduleLabel: 'In-app medication reminder',
+      channel: 'in_app',
+      status: 'active',
+      medicationId: 'medication-test-id',
+      prescriptionMedicationId: null,
+      nextDueAt: DateTime(2026, 7, 8, 9),
+    ),
+    MedicationReminderItem(
+      id: 'refill-reminder-test-id',
+      reminderType: 'refill',
+      scheduleLabel: 'In-app refill reminder',
+      channel: 'in_app',
+      status: 'active',
+      medicationId: null,
+      prescriptionMedicationId: 'prescription-medication-test-id',
+      nextDueAt: DateTime(2026, 7, 12, 9),
     ),
   ],
   doctorNotes: <DoctorNoteItem>[
@@ -206,6 +308,63 @@ final demoPresign = DemoAssetPresign(
   },
   expiresAt: DateTime(2026, 7, 5, 12),
   maxSizeBytes: 10485760,
+  safetyLabel:
+      'Synthetic demonstration data only. Do not enter real patient data.',
+);
+
+final demoImagingPresign = MedicalImagingPresign(
+  assetId: 'imaging-created-id',
+  patientId: 'patient-profile-test-id',
+  uploadUrl:
+      'https://tencent-cos-upload.invalid/medical-imaging-assets/asset.png',
+  method: 'PUT',
+  headers: const <String, String>{
+    'Content-Type': 'image/png',
+    'x-dr-ai-upload-purpose': 'phase2-imaging-metadata-only',
+  },
+  expiresAt: DateTime(2026, 7, 8, 10),
+  maxSizeBytes: 10485760,
+  uploadStatus: 'pending_upload',
+  reviewStatus: 'not_ready',
+  storageProvider: 'tencent_cos',
+  safetyLabel:
+      'Synthetic demonstration data only. Do not enter real patient data.',
+);
+
+final demoImagingUploaded = MedicalImagingAsset(
+  id: 'imaging-created-id',
+  patientId: 'patient-profile-test-id',
+  storageProvider: 'tencent_cos',
+  contentType: 'image/png',
+  fileExtension: 'png',
+  sizeBytes: 4096,
+  uploadedSizeBytes: 4096,
+  uploadStatus: 'uploaded',
+  reviewStatus: 'pending_review',
+  createdAt: DateTime(2026, 7, 8, 10),
+  updatedAt: DateTime(2026, 7, 8, 10),
+  expiresAt: DateTime(2026, 7, 8, 10, 15),
+  uploadedAt: DateTime(2026, 7, 8, 10, 2),
+  reviewedAt: null,
+  safetyLabel:
+      'Synthetic demonstration data only. Do not enter real patient data.',
+);
+
+final demoImagingReviewed = MedicalImagingAsset(
+  id: 'imaging-created-id',
+  patientId: 'patient-profile-test-id',
+  storageProvider: 'tencent_cos',
+  contentType: 'image/png',
+  fileExtension: 'png',
+  sizeBytes: 4096,
+  uploadedSizeBytes: 4096,
+  uploadStatus: 'uploaded',
+  reviewStatus: 'reviewed',
+  createdAt: DateTime(2026, 7, 8, 10),
+  updatedAt: DateTime(2026, 7, 8, 10, 4),
+  expiresAt: DateTime(2026, 7, 8, 10, 15),
+  uploadedAt: DateTime(2026, 7, 8, 10, 2),
+  reviewedAt: DateTime(2026, 7, 8, 10, 4),
   safetyLabel:
       'Synthetic demonstration data only. Do not enter real patient data.',
 );
@@ -236,11 +395,19 @@ final demoRecoveryPlan = RecoveryPlanData(
   instructions:
       'Demo-only recovery plan for invited beta workflow validation. Not medical advice.',
   status: 'active',
+  reviewStatus: 'approved',
   safetyLabel:
       'Synthetic demonstration data only. Do not enter real patient data.',
   createdAt: DateTime(2026, 7, 5, 10),
   updatedAt: DateTime(2026, 7, 5, 10),
+  approvedAt: DateTime(2026, 7, 5, 10),
   activatedAt: DateTime(2026, 7, 5, 10),
+  progressSummary: const RecoveryPlanProgressData(
+    taskCount: 4,
+    completedTaskCount: 0,
+    remainingTaskCount: 4,
+    completionPercent: 0,
+  ),
   tasks: <RecoveryTaskItem>[
     RecoveryTaskItem(
       taskId: 'recovery-task-medication',
@@ -287,6 +454,7 @@ final demoPatientToday = PatientTodayData(
   safetyLabel:
       'Synthetic demonstration data only. Do not enter real patient data.',
   activePlan: demoRecoveryPlan,
+  progressSummary: demoRecoveryPlan.progressSummary,
   tasks: demoRecoveryPlan.tasks,
 );
 
@@ -338,6 +506,7 @@ class FakeDrAiRepository implements DrAiRepository {
     this.patientListError,
     this.patientCareError,
     this.presignError,
+    this.imagingError,
     this.assessmentError,
     this.recoveryPlanError,
     this.patientTodayError,
@@ -375,6 +544,7 @@ class FakeDrAiRepository implements DrAiRepository {
   ApiError? patientListError;
   ApiError? patientCareError;
   ApiError? presignError;
+  ApiError? imagingError;
   ApiError? assessmentError;
   ApiError? recoveryPlanError;
   ApiError? patientTodayError;
@@ -383,6 +553,12 @@ class FakeDrAiRepository implements DrAiRepository {
   ApiError? consultationError;
   Completer<AuthSession>? loginCompleter;
   bool logoutCalled = false;
+  bool medicationSaved = false;
+  bool prescriptionCreated = false;
+  bool medicationReminderSaved = false;
+  bool imagingPrepared = false;
+  bool imagingCompleted = false;
+  bool imagingReviewed = false;
   int chatMessagesSent = 0;
   String? lastChatMessage;
 
@@ -456,6 +632,108 @@ class FakeDrAiRepository implements DrAiRepository {
   }
 
   @override
+  Future<MedicationItem> saveMedication({
+    required String patientId,
+    required String? medicationId,
+    required String name,
+    required String dosage,
+    required String schedule,
+    required String status,
+    required String note,
+  }) async {
+    medicationSaved = true;
+    final medication = MedicationItem(
+      id: medicationId ?? 'created-medication-id',
+      name: name,
+      dosage: dosage,
+      schedule: schedule,
+      status: status,
+      note: note,
+    );
+    patientCareBundle = _copyCareBundle(
+      patientCareBundle,
+      medications: <MedicationItem>[
+        medication,
+        ...patientCareBundle.medications.where(
+          (item) => item.id != medication.id,
+        ),
+      ],
+    );
+    return medication;
+  }
+
+  @override
+  Future<PrescriptionItem> createPrescription({
+    required String patientId,
+    required String medicationId,
+    required String name,
+    required String dosage,
+    required String schedule,
+    required String notes,
+  }) async {
+    prescriptionCreated = true;
+    final prescription = PrescriptionItem(
+      id: 'created-prescription-id',
+      status: 'issued',
+      issuedAt: DateTime(2026, 7, 7, 12),
+      notes: notes,
+      medications: <PrescriptionMedicationItem>[
+        PrescriptionMedicationItem(
+          id: 'created-prescription-medication-id',
+          medicationId: medicationId,
+          name: name,
+          dosage: dosage,
+          schedule: schedule,
+          startDate: null,
+          endDate: null,
+        ),
+      ],
+    );
+    patientCareBundle = _copyCareBundle(
+      patientCareBundle,
+      prescriptions: <PrescriptionItem>[
+        prescription,
+        ...patientCareBundle.prescriptions,
+      ],
+    );
+    return prescription;
+  }
+
+  @override
+  Future<MedicationReminderItem> saveMedicationReminder({
+    required String patientId,
+    required String? reminderId,
+    required String? medicationId,
+    required String? prescriptionMedicationId,
+    required String reminderType,
+    required String scheduleLabel,
+    required String status,
+    required DateTime? nextDueAt,
+  }) async {
+    medicationReminderSaved = true;
+    final reminder = MedicationReminderItem(
+      id: reminderId ?? 'created-$reminderType-reminder-id',
+      reminderType: reminderType,
+      scheduleLabel: scheduleLabel,
+      channel: 'in_app',
+      status: status,
+      medicationId: medicationId,
+      prescriptionMedicationId: prescriptionMedicationId,
+      nextDueAt: nextDueAt,
+    );
+    patientCareBundle = _copyCareBundle(
+      patientCareBundle,
+      medicationReminders: <MedicationReminderItem>[
+        reminder,
+        ...patientCareBundle.medicationReminders.where(
+          (item) => item.id != reminder.id,
+        ),
+      ],
+    );
+    return reminder;
+  }
+
+  @override
   Future<DemoAssetPresign> presignDemoAsset({
     required String patientId,
     required String filename,
@@ -466,6 +744,64 @@ class FakeDrAiRepository implements DrAiRepository {
       throw presignError!;
     }
     return demoPresign;
+  }
+
+  @override
+  Future<MedicalImagingPresign> presignMedicalImaging({
+    required String patientId,
+    required String filename,
+    required String contentType,
+    required int sizeBytes,
+  }) async {
+    if (imagingError != null) {
+      throw imagingError!;
+    }
+    imagingPrepared = true;
+    return demoImagingPresign;
+  }
+
+  @override
+  Future<MedicalImagingAsset> completeMedicalImagingUpload({
+    required String patientId,
+    required String assetId,
+    required int uploadedSizeBytes,
+  }) async {
+    if (imagingError != null) {
+      throw imagingError!;
+    }
+    imagingCompleted = true;
+    patientCareBundle = _copyCareBundle(
+      patientCareBundle,
+      imagingAssets: <MedicalImagingAsset>[
+        demoImagingUploaded,
+        ...patientCareBundle.imagingAssets.where(
+          (item) => item.id != demoImagingUploaded.id,
+        ),
+      ],
+    );
+    return demoImagingUploaded;
+  }
+
+  @override
+  Future<MedicalImagingAsset> reviewMedicalImagingAsset({
+    required String patientId,
+    required String assetId,
+    required String reviewStatus,
+  }) async {
+    if (imagingError != null) {
+      throw imagingError!;
+    }
+    imagingReviewed = true;
+    patientCareBundle = _copyCareBundle(
+      patientCareBundle,
+      imagingAssets: <MedicalImagingAsset>[
+        demoImagingReviewed,
+        ...patientCareBundle.imagingAssets.where(
+          (item) => item.id != demoImagingReviewed.id,
+        ),
+      ],
+    );
+    return demoImagingReviewed;
   }
 
   @override
@@ -569,10 +905,15 @@ class FakeDrAiRepository implements DrAiRepository {
       title: current.title,
       instructions: current.instructions,
       status: 'active',
+      reviewStatus: 'approved',
       safetyLabel: current.safetyLabel,
       createdAt: current.createdAt,
       updatedAt: DateTime(2026, 7, 5, 12),
+      submittedAt: current.submittedAt ?? DateTime(2026, 7, 5, 12),
+      reviewedAt: DateTime(2026, 7, 5, 12),
+      approvedAt: DateTime(2026, 7, 5, 12),
       activatedAt: DateTime(2026, 7, 5, 12),
+      progressSummary: _progressForTasks(current.tasks),
       tasks: current.tasks,
     );
     recoveryPlans = RecoveryPlanListData(
@@ -584,9 +925,63 @@ class FakeDrAiRepository implements DrAiRepository {
     patientToday = PatientTodayData(
       safetyLabel: patientToday.safetyLabel,
       activePlan: active,
+      progressSummary: active.progressSummary,
       tasks: active.tasks,
     );
     return active;
+  }
+
+  @override
+  Future<RecoveryPlanData> submitRecoveryPlanForReview({
+    required String patientId,
+    required String planId,
+  }) async {
+    final current = _currentRecoveryPlan(planId);
+    final submitted = _copyPlan(
+      current,
+      reviewStatus: 'in_review',
+      submittedAt: DateTime(2026, 7, 5, 12),
+    );
+    _replacePlan(submitted);
+    return submitted;
+  }
+
+  @override
+  Future<RecoveryPlanData> requestRecoveryPlanChanges({
+    required String patientId,
+    required String planId,
+  }) async {
+    final current = _currentRecoveryPlan(planId);
+    final changed = _copyPlan(
+      current,
+      reviewStatus: 'changes_requested',
+      reviewedAt: DateTime(2026, 7, 5, 12, 30),
+    );
+    _replacePlan(changed);
+    return changed;
+  }
+
+  @override
+  Future<RecoveryPlanData> approveRecoveryPlan({
+    required String patientId,
+    required String planId,
+  }) async {
+    return activateRecoveryPlan(patientId: patientId, planId: planId);
+  }
+
+  @override
+  Future<RecoveryPlanData> completeRecoveryPlan({
+    required String patientId,
+    required String planId,
+  }) async {
+    final current = _currentRecoveryPlan(planId);
+    final completed = _copyPlan(
+      current,
+      status: 'completed',
+      completedAt: DateTime(2026, 7, 5, 13),
+    );
+    _replacePlan(completed);
+    return completed;
   }
 
   @override
@@ -623,6 +1018,7 @@ class FakeDrAiRepository implements DrAiRepository {
     patientToday = PatientTodayData(
       safetyLabel: patientToday.safetyLabel,
       activePlan: patientToday.activePlan,
+      progressSummary: _progressForTasks(updatedTasks),
       tasks: updatedTasks,
     );
     return updatedTasks.firstWhere((task) => task.taskId == taskId);
@@ -704,10 +1100,17 @@ class FakeDrAiRepository implements DrAiRepository {
       title: title,
       instructions: instructions,
       status: status,
+      reviewStatus: 'draft',
       safetyLabel:
           'Synthetic demonstration data only. Do not enter real patient data.',
       createdAt: DateTime(2026, 7, 5, 12),
       updatedAt: DateTime(2026, 7, 5, 12),
+      progressSummary: RecoveryPlanProgressData(
+        taskCount: tasks.length,
+        completedTaskCount: 0,
+        remainingTaskCount: tasks.length,
+        completionPercent: 0,
+      ),
       tasks: tasks
           .map(
             (task) => RecoveryTaskItem(
@@ -725,4 +1128,85 @@ class FakeDrAiRepository implements DrAiRepository {
           .toList(),
     );
   }
+
+  RecoveryPlanData _currentRecoveryPlan(String planId) {
+    return recoveryPlans.items.firstWhere(
+      (item) => item.planId == planId,
+      orElse: () => demoRecoveryPlan,
+    );
+  }
+
+  void _replacePlan(RecoveryPlanData plan) {
+    recoveryPlans = RecoveryPlanListData(
+      items: <RecoveryPlanData>[
+        plan,
+        ...recoveryPlans.items.where((item) => item.planId != plan.planId),
+      ],
+    );
+  }
+
+  RecoveryPlanData _copyPlan(
+    RecoveryPlanData current, {
+    String? status,
+    String? reviewStatus,
+    DateTime? submittedAt,
+    DateTime? reviewedAt,
+    DateTime? approvedAt,
+    DateTime? activatedAt,
+    DateTime? completedAt,
+  }) {
+    return RecoveryPlanData(
+      planId: current.planId,
+      patientId: current.patientId,
+      title: current.title,
+      instructions: current.instructions,
+      status: status ?? current.status,
+      reviewStatus: reviewStatus ?? current.reviewStatus,
+      safetyLabel: current.safetyLabel,
+      createdAt: current.createdAt,
+      updatedAt: DateTime(2026, 7, 5, 12),
+      submittedAt: submittedAt ?? current.submittedAt,
+      reviewedAt: reviewedAt ?? current.reviewedAt,
+      approvedAt: approvedAt ?? current.approvedAt,
+      activatedAt: activatedAt ?? current.activatedAt,
+      completedAt: completedAt ?? current.completedAt,
+      progressSummary: _progressForTasks(current.tasks),
+      tasks: current.tasks,
+    );
+  }
+
+  RecoveryPlanProgressData _progressForTasks(List<RecoveryTaskItem> tasks) {
+    final completed = tasks.where((task) => task.isCompleted).length;
+    final percent = tasks.isEmpty
+        ? 0
+        : (completed * 100 / tasks.length).round();
+    return RecoveryPlanProgressData(
+      taskCount: tasks.length,
+      completedTaskCount: completed,
+      remainingTaskCount: tasks.length - completed,
+      completionPercent: percent,
+    );
+  }
+}
+
+PatientCareBundle _copyCareBundle(
+  PatientCareBundle bundle, {
+  List<MedicationItem>? medications,
+  List<MedicalImagingAsset>? imagingAssets,
+  List<PrescriptionItem>? prescriptions,
+  List<MedicationReminderItem>? medicationReminders,
+}) {
+  return PatientCareBundle(
+    patient: bundle.patient,
+    allergies: bundle.allergies,
+    chronicDiseases: bundle.chronicDiseases,
+    visitHistory: bundle.visitHistory,
+    diagnoses: bundle.diagnoses,
+    records: bundle.records,
+    imagingAssets: imagingAssets ?? bundle.imagingAssets,
+    medications: medications ?? bundle.medications,
+    prescriptions: prescriptions ?? bundle.prescriptions,
+    medicationReminders: medicationReminders ?? bundle.medicationReminders,
+    doctorNotes: bundle.doctorNotes,
+  );
 }

@@ -1,11 +1,12 @@
 # Dr. AI Flutter app
 
 Shared Flutter application for the doctor web and patient mobile experiences.
-The current active project stage is production v1.0 after Phase 1 data
-foundation completion: the historical beta foundation is implemented, and the
-Phase 1 backend schema/RBAC/support-submission foundation is complete. Phase 2
-patient/doctor workflows and Phase 5 specialist/admin surfaces have not
-started.
+The current active project stage is production v1.0 Phase 2 patient/doctor
+core workflow closure: the historical beta foundation is implemented, the
+Phase 1 backend schema/RBAC/support-submission foundation is complete, and the
+Phase 2 medical-history, medication, imaging, recovery-plan review, and
+patient Today progress slices are wired into doctor and patient read/edit
+surfaces. Phase 5 specialist/admin surfaces have not started.
 
 The historical beta app includes email/password sign-in, secure session
 restoration and logout, role-protected doctor/patient routes,
@@ -22,23 +23,30 @@ The app uses Riverpod for state/dependency management, Dio for HTTP, and
 token remains in application memory. On web, deploy only over HTTPS (localhost
 is permitted for development).
 
-Only synthetic patient-care fixtures, demo upload metadata, simulated
-assessment results, recovery-plan tasks, educational question-preparation chat,
-and asynchronous synthetic consultation requests are enabled today. Unknown,
-specialist, and admin wire roles fail closed to the unauthorized state rather
-than opening doctor UI. No specialist/admin role surface, real notification
-delivery, real COS upload completion, real model inference, billing workflow,
-analytics dashboard, clinic-operations workflow, or clinical feature is
-enabled. The backend now has authenticated doctor/patient support, deletion,
-and feedback submission plus own-status endpoints, but the Flutter Beta
-support feedback and deletion controls still prepare local drafts only until a
-later UI wiring pass; they do not send messages, delete data, invite testers,
-or alter accounts. Do not enter real patient data.
+Only synthetic patient-care fixtures, Phase 2 medical-history entries,
+doctor-owned medication/prescription/reminder workflow data, metadata-only
+in-app queued notification records, Tencent-COS-compatible imaging upload
+metadata/finalization, imaging review status, demo upload metadata, simulated
+assessment results, recovery-plan review/approval/completion state, patient
+Today progress, educational question-preparation chat, and asynchronous
+synthetic consultation requests are enabled today. Unknown, specialist, and
+admin wire roles fail closed to the unauthorized state rather than opening
+doctor UI. No specialist/admin role surface, external push/SMS/email/native
+notification delivery, raw COS file-transfer verification, real model inference, billing
+workflow, analytics dashboard, clinic-operations workflow, or clinical feature
+is enabled. The backend now has authenticated
+doctor/patient support,
+deletion, and feedback submission plus own-status endpoints, but the Flutter
+Beta support feedback and deletion controls still prepare local drafts only
+until a later UI wiring pass; they do not send messages, delete data, invite
+testers, or alter accounts. Do not enter real patient data.
 
 Current production planning and Phase 0 closure evidence live in
 `../../docs/Dr_AI_v1.0_Implementation_Plan.md` and
 `../../docs/Phase_0_Production_v1_Closure_Record.md`; the Phase 1 foundation
-is recorded in `../../docs/Phase_1_Production_Data_Foundation_Record.md`.
+is recorded in `../../docs/Phase_1_Production_Data_Foundation_Record.md`, and
+the Phase 2 first-slice progress is recorded in
+`../../docs/Phase_2_Patient_Doctor_Core_Progress_Record.md`.
 Historical beta records live under `../../docs/beta/`.
 
 ## Configuration

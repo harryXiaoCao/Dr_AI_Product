@@ -7,10 +7,20 @@ completion, educational-chat, and consultation request/readback endpoints;
 Week 4 Days 18-20 release-prep surfaces add no API changes. Production v1.0
 Phase 1 is complete for production data foundation, route-level RBAC helpers,
 fail-closed future-role boundaries, and authenticated support/deletion/
-feedback submission plus requester-scoped status reads. Production v1.0 still
-needs the reserved specialist, administrator, admin support-queue handling,
-real upload, notification delivery, and audit-read workflows before those
-surfaces can be treated as available.
+feedback submission plus requester-scoped status reads. Phase 2 patient/doctor
+medical-history APIs are implemented for demographics, allergies, chronic
+diseases, visit history, diagnoses, doctor notes, medication CRUD,
+prescription CRUD, medication/refill reminders, expanded care-bundle readback,
+neutral denials, metadata-only audit events, and metadata-only in-app queued
+notification records. Phase 2 imaging APIs are implemented for
+Tencent-COS-compatible upload metadata, metadata-only upload completion,
+imaging list/detail readback, doctor-only review status, neutral denials, and
+metadata-only audit events. Phase 2 recovery-plan APIs are implemented for
+draft, submit-for-review, request-changes, approve/active, complete, patient
+Today progress, neutral denials, and metadata-only audit events. Production
+v1.0 still needs the reserved specialist, administrator, admin support-queue
+handling, external notification delivery, and audit-read workflows before
+those surfaces can be treated as available.
 
 Contract version: `1.0.0`
 
@@ -25,7 +35,14 @@ Days 16-17 validation/log-hygiene hardening added: 2026-07-06; Week 4 Days
 18-20 release-prep surfaces added no API changes: 2026-07-06; Phase 1
 production data-foundation schema, future-role fail-closed boundary, and
 authenticated support/deletion/feedback submission/status endpoints added:
-2026-07-07
+2026-07-07; Phase 2 first-slice demographics, allergy/chronic disease,
+visit-history, diagnosis, doctor-note, expanded care-bundle, and patient
+allowed-update endpoints added: 2026-07-07; Phase 2 medication,
+prescription, medication/refill reminder, own-reminder read, and own
+metadata-notification endpoints added: 2026-07-07; Phase 2 imaging upload
+metadata, completion, list/detail, review, and care-bundle readback endpoints
+added: 2026-07-08; Phase 2 recovery-plan review, approval, completion, and
+Today progress endpoints added: 2026-07-08
 
 This contract preserves the public HTTP boundary implemented for the historical
 Dr. AI v1.0.0-beta.1 demo and records the intended shape of production v1.0
@@ -62,10 +79,10 @@ beta contract is implemented.
   queue for authenticated doctor/patient users with requester-scoped status,
   authorization, and audit metadata. Admin/support handling, queue assignment,
   resolution, and UI remain reserved production gaps.
-- Real Tencent COS upload completion, real notification delivery, billing,
-  appointments, clinic operations, analytics, and production monitoring remain
-  outside the implemented beta API boundary unless explicitly added in later
-  production phases.
+- Raw Tencent COS file-transfer verification, real notification delivery,
+  billing, appointments, clinic operations, analytics, and production
+  monitoring remain outside the implemented API boundary unless explicitly
+  added in later production phases.
 
 ## Transport and representation
 
@@ -195,21 +212,65 @@ Response:
 | `GET` | `/api/v1/patients` | Assigned patients | No | List patients in an active care relationship |
 | `GET` | `/api/v1/patients/{patient_id}` | Assigned patient | Own record only | Read a patient summary |
 | `GET` | `/api/v1/patients/{patient_id}/records` | Assigned patient | Own records only | List medical-record fixtures |
-| `GET` | `/api/v1/patients/{patient_id}/medications` | Assigned patient | Own medications only | List medication fixtures for one patient |
+| `GET` | `/api/v1/patients/{patient_id}/medications` | Assigned patient | Own medications only | List medications for one patient |
+| `POST` | `/api/v1/patients/{patient_id}/medications` | Assigned patient | No | Create a medication entry |
+| `PUT` | `/api/v1/patients/{patient_id}/medications/{medication_id}` | Assigned patient | No | Edit a medication entry |
+| `DELETE` | `/api/v1/patients/{patient_id}/medications/{medication_id}` | Assigned patient | No | Delete a medication entry |
 | `GET` | `/api/v1/patients/{patient_id}/doctor-notes` | Assigned patient | No | List doctor-facing note fixtures |
-| `GET` | `/api/v1/patients/{patient_id}/care` | Assigned patient | Own records and medications only | Read profile, records, medications, and doctor-visible notes |
+| `POST` | `/api/v1/patients/{patient_id}/doctor-notes` | Assigned patient | No | Create a doctor-facing note |
+| `PUT` | `/api/v1/patients/{patient_id}/doctor-notes/{note_id}` | Assigned patient | No | Edit a doctor-facing note |
+| `DELETE` | `/api/v1/patients/{patient_id}/doctor-notes/{note_id}` | Assigned patient | No | Delete a doctor-facing note |
+| `PATCH` | `/api/v1/patients/{patient_id}/profile` | Assigned patient | Own profile | Update allowed demographics |
+| `PATCH` | `/api/v1/patient/me/profile` | No | Own profile | Update own allowed demographics |
+| `GET` | `/api/v1/patients/{patient_id}/allergies` | Assigned patient | Own data | List allergies |
+| `POST` | `/api/v1/patients/{patient_id}/allergies` | Assigned patient | Own data | Create an allergy entry |
+| `PUT` | `/api/v1/patients/{patient_id}/allergies/{allergy_id}` | Assigned patient | Own data | Edit an allergy entry |
+| `DELETE` | `/api/v1/patients/{patient_id}/allergies/{allergy_id}` | Assigned patient | Own data | Delete an allergy entry |
+| `GET` | `/api/v1/patients/{patient_id}/chronic-diseases` | Assigned patient | Own data | List chronic diseases |
+| `POST` | `/api/v1/patients/{patient_id}/chronic-diseases` | Assigned patient | Own data | Create a chronic-disease entry |
+| `PUT` | `/api/v1/patients/{patient_id}/chronic-diseases/{condition_id}` | Assigned patient | Own data | Edit a chronic-disease entry |
+| `DELETE` | `/api/v1/patients/{patient_id}/chronic-diseases/{condition_id}` | Assigned patient | Own data | Delete a chronic-disease entry |
+| `GET` | `/api/v1/patients/{patient_id}/visit-history` | Assigned patient | Own data | List visit-history entries |
+| `POST` | `/api/v1/patients/{patient_id}/visit-history` | Assigned patient | No | Create a visit-history entry |
+| `PUT` | `/api/v1/patients/{patient_id}/visit-history/{visit_id}` | Assigned patient | No | Edit a visit-history entry |
+| `DELETE` | `/api/v1/patients/{patient_id}/visit-history/{visit_id}` | Assigned patient | No | Delete a visit-history entry |
+| `GET` | `/api/v1/patients/{patient_id}/diagnoses` | Assigned patient | Own data | List diagnoses |
+| `POST` | `/api/v1/patients/{patient_id}/diagnoses` | Assigned patient | No | Create a diagnosis entry |
+| `PUT` | `/api/v1/patients/{patient_id}/diagnoses/{diagnosis_id}` | Assigned patient | No | Edit a diagnosis entry |
+| `DELETE` | `/api/v1/patients/{patient_id}/diagnoses/{diagnosis_id}` | Assigned patient | No | Delete a diagnosis entry |
+| `GET` | `/api/v1/patients/{patient_id}/prescriptions` | Assigned patient | Own data | List prescriptions |
+| `POST` | `/api/v1/patients/{patient_id}/prescriptions` | Assigned patient | No | Create a prescription with medication lines |
+| `PUT` | `/api/v1/patients/{patient_id}/prescriptions/{prescription_id}` | Assigned patient | No | Edit a prescription and replace medication lines |
+| `DELETE` | `/api/v1/patients/{patient_id}/prescriptions/{prescription_id}` | Assigned patient | No | Delete a prescription |
+| `GET` | `/api/v1/patients/{patient_id}/medication-reminders` | Assigned patient | Own data | List medication and refill reminders |
+| `POST` | `/api/v1/patients/{patient_id}/medication-reminders` | Assigned patient | No | Create an in-app medication or refill reminder |
+| `PUT` | `/api/v1/patients/{patient_id}/medication-reminders/{reminder_id}` | Assigned patient | No | Edit an in-app reminder |
+| `DELETE` | `/api/v1/patients/{patient_id}/medication-reminders/{reminder_id}` | Assigned patient | No | Delete an in-app reminder |
+| `GET` | `/api/v1/patients/{patient_id}/care` | Assigned patient | Own history only | Read profile, records, medications, prescriptions, reminders, history, and doctor-visible notes |
 | `POST` | `/api/v1/patients/{patient_id}/assets/presign` | Assigned patient | Own assets only | Request a short-lived demo upload URL |
+| `POST` | `/api/v1/patients/{patient_id}/imaging/presign` | Assigned patient | Own assets only | Prepare Tencent-COS-compatible imaging upload metadata |
+| `POST` | `/api/v1/patients/{patient_id}/imaging/{asset_id}/complete` | Assigned patient | Own asset only | Confirm metadata-only upload completion |
+| `GET` | `/api/v1/patients/{patient_id}/imaging` | Assigned patient | Own assets only | List imaging upload/review metadata |
+| `GET` | `/api/v1/patients/{patient_id}/imaging/{asset_id}` | Assigned patient | Own asset only | Read one imaging metadata record |
+| `POST` | `/api/v1/patients/{patient_id}/imaging/{asset_id}/review` | Assigned patient | No | Mark imaging metadata as reviewed or rejected |
 | `GET` | `/api/v1/patients/{patient_id}/assessments` | Assigned patient | Own results only | List assessment summaries |
 | `POST` | `/api/v1/patients/{patient_id}/assessments` | Assigned patient | No | Run a deterministic simulation |
 | `GET` | `/api/v1/patients/{patient_id}/recovery-plans` | Assigned patient | Own plans only | List recovery plans |
 | `POST` | `/api/v1/patients/{patient_id}/recovery-plans` | Assigned patient | No | Create a draft recovery plan |
 | `PUT` | `/api/v1/patients/{patient_id}/recovery-plans/{plan_id}` | Assigned patient | No | Edit a recovery plan |
+| `POST` | `/api/v1/patients/{patient_id}/recovery-plans/{plan_id}/submit-review` | Assigned patient | No | Submit a draft recovery plan for doctor review |
+| `POST` | `/api/v1/patients/{patient_id}/recovery-plans/{plan_id}/request-changes` | Assigned patient | No | Return a submitted recovery plan to draft editing |
+| `POST` | `/api/v1/patients/{patient_id}/recovery-plans/{plan_id}/approve` | Assigned patient | No | Approve and activate a submitted recovery plan |
 | `POST` | `/api/v1/patients/{patient_id}/recovery-plans/{plan_id}/activate` | Assigned patient | No | Activate a recovery plan |
+| `POST` | `/api/v1/patients/{patient_id}/recovery-plans/{plan_id}/complete` | Assigned patient | No | Complete an active recovery plan after all tasks are complete |
 | `GET` | `/api/v1/patient/me/today` | No | Own data | Read the patient's current synthetic tasks |
 | `POST` | `/api/v1/patient/me/tasks/{task_id}/completion` | No | Own active task only | Complete a Today task |
-| `GET` | `/api/v1/patient/me/care` | No | Own records and medications only | Read own profile, medical-record fixtures, and medications |
-| `GET` | `/api/v1/medications` | Assigned patient scope | Own data | List medication fixtures |
-| `GET` | `/api/v1/reminders` | Assigned patient scope | Own data | List reminders |
+| `GET` | `/api/v1/patient/me/care` | No | Own records, medications, prescriptions, and reminders only | Read own profile, history, medications, prescriptions, and reminders |
+| `GET` | `/api/v1/patient/me/imaging` | No | Own assets only | List own imaging upload/review metadata |
+| `GET` | `/api/v1/patient/me/imaging/{asset_id}` | No | Own asset only | Read one own imaging metadata record |
+| `GET` | `/api/v1/medications` | Assigned patient scope | Own data | List own medications |
+| `GET` | `/api/v1/reminders` | Assigned patient scope | Own data | List own medication/refill reminders |
+| `GET` | `/api/v1/patient/me/notifications` | No | Own data | List own metadata-only in-app notification records |
 | `POST` | `/api/v1/chat/threads/{thread_id}/messages` | Authorized thread | Own thread | Send an educational-chat message |
 | `GET` | `/api/v1/consultations` | Authorized cases | Own requests | List consultation requests |
 | `POST` | `/api/v1/consultations` | Assigned patient | No | Request asynchronous specialist review |
@@ -226,22 +287,101 @@ current patient's own view and is distinct from doctor-scoped `/patients`.
 `GET /api/v1/patients/{patient_id}/medications`,
 `GET /api/v1/patients/{patient_id}/doctor-notes`,
 `GET /api/v1/patients/{patient_id}/care`, `GET /api/v1/patient/me/care`,
+`POST|PUT|DELETE /api/v1/patients/{patient_id}/medications[...]`,
+`PATCH /api/v1/patients/{patient_id}/profile`,
+`PATCH /api/v1/patient/me/profile`,
+`GET|POST|PUT|DELETE /api/v1/patients/{patient_id}/allergies[...]`,
+`GET|POST|PUT|DELETE /api/v1/patients/{patient_id}/chronic-diseases[...]`,
+`GET|POST|PUT|DELETE /api/v1/patients/{patient_id}/visit-history[...]`,
+`GET|POST|PUT|DELETE /api/v1/patients/{patient_id}/diagnoses[...]`,
+`POST|PUT|DELETE /api/v1/patients/{patient_id}/doctor-notes[...]`,
+`GET|POST|PUT|DELETE /api/v1/patients/{patient_id}/prescriptions[...]`,
+`GET|POST|PUT|DELETE /api/v1/patients/{patient_id}/medication-reminders[...]`,
 `POST /api/v1/patients/{patient_id}/assets/presign`,
+`POST /api/v1/patients/{patient_id}/imaging/presign`,
+`POST /api/v1/patients/{patient_id}/imaging/{asset_id}/complete`,
+`GET /api/v1/patients/{patient_id}/imaging`,
+`GET /api/v1/patients/{patient_id}/imaging/{asset_id}`,
+`POST /api/v1/patients/{patient_id}/imaging/{asset_id}/review`,
 `GET /api/v1/patients/{patient_id}/assessments`,
 `POST /api/v1/patients/{patient_id}/assessments`,
 `GET /api/v1/patients/{patient_id}/recovery-plans`,
 `POST /api/v1/patients/{patient_id}/recovery-plans`,
 `PUT /api/v1/patients/{patient_id}/recovery-plans/{plan_id}`,
+`POST /api/v1/patients/{patient_id}/recovery-plans/{plan_id}/submit-review`,
+`POST /api/v1/patients/{patient_id}/recovery-plans/{plan_id}/request-changes`,
+`POST /api/v1/patients/{patient_id}/recovery-plans/{plan_id}/approve`,
 `POST /api/v1/patients/{patient_id}/recovery-plans/{plan_id}/activate`,
+`POST /api/v1/patients/{patient_id}/recovery-plans/{plan_id}/complete`,
 `POST /api/v1/patient/me/tasks/{task_id}/completion`,
 `POST /api/v1/chat/threads/{thread_id}/messages`,
 `GET /api/v1/consultations`, `POST /api/v1/consultations`,
 `POST /api/v1/support-requests`, `GET /api/v1/support-requests`,
-`GET /api/v1/support-requests/{request_id}`, `GET /api/v1/medications`, and
-`GET /api/v1/me/dashboard` are also implemented. Administrator audit reads,
-specialist response workflows, admin-managed support/deletion/feedback
-handling, real notification delivery, real upload completion, and real
-clinical workflows remain unavailable.
+`GET /api/v1/support-requests/{request_id}`, `GET /api/v1/medications`,
+`GET /api/v1/reminders`, `GET /api/v1/patient/me/notifications`,
+`GET /api/v1/patient/me/imaging`, `GET /api/v1/patient/me/imaging/{asset_id}`,
+and `GET /api/v1/me/dashboard` are also implemented. Administrator audit
+reads, specialist response workflows, admin-managed support/deletion/feedback
+handling, external notification delivery, raw file transfer verification
+against Tencent COS, and real clinical workflows remain unavailable.
+
+## Phase 2 patient and doctor core
+
+Phase 2 endpoints add persisted production workflow foundations for
+demographics, allergies, chronic diseases, visit history, diagnoses, doctor
+notes, medications, prescriptions, medication reminders, refill reminders, and
+metadata-only in-app queued notifications, imaging upload/review metadata, and
+recovery-plan review/approval/completion semantics. These APIs remain
+synthetic/de-identified only until real-data privacy, consent, legal, and
+security gates are cleared.
+
+Rules:
+
+- Doctors can read and edit only patients in an active care relationship.
+- Patients can read only their own demographics, allergies, chronic diseases,
+  visit history, diagnoses, records, medications, prescriptions, reminders,
+  notification metadata, imaging metadata, and care-bundle data.
+- Patients can update only allowed own-profile fields, allergies, and chronic
+  diseases in this slice.
+- Visit-history, diagnosis, doctor-note, medication, prescription, and
+  reminder mutations are doctor-only.
+- Doctor notes are hidden from patient-owned care-bundle responses, and
+  patient probes to doctor-note endpoints return neutral `404 not_found`.
+- Medication and refill reminders create or update metadata-only in-app
+  notification rows when active; no SMS, email, push, native local
+  notification, or external delivery service is called by the backend.
+- Imaging upload preparation and completion store metadata only. The backend
+  does not call Tencent COS, inspect uploaded files, create clinical
+  interpretation, run model inference, or expose object keys after presign.
+- Imaging review is doctor-only and records `reviewed` or `rejected` status
+  without review notes or clinical findings.
+- Recovery-plan create, edit, submit-review, request-changes, approve,
+  activate-compatible, and complete mutations are doctor-only.
+- Recovery-plan edits are allowed only while the plan is draft-editable. Edits
+  are blocked while a plan is submitted for review and after approval or
+  completion.
+- Approval activates the submitted plan, records review/approval timestamps,
+  and completes any previous active recovery plan for the same patient.
+- Completing a recovery plan requires all active plan tasks to be completed by
+  the patient first.
+- `GET /api/v1/patient/me/today` returns active plan tasks plus
+  `today_progress` with task count, completed count, remaining count, and
+  completion percent.
+- Wrong-role, unrelated-patient, and cross-patient probes return neutral
+  `404 not_found` when existence would leak sensitive information.
+- Write and sensitive-read audit events store metadata such as actor role,
+  field names, statuses, counts, and resource IDs only. Audit metadata must not
+  copy allergy labels, condition names, visit summaries, diagnosis labels,
+  doctor-note titles, note bodies, medication names, dosages, schedules,
+  prescription notes, reminder labels, filenames, object keys, upload URLs,
+  ETags, checksums, imaging content, recovery-plan titles, plan instructions,
+  task titles, task details, notification labels, or other medical content.
+
+Expanded care-bundle responses now include `demographics` under `patient` plus
+top-level `allergies`, `chronic_diseases`, `visit_history`, `diagnoses`,
+`imaging_assets`, `medications`, `prescriptions`, and
+`medication_reminders`. Doctor-scoped care bundles include `doctor_notes`;
+patient-owned care bundles return an empty `doctor_notes` list.
 
 ## Public enums
 
@@ -255,6 +395,7 @@ InputCompleteness = complete | partial | insufficient
 RiskBand = low | moderate | high
 ConsultationStatus = requested | accepted | completed | cancelled
 RecoveryPlanStatus = draft | active | completed
+RecoveryPlanReviewStatus = draft | in_review | changes_requested | approved
 ```
 
 `specialist` and `admin` are reserved production roles. Their enum values exist
@@ -480,6 +621,104 @@ Rules:
 The response URL is a demo placeholder in the local Week 2 workflow. Logs and
 audit metadata must not store upload URLs, tokens, patient-owned content, or
 secrets.
+
+## Phase 2 imaging upload and review contract
+
+The imaging workflow is a production-separated metadata/status workflow backed
+by `medical_imaging_assets`. It is Tencent-COS-compatible in shape, but this
+slice does not call Tencent COS, inspect uploaded file bytes, or make clinical
+claims. The historical `demo_medical_assets` beta table and
+`/assets/presign` endpoint remain separate.
+
+### Prepare imaging upload metadata
+
+`POST /api/v1/patients/{patient_id}/imaging/presign`
+
+```json
+{
+  "filename": "synthetic-ct-phase2.png",
+  "content_type": "image/png",
+  "size_bytes": 4096
+}
+```
+
+Rules:
+
+- Doctors can prepare uploads only for active-care assigned patients.
+- Patients can prepare uploads only for their own patient profile.
+- Validation matches the demo presign content-type, size, and extension rules.
+- The response includes a short-lived upload URL shape and headers for the
+  client upload step, but later imaging list/detail responses do not echo the
+  upload URL or object key.
+- Audit metadata records actor role, content type, size, storage provider,
+  upload status, and review status only.
+
+Response:
+
+```json
+{
+  "asset_id": "asset-opaque-uuid",
+  "patient_id": "patient-opaque-uuid",
+  "upload_url": "https://tencent-cos-upload.invalid/medical-imaging-assets/patient/asset.png",
+  "method": "PUT",
+  "headers": {
+    "Content-Type": "image/png",
+    "x-dr-ai-upload-purpose": "phase2-imaging-metadata-only"
+  },
+  "expires_at": "2026-07-08T00:45:00Z",
+  "max_size_bytes": 10485760,
+  "upload_status": "pending_upload",
+  "review_status": "not_ready",
+  "storage_provider": "tencent_cos",
+  "safety_label": "Synthetic demonstration data only. Do not enter real patient data."
+}
+```
+
+### Complete upload metadata
+
+`POST /api/v1/patients/{patient_id}/imaging/{asset_id}/complete`
+
+```json
+{
+  "uploaded_size_bytes": 4096,
+  "etag": "\"opaque-cos-etag\"",
+  "checksum_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+}
+```
+
+`etag` and `checksum_sha256` are optional. The uploaded size must match the
+prepared size. Completion changes `upload_status` to `uploaded` and
+`review_status` to `pending_review`. Expired uploads return `409 conflict`;
+wrong-role and cross-patient probes return neutral `404 not_found`.
+
+### List/detail and doctor review
+
+`GET /api/v1/patients/{patient_id}/imaging`
+
+`GET /api/v1/patients/{patient_id}/imaging/{asset_id}`
+
+`GET /api/v1/patient/me/imaging`
+
+`GET /api/v1/patient/me/imaging/{asset_id}`
+
+List/detail responses include only metadata needed for status review:
+identifier, patient identifier, storage provider, content type, file extension,
+byte counts, upload status, review status, timestamps, and the synthetic-data
+safety label. They do not include filenames, object keys, upload URLs, ETags,
+checksums, credentials, image contents, review notes, or diagnostic findings.
+
+`POST /api/v1/patients/{patient_id}/imaging/{asset_id}/review`
+
+```json
+{
+  "review_status": "reviewed"
+}
+```
+
+Only assigned doctors can review imaging metadata. `review_status` is
+`reviewed` or `rejected`. Reviewing an asset that has not completed upload
+returns `409 conflict`. Review audit metadata records status only and does not
+store clinical interpretation.
 
 ## Simulated assessment contract
 

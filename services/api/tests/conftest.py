@@ -49,6 +49,7 @@ def clean_database(migrated_database: None) -> Generator[None]:
                 "audit_events, consultation_requests, chat_messages, chat_threads, "
                 "chat_rate_limits, simulated_assessments, demo_medical_assets, "
                 "recovery_task_completions, recovery_tasks, recovery_plans, "
+                "diagnoses, visit_history, chronic_diseases, patient_allergies, "
                 "doctor_notes, medications, medical_records, "
                 "dashboard_snapshots, refresh_sessions, care_relationships, "
                 "patient_profiles, doctor_profiles, users RESTART IDENTITY CASCADE"

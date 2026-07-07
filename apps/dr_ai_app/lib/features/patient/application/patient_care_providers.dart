@@ -93,6 +93,120 @@ class DemoAssetPresignController
   }
 }
 
+final medicalImagingWorkflowControllerProvider =
+    StateNotifierProvider.autoDispose<
+      MedicalImagingWorkflowController,
+      AsyncValue<MedicalImagingWorkflowState>
+    >((ref) {
+      return MedicalImagingWorkflowController(
+        ref.read(repositoryProvider),
+        ref,
+      );
+    });
+
+class MedicalImagingWorkflowState {
+  const MedicalImagingWorkflowState({this.presign, this.asset, this.message});
+
+  final MedicalImagingPresign? presign;
+  final MedicalImagingAsset? asset;
+  final String? message;
+}
+
+class MedicalImagingWorkflowController
+    extends StateNotifier<AsyncValue<MedicalImagingWorkflowState>> {
+  MedicalImagingWorkflowController(this._repository, this._ref)
+    : super(
+        const AsyncData<MedicalImagingWorkflowState>(
+          MedicalImagingWorkflowState(),
+        ),
+      );
+
+  final DrAiRepository _repository;
+  final Ref _ref;
+
+  Future<void> prepare({
+    required String patientId,
+    required String filename,
+    required String contentType,
+    required int sizeBytes,
+  }) async {
+    state = const AsyncLoading<MedicalImagingWorkflowState>();
+    try {
+      final presign = await _repository.presignMedicalImaging(
+        patientId: patientId,
+        filename: filename,
+        contentType: contentType,
+        sizeBytes: sizeBytes,
+      );
+      state = AsyncData(
+        MedicalImagingWorkflowState(
+          presign: presign,
+          message: 'Imaging upload prepared.',
+        ),
+      );
+    } catch (error, stackTrace) {
+      state = AsyncError<MedicalImagingWorkflowState>(error, stackTrace);
+    }
+  }
+
+  Future<void> complete({
+    required String patientId,
+    required int uploadedSizeBytes,
+  }) async {
+    final presign = state.asData?.value.presign;
+    if (presign == null) {
+      return;
+    }
+    state = const AsyncLoading<MedicalImagingWorkflowState>();
+    try {
+      final asset = await _repository.completeMedicalImagingUpload(
+        patientId: patientId,
+        assetId: presign.assetId,
+        uploadedSizeBytes: uploadedSizeBytes,
+      );
+      _ref.invalidate(patientCareBundleProvider(patientId));
+      state = AsyncData(
+        MedicalImagingWorkflowState(
+          presign: presign,
+          asset: asset,
+          message: 'Imaging upload finalized.',
+        ),
+      );
+    } catch (error, stackTrace) {
+      state = AsyncError<MedicalImagingWorkflowState>(error, stackTrace);
+    }
+  }
+
+  Future<void> review({
+    required String patientId,
+    required String reviewStatus,
+  }) async {
+    final current = state.asData?.value;
+    final assetId = current?.asset?.id ?? current?.presign?.assetId;
+    if (assetId == null) {
+      return;
+    }
+    state = const AsyncLoading<MedicalImagingWorkflowState>();
+    try {
+      final asset = await _repository.reviewMedicalImagingAsset(
+        patientId: patientId,
+        assetId: assetId,
+        reviewStatus: reviewStatus,
+      );
+      _ref.invalidate(patientCareBundleProvider(patientId));
+      state = AsyncData(
+        MedicalImagingWorkflowState(
+          presign: current?.presign,
+          asset: asset,
+          message: 'Imaging review status updated.',
+        ),
+      );
+    } catch (error, stackTrace) {
+      state = AsyncError<MedicalImagingWorkflowState>(error, stackTrace);
+    }
+  }
+}
+
 final assessmentCreateControllerProvider =
     StateNotifierProvider.autoDispose<
       AssessmentCreateController,
@@ -136,6 +250,105 @@ final recoveryPlanEditorControllerProvider =
     >((ref) {
       return RecoveryPlanEditorController(ref.read(repositoryProvider), ref);
     });
+
+final medicationWorkflowControllerProvider =
+    StateNotifierProvider.autoDispose<
+      MedicationWorkflowController,
+      AsyncValue<String?>
+    >((ref) {
+      return MedicationWorkflowController(ref.read(repositoryProvider), ref);
+    });
+
+class MedicationWorkflowController extends StateNotifier<AsyncValue<String?>> {
+  MedicationWorkflowController(this._repository, this._ref)
+    : super(const AsyncData<String?>(null));
+
+  final DrAiRepository _repository;
+  final Ref _ref;
+
+  Future<void> saveMedication({
+    required String patientId,
+    required String? medicationId,
+    required String name,
+    required String dosage,
+    required String schedule,
+    required String status,
+    required String note,
+  }) async {
+    state = const AsyncLoading<String?>();
+    try {
+      await _repository.saveMedication(
+        patientId: patientId,
+        medicationId: medicationId,
+        name: name,
+        dosage: dosage,
+        schedule: schedule,
+        status: status,
+        note: note,
+      );
+      state = const AsyncData<String?>('Medication saved.');
+      _ref.invalidate(patientCareBundleProvider(patientId));
+    } catch (error, stackTrace) {
+      state = AsyncError<String?>(error, stackTrace);
+    }
+  }
+
+  Future<void> createPrescription({
+    required String patientId,
+    required String medicationId,
+    required String name,
+    required String dosage,
+    required String schedule,
+    required String notes,
+  }) async {
+    state = const AsyncLoading<String?>();
+    try {
+      await _repository.createPrescription(
+        patientId: patientId,
+        medicationId: medicationId,
+        name: name,
+        dosage: dosage,
+        schedule: schedule,
+        notes: notes,
+      );
+      state = const AsyncData<String?>('Prescription issued.');
+      _ref.invalidate(patientCareBundleProvider(patientId));
+    } catch (error, stackTrace) {
+      state = AsyncError<String?>(error, stackTrace);
+    }
+  }
+
+  Future<void> saveMedicationReminder({
+    required String patientId,
+    required String? reminderId,
+    required String? medicationId,
+    required String? prescriptionMedicationId,
+    required String reminderType,
+    required String scheduleLabel,
+    required String status,
+    required DateTime? nextDueAt,
+  }) async {
+    state = const AsyncLoading<String?>();
+    try {
+      await _repository.saveMedicationReminder(
+        patientId: patientId,
+        reminderId: reminderId,
+        medicationId: medicationId,
+        prescriptionMedicationId: prescriptionMedicationId,
+        reminderType: reminderType,
+        scheduleLabel: scheduleLabel,
+        status: status,
+        nextDueAt: nextDueAt,
+      );
+      state = AsyncData<String?>(
+        reminderType == 'refill' ? 'Refill reminder saved.' : 'Reminder saved.',
+      );
+      _ref.invalidate(patientCareBundleProvider(patientId));
+    } catch (error, stackTrace) {
+      state = AsyncError<String?>(error, stackTrace);
+    }
+  }
+}
 
 class RecoveryPlanEditorController
     extends StateNotifier<AsyncValue<RecoveryPlanData?>> {
@@ -185,6 +398,70 @@ class RecoveryPlanEditorController
         patientId: patientId,
         planId: planId,
       );
+      state = AsyncData(result);
+      _ref.invalidate(recoveryPlanListProvider(patientId));
+    } catch (error, stackTrace) {
+      state = AsyncError<RecoveryPlanData?>(error, stackTrace);
+    }
+  }
+
+  Future<void> submitForReview({
+    required String patientId,
+    required String planId,
+  }) async {
+    await _transition(
+      patientId: patientId,
+      action: () => _repository.submitRecoveryPlanForReview(
+        patientId: patientId,
+        planId: planId,
+      ),
+    );
+  }
+
+  Future<void> requestChanges({
+    required String patientId,
+    required String planId,
+  }) async {
+    await _transition(
+      patientId: patientId,
+      action: () => _repository.requestRecoveryPlanChanges(
+        patientId: patientId,
+        planId: planId,
+      ),
+    );
+  }
+
+  Future<void> approve({
+    required String patientId,
+    required String planId,
+  }) async {
+    await _transition(
+      patientId: patientId,
+      action: () =>
+          _repository.approveRecoveryPlan(patientId: patientId, planId: planId),
+    );
+  }
+
+  Future<void> completePlan({
+    required String patientId,
+    required String planId,
+  }) async {
+    await _transition(
+      patientId: patientId,
+      action: () => _repository.completeRecoveryPlan(
+        patientId: patientId,
+        planId: planId,
+      ),
+    );
+  }
+
+  Future<void> _transition({
+    required String patientId,
+    required Future<RecoveryPlanData> Function() action,
+  }) async {
+    state = const AsyncLoading<RecoveryPlanData?>();
+    try {
+      final result = await action();
       state = AsyncData(result);
       _ref.invalidate(recoveryPlanListProvider(patientId));
     } catch (error, stackTrace) {

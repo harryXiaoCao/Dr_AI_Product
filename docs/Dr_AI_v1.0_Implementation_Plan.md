@@ -1,8 +1,8 @@
 ---
 title: "Dr. AI v1.0 Implementation Plan"
-status: "Beta/demo MVP foundation exists; production/commercial v1.0 Phase 0 planning is complete; Phase 1 production data foundation is complete"
+status: "Beta/demo MVP foundation exists; production/commercial v1.0 Phase 0 planning, Phase 1 data foundation, and Phase 2 patient/doctor core workflows are complete locally"
 created: "2026-07-02"
-last_updated: "2026-07-07T17:33:59+08:00"
+last_updated: "2026-07-08T00:54:29+08:00"
 owner: "Harry Cao"
 delivery_window: "Production v1.0 phase after completed beta foundation; implementation schedule to be estimated after Phase 1 planning starts"
 release_target: "Production/commercial v1.0 after beta foundation; invited beta remains historical milestone"
@@ -254,25 +254,93 @@ Closure evidence:
     - [x] Add no production seed fixtures in Phase 1; the current seed remains
       synthetic demo-only and the new production foundation tables remain empty
       until later production workflows populate them.
-- [ ] Phase 2: Patient and doctor core workflows
-  - [ ] Implement patient demographic create/edit/review flow.
-  - [ ] Implement allergy and chronic-disease management.
-  - [ ] Implement visit-history CRUD.
-  - [ ] Implement diagnosis and doctor-note CRUD.
-  - [ ] Implement prescription CRUD.
-  - [ ] Implement patient-facing profile/history read surfaces.
-  - [ ] Implement patient-facing allowed update surfaces.
-  - [ ] Implement doctor-side medical-history review/edit workflow.
-  - [ ] Complete Tencent COS upload finalization.
-  - [ ] Add imaging list/detail/review workflow.
-  - [ ] Implement medication list CRUD.
-  - [ ] Implement medication reminders.
-  - [ ] Implement refill reminders.
-  - [ ] Implement recovery-plan draft workflow.
-  - [ ] Implement doctor review/edit/approve workflow.
-  - [ ] Implement patient Today task tracking.
-  - [ ] Implement notification/reminder delivery path.
-  - [ ] Add core workflow tests and audit assertions.
+- [x] Phase 2: Patient and doctor core workflows
+  - [x] Implement patient demographic create/edit/review flow.
+    - [x] First slice: add persisted demographics fields, doctor assigned-patient
+      review/edit, patient own-profile edit, and care-bundle readback.
+    - [x] Phase 2 closure decision: patient creation beyond account/profile
+      registration is not owned by Phase 2; controlled invite onboarding and
+      account registration remain in the authentication/account lifecycle
+      scope.
+  - [x] Implement allergy and chronic-disease management.
+    - [x] First slice: add persisted allergy and chronic-disease CRUD for
+      assigned doctors and own-patient allowed updates, with neutral denials and
+      metadata-only audit events.
+  - [x] Implement visit-history CRUD.
+    - [x] First slice: add doctor-owned visit-history CRUD with patient/doctor
+      readback, neutral denials, and metadata-only audit events.
+  - [x] Implement diagnosis and doctor-note CRUD.
+    - [x] First slice: add doctor-owned diagnosis CRUD and doctor-note
+      create/edit/delete, with patient-visible diagnoses, hidden patient
+      doctor notes, neutral denials, and metadata-only audit events.
+  - [x] Implement prescription CRUD.
+    - [x] Medication slice: add doctor-owned prescription create/edit/delete
+      with medication lines, patient/doctor readback, neutral denials, and
+      metadata-only audit events.
+  - [x] Implement patient-facing profile/history read surfaces.
+    - [x] First slice: extend patient care bundle and Flutter patient profile
+      card with demographics, allergies, chronic diseases, visit history, and
+      diagnoses; doctor notes stay hidden from patients.
+  - [x] Implement patient-facing allowed update surfaces.
+    - [x] First slice: allow own-patient demographics, allergies, and chronic
+      diseases to be updated through authenticated API paths.
+  - [x] Implement doctor-side medical-history review/edit workflow.
+    - [x] First slice: extend doctor Patient Management read surface and API
+      write paths for demographics, allergies, chronic diseases, visits,
+      diagnoses, and notes.
+  - [x] Complete Tencent COS upload finalization.
+    - [x] Imaging slice: add production-separated Tencent-COS-compatible
+      imaging upload metadata, metadata-only upload completion confirmation,
+      upload/review statuses, neutral denials, and safe audit metadata.
+  - [x] Add imaging list/detail/review workflow.
+    - [x] Imaging slice: add doctor/patient imaging list/detail readback,
+      doctor-only reviewed/rejected status workflow, expanded care-bundle
+      readback, and doctor/patient Flutter imaging surfaces.
+  - [x] Implement medication list CRUD.
+    - [x] Medication slice: add doctor-owned medication create/edit/delete,
+      patient/doctor readback, and Flutter doctor/patient medication surfaces.
+  - [x] Implement medication reminders.
+    - [x] Medication slice: add doctor-owned in-app medication reminders with
+      patient readback and metadata-only queued notification rows.
+  - [x] Implement refill reminders.
+    - [x] Medication slice: add refill reminders linked to prescription
+      medication lines with the same neutral boundary and metadata-only queue.
+  - [x] Implement recovery-plan draft workflow.
+    - [x] Recovery-plan closure slice: add production review metadata,
+      metadata-only audit events, explicit submit-for-review, request-changes,
+      approve, activate-compatible, and complete transitions, plus progress
+      summaries.
+  - [x] Implement doctor review/edit/approve workflow.
+    - [x] Recovery-plan closure slice: doctor-only transition endpoints and
+      Flutter controls now expose draft/review/approval/completion state.
+  - [x] Implement patient Today task tracking.
+    - [x] Recovery-plan closure slice: patient Today now returns active plan
+      progress, completed/remaining task counts, completion percent, and
+      completion timestamps through the active task readback.
+  - [x] Implement notification/reminder delivery path.
+    - [x] Medication slice: add backend-only in-app queued notification records
+      for active medication/refill reminders; external delivery remains
+      deferred.
+    - [x] Phase 2 closure decision: external push, SMS, email, or native local
+      notification delivery is not implemented in Phase 2 because it requires
+      credentials, platform configuration, or account/service changes; the safe
+      local Phase 2 path remains metadata-only in-app queue/readback.
+  - [x] Add core workflow tests and audit assertions.
+    - [x] First slice: add backend Phase 2 tests for migration presence,
+      seed/demo separation, patient allowed updates, doctor-only history writes,
+      cross-patient/wrong-role neutral denials, patient-hidden doctor notes, and
+      metadata-only audit assertions.
+    - [x] Medication slice: add backend tests for medication, prescription,
+      medication reminder, refill reminder, own notification readback,
+      cross-patient/wrong-role neutral denials, and metadata-only audit/
+      notification assertions.
+    - [x] Imaging slice: add backend tests for imaging upload preparation,
+      completion, list/detail/readback, doctor review, patient/cross-patient
+      neutral denials, seed separation, and metadata-only audit assertions.
+    - [x] Recovery-plan closure slice: add backend tests for review
+      transitions, wrong-role/cross-patient neutral denials, Today progress,
+      complete-only-after-all-tasks semantics, and metadata-only audit
+      assertions.
 - [ ] Phase 3: AI systems
   - [ ] Define stable AI assessment request/response contract.
   - [ ] Implement diagnostic input collection.
@@ -327,6 +395,31 @@ Closure evidence:
 - [ ] Phase 6: Production hardening and release
   - [ ] Add API 5xx monitoring.
   - [ ] Add auth/chat/assessment/upload monitoring.
+  - [ ] Close external notification delivery gate with China-market SMS as the
+    primary channel.
+    - [ ] Choose the allowed Phase 6 notification channels; default to
+      phone-number SMS for Chinese customers, with native push, native local
+      notifications, or email added only if there is a clear product/release
+      need.
+    - [ ] Configure approved SMS provider credentials and account access for
+      local, staging, and production environments without committing secrets.
+    - [ ] Add environment-separated notification configuration, sender
+      templates, rate limits, retry limits, and provider failover rules where
+      appropriate.
+    - [ ] Implement delivery workers/adapters with idempotency, retry,
+      delivery status, failure status, suppression/opt-out, and rate limiting.
+    - [ ] Add patient consent and phone-number verification/preference
+      controls before any real SMS delivery.
+    - [ ] Keep notification copy clinically neutral and avoid medication names,
+      recovery-plan instructions, task details, imaging details, URLs, tokens,
+      secrets, or clinical interpretations in outbound SMS content.
+    - [ ] Store delivery metadata only: channel, status, timestamps, safe
+      template identifier, retry count, and provider message-id hash if needed.
+    - [ ] Add tests for successful delivery, retry, provider failure, disabled
+      preferences, unverified phone numbers, wrong-role/cross-patient
+      boundaries, audit metadata, and log redaction.
+    - [ ] Verify the SMS path in staging with synthetic users and test phone
+      numbers only before any production or real-user delivery.
   - [ ] Add crash/error tracking.
   - [ ] Configure alert routing.
   - [ ] Run backup rehearsal.
@@ -775,3 +868,5 @@ Add one row whenever implementation status, scope, architecture, or a major deci
 | 2026-07-07 | In Progress - Phase 1 first data-foundation slice | Started Phase 1 implementation with additive production foundation models and migration for hospitals, clinics, role assignments, doctor teams, clinic resources/equipment, appointments/bookings, prescriptions/medication reminders, notifications, invoices/payment statuses/revenue summaries, analytics events, and support/deletion/feedback queue requests. Reserved `specialist` and `admin` backend role values while keeping their registration and beta dashboard access fail-closed; fixed Flutter unknown/future role parsing so unsupported roles route to `/unauthorized` instead of doctor UI; and verified the synthetic seed flow leaves new production tables empty. No Phase 2 workflows, specialist/admin UI, deployment, push, tag, PR, commit, or external account action was performed. | `services/api/app/models.py`, `services/api/migrations/versions/20260707_0006_phase1_production_foundation.py`, `services/api/tests/test_phase1_production_foundation.py`, `apps/dr_ai_app/lib/app/routing/app_role.dart`, `apps/dr_ai_app/lib/app/routing/router.dart`, `docs/Phase_1_Production_Data_Foundation_Record.md`, `docs/Dr_AI_v1.0_API_Contract.md` | Continue Phase 1 only: expand route-level RBAC/audit coverage, decide minimal support/deletion/feedback submission semantics, and keep production fixtures separate from demo seed data before any Phase 2 workflow starts. |
 | 2026-07-07 | Complete - Phase 1 production data foundation | Finished the remaining Phase 1 foundation slice without starting Phase 2/4/5 workflows: added route-level RBAC helpers, registered authenticated `/api/v1/support-requests` submission and requester-scoped status endpoints, kept specialist/admin support access fail-closed, persisted support/deletion/feedback queue rows with redacted body storage and audit metadata, added support request create/list/status audit events, and expanded tests for future-role denial, wrong-requester isolation, unsafe-content rejection, seed/demo separation, and no-side-effect admin/specialist probes. No patient/doctor CRUD workflow, clinic-operation workflow, specialist/admin UI, admin queue handling, deployment, push, tag, PR, commit, or external account action was performed. | `services/api/app/support.py`, `services/api/app/rbac.py`, `services/api/app/main.py`, `services/api/app/schemas.py`, `services/api/tests/test_phase1_production_foundation.py`, `docs/Phase_1_Production_Data_Foundation_Record.md`, `docs/Dr_AI_v1.0_API_Contract.md`, `docs/Dr_AI_v1.0_Implementation_Plan.md` | Phase 2 patient/doctor core workflows remain next and must be explicitly requested. Phase 5 still owns specialist/admin UI, audit search, system status, and admin-managed support queue handling. |
 | 2026-07-07 | Complete - Tencent staging redeploy for Phase 1 foundation | After explicit approval, redeployed Tencent same-origin staging so live web/API matches the completed Phase 1 foundation. Built and pushed a sanitized API image on the CVM, deployed immutable digest `hkccr.ccs.tencentyun.com/dr-ai/dr-ai-backend@sha256:d10187ae5178b089581a05b603f77c32ece079341bef7b3a93d8f79c3035af93`, applied Alembic migration `20260707_0006`, confirmed two idempotent synthetic seed runs, rebuilt and installed the Flutter web bundle for `https://dr-ai.43.132.169.195.sslip.io`, validated/recreated Caddy, and verified public health/web routes plus credentialed staging smoke. The new Phase 1 support endpoints passed create/list/status, cross-requester `404`, and unsafe-content `422` staging probes. No production deployment, tester/account/monitoring change, native store upload, tag, push, PR, real patient data, or clinical workflow was performed. | `docs/Phase_1_Production_Data_Foundation_Record.md`, `deploy/tencent/staging/README.md`, `scripts/run_staging_smoke.py`, staging URL: <https://dr-ai.43.132.169.195.sslip.io> | Staging is current for Phase 1. Begin Phase 2 only when explicitly requested; keep Phase 5 admin support queue handling and specialist/admin UI deferred. |
+| 2026-07-07 | Complete - Phase 2 medication core slice | Implemented the next Phase 2 patient/doctor core slice locally: doctor-owned medication CRUD, prescription CRUD with medication lines, medication reminders, refill reminders, metadata-only in-app queued notification records for active reminders, expanded care-bundle readback, patient own reminder/notification reads, doctor Patient Management medication workflow controls, patient prescription/reminder readback, neutral wrong-role/cross-patient denials, and metadata-only audit/notification assertions. No migration was required because Phase 1 already added prescription, prescription medication, medication reminder, and notification tables. No Phase 3 AI workflow, Phase 4 clinic operations, Phase 5 specialist/admin UI, deployment, push, tag, PR, external notification service, real patient data, or clinical claim was added. | `services/api/app/dashboard.py`, `services/api/app/schemas.py`, `services/api/app/models.py`, `services/api/tests/test_phase2_patient_doctor_core.py`, `apps/dr_ai_app/lib/features/doctor/presentation/patient_management_screen.dart`, `apps/dr_ai_app/lib/features/patient/`, `apps/dr_ai_app/test/app_test.dart`, `docs/Phase_2_Patient_Doctor_Core_Progress_Record.md`, `docs/Dr_AI_v1.0_API_Contract.md` | Continue Phase 2 only: Tencent COS upload finalization, imaging list/detail/review workflow, production recovery-plan draft/review/approve depth, patient Today production tracking depth, and remaining core workflow tests remain. |
+| 2026-07-08 | Complete - Phase 2 patient/doctor core closure | Closed Phase 2 locally after the existing medical-history, medication, and imaging slices by adding production recovery-plan review metadata, migration `20260708_0009`, doctor-only submit-review/request-changes/approve/activate-compatible/complete transitions, patient Today progress summaries, Flutter doctor review controls, Flutter patient Today progress readback, updated patient dashboard golden evidence, expanded API/docs, and focused RBAC/audit tests. External push/SMS/email/native notification delivery remains gated beyond Phase 2 because it requires credentials, account/service changes, and platform configuration; the Phase 2 safe path remains metadata-only in-app notification records. No Phase 3 AI inference, Phase 4 clinic operations, Phase 5 specialist/admin UI, deployment, push, tag, PR, external account action, real patient data, or clinical claim was added. | `services/api/migrations/versions/20260708_0009_phase2_recovery_plan_review.py`, `services/api/app/models.py`, `services/api/app/schemas.py`, `services/api/app/dashboard.py`, `services/api/tests/test_phase2_patient_doctor_core.py`, `apps/dr_ai_app/lib/features/doctor/presentation/patient_management_screen.dart`, `apps/dr_ai_app/lib/features/patient/`, `apps/dr_ai_app/test/app_test.dart`, `apps/dr_ai_app/test/goldens/patient_dashboard_412x917.png`, `docs/Phase_2_Patient_Doctor_Core_Progress_Record.md`, `docs/Dr_AI_v1.0_API_Contract.md`, `docs/README.md`, `README.md` | Phase 3 AI systems is the next planned production phase, but it must not start without explicit approval. |

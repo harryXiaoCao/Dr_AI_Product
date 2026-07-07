@@ -232,7 +232,7 @@ class _PatientCareBundleView extends StatelessWidget {
     return ListView(
       key: const Key('patient-care-bundle-list'),
       children: <Widget>[
-        _ProfileHeader(patient: bundle.patient),
+        _ProfileHeader(bundle: bundle),
         const SizedBox(height: DrAiSpacing.sm),
         _ItemSection<MedicalRecordItem>(
           key: const Key('medical-history-section'),
@@ -244,6 +244,21 @@ class _PatientCareBundleView extends StatelessWidget {
             title: item.title,
             subtitle: item.category,
             body: item.summary,
+          ),
+        ),
+        const SizedBox(height: DrAiSpacing.sm),
+        _ItemSection<MedicalImagingAsset>(
+          key: const Key('imaging-assets-section'),
+          title: 'Imaging',
+          icon: Icons.image_search_outlined,
+          items: bundle.imagingAssets,
+          emptyTitle: 'No imaging assets',
+          itemBuilder: (item) => _InfoTile(
+            title: '${item.contentType} asset',
+            subtitle: '${item.uploadStatus} - ${item.reviewStatus}',
+            body:
+                '${item.sizeBytes} bytes via ${item.storageProvider}\n'
+                'Uploaded: ${_dateLabel(item.uploadedAt)}',
           ),
         ),
         const SizedBox(height: DrAiSpacing.sm),
@@ -259,7 +274,37 @@ class _PatientCareBundleView extends StatelessWidget {
             body: '${item.schedule}\n${item.note}',
           ),
         ),
+        const SizedBox(height: DrAiSpacing.sm),
+        _ItemSection<PrescriptionItem>(
+          key: const Key('prescriptions-section'),
+          title: 'Prescriptions',
+          icon: Icons.receipt_long_outlined,
+          items: bundle.prescriptions,
+          emptyTitle: 'No prescriptions',
+          itemBuilder: (item) => _InfoTile(
+            title: '${item.status} prescription',
+            subtitle: '${item.medications.length} medication line(s)',
+            body: _prescriptionSummary(item),
+          ),
+        ),
+        const SizedBox(height: DrAiSpacing.sm),
+        _ItemSection<MedicationReminderItem>(
+          key: const Key('medication-reminders-section'),
+          title: 'Medication Reminders',
+          icon: Icons.notifications_active_outlined,
+          items: bundle.medicationReminders,
+          emptyTitle: 'No medication reminders',
+          itemBuilder: (item) => _InfoTile(
+            title: item.reminderType == 'refill'
+                ? 'Refill reminder'
+                : 'Medication reminder',
+            subtitle: '${item.status} - ${item.channel}',
+            body: '${item.scheduleLabel}\nNext: ${_dateLabel(item.nextDueAt)}',
+          ),
+        ),
         if (showNotes) ...<Widget>[
+          const SizedBox(height: DrAiSpacing.sm),
+          _MedicationWorkflowPanel(bundle: bundle),
           const SizedBox(height: DrAiSpacing.sm),
           _ItemSection<DoctorNoteItem>(
             key: const Key('doctor-notes-section'),
@@ -282,6 +327,328 @@ class _PatientCareBundleView extends StatelessWidget {
         ],
       ],
     );
+  }
+}
+
+class _MedicationWorkflowPanel extends ConsumerStatefulWidget {
+  const _MedicationWorkflowPanel({required this.bundle});
+
+  final PatientCareBundle bundle;
+
+  @override
+  ConsumerState<_MedicationWorkflowPanel> createState() =>
+      _MedicationWorkflowPanelState();
+}
+
+class _MedicationWorkflowPanelState
+    extends ConsumerState<_MedicationWorkflowPanel> {
+  late final TextEditingController _nameController;
+  late final TextEditingController _dosageController;
+  late final TextEditingController _scheduleController;
+  late final TextEditingController _noteController;
+  late final TextEditingController _prescriptionNoteController;
+  late final TextEditingController _reminderLabelController;
+  String _status = 'active';
+  String? _validationMessage;
+
+  MedicationItem? get _selectedMedication => widget.bundle.medications.isEmpty
+      ? null
+      : widget.bundle.medications.first;
+
+  PrescriptionMedicationItem? get _selectedPrescriptionMedication {
+    if (widget.bundle.prescriptions.isEmpty) {
+      return null;
+    }
+    final prescription = widget.bundle.prescriptions.first;
+    return prescription.medications.isEmpty
+        ? null
+        : prescription.medications.first;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    final medication = _selectedMedication;
+    _nameController = TextEditingController(
+      text: medication?.name ?? 'Synthetic medication',
+    );
+    _dosageController = TextEditingController(
+      text: medication?.dosage ?? '10 mg',
+    );
+    _scheduleController = TextEditingController(
+      text: medication?.schedule ?? 'Every demo morning',
+    );
+    _noteController = TextEditingController(
+      text: medication?.note ?? 'Synthetic medication workflow only.',
+    );
+    _prescriptionNoteController = TextEditingController(
+      text: 'Synthetic prescription workflow only.',
+    );
+    _reminderLabelController = TextEditingController(
+      text: 'In-app medication reminder',
+    );
+    _status = medication?.status ?? 'active';
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _dosageController.dispose();
+    _scheduleController.dispose();
+    _noteController.dispose();
+    _prescriptionNoteController.dispose();
+    _reminderLabelController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = ref.watch(medicationWorkflowControllerProvider);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: DrAiColors.surfaceSubtle,
+        borderRadius: BorderRadius.circular(DrAiRadii.md),
+        border: Border.all(color: DrAiColors.outline),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(DrAiSpacing.sm),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                const Icon(
+                  Icons.medication_liquid_outlined,
+                  color: DrAiColors.brand,
+                ),
+                const SizedBox(width: DrAiSpacing.xs),
+                Expanded(
+                  child: Text(
+                    'Medication Workflow',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: DrAiSpacing.sm),
+            TextField(
+              key: const Key('medication-name-field'),
+              controller: _nameController,
+              maxLength: 160,
+              decoration: const InputDecoration(
+                counterText: '',
+                labelText: 'Medication name',
+                prefixIcon: Icon(Icons.medication_outlined),
+              ),
+            ),
+            const SizedBox(height: DrAiSpacing.xs),
+            Row(
+              children: <Widget>[
+                Expanded(
+                  child: TextField(
+                    key: const Key('medication-dosage-field'),
+                    controller: _dosageController,
+                    maxLength: 120,
+                    decoration: const InputDecoration(
+                      counterText: '',
+                      labelText: 'Dosage',
+                    ),
+                  ),
+                ),
+                const SizedBox(width: DrAiSpacing.xs),
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    key: const Key('medication-status-field'),
+                    initialValue: _status,
+                    decoration: const InputDecoration(labelText: 'Status'),
+                    items: const <DropdownMenuItem<String>>[
+                      DropdownMenuItem(value: 'active', child: Text('active')),
+                      DropdownMenuItem(value: 'paused', child: Text('paused')),
+                      DropdownMenuItem(
+                        value: 'stopped',
+                        child: Text('stopped'),
+                      ),
+                    ],
+                    onChanged: (value) =>
+                        setState(() => _status = value ?? 'active'),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: DrAiSpacing.xs),
+            TextField(
+              key: const Key('medication-schedule-field'),
+              controller: _scheduleController,
+              maxLength: 160,
+              decoration: const InputDecoration(
+                counterText: '',
+                labelText: 'Schedule',
+              ),
+            ),
+            const SizedBox(height: DrAiSpacing.xs),
+            TextField(
+              key: const Key('medication-note-field'),
+              controller: _noteController,
+              maxLength: 800,
+              minLines: 2,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                counterText: '',
+                labelText: 'Medication note',
+              ),
+            ),
+            if (_validationMessage != null)
+              _InlineMessage(message: _validationMessage!),
+            state.when(
+              data: (message) => message == null
+                  ? const SizedBox.shrink()
+                  : _InlineMessage(
+                      key: const Key('medication-workflow-success'),
+                      message: message,
+                      icon: Icons.check_circle_outline,
+                    ),
+              loading: () => const LinearProgressIndicator(),
+              error: (error, stackTrace) =>
+                  _InlineMessage(message: _safeErrorMessage(error)),
+            ),
+            const SizedBox(height: DrAiSpacing.xs),
+            Wrap(
+              spacing: DrAiSpacing.xs,
+              runSpacing: DrAiSpacing.xs,
+              children: <Widget>[
+                FilledButton.icon(
+                  key: const Key('save-medication-button'),
+                  onPressed: state.isLoading ? null : _saveMedication,
+                  icon: const Icon(Icons.save_outlined),
+                  label: Text(
+                    _selectedMedication == null
+                        ? 'Add medication'
+                        : 'Update medication',
+                  ),
+                ),
+                OutlinedButton.icon(
+                  key: const Key('create-prescription-button'),
+                  onPressed: state.isLoading ? null : _createPrescription,
+                  icon: const Icon(Icons.receipt_long_outlined),
+                  label: const Text('Issue prescription'),
+                ),
+                OutlinedButton.icon(
+                  key: const Key('create-medication-reminder-button'),
+                  onPressed: state.isLoading
+                      ? null
+                      : () => _saveReminder(reminderType: 'medication'),
+                  icon: const Icon(Icons.notifications_outlined),
+                  label: const Text('Medication reminder'),
+                ),
+                OutlinedButton.icon(
+                  key: const Key('create-refill-reminder-button'),
+                  onPressed: state.isLoading
+                      ? null
+                      : () => _saveReminder(reminderType: 'refill'),
+                  icon: const Icon(Icons.event_repeat_outlined),
+                  label: const Text('Refill reminder'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  bool _validateMedicationFields() {
+    final valid =
+        _nameController.text.trim().length >= 2 &&
+        _dosageController.text.trim().isNotEmpty &&
+        _scheduleController.text.trim().length >= 2;
+    setState(() {
+      _validationMessage = valid
+          ? null
+          : 'Medication name, dosage, and schedule are required.';
+    });
+    return valid;
+  }
+
+  Future<void> _saveMedication() async {
+    if (!_validateMedicationFields()) {
+      return;
+    }
+    await ref
+        .read(medicationWorkflowControllerProvider.notifier)
+        .saveMedication(
+          patientId: widget.bundle.patient.patientId,
+          medicationId: _selectedMedication?.id,
+          name: _nameController.text.trim(),
+          dosage: _dosageController.text.trim(),
+          schedule: _scheduleController.text.trim(),
+          status: _status,
+          note: _noteController.text.trim(),
+        );
+  }
+
+  Future<void> _createPrescription() async {
+    if (!_validateMedicationFields()) {
+      return;
+    }
+    final medication = _selectedMedication;
+    if (medication == null) {
+      setState(() {
+        _validationMessage = 'Save a medication before issuing a prescription.';
+      });
+      return;
+    }
+    await ref
+        .read(medicationWorkflowControllerProvider.notifier)
+        .createPrescription(
+          patientId: widget.bundle.patient.patientId,
+          medicationId: medication.id,
+          name: _nameController.text.trim(),
+          dosage: _dosageController.text.trim(),
+          schedule: _scheduleController.text.trim(),
+          notes: _prescriptionNoteController.text.trim(),
+        );
+  }
+
+  Future<void> _saveReminder({required String reminderType}) async {
+    final medication = _selectedMedication;
+    final prescriptionMedication = _selectedPrescriptionMedication;
+    if (reminderType == 'medication' && medication == null) {
+      setState(() {
+        _validationMessage = 'Save a medication before creating a reminder.';
+      });
+      return;
+    }
+    if (reminderType == 'refill' && prescriptionMedication == null) {
+      setState(() {
+        _validationMessage =
+            'Issue a prescription before creating a refill reminder.';
+      });
+      return;
+    }
+    setState(() => _validationMessage = null);
+    MedicationReminderItem? existing;
+    for (final item in widget.bundle.medicationReminders) {
+      if (item.reminderType == reminderType) {
+        existing = item;
+        break;
+      }
+    }
+    await ref
+        .read(medicationWorkflowControllerProvider.notifier)
+        .saveMedicationReminder(
+          patientId: widget.bundle.patient.patientId,
+          reminderId: existing?.id,
+          medicationId: reminderType == 'medication' ? medication?.id : null,
+          prescriptionMedicationId: reminderType == 'refill'
+              ? prescriptionMedication?.id
+              : null,
+          reminderType: reminderType,
+          scheduleLabel: _reminderLabelController.text.trim().isEmpty
+              ? 'In-app medication reminder'
+              : _reminderLabelController.text.trim(),
+          status: 'active',
+          nextDueAt: DateTime.now().toUtc().add(const Duration(days: 1)),
+        );
   }
 }
 
@@ -316,6 +683,7 @@ class _DemoAssessmentWorkflowState
   @override
   Widget build(BuildContext context) {
     final uploadState = ref.watch(demoAssetPresignControllerProvider);
+    final imagingState = ref.watch(medicalImagingWorkflowControllerProvider);
     final createState = ref.watch(assessmentCreateControllerProvider);
     final assessments = ref.watch(assessmentListProvider(widget.patientId));
     return DecoratedBox(
@@ -417,6 +785,69 @@ class _DemoAssessmentWorkflowState
                   return const SizedBox.shrink();
                 }
                 return _UploadPreparedCard(presign: presign);
+              },
+            ),
+            const SizedBox(height: DrAiSpacing.md),
+            Text(
+              'Phase 2 Imaging Workflow',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: DrAiSpacing.xs),
+            Wrap(
+              spacing: DrAiSpacing.xs,
+              runSpacing: DrAiSpacing.xs,
+              children: <Widget>[
+                OutlinedButton.icon(
+                  key: const Key('imaging-prepare-button'),
+                  onPressed: imagingState.isLoading ? null : _prepareImaging,
+                  icon: const Icon(Icons.add_photo_alternate_outlined),
+                  label: const Text('Prepare imaging'),
+                ),
+                imagingState.when(
+                  loading: () => const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                  error: (error, stackTrace) =>
+                      _InlineMessage(message: _safeErrorMessage(error)),
+                  data: (state) {
+                    final canComplete =
+                        state.presign != null &&
+                        state.asset?.uploadStatus != 'uploaded';
+                    final canReview =
+                        state.asset?.uploadStatus == 'uploaded' &&
+                        state.asset?.reviewStatus != 'reviewed';
+                    return Wrap(
+                      spacing: DrAiSpacing.xs,
+                      runSpacing: DrAiSpacing.xs,
+                      children: <Widget>[
+                        OutlinedButton.icon(
+                          key: const Key('imaging-complete-button'),
+                          onPressed: canComplete ? _completeImaging : null,
+                          icon: const Icon(Icons.cloud_done_outlined),
+                          label: const Text('Finalize upload'),
+                        ),
+                        OutlinedButton.icon(
+                          key: const Key('imaging-review-button'),
+                          onPressed: canReview ? _reviewImaging : null,
+                          icon: const Icon(Icons.fact_check_outlined),
+                          label: const Text('Mark reviewed'),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ],
+            ),
+            imagingState.when(
+              loading: () => const SizedBox.shrink(),
+              error: (error, stackTrace) => const SizedBox.shrink(),
+              data: (state) {
+                if (state.presign == null && state.asset == null) {
+                  return const SizedBox.shrink();
+                }
+                return _ImagingWorkflowCard(state: state);
               },
             ),
             const SizedBox(height: DrAiSpacing.md),
@@ -529,6 +960,47 @@ class _DemoAssessmentWorkflowState
         );
   }
 
+  void _prepareImaging() {
+    final filename = _filenameController.text.trim();
+    final size = int.tryParse(_sizeController.text.trim());
+    if (filename.length < 3 || size == null || size < 1) {
+      setState(() {
+        _uploadValidationError =
+            'Enter an imaging filename and a positive byte size.';
+      });
+      return;
+    }
+    setState(() => _uploadValidationError = null);
+    ref
+        .read(medicalImagingWorkflowControllerProvider.notifier)
+        .prepare(
+          patientId: widget.patientId,
+          filename: filename,
+          contentType: _contentType,
+          sizeBytes: size,
+        );
+  }
+
+  void _completeImaging() {
+    final size = int.tryParse(_sizeController.text.trim());
+    if (size == null || size < 1) {
+      setState(() {
+        _uploadValidationError = 'Enter the uploaded byte size to finalize.';
+      });
+      return;
+    }
+    setState(() => _uploadValidationError = null);
+    ref
+        .read(medicalImagingWorkflowControllerProvider.notifier)
+        .complete(patientId: widget.patientId, uploadedSizeBytes: size);
+  }
+
+  void _reviewImaging() {
+    ref
+        .read(medicalImagingWorkflowControllerProvider.notifier)
+        .review(patientId: widget.patientId, reviewStatus: 'reviewed');
+  }
+
   void _runAssessment() {
     if (_fixtureId.trim().isEmpty) {
       setState(() {
@@ -621,6 +1093,9 @@ class _RecoveryPlanEditorState extends ConsumerState<_RecoveryPlanEditor> {
               ),
               data: (data) {
                 _selectInitialPlan(data.items);
+                final selectedPlan = data.items
+                    .where((plan) => plan.planId == _selectedPlanId)
+                    .firstOrNull;
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
@@ -637,12 +1112,25 @@ class _RecoveryPlanEditorState extends ConsumerState<_RecoveryPlanEditor> {
                         children: <Widget>[
                           for (final plan in data.items)
                             ChoiceChip(
-                              label: Text('${plan.title} - ${plan.status}'),
+                              label: Text(
+                                '${plan.title} - ${plan.status} / ${plan.reviewStatus}',
+                              ),
                               selected: plan.planId == _selectedPlanId,
                               onSelected: (_) => _loadPlan(plan),
                             ),
                         ],
                       ),
+                    if (selectedPlan != null) ...<Widget>[
+                      const SizedBox(height: DrAiSpacing.xs),
+                      _InlineMessage(
+                        key: const Key('recovery-plan-review-status'),
+                        message:
+                            'Plan ${selectedPlan.status}; review ${selectedPlan.reviewStatus}; '
+                            '${selectedPlan.progressSummary.completedTaskCount}/'
+                            '${selectedPlan.progressSummary.taskCount} tasks complete.',
+                        icon: Icons.fact_check_outlined,
+                      ),
+                    ],
                     const SizedBox(height: DrAiSpacing.sm),
                     TextField(
                       key: const Key('recovery-plan-title-field'),
@@ -711,6 +1199,7 @@ class _RecoveryPlanEditorState extends ConsumerState<_RecoveryPlanEditor> {
                         return _InlineMessage(
                           message:
                               '${plan.title} saved as ${plan.status}. '
+                              'Review ${plan.reviewStatus}. '
                               '${plan.safetyLabel}',
                           icon: Icons.check_circle_outline,
                         );
@@ -725,13 +1214,39 @@ class _RecoveryPlanEditorState extends ConsumerState<_RecoveryPlanEditor> {
                           key: const Key('recovery-plan-save-button'),
                           onPressed: editorState.isLoading ? null : _save,
                           icon: const Icon(Icons.save_outlined),
-                          label: const Text('Save recovery plan'),
+                          label: const Text('Save draft'),
+                        ),
+                        OutlinedButton.icon(
+                          key: const Key('recovery-plan-submit-review-button'),
+                          onPressed: editorState.isLoading
+                              ? null
+                              : _submitReview,
+                          icon: const Icon(Icons.outgoing_mail),
+                          label: const Text('Submit review'),
+                        ),
+                        OutlinedButton.icon(
+                          key: const Key(
+                            'recovery-plan-request-changes-button',
+                          ),
+                          onPressed: editorState.isLoading
+                              ? null
+                              : _requestChanges,
+                          icon: const Icon(Icons.edit_note_outlined),
+                          label: const Text('Request changes'),
                         ),
                         OutlinedButton.icon(
                           key: const Key('recovery-plan-activate-button'),
-                          onPressed: editorState.isLoading ? null : _activate,
+                          onPressed: editorState.isLoading ? null : _approve,
                           icon: const Icon(Icons.task_alt_outlined),
-                          label: const Text('Activate for patient'),
+                          label: const Text('Approve for patient'),
+                        ),
+                        OutlinedButton.icon(
+                          key: const Key('recovery-plan-complete-button'),
+                          onPressed: editorState.isLoading
+                              ? null
+                              : _completePlan,
+                          icon: const Icon(Icons.done_all_outlined),
+                          label: const Text('Complete plan'),
                         ),
                       ],
                     ),
@@ -863,21 +1378,62 @@ class _RecoveryPlanEditorState extends ConsumerState<_RecoveryPlanEditor> {
         );
   }
 
-  void _activate() {
+  String? _latestPlanId() {
     final latest = ref.read(recoveryPlanEditorControllerProvider);
-    final planId =
-        (latest.hasValue ? latest.value?.planId : null) ?? _selectedPlanId;
+    return (latest.hasValue ? latest.value?.planId : null) ?? _selectedPlanId;
+  }
+
+  bool _requireSelectedPlan(String actionLabel) {
+    if (_latestPlanId() != null) {
+      setState(() => _validationError = null);
+      return true;
+    }
+    setState(() {
+      _validationError =
+          'Save the synthetic recovery plan before $actionLabel.';
+    });
+    return false;
+  }
+
+  void _submitReview() {
+    if (!_requireSelectedPlan('review submission')) {
+      return;
+    }
+    ref
+        .read(recoveryPlanEditorControllerProvider.notifier)
+        .submitForReview(patientId: widget.patientId, planId: _latestPlanId()!);
+  }
+
+  void _requestChanges() {
+    if (!_requireSelectedPlan('requesting changes')) {
+      return;
+    }
+    ref
+        .read(recoveryPlanEditorControllerProvider.notifier)
+        .requestChanges(patientId: widget.patientId, planId: _latestPlanId()!);
+  }
+
+  void _approve() {
+    final planId = _latestPlanId();
     if (planId == null) {
       setState(() {
-        _validationError =
-            'Save the synthetic recovery plan before activation.';
+        _validationError = 'Save and submit the synthetic recovery plan first.';
       });
       return;
     }
     setState(() => _validationError = null);
     ref
         .read(recoveryPlanEditorControllerProvider.notifier)
-        .activate(patientId: widget.patientId, planId: planId);
+        .approve(patientId: widget.patientId, planId: planId);
+  }
+
+  void _completePlan() {
+    if (!_requireSelectedPlan('completion')) {
+      return;
+    }
+    ref
+        .read(recoveryPlanEditorControllerProvider.notifier)
+        .completePlan(patientId: widget.patientId, planId: _latestPlanId()!);
   }
 }
 
@@ -1069,12 +1625,13 @@ class _ConsultationRequestPanelState
 }
 
 class _ProfileHeader extends StatelessWidget {
-  const _ProfileHeader({required this.patient});
+  const _ProfileHeader({required this.bundle});
 
-  final PatientProfile patient;
+  final PatientCareBundle bundle;
 
   @override
   Widget build(BuildContext context) {
+    final patient = bundle.patient;
     return DecoratedBox(
       decoration: BoxDecoration(
         color: DrAiColors.ink,
@@ -1105,6 +1662,17 @@ class _ProfileHeader extends StatelessWidget {
             ),
             const SizedBox(height: DrAiSpacing.xs),
             Text(
+              _demographicsLine(patient),
+              style: const TextStyle(color: DrAiColors.outlineMuted),
+            ),
+            const SizedBox(height: DrAiSpacing.xs),
+            Text(
+              _historyLine(bundle),
+              key: const Key('medical-history-overview-section'),
+              style: const TextStyle(color: DrAiColors.outlineMuted),
+            ),
+            const SizedBox(height: DrAiSpacing.xs),
+            Text(
               patient.overview,
               style: const TextStyle(color: DrAiColors.outlineMuted),
             ),
@@ -1113,6 +1681,70 @@ class _ProfileHeader extends StatelessWidget {
       ),
     );
   }
+}
+
+String _demographicsLine(PatientProfile patient) {
+  final values = <String>[
+    if (patient.birthYear != null) 'Born ${patient.birthYear}',
+    if (patient.sex != null) patient.sex!,
+    if (patient.preferredLanguage != null) patient.preferredLanguage!,
+    if (patient.contactPreference != null) patient.contactPreference!,
+  ];
+  return values.isEmpty ? 'Demographics not recorded' : values.join(' - ');
+}
+
+String _historyLine(PatientCareBundle bundle) {
+  return 'Allergies: ${_labelsOrEmpty(bundle.allergies)} | '
+      'Chronic diseases: ${_namesOrEmpty(bundle.chronicDiseases)} | '
+      'Visits: ${_visitsOrEmpty(bundle.visitHistory)} | '
+      'Diagnoses: ${_diagnosesOrEmpty(bundle.diagnoses)}';
+}
+
+String _labelsOrEmpty(List<PatientAllergyItem> items) {
+  if (items.isEmpty) {
+    return 'None recorded';
+  }
+  return items.map((item) => item.label).join(', ');
+}
+
+String _namesOrEmpty(List<ChronicDiseaseItem> items) {
+  if (items.isEmpty) {
+    return 'None recorded';
+  }
+  return items.map((item) => item.name).join(', ');
+}
+
+String _visitsOrEmpty(List<VisitHistoryItem> items) {
+  if (items.isEmpty) {
+    return 'None recorded';
+  }
+  return items.map((item) => item.title).join(', ');
+}
+
+String _diagnosesOrEmpty(List<DiagnosisItem> items) {
+  if (items.isEmpty) {
+    return 'None recorded';
+  }
+  return items.map((item) => item.label).join(', ');
+}
+
+String _prescriptionSummary(PrescriptionItem item) {
+  final lines = item.medications
+      .map((line) => '${line.name}: ${line.dosage} - ${line.schedule}')
+      .join('\n');
+  final notes = item.notes == null || item.notes!.isEmpty
+      ? 'No prescription note'
+      : item.notes!;
+  return '$lines\n$notes';
+}
+
+String _dateLabel(DateTime? value) {
+  if (value == null) {
+    return 'not scheduled';
+  }
+  return '${value.year.toString().padLeft(4, '0')}-'
+      '${value.month.toString().padLeft(2, '0')}-'
+      '${value.day.toString().padLeft(2, '0')}';
 }
 
 class _ItemSection<T> extends StatelessWidget {
@@ -1248,6 +1880,7 @@ class _InlineMessage extends StatelessWidget {
   const _InlineMessage({
     required this.message,
     this.icon = Icons.warning_amber_outlined,
+    super.key,
   });
 
   final String message;
@@ -1291,6 +1924,33 @@ class _UploadPreparedCard extends StatelessWidget {
             'Expires: ${presign.expiresAt.toUtc().toIso8601String()}\n'
             '${presign.safetyLabel}',
       ),
+    );
+  }
+}
+
+class _ImagingWorkflowCard extends StatelessWidget {
+  const _ImagingWorkflowCard({required this.state});
+
+  final MedicalImagingWorkflowState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final presign = state.presign;
+    final asset = state.asset;
+    final title = asset == null ? 'Imaging upload prepared' : 'Imaging status';
+    final subtitle = asset == null
+        ? '${presign?.storageProvider ?? 'tencent_cos'} metadata'
+        : '${asset.uploadStatus} - ${asset.reviewStatus}';
+    final body = asset == null
+        ? 'Expires: ${presign?.expiresAt.toUtc().toIso8601String()}\n'
+              '${presign?.safetyLabel ?? ''}'
+        : '${asset.contentType}, ${asset.uploadedSizeBytes ?? asset.sizeBytes} bytes\n'
+              'Reviewed: ${_dateLabel(asset.reviewedAt)}\n'
+              '${asset.safetyLabel}';
+    return Padding(
+      key: const Key('imaging-workflow-status'),
+      padding: const EdgeInsets.only(top: DrAiSpacing.xs),
+      child: _InfoTile(title: title, subtitle: subtitle, body: body),
     );
   }
 }

@@ -1,10 +1,14 @@
 # Dr. AI Documentation Index
 
-Current stage: production/commercial v1.0 Phase 1 data foundation is complete.
-Phase 1 adds production schema foundations, fail-closed role boundaries,
-route-level RBAC helpers, and authenticated support/deletion/feedback
-submission plus requester-scoped status endpoints. Phase 2 workflows have not
-started.
+Current stage: production/commercial v1.0 Phase 2 patient/doctor core
+workflows are complete locally. Phase 1 data foundation is complete, and Phase
+2 now includes demographics, allergies, chronic diseases, visit history,
+diagnoses, doctor notes, medication CRUD, prescription CRUD, medication/refill
+reminders, metadata-only in-app queued notification records,
+Tencent-COS-compatible upload metadata/finalization, imaging list/detail,
+doctor-only imaging review status, recovery-plan review/approval/completion,
+patient Today progress tracking, expanded care-bundle readback,
+doctor/patient Flutter surfaces, and focused RBAC/audit tests.
 
 ## Current Production Docs
 
@@ -17,6 +21,8 @@ started.
   Phase 1 readiness boundary.
 - `Phase_1_Production_Data_Foundation_Record.md` - Phase 1 schema/RBAC,
   support queue submission/status, data-boundary, and verification record.
+- `Phase_2_Patient_Doctor_Core_Progress_Record.md` - Phase 2 patient/doctor
+  core workflow closure, RBAC/audit boundary, and deferred gates.
 - `Dr_AI_v1.0_API_Contract.md` - implemented beta API boundary plus reserved
   production v1.0 contract gaps.
 - `Dr_AI_v1.0_Design_Freeze.md` - doctor/patient visual baseline from the
@@ -40,6 +46,8 @@ completion as production v1.0 completion.
 
 ## Next Production Phase
 
-Phase 2 is the next production phase and should start only when explicitly
-requested. Phase 5 still owns specialist/admin UI, audit search, system
-status, and admin-managed support/deletion/feedback queue handling.
+Phase 3 AI systems is the next planned production phase. External push, SMS,
+email, and native notification delivery remain gated beyond the Phase 2
+metadata-only in-app queue path. Phase 5 still owns specialist/admin UI, audit
+search, system status, and admin-managed support/deletion/feedback queue
+handling.

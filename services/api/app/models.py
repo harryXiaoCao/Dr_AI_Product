@@ -86,6 +86,10 @@ class PatientProfile(Base):
     )
     display_name: Mapped[str] = mapped_column(String(120))
     synthetic_identifier: Mapped[str] = mapped_column(String(80), unique=True, index=True)
+    birth_year: Mapped[int | None] = mapped_column(Integer)
+    sex: Mapped[str | None] = mapped_column(String(40))
+    preferred_language: Mapped[str | None] = mapped_column(String(80))
+    contact_preference: Mapped[str | None] = mapped_column(String(80))
 
     user: Mapped[User] = relationship(back_populates="patient_profile")
     care_relationships: Mapped[list["CareRelationship"]] = relationship(back_populates="patient")
@@ -98,7 +102,22 @@ class PatientProfile(Base):
     doctor_notes: Mapped[list["DoctorNote"]] = relationship(
         back_populates="patient", cascade="all, delete-orphan"
     )
+    allergies: Mapped[list["PatientAllergy"]] = relationship(
+        back_populates="patient", cascade="all, delete-orphan"
+    )
+    chronic_diseases: Mapped[list["ChronicDisease"]] = relationship(
+        back_populates="patient", cascade="all, delete-orphan"
+    )
+    visit_history: Mapped[list["VisitHistory"]] = relationship(
+        back_populates="patient", cascade="all, delete-orphan"
+    )
+    diagnoses: Mapped[list["Diagnosis"]] = relationship(
+        back_populates="patient", cascade="all, delete-orphan"
+    )
     demo_assets: Mapped[list["DemoMedicalAsset"]] = relationship(
+        back_populates="patient", cascade="all, delete-orphan"
+    )
+    imaging_assets: Mapped[list["MedicalImagingAsset"]] = relationship(
         back_populates="patient", cascade="all, delete-orphan"
     )
     simulated_assessments: Mapped[list["SimulatedAssessment"]] = relationship(
@@ -223,9 +242,109 @@ class DoctorNote(Base):
     title: Mapped[str] = mapped_column(String(160))
     body: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
 
     patient: Mapped[PatientProfile] = relationship(back_populates="doctor_notes")
     doctor: Mapped[DoctorProfile] = relationship()
+
+
+class PatientAllergy(Base):
+    __tablename__ = "patient_allergies"
+    __table_args__ = (Index("ix_patient_allergies_patient_status", "patient_id", "status"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    patient_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("patient_profiles.id", ondelete="CASCADE")
+    )
+    label: Mapped[str] = mapped_column(String(160))
+    reaction: Mapped[str | None] = mapped_column(String(240))
+    severity: Mapped[str] = mapped_column(String(40), default="unknown")
+    status: Mapped[str] = mapped_column(String(40), default="active")
+    recorded_by_user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE")
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    patient: Mapped[PatientProfile] = relationship(back_populates="allergies")
+    recorded_by: Mapped[User] = relationship()
+
+
+class ChronicDisease(Base):
+    __tablename__ = "chronic_diseases"
+    __table_args__ = (Index("ix_chronic_diseases_patient_status", "patient_id", "status"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    patient_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("patient_profiles.id", ondelete="CASCADE")
+    )
+    name: Mapped[str] = mapped_column(String(160))
+    status: Mapped[str] = mapped_column(String(40), default="active")
+    diagnosed_on: Mapped[date | None] = mapped_column(Date)
+    notes: Mapped[str | None] = mapped_column(Text)
+    recorded_by_user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE")
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    patient: Mapped[PatientProfile] = relationship(back_populates="chronic_diseases")
+    recorded_by: Mapped[User] = relationship()
+
+
+class VisitHistory(Base):
+    __tablename__ = "visit_history"
+    __table_args__ = (Index("ix_visit_history_patient_occurred", "patient_id", "occurred_at"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    patient_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("patient_profiles.id", ondelete="CASCADE")
+    )
+    visit_type: Mapped[str] = mapped_column(String(80))
+    title: Mapped[str] = mapped_column(String(160))
+    summary: Mapped[str] = mapped_column(Text)
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    clinician_label: Mapped[str | None] = mapped_column(String(160))
+    recorded_by_user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE")
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    patient: Mapped[PatientProfile] = relationship(back_populates="visit_history")
+    recorded_by: Mapped[User] = relationship()
+
+
+class Diagnosis(Base):
+    __tablename__ = "diagnoses"
+    __table_args__ = (Index("ix_diagnoses_patient_status", "patient_id", "status"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    patient_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("patient_profiles.id", ondelete="CASCADE")
+    )
+    label: Mapped[str] = mapped_column(String(160))
+    status: Mapped[str] = mapped_column(String(40), default="active")
+    diagnosed_on: Mapped[date | None] = mapped_column(Date)
+    notes: Mapped[str | None] = mapped_column(Text)
+    recorded_by_user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE")
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    patient: Mapped[PatientProfile] = relationship(back_populates="diagnoses")
+    recorded_by: Mapped[User] = relationship()
 
 
 class DemoMedicalAsset(Base):
@@ -249,6 +368,46 @@ class DemoMedicalAsset(Base):
 
     patient: Mapped[PatientProfile] = relationship(back_populates="demo_assets")
     uploaded_by: Mapped[User] = relationship()
+
+
+class MedicalImagingAsset(Base):
+    __tablename__ = "medical_imaging_assets"
+    __table_args__ = (
+        Index("ix_medical_imaging_patient_created", "patient_id", "created_at"),
+        Index("ix_medical_imaging_patient_review", "patient_id", "review_status"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    patient_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("patient_profiles.id", ondelete="CASCADE")
+    )
+    uploaded_by_user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE")
+    )
+    reviewed_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL")
+    )
+    storage_provider: Mapped[str] = mapped_column(String(40), default="tencent_cos")
+    content_type: Mapped[str] = mapped_column(String(80))
+    file_extension: Mapped[str] = mapped_column(String(16))
+    size_bytes: Mapped[int]
+    uploaded_size_bytes: Mapped[int | None]
+    object_key: Mapped[str] = mapped_column(String(260), unique=True)
+    upload_status: Mapped[str] = mapped_column(String(40), default="pending_upload")
+    review_status: Mapped[str] = mapped_column(String(40), default="not_ready")
+    etag: Mapped[str | None] = mapped_column(String(128))
+    checksum_sha256: Mapped[str | None] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    uploaded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    patient: Mapped[PatientProfile] = relationship(back_populates="imaging_assets")
+    uploaded_by: Mapped[User] = relationship(foreign_keys=[uploaded_by_user_id])
+    reviewed_by: Mapped[User | None] = relationship(foreign_keys=[reviewed_by_user_id])
 
 
 class SimulatedAssessment(Base):
@@ -288,7 +447,10 @@ class SimulatedAssessment(Base):
 
 class RecoveryPlan(Base):
     __tablename__ = "recovery_plans"
-    __table_args__ = (Index("ix_recovery_plans_patient_status", "patient_id", "status"),)
+    __table_args__ = (
+        Index("ix_recovery_plans_patient_status", "patient_id", "status"),
+        Index("ix_recovery_plans_patient_review", "patient_id", "review_status"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     patient_id: Mapped[uuid.UUID] = mapped_column(
@@ -300,15 +462,24 @@ class RecoveryPlan(Base):
     title: Mapped[str] = mapped_column(String(160))
     instructions: Mapped[str] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(40), default="draft")
+    review_status: Mapped[str] = mapped_column(String(40), default="draft")
     safety_label: Mapped[str] = mapped_column(String(120))
+    review_actor_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL")
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
+    submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     activated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     patient: Mapped[PatientProfile] = relationship(back_populates="recovery_plans")
     doctor: Mapped[DoctorProfile] = relationship()
+    review_actor: Mapped[User | None] = relationship()
     tasks: Mapped[list["RecoveryTask"]] = relationship(
         back_populates="plan", cascade="all, delete-orphan", order_by="RecoveryTask.sort_order"
     )
@@ -736,6 +907,10 @@ class Prescription(Base):
 
     patient: Mapped[PatientProfile] = relationship()
     prescribed_by: Mapped[User] = relationship()
+    medications: Mapped[list["PrescriptionMedication"]] = relationship(
+        back_populates="prescription",
+        cascade="all, delete-orphan",
+    )
 
 
 class PrescriptionMedication(Base):
@@ -756,7 +931,7 @@ class PrescriptionMedication(Base):
     end_date: Mapped[date | None] = mapped_column(Date)
     metadata_json: Mapped[dict[str, object]] = mapped_column(JSONB, default=dict)
 
-    prescription: Mapped[Prescription] = relationship()
+    prescription: Mapped[Prescription] = relationship(back_populates="medications")
     medication: Mapped[Medication | None] = relationship()
 
 

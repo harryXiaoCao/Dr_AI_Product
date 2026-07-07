@@ -8,12 +8,19 @@ presign metadata, deterministic simulated assessment results, recovery plans,
 Today tasks, educational chat, asynchronous consultation request/status
 readback, and audit metadata events.
 
-Production v1.0 Phase 0 is complete, and Phase 1 production data foundation is
-complete. Phase 1 adds schema foundations, fail-closed specialist/admin role
-boundaries, route-level RBAC helpers, and authenticated
+Production v1.0 Phase 0, Phase 1, and Phase 2 patient/doctor core workflows
+are complete locally. Phase 1 adds schema foundations, fail-closed
+specialist/admin role boundaries, route-level RBAC helpers, and authenticated
 support/deletion/feedback submission plus requester-scoped status endpoints.
-Specialist/admin workflows, admin support/deletion/feedback queue handling,
-real COS upload completion, real notification delivery, billing workflows,
+Phase 2 adds persisted demographics, allergies, chronic diseases, visit
+history, diagnoses, doctor-note CRUD, expanded care-bundle readback,
+doctor-owned medication CRUD, prescription CRUD, medication/refill reminders,
+metadata-only in-app queued notification records, production-separated
+Tencent-COS-compatible imaging metadata/finalization/review, recovery-plan
+review/approval/completion semantics, patient Today progress, neutral denials,
+and metadata-only audit events. Specialist/admin workflows, admin
+support/deletion/feedback queue handling, external push/SMS/email/native
+notification delivery, raw COS file-transfer verification, billing workflows,
 analytics dashboards, clinic operations workflows, real AI/model inference,
 and real clinical workflows remain unavailable until later production phases
 implement and test them.
@@ -73,17 +80,41 @@ Implemented Week 2 and Week 3 endpoints include:
 - `GET /api/v1/patients/{patient_id}`
 - `GET /api/v1/patients/{patient_id}/records`
 - `GET /api/v1/patients/{patient_id}/medications`
+- `POST /api/v1/patients/{patient_id}/medications`
+- `PUT /api/v1/patients/{patient_id}/medications/{medication_id}`
+- `DELETE /api/v1/patients/{patient_id}/medications/{medication_id}`
 - `GET /api/v1/patients/{patient_id}/doctor-notes`
 - `GET /api/v1/patients/{patient_id}/care`
 - `GET /api/v1/patient/me/care`
 - `GET /api/v1/medications`
+- `GET /api/v1/reminders`
+- `GET /api/v1/patient/me/notifications`
+- `GET /api/v1/patients/{patient_id}/prescriptions`
+- `POST /api/v1/patients/{patient_id}/prescriptions`
+- `PUT /api/v1/patients/{patient_id}/prescriptions/{prescription_id}`
+- `DELETE /api/v1/patients/{patient_id}/prescriptions/{prescription_id}`
+- `GET /api/v1/patients/{patient_id}/medication-reminders`
+- `POST /api/v1/patients/{patient_id}/medication-reminders`
+- `PUT /api/v1/patients/{patient_id}/medication-reminders/{reminder_id}`
+- `DELETE /api/v1/patients/{patient_id}/medication-reminders/{reminder_id}`
 - `POST /api/v1/patients/{patient_id}/assets/presign`
+- `POST /api/v1/patients/{patient_id}/imaging/presign`
+- `POST /api/v1/patients/{patient_id}/imaging/{asset_id}/complete`
+- `GET /api/v1/patients/{patient_id}/imaging`
+- `GET /api/v1/patients/{patient_id}/imaging/{asset_id}`
+- `POST /api/v1/patients/{patient_id}/imaging/{asset_id}/review`
+- `GET /api/v1/patient/me/imaging`
+- `GET /api/v1/patient/me/imaging/{asset_id}`
 - `GET /api/v1/patients/{patient_id}/assessments`
 - `POST /api/v1/patients/{patient_id}/assessments`
 - `GET /api/v1/patients/{patient_id}/recovery-plans`
 - `POST /api/v1/patients/{patient_id}/recovery-plans`
 - `PUT /api/v1/patients/{patient_id}/recovery-plans/{plan_id}`
+- `POST /api/v1/patients/{patient_id}/recovery-plans/{plan_id}/submit-review`
+- `POST /api/v1/patients/{patient_id}/recovery-plans/{plan_id}/request-changes`
+- `POST /api/v1/patients/{patient_id}/recovery-plans/{plan_id}/approve`
 - `POST /api/v1/patients/{patient_id}/recovery-plans/{plan_id}/activate`
+- `POST /api/v1/patients/{patient_id}/recovery-plans/{plan_id}/complete`
 - `GET /api/v1/patient/me/today`
 - `POST /api/v1/patient/me/tasks/{task_id}/completion`
 - `POST /api/v1/chat/threads/{thread_id}/messages`
@@ -91,16 +122,39 @@ Implemented Week 2 and Week 3 endpoints include:
 - `POST /api/v1/consultations`
 
 Doctors can read only active-care assigned patients. Patients can read only
-their own records, medications, and assessment history; doctor notes are
-doctor-facing only. Doctors can run simulated assessments for assigned
-patients. Patients cannot run assessments. Cross-patient and wrong-role probes
-remain neutral `404 not_found`.
+their own records, medications, prescriptions, reminders, metadata-only
+notifications, and assessment history; doctor notes are doctor-facing only.
+Doctors can run simulated assessments for assigned patients. Patients cannot
+run assessments. Cross-patient and wrong-role probes remain neutral
+`404 not_found`.
 
-Doctors can create, edit, and activate synthetic recovery plans only for
-assigned patients. Patients can read only their own active Today tasks and can
-complete only their own active tasks. Recovery-plan and completion audit events
-record metadata such as status, task count, category, and plan/task IDs; they
-do not copy patient-owned plan instructions or task details into audit
+Doctors can create, edit, and delete medication entries, prescriptions with
+medication lines, and medication/refill reminders only for assigned patients.
+Active medication/refill reminders create metadata-only in-app queued
+notification rows for the patient account. The backend does not call external
+SMS, email, push, or native local-notification services in this slice.
+Medication, prescription, reminder, notification, and audit metadata stores
+resource IDs, statuses, counts, reminder type, and channel only; it does not
+copy medication names, dosages, schedules, notes, prescription notes, or
+reminder labels into audit or notification metadata.
+
+Doctors and patients can prepare and complete imaging uploads only inside
+their assigned/own patient boundary. The Phase 2 imaging workflow stores
+Tencent-COS-compatible metadata, upload status, review status, and byte counts;
+it does not fetch files from COS, inspect image contents, run model inference,
+or create clinical interpretation. Doctors can mark completed imaging metadata
+as reviewed or rejected. Imaging audit metadata stores actor role, content
+type, byte counts, storage provider, upload status, review status, and boolean
+checksum/ETag presence only; it does not copy filenames, object keys, upload
+URLs, ETags, checksums, image contents, or review notes.
+
+Doctors can create, edit, submit for review, request changes, approve,
+activate-compatible, and complete synthetic recovery plans only for assigned
+patients. Patients can read only their own active Today tasks and can complete
+only their own active tasks. Recovery-plan and completion audit events record
+metadata such as status, review status, task counts, completed counts,
+category, source transition, and plan/task IDs; they do not copy plan titles,
+patient-owned plan instructions, task titles, or task details into audit
 metadata.
 
 Educational chat accepts patient question-preparation prompts only. Red-flag

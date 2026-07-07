@@ -14,11 +14,54 @@ abstract interface class DrAiRepository {
   Future<PatientListData> loadPatients({String? query});
   Future<PatientCareBundle> loadPatientCareBundle(String patientId);
   Future<PatientCareBundle> loadOwnPatientCare();
+  Future<MedicationItem> saveMedication({
+    required String patientId,
+    required String? medicationId,
+    required String name,
+    required String dosage,
+    required String schedule,
+    required String status,
+    required String note,
+  });
+  Future<PrescriptionItem> createPrescription({
+    required String patientId,
+    required String medicationId,
+    required String name,
+    required String dosage,
+    required String schedule,
+    required String notes,
+  });
+  Future<MedicationReminderItem> saveMedicationReminder({
+    required String patientId,
+    required String? reminderId,
+    required String? medicationId,
+    required String? prescriptionMedicationId,
+    required String reminderType,
+    required String scheduleLabel,
+    required String status,
+    required DateTime? nextDueAt,
+  });
   Future<DemoAssetPresign> presignDemoAsset({
     required String patientId,
     required String filename,
     required String contentType,
     required int sizeBytes,
+  });
+  Future<MedicalImagingPresign> presignMedicalImaging({
+    required String patientId,
+    required String filename,
+    required String contentType,
+    required int sizeBytes,
+  });
+  Future<MedicalImagingAsset> completeMedicalImagingUpload({
+    required String patientId,
+    required String assetId,
+    required int uploadedSizeBytes,
+  });
+  Future<MedicalImagingAsset> reviewMedicalImagingAsset({
+    required String patientId,
+    required String assetId,
+    required String reviewStatus,
   });
   Future<AssessmentListData> loadAssessments(String patientId);
   Future<AssessmentResult> createSimulatedAssessment({
@@ -41,6 +84,22 @@ abstract interface class DrAiRepository {
     required List<RecoveryTaskInput> tasks,
   });
   Future<RecoveryPlanData> activateRecoveryPlan({
+    required String patientId,
+    required String planId,
+  });
+  Future<RecoveryPlanData> submitRecoveryPlanForReview({
+    required String patientId,
+    required String planId,
+  });
+  Future<RecoveryPlanData> requestRecoveryPlanChanges({
+    required String patientId,
+    required String planId,
+  });
+  Future<RecoveryPlanData> approveRecoveryPlan({
+    required String patientId,
+    required String planId,
+  });
+  Future<RecoveryPlanData> completeRecoveryPlan({
     required String patientId,
     required String planId,
   });
@@ -187,6 +246,101 @@ class DioDrAiRepository implements DrAiRepository {
   }
 
   @override
+  Future<MedicationItem> saveMedication({
+    required String patientId,
+    required String? medicationId,
+    required String name,
+    required String dosage,
+    required String schedule,
+    required String status,
+    required String note,
+  }) async {
+    final data = <String, dynamic>{
+      'name': name,
+      'dosage': dosage,
+      'schedule': schedule,
+      'status': status,
+      'note': note,
+    };
+    final response = medicationId == null
+        ? await _authorizedPost(
+            '/api/v1/patients/$patientId/medications',
+            data: data,
+          )
+        : await _authorizedPut(
+            '/api/v1/patients/$patientId/medications/$medicationId',
+            data: data,
+          );
+    return MedicationItem.fromJson(response);
+  }
+
+  @override
+  Future<PrescriptionItem> createPrescription({
+    required String patientId,
+    required String medicationId,
+    required String name,
+    required String dosage,
+    required String schedule,
+    required String notes,
+  }) async {
+    final response = await _authorizedPost(
+      '/api/v1/patients/$patientId/prescriptions',
+      data: <String, dynamic>{
+        'status': 'issued',
+        'issued_at': DateTime.now().toUtc().toIso8601String(),
+        'notes': notes,
+        'medications': <Map<String, dynamic>>[
+          <String, dynamic>{
+            'medication_id': medicationId,
+            'name': name,
+            'dosage': dosage,
+            'schedule': schedule,
+          },
+        ],
+      },
+    );
+    return PrescriptionItem.fromJson(response);
+  }
+
+  @override
+  Future<MedicationReminderItem> saveMedicationReminder({
+    required String patientId,
+    required String? reminderId,
+    required String? medicationId,
+    required String? prescriptionMedicationId,
+    required String reminderType,
+    required String scheduleLabel,
+    required String status,
+    required DateTime? nextDueAt,
+  }) async {
+    final data = <String, dynamic>{
+      'reminder_type': reminderType,
+      'schedule_label': scheduleLabel,
+      'channel': 'in_app',
+      'status': status,
+    };
+    if (medicationId != null) {
+      data['medication_id'] = medicationId;
+    }
+    if (prescriptionMedicationId != null) {
+      data['prescription_medication_id'] = prescriptionMedicationId;
+    }
+    if (nextDueAt != null) {
+      data['next_due_at'] = nextDueAt.toUtc().toIso8601String();
+    }
+    final response = reminderId == null
+        ? await _authorizedPost(
+            '/api/v1/patients/$patientId/medication-reminders',
+            data: data,
+          )
+        : await _authorizedPut(
+            '/api/v1/patients/$patientId/medication-reminders/$reminderId',
+            data: data,
+          );
+    return MedicationReminderItem.fromJson(response);
+  }
+
+  @override
   Future<DemoAssetPresign> presignDemoAsset({
     required String patientId,
     required String filename,
@@ -202,6 +356,50 @@ class DioDrAiRepository implements DrAiRepository {
       },
     );
     return DemoAssetPresign.fromJson(response);
+  }
+
+  @override
+  Future<MedicalImagingPresign> presignMedicalImaging({
+    required String patientId,
+    required String filename,
+    required String contentType,
+    required int sizeBytes,
+  }) async {
+    final response = await _authorizedPost(
+      '/api/v1/patients/$patientId/imaging/presign',
+      data: <String, dynamic>{
+        'filename': filename,
+        'content_type': contentType,
+        'size_bytes': sizeBytes,
+      },
+    );
+    return MedicalImagingPresign.fromJson(response);
+  }
+
+  @override
+  Future<MedicalImagingAsset> completeMedicalImagingUpload({
+    required String patientId,
+    required String assetId,
+    required int uploadedSizeBytes,
+  }) async {
+    final response = await _authorizedPost(
+      '/api/v1/patients/$patientId/imaging/$assetId/complete',
+      data: <String, dynamic>{'uploaded_size_bytes': uploadedSizeBytes},
+    );
+    return MedicalImagingAsset.fromJson(response);
+  }
+
+  @override
+  Future<MedicalImagingAsset> reviewMedicalImagingAsset({
+    required String patientId,
+    required String assetId,
+    required String reviewStatus,
+  }) async {
+    final response = await _authorizedPost(
+      '/api/v1/patients/$patientId/imaging/$assetId/review',
+      data: <String, String>{'review_status': reviewStatus},
+    );
+    return MedicalImagingAsset.fromJson(response);
   }
 
   @override
@@ -281,6 +479,54 @@ class DioDrAiRepository implements DrAiRepository {
   }) async {
     final response = await _authorizedPost(
       '/api/v1/patients/$patientId/recovery-plans/$planId/activate',
+      data: const <String, dynamic>{},
+    );
+    return RecoveryPlanData.fromJson(response);
+  }
+
+  @override
+  Future<RecoveryPlanData> submitRecoveryPlanForReview({
+    required String patientId,
+    required String planId,
+  }) async {
+    final response = await _authorizedPost(
+      '/api/v1/patients/$patientId/recovery-plans/$planId/submit-review',
+      data: const <String, dynamic>{},
+    );
+    return RecoveryPlanData.fromJson(response);
+  }
+
+  @override
+  Future<RecoveryPlanData> requestRecoveryPlanChanges({
+    required String patientId,
+    required String planId,
+  }) async {
+    final response = await _authorizedPost(
+      '/api/v1/patients/$patientId/recovery-plans/$planId/request-changes',
+      data: const <String, dynamic>{},
+    );
+    return RecoveryPlanData.fromJson(response);
+  }
+
+  @override
+  Future<RecoveryPlanData> approveRecoveryPlan({
+    required String patientId,
+    required String planId,
+  }) async {
+    final response = await _authorizedPost(
+      '/api/v1/patients/$patientId/recovery-plans/$planId/approve',
+      data: const <String, dynamic>{},
+    );
+    return RecoveryPlanData.fromJson(response);
+  }
+
+  @override
+  Future<RecoveryPlanData> completeRecoveryPlan({
+    required String patientId,
+    required String planId,
+  }) async {
+    final response = await _authorizedPost(
+      '/api/v1/patients/$patientId/recovery-plans/$planId/complete',
       data: const <String, dynamic>{},
     );
     return RecoveryPlanData.fromJson(response);

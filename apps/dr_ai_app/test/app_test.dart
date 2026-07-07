@@ -47,9 +47,10 @@ Future<void> openDoctorPatientWorkflow(WidgetTester tester) async {
   await tester.pumpAndSettle();
   await tester.tap(find.byKey(const Key('patient-row-SYN-PATIENT-001')));
   await tester.pumpAndSettle();
-  await tester.drag(
+  await tester.dragUntilVisible(
+    find.byKey(const Key('demo-upload-presign-button')),
     find.byKey(const Key('patient-care-bundle-list')),
-    const Offset(0, -560),
+    const Offset(0, -600),
   );
   await tester.pumpAndSettle();
 }
@@ -401,7 +402,8 @@ void main() {
     tester,
   ) async {
     setViewport(tester, const Size(1280, 832));
-    await pumpApp(tester, FakeDrAiRepository(restoredSession: doctorSession));
+    final repository = FakeDrAiRepository(restoredSession: doctorSession);
+    await pumpApp(tester, repository);
 
     await tester.tap(find.text('Patient Management'));
     await tester.pumpAndSettle();
@@ -420,26 +422,90 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Patient Profile'), findsOneWidget);
+    expect(
+      find.byKey(const Key('medical-history-overview-section')),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('Allergies: Synthetic pollen sensitivity'),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('Diagnoses: Synthetic observation'),
+      findsOneWidget,
+    );
     expect(find.text('Medical History'), findsOneWidget);
     expect(find.text('Medications'), findsOneWidget);
-    expect(find.text('Doctor Notes'), findsOneWidget);
-    expect(find.text('Synthetic care-loop note'), findsOneWidget);
-    await tester.drag(
+    expect(find.text('Imaging'), findsOneWidget);
+    await tester.dragUntilVisible(
+      find.byKey(const Key('prescriptions-section')),
       find.byKey(const Key('patient-care-bundle-list')),
-      const Offset(0, -560),
+      const Offset(0, -360),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Prescriptions'), findsOneWidget);
+    await tester.dragUntilVisible(
+      find.byKey(const Key('medication-reminders-section')),
+      find.byKey(const Key('patient-care-bundle-list')),
+      const Offset(0, -360),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Medication Reminders'), findsOneWidget);
+    await tester.dragUntilVisible(
+      find.byKey(const Key('save-medication-button')),
+      find.byKey(const Key('patient-care-bundle-list')),
+      const Offset(0, -360),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('save-medication-button')));
+    await tester.pumpAndSettle();
+    expect(repository.medicationSaved, isTrue);
+    expect(
+      find.byKey(const Key('medication-workflow-success')),
+      findsOneWidget,
+    );
+
+    await tester.ensureVisible(
+      find.byKey(const Key('create-prescription-button')),
+    );
+    await tester.tap(find.byKey(const Key('create-prescription-button')));
+    await tester.pumpAndSettle();
+    expect(repository.prescriptionCreated, isTrue);
+
+    await tester.ensureVisible(
+      find.byKey(const Key('create-medication-reminder-button')),
+    );
+    await tester.tap(
+      find.byKey(const Key('create-medication-reminder-button')),
+    );
+    await tester.pumpAndSettle();
+    expect(repository.medicationReminderSaved, isTrue);
+
+    await tester.dragUntilVisible(
+      find.byKey(const Key('demo-upload-presign-button')),
+      find.byKey(const Key('patient-care-bundle-list')),
+      const Offset(0, -600),
     );
     await tester.pumpAndSettle();
     expect(
       find.textContaining('Research simulation - not for diagnosis.'),
       findsOneWidget,
     );
-
-    await tester.ensureVisible(
-      find.byKey(const Key('demo-upload-presign-button')),
-    );
     await tester.tap(find.byKey(const Key('demo-upload-presign-button')));
     await tester.pumpAndSettle();
     expect(find.text('Demo upload prepared'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('imaging-prepare-button')));
+    await tester.pumpAndSettle();
+    expect(repository.imagingPrepared, isTrue);
+    expect(find.byKey(const Key('imaging-workflow-status')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('imaging-complete-button')));
+    await tester.pumpAndSettle();
+    expect(repository.imagingCompleted, isTrue);
+    await tester.tap(find.byKey(const Key('imaging-review-button')));
+    await tester.pumpAndSettle();
+    expect(repository.imagingReviewed, isTrue);
+    expect(find.textContaining('reviewed'), findsWidgets);
 
     await tester.ensureVisible(find.byKey(const Key('assessment-run-button')));
     await tester.tap(find.byKey(const Key('assessment-run-button')));
@@ -463,6 +529,12 @@ void main() {
       const Offset(0, -320),
     );
     await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const Key('recovery-plan-submit-review-button')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.textContaining('in_review'), findsWidgets);
+
     await tester.tap(find.byKey(const Key('recovery-plan-activate-button')));
     await tester.pumpAndSettle();
     expect(find.textContaining('active'), findsWidgets);
@@ -521,20 +593,18 @@ void main() {
     await pumpApp(tester, repository);
     await openDoctorPatientWorkflow(tester);
 
-    await tester.ensureVisible(
-      find.byKey(const Key('assessment-fixture-field')),
-    );
-    await tester.tap(find.byKey(const Key('assessment-fixture-field')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('synthetic_lung_case_002').last);
-    await tester.pumpAndSettle();
-
     repository.assessmentError = const ApiError(
       code: 'service_unavailable',
       message: 'Assessment simulation is temporarily unavailable.',
       statusCode: 503,
     );
+    await tester.dragUntilVisible(
+      find.byKey(const Key('assessment-run-button')),
+      find.byKey(const Key('patient-care-bundle-list')),
+      const Offset(0, -300),
+    );
     await tester.ensureVisible(find.byKey(const Key('assessment-run-button')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('assessment-run-button')));
     await tester.pumpAndSettle();
 
@@ -542,14 +612,14 @@ void main() {
       find.text('Unable to reach Dr. AI. Check your connection and try again.'),
       findsOneWidget,
     );
-    expect(find.text('synthetic_lung_case_002'), findsOneWidget);
+    expect(find.text('synthetic_lung_case_001'), findsOneWidget);
 
     repository.assessmentError = null;
     await tester.tap(find.byKey(const Key('assessment-run-button')));
     await tester.pumpAndSettle();
 
     expect(find.textContaining('Risk: moderate'), findsWidgets);
-    expect(find.text('synthetic_lung_case_002'), findsOneWidget);
+    expect(find.text('synthetic_lung_case_001'), findsOneWidget);
   });
 
   testWidgets('patient dashboard renders seeded mobile state at 412x917', (
@@ -580,6 +650,30 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('patient-self-records')), findsOneWidget);
+    expect(
+      find.byKey(const Key('patient-self-imaging-assets')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('patient-self-history-summary')),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('Allergies: Synthetic pollen sensitivity'),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('Diagnoses: Synthetic observation'),
+      findsOneWidget,
+    );
+    await tester.dragUntilVisible(
+      find.byKey(const Key('patient-self-prescriptions')),
+      find.byKey(const Key('patient-dashboard-list')),
+      const Offset(0, -520),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('patient-self-prescriptions')), findsOneWidget);
+    expect(find.textContaining('Refill reminder'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -593,6 +687,10 @@ void main() {
     await pumpApp(tester, repository);
 
     expect(find.byKey(const Key('today-task-medication')), findsOneWidget);
+    expect(
+      find.byKey(const Key('patient-today-progress-summary')),
+      findsOneWidget,
+    );
     await tester.tap(find.byKey(const Key('today-task-medication')));
     await tester.pumpAndSettle();
 
@@ -708,7 +806,7 @@ void main() {
   testWidgets('doctor can request specialist consultation and read status', (
     tester,
   ) async {
-    setViewport(tester, const Size(1280, 832));
+    setViewport(tester, const Size(1280, 1000));
     final repository = FakeDrAiRepository(restoredSession: doctorSession);
     await pumpApp(tester, repository);
     await openDoctorPatientWorkflow(tester);
@@ -718,6 +816,10 @@ void main() {
       find.byKey(const Key('patient-care-bundle-list')),
       const Offset(0, -600),
     );
+    await tester.ensureVisible(
+      find.byKey(const Key('consultation-request-button')),
+    );
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('consultation-request-button')));
     await tester.pumpAndSettle();
 

@@ -1,12 +1,16 @@
 # Dr. AI
 
 Dr. AI is moving from a completed invited, non-clinical beta foundation toward
-production/commercial v1.0. Production v1.0 Phase 1 data foundation is
-complete: Phase 0 scope reconciliation is complete, Phase 1 has added
-production schema foundations, fail-closed future-role boundaries,
-route-level RBAC helpers, and authenticated support/deletion/feedback
-submission plus requester-scoped status endpoints. Phase 2 patient/doctor
-workflows have not started.
+production/commercial v1.0. Production v1.0 Phase 2 patient/doctor core
+workflows are complete locally: Phase 0 scope reconciliation and Phase 1 data
+foundation are complete, and Phase 2 now includes persisted demographics,
+allergies, chronic diseases, visit history, diagnoses, doctor-note CRUD,
+medication CRUD, prescription CRUD, medication/refill reminders, metadata-only
+in-app queued notification records, Tencent-COS-compatible imaging upload
+metadata/finalization, imaging list/detail/review status, production
+recovery-plan review/approval/completion semantics, patient Today progress
+tracking, expanded care-bundle readback, Flutter read/edit surfaces, and
+focused RBAC/audit tests.
 
 The repository accepts clearly synthetic demonstration data only. Do not enter
 real patient data.
@@ -16,12 +20,12 @@ doctor and patient dashboards, the doctor-led care loop through demo upload and
 simulated assessment, recovery plans and Today tasks, educational chat,
 consultation request/status readback, same-origin Tencent staging web/API
 deployment, Android debug access, beta support surfaces, and release evidence.
-That beta foundation is not the full production v1.0 definition: real COS
-upload completion, production data models, specialist/admin roles, support/
-deletion/feedback admin queue handling, billing workflows, analytics dashboards,
-clinic operations workflows, real model inference, store uploads, final-domain
-production deployment, tester invites, monitoring/account changes, and clinical
-workflows remain gated or unstarted.
+That beta foundation is not the full production v1.0 definition:
+specialist/admin roles, support/deletion/feedback admin queue handling,
+external notification delivery beyond metadata-only in-app records, billing
+workflows, analytics dashboards, clinic operations workflows, real model
+inference, store uploads, final-domain production deployment, tester invites,
+monitoring/account changes, and clinical workflows remain gated or unstarted.
 
 ## Repository map
 
@@ -38,6 +42,7 @@ Current production docs:
 - `docs/Phase_0_Production_v1_Surface_Audit.md`
 - `docs/Phase_0_Production_v1_Closure_Record.md`
 - `docs/Phase_1_Production_Data_Foundation_Record.md`
+- `docs/Phase_2_Patient_Doctor_Core_Progress_Record.md`
 - `docs/Dr_AI_v1.0_API_Contract.md`
 - `docs/Dr_AI_v1.0_Design_Freeze.md`
 

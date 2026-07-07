@@ -251,6 +251,18 @@ class _PatientTodayCard extends ConsumerWidget {
                   fontSize: 12,
                 ),
               ),
+              const SizedBox(height: 2),
+              Text(
+                '${data.progressSummary.completedTaskCount}/'
+                '${data.progressSummary.taskCount} tasks complete - '
+                '${data.progressSummary.completionPercent}%',
+                key: const Key('patient-today-progress-summary'),
+                style: const TextStyle(
+                  color: DrAiColors.brand,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
               const SizedBox(height: DrAiSpacing.xs),
             ],
             notifications.when(
@@ -581,11 +593,27 @@ class _PatientSelfCareCard extends StatelessWidget {
               style: const TextStyle(color: DrAiColors.brand, fontSize: 12),
             ),
             const SizedBox(height: DrAiSpacing.xs),
+            Text(_patientDemographicsLine(bundle.patient)),
+            const SizedBox(height: DrAiSpacing.xs),
             Text(
               bundle.records.isEmpty
                   ? 'No Medical Records'
                   : '${bundle.records.length} synthetic medical record(s)',
               key: const Key('patient-self-records'),
+            ),
+            const SizedBox(height: DrAiSpacing.xs),
+            Text(
+              bundle.imagingAssets.isEmpty
+                  ? 'No imaging assets'
+                  : '${bundle.imagingAssets.length} imaging asset(s): '
+                        '${bundle.imagingAssets.first.uploadStatus} / '
+                        '${bundle.imagingAssets.first.reviewStatus}',
+              key: const Key('patient-self-imaging-assets'),
+            ),
+            const SizedBox(height: DrAiSpacing.xs),
+            Text(
+              _patientHistorySummary(bundle),
+              key: const Key('patient-self-history-summary'),
             ),
             const SizedBox(height: DrAiSpacing.xs),
             if (bundle.medications.isEmpty)
@@ -607,11 +635,79 @@ class _PatientSelfCareCard extends StatelessWidget {
                     ),
                   ),
                 ),
+            const SizedBox(height: DrAiSpacing.xs),
+            Text(
+              bundle.prescriptions.isEmpty
+                  ? 'No prescriptions'
+                  : '${bundle.prescriptions.length} prescription(s)',
+              key: const Key('patient-self-prescriptions'),
+            ),
+            const SizedBox(height: DrAiSpacing.xs),
+            if (bundle.medicationReminders.isEmpty)
+              const Text('No medication reminders')
+            else
+              for (final reminder in bundle.medicationReminders)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: DrAiSpacing.xs),
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: DrAiColors.surfaceSubtle,
+                      borderRadius: BorderRadius.circular(DrAiRadii.md),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(DrAiSpacing.xs),
+                      child: Text(
+                        '${reminder.reminderType == 'refill' ? 'Refill' : 'Medication'} reminder\n'
+                        '${reminder.scheduleLabel} - ${reminder.status}',
+                      ),
+                    ),
+                  ),
+                ),
           ],
         ),
       ),
     );
   }
+}
+
+String _patientDemographicsLine(PatientProfile patient) {
+  final values = <String>[
+    if (patient.birthYear != null) 'Born ${patient.birthYear}',
+    if (patient.sex != null) patient.sex!,
+    if (patient.preferredLanguage != null) patient.preferredLanguage!,
+    if (patient.contactPreference != null) patient.contactPreference!,
+  ];
+  return values.isEmpty ? 'Demographics not recorded' : values.join(' - ');
+}
+
+String _patientHistorySummary(PatientCareBundle bundle) {
+  return <String>[
+    'Allergies: ${_patientLabelsOrEmpty(bundle.allergies)}',
+    'Chronic diseases: ${_patientConditionsOrEmpty(bundle.chronicDiseases)}',
+    'Visit history: ${bundle.visitHistory.length}',
+    'Diagnoses: ${_patientDiagnosesOrEmpty(bundle.diagnoses)}',
+  ].join('\n');
+}
+
+String _patientLabelsOrEmpty(List<PatientAllergyItem> items) {
+  if (items.isEmpty) {
+    return 'none recorded';
+  }
+  return items.map((item) => item.label).join(', ');
+}
+
+String _patientConditionsOrEmpty(List<ChronicDiseaseItem> items) {
+  if (items.isEmpty) {
+    return 'none recorded';
+  }
+  return items.map((item) => item.name).join(', ');
+}
+
+String _patientDiagnosesOrEmpty(List<DiagnosisItem> items) {
+  if (items.isEmpty) {
+    return 'none recorded';
+  }
+  return items.map((item) => item.label).join(', ');
 }
 
 class _PatientSection extends StatelessWidget {

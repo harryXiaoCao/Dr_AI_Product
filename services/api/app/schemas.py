@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal
 from uuid import UUID
 
@@ -72,6 +72,25 @@ class PatientListResponse(BaseModel):
 class PatientProfileResponse(PatientSummaryResponse):
     relationship_label: str
     overview: str
+    demographics: "PatientDemographicsResponse"
+
+
+class PatientDemographicsUpdateRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    display_name: str | None = Field(default=None, min_length=2, max_length=120)
+    birth_year: int | None = Field(default=None, ge=1900, le=2026)
+    sex: str | None = Field(default=None, min_length=2, max_length=40)
+    preferred_language: str | None = Field(default=None, min_length=2, max_length=80)
+    contact_preference: str | None = Field(default=None, min_length=2, max_length=80)
+
+
+class PatientDemographicsResponse(BaseModel):
+    display_name: str
+    birth_year: int | None
+    sex: str | None
+    preferred_language: str | None
+    contact_preference: str | None
 
 
 class MedicalRecordResponse(BaseModel):
@@ -103,12 +122,118 @@ class MedicationListResponse(BaseModel):
     next_cursor: None = None
 
 
+class MedicationRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    name: str = Field(min_length=2, max_length=160)
+    dosage: str = Field(min_length=1, max_length=120)
+    schedule: str = Field(min_length=2, max_length=160)
+    status: Literal["active", "paused", "stopped", "entered_in_error"] = "active"
+    note: str = Field(default="", max_length=800)
+
+
+class PrescriptionMedicationInput(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    medication_id: UUID | None = None
+    name: str = Field(min_length=2, max_length=160)
+    dosage: str = Field(min_length=1, max_length=120)
+    schedule: str = Field(min_length=2, max_length=160)
+    start_date: date | None = None
+    end_date: date | None = None
+
+
+class PrescriptionRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    status: Literal["draft", "issued", "cancelled"] = "draft"
+    issued_at: datetime | None = None
+    notes: str | None = Field(default=None, max_length=1200)
+    medications: list[PrescriptionMedicationInput] = Field(min_length=1, max_length=12)
+
+
+class PrescriptionMedicationResponse(BaseModel):
+    id: UUID
+    medication_id: UUID | None
+    name: str
+    dosage: str
+    schedule: str
+    start_date: date | None
+    end_date: date | None
+
+
+class PrescriptionResponse(BaseModel):
+    id: UUID
+    patient_id: UUID
+    status: Literal["draft", "issued", "cancelled"]
+    issued_at: datetime | None
+    notes: str | None
+    created_at: datetime
+    updated_at: datetime
+    medications: list[PrescriptionMedicationResponse]
+
+
+class PrescriptionListResponse(BaseModel):
+    items: list[PrescriptionResponse]
+    next_cursor: None = None
+
+
+class MedicationReminderRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    medication_id: UUID | None = None
+    prescription_medication_id: UUID | None = None
+    reminder_type: Literal["medication", "refill"] = "medication"
+    schedule_label: str = Field(min_length=2, max_length=160)
+    channel: Literal["in_app"] = "in_app"
+    status: Literal["active", "paused", "completed", "cancelled"] = "active"
+    next_due_at: datetime | None = None
+
+
+class MedicationReminderResponse(BaseModel):
+    id: UUID
+    patient_id: UUID
+    medication_id: UUID | None
+    prescription_medication_id: UUID | None
+    reminder_type: Literal["medication", "refill"]
+    schedule_label: str
+    channel: Literal["in_app"]
+    status: Literal["active", "paused", "completed", "cancelled"]
+    next_due_at: datetime | None
+    last_sent_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class MedicationReminderListResponse(BaseModel):
+    items: list[MedicationReminderResponse]
+    next_cursor: None = None
+
+
+class NotificationResponse(BaseModel):
+    id: UUID
+    notification_type: str
+    channel: Literal["in_app"]
+    status: Literal["queued", "sent", "cancelled"]
+    scheduled_for: datetime | None
+    sent_at: datetime | None
+    metadata_json: dict[str, object]
+    created_at: datetime
+    updated_at: datetime
+
+
+class NotificationListResponse(BaseModel):
+    items: list[NotificationResponse]
+    next_cursor: None = None
+
+
 class DoctorNoteResponse(BaseModel):
     id: UUID
     patient_id: UUID
     title: str
     body: str
     created_at: datetime
+    updated_at: datetime
 
 
 class DoctorNoteListResponse(BaseModel):
@@ -118,9 +243,129 @@ class DoctorNoteListResponse(BaseModel):
 
 class PatientCareBundleResponse(BaseModel):
     patient: PatientProfileResponse
+    allergies: list["PatientAllergyResponse"]
+    chronic_diseases: list["ChronicDiseaseResponse"]
+    visit_history: list["VisitHistoryResponse"]
+    diagnoses: list["DiagnosisResponse"]
     records: list[MedicalRecordResponse]
+    imaging_assets: list["MedicalImagingAssetResponse"]
     medications: list[MedicationResponse]
+    prescriptions: list[PrescriptionResponse]
+    medication_reminders: list[MedicationReminderResponse]
     doctor_notes: list[DoctorNoteResponse]
+
+
+class PatientAllergyRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    label: str = Field(min_length=2, max_length=160)
+    reaction: str | None = Field(default=None, max_length=240)
+    severity: Literal["unknown", "mild", "moderate", "severe"] = "unknown"
+    status: Literal["active", "inactive", "entered_in_error"] = "active"
+
+
+class PatientAllergyResponse(BaseModel):
+    id: UUID
+    patient_id: UUID
+    label: str
+    reaction: str | None
+    severity: Literal["unknown", "mild", "moderate", "severe"]
+    status: Literal["active", "inactive", "entered_in_error"]
+    created_at: datetime
+    updated_at: datetime
+
+
+class PatientAllergyListResponse(BaseModel):
+    items: list[PatientAllergyResponse]
+    next_cursor: None = None
+
+
+class ChronicDiseaseRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    name: str = Field(min_length=2, max_length=160)
+    status: Literal["active", "inactive", "resolved", "entered_in_error"] = "active"
+    diagnosed_on: date | None = None
+    notes: str | None = Field(default=None, max_length=800)
+
+
+class ChronicDiseaseResponse(BaseModel):
+    id: UUID
+    patient_id: UUID
+    name: str
+    status: Literal["active", "inactive", "resolved", "entered_in_error"]
+    diagnosed_on: date | None
+    notes: str | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class ChronicDiseaseListResponse(BaseModel):
+    items: list[ChronicDiseaseResponse]
+    next_cursor: None = None
+
+
+class VisitHistoryRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    visit_type: str = Field(min_length=2, max_length=80)
+    title: str = Field(min_length=3, max_length=160)
+    summary: str = Field(min_length=3, max_length=1200)
+    occurred_at: datetime
+    clinician_label: str | None = Field(default=None, max_length=160)
+
+
+class VisitHistoryResponse(BaseModel):
+    id: UUID
+    patient_id: UUID
+    visit_type: str
+    title: str
+    summary: str
+    occurred_at: datetime
+    clinician_label: str | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class VisitHistoryListResponse(BaseModel):
+    items: list[VisitHistoryResponse]
+    next_cursor: None = None
+
+
+class DiagnosisRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    label: str = Field(min_length=2, max_length=160)
+    status: Literal["active", "resolved", "entered_in_error"] = "active"
+    diagnosed_on: date | None = None
+    notes: str | None = Field(default=None, max_length=800)
+
+
+class DiagnosisResponse(BaseModel):
+    id: UUID
+    patient_id: UUID
+    label: str
+    status: Literal["active", "resolved", "entered_in_error"]
+    diagnosed_on: date | None
+    notes: str | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class DiagnosisListResponse(BaseModel):
+    items: list[DiagnosisResponse]
+    next_cursor: None = None
+
+
+class DoctorNoteCreateRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    title: str = Field(min_length=3, max_length=160)
+    body: str = Field(min_length=3, max_length=1200)
+
+
+class DoctorNoteUpdateRequest(DoctorNoteCreateRequest):
+    pass
 
 
 class DemoAssetPresignRequest(BaseModel):
@@ -143,6 +388,79 @@ class DemoAssetPresignResponse(BaseModel):
     safety_label: Literal["Synthetic demonstration data only. Do not enter real patient data."] = (
         "Synthetic demonstration data only. Do not enter real patient data."
     )
+
+
+class MedicalImagingPresignRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    filename: str = Field(min_length=3, max_length=160, pattern=r"^[A-Za-z0-9._ -]+$")
+    content_type: str = Field(min_length=3, max_length=80)
+    size_bytes: int = Field(ge=1)
+
+
+class MedicalImagingPresignResponse(BaseModel):
+    asset_id: UUID
+    patient_id: UUID
+    upload_url: str
+    method: Literal["PUT"] = "PUT"
+    headers: dict[str, str]
+    expires_at: datetime
+    max_size_bytes: int
+    upload_status: Literal["pending_upload", "uploaded", "failed", "expired"]
+    review_status: Literal["not_ready", "pending_review", "reviewed", "rejected"]
+    storage_provider: Literal["tencent_cos"]
+    safety_label: Literal["Synthetic demonstration data only. Do not enter real patient data."] = (
+        "Synthetic demonstration data only. Do not enter real patient data."
+    )
+
+
+class MedicalImagingCompleteRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    uploaded_size_bytes: int = Field(ge=1)
+    etag: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=128,
+        pattern=r'^[A-Za-z0-9._"-]+$',
+    )
+    checksum_sha256: str | None = Field(
+        default=None,
+        min_length=64,
+        max_length=64,
+        pattern=r"^[a-fA-F0-9]+$",
+    )
+
+
+class MedicalImagingReviewRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    review_status: Literal["reviewed", "rejected"]
+
+
+class MedicalImagingAssetResponse(BaseModel):
+    id: UUID
+    patient_id: UUID
+    storage_provider: Literal["tencent_cos"]
+    content_type: str
+    file_extension: str
+    size_bytes: int
+    uploaded_size_bytes: int | None
+    upload_status: Literal["pending_upload", "uploaded", "failed", "expired"]
+    review_status: Literal["not_ready", "pending_review", "reviewed", "rejected"]
+    created_at: datetime
+    updated_at: datetime
+    expires_at: datetime
+    uploaded_at: datetime | None
+    reviewed_at: datetime | None
+    safety_label: Literal["Synthetic demonstration data only. Do not enter real patient data."] = (
+        "Synthetic demonstration data only. Do not enter real patient data."
+    )
+
+
+class MedicalImagingAssetListResponse(BaseModel):
+    items: list[MedicalImagingAssetResponse]
+    next_cursor: None = None
 
 
 class AssessmentRequest(BaseModel):
@@ -173,6 +491,8 @@ class AssessmentListResponse(BaseModel):
 
 
 class RecoveryTaskInput(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
     category: Literal["medication", "exercise", "diet", "follow_up"]
     title: str = Field(min_length=3, max_length=160)
     detail: str = Field(min_length=3, max_length=800)
@@ -182,6 +502,8 @@ class RecoveryTaskInput(BaseModel):
 
 
 class RecoveryPlanCreateRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
     title: str = Field(min_length=3, max_length=160)
     instructions: str = Field(min_length=3, max_length=1200)
     tasks: list[RecoveryTaskInput] = Field(min_length=1, max_length=12)
@@ -205,18 +527,31 @@ class RecoveryTaskResponse(BaseModel):
     notification_status: str | None = None
 
 
+class RecoveryPlanProgressResponse(BaseModel):
+    task_count: int
+    completed_task_count: int
+    remaining_task_count: int
+    completion_percent: int
+
+
 class RecoveryPlanResponse(BaseModel):
     plan_id: UUID
     patient_id: UUID
     title: str
     instructions: str
     status: Literal["draft", "active", "completed"]
+    review_status: Literal["draft", "in_review", "changes_requested", "approved"]
     safety_label: Literal["Synthetic demonstration data only. Do not enter real patient data."] = (
         "Synthetic demonstration data only. Do not enter real patient data."
     )
     created_at: datetime
     updated_at: datetime
+    submitted_at: datetime | None
+    reviewed_at: datetime | None
+    approved_at: datetime | None
     activated_at: datetime | None
+    completed_at: datetime | None
+    progress_summary: RecoveryPlanProgressResponse
     tasks: list[RecoveryTaskResponse]
 
 
