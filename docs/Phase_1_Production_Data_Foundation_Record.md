@@ -16,9 +16,8 @@ specialist/admin and commercial workflows can become visible product surfaces.
 No specialist/admin Flutter UI, Phase 2 patient/doctor CRUD workflows, Phase 4
 clinic-operation workflows, Phase 5 admin handling UI, admin support queue
 resolution, real COS upload completion, real notification delivery,
-billing/payment processing, analytics dashboards, clinical model use,
-deployment, external account action, commit, tag, push, or pull request was
-performed.
+billing/payment processing, analytics dashboards, clinical model use, external
+account action, tag, push, or pull request was performed.
 
 ## Implemented
 
@@ -79,6 +78,40 @@ production tables.
 - Production seed fixtures were not added in Phase 1 because no production
   workflow requires seeded production rows yet; the current seed remains
   synthetic demo-only.
+
+## Post-Closure Tencent Staging Redeploy
+
+Recorded: 2026-07-07T17:52:12+08:00
+
+After Phase 1 was committed, Tencent staging was explicitly redeployed so the
+live same-origin web/API environment matches the completed Phase 1 foundation.
+This redeploy did not change production, tester accounts, monitoring/account
+settings, native store uploads, tags, pushes, pull requests, or real patient
+data.
+
+Deployment evidence:
+
+- Pre-deploy `/health` returned staging/database `ok`.
+- Built a sanitized API image on the Tencent CVM and pushed/deployed immutable
+  digest
+  `hkccr.ccs.tencentyun.com/dr-ai/dr-ai-backend@sha256:d10187ae5178b089581a05b603f77c32ece079341bef7b3a93d8f79c3035af93`.
+- Ran Alembic on staging; migration `20260707_0006` applied successfully.
+- Ran the synthetic seed twice; both runs were idempotent with all created
+  counts at `0`.
+- Rebuilt Flutter web for
+  `https://dr-ai.43.132.169.195.sslip.io`, installed it to the host `web/`
+  directory after backing up the previous bundle, validated Caddy config, and
+  recreated Caddy.
+- Public checks passed for `/health`, `/`, `/beta-support`, and unauthenticated
+  `/api/v1/me` returning `401`.
+- Credentialed staging smoke passed for login, refresh/logout, assigned-patient
+  search, neutral cross-patient denial, demo upload presign, simulated
+  assessment, recovery-plan activation, patient Today/task completion, Ask Dr.
+  AI, consultation status, and Beta support web surface.
+- Phase 1 support queue probe passed for support request create/list/status,
+  cross-requester `404`, and unsafe-content `422`.
+- Recent API log keyword scan found `0` matches for obvious password, token,
+  bearer, DeepSeek-key, JWT, or database URL strings.
 
 ## Verification
 
