@@ -42,14 +42,10 @@ def error_response(
 
 
 async def api_error_handler(request: Request, exc: ApiError) -> JSONResponse:
-    return error_response(
-        request, exc.status_code, exc.code, exc.message, exc.details
-    )
+    return error_response(request, exc.status_code, exc.code, exc.message, exc.details)
 
 
-async def validation_error_handler(
-    request: Request, exc: RequestValidationError
-) -> JSONResponse:
+async def validation_error_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
     details: list[dict[str, str]] = []
     for error in exc.errors():
         location = error.get("loc", ())
@@ -70,9 +66,7 @@ async def validation_error_handler(
     )
 
 
-async def http_error_handler(
-    request: Request, exc: StarletteHTTPException
-) -> JSONResponse:
+async def http_error_handler(request: Request, exc: StarletteHTTPException) -> JSONResponse:
     mapping: dict[int, tuple[str, str]] = {
         401: ("unauthenticated", "Authentication is required."),
         403: ("forbidden", "You do not have access to this resource."),

@@ -2,9 +2,9 @@
 
 This directory is the reproducible staging handoff for the approved Dr. AI
 architecture: an immutable FastAPI container on an existing Tencent Cloud
-compute host, Caddy-managed HTTPS, and an existing TencentDB for PostgreSQL
-instance. It does not create billable resources or change account-wide
-settings.
+compute host, Flutter web static files served by Caddy from the same origin,
+Caddy-managed HTTPS, and an existing TencentDB for PostgreSQL instance. It does
+not create billable resources or change account-wide settings.
 
 ## Required existing resources
 
@@ -38,15 +38,39 @@ Populate `.env` from `.env.example` on the host with mode `0600`.
 
 5. Run the seed command a second time and confirm every `*_created` count is
    zero.
-6. Start the service:
+6. Build the Flutter web app for the approved staging origin:
+
+   ```bash
+   cd ../../apps/dr_ai_app
+   flutter build web \
+     --release \
+     --dart-define=DR_AI_API_BASE_URL=https://$DR_AI_STAGING_HOST
+   ```
+
+7. Copy the generated `apps/dr_ai_app/build/web` contents to the host-side
+   `web/` directory beside `compose.yaml`. Back up any existing `web/`
+   directory first.
+
+8. Start or refresh the service:
 
    ```bash
    docker compose up -d
    ```
 
-7. Verify `https://$DR_AI_STAGING_HOST/health`, database status, login,
-   refresh rotation, logout, and neutral cross-patient access.
+9. Verify `https://$DR_AI_STAGING_HOST/health`, root web,
+   `/beta-support`, database status, login, refresh rotation, logout, and
+   neutral cross-patient access.
 
 The API container disables access logs so authorization headers, request
 bodies, refresh tokens, passwords, and synthetic patient-owned content cannot
 enter application logs.
+
+## Caddy routing
+
+Caddy serves the Flutter web build from `/srv/dr-ai-web` and keeps API traffic
+same-origin:
+
+- `/api/*` reverse-proxies to `api:8000`;
+- `/health` reverse-proxies to `api:8000`;
+- all other routes serve static Flutter files;
+- Flutter deep links fall back to `/index.html`.

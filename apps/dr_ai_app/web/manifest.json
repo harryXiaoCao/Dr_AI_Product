@@ -1,11 +1,12 @@
 {
-    "name": "dr_ai_app",
-    "short_name": "dr_ai_app",
-    "start_url": ".",
+    "name": "Dr. AI Beta",
+    "short_name": "Dr. AI",
+    "start_url": "/",
+    "scope": "/",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#F8FAFC",
+    "theme_color": "#2563EB",
+    "description": "Invited, synthetic-data-only Dr. AI beta for doctor web and patient mobile workflow validation.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

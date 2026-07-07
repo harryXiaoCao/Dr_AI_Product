@@ -11,11 +11,13 @@ class DrAiApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authControllerProvider);
-    if (auth.isLoading) {
+    final publicBetaSupportRoute = _isPublicBetaSupportRoute();
+    if (auth.isLoading && !publicBetaSupportRoute) {
       return MaterialApp(
         title: 'Dr. AI',
         debugShowCheckedModeBanner: false,
         theme: DrAiTheme.light,
+        builder: _focusTraversalBuilder,
         home: const SessionLoadingScreen(),
       );
     }
@@ -26,7 +28,25 @@ class DrAiApp extends ConsumerWidget {
       title: 'Dr. AI',
       debugShowCheckedModeBanner: false,
       theme: DrAiTheme.light,
-      routerConfig: createRouter(role),
+      builder: _focusTraversalBuilder,
+      routerConfig: createRouter(
+        role,
+        initialLocation: publicBetaSupportRoute ? '/beta-support' : null,
+      ),
+    );
+  }
+
+  bool _isPublicBetaSupportRoute() {
+    final uri = Uri.base;
+    return uri.path == '/beta-support' ||
+        uri.fragment == '/beta-support' ||
+        uri.fragment.startsWith('/beta-support?');
+  }
+
+  Widget _focusTraversalBuilder(BuildContext context, Widget? child) {
+    return FocusTraversalGroup(
+      policy: ReadingOrderTraversalPolicy(),
+      child: child ?? const SizedBox.shrink(),
     );
   }
 }

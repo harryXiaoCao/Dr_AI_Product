@@ -12,9 +12,7 @@ class Settings(BaseSettings):
     api_port: int = 8000
     log_level: str = "INFO"
     database_url: str = "postgresql+psycopg://localhost/dr_ai"
-    jwt_secret: SecretStr = SecretStr(
-        "local-development-only-change-before-staging-32-characters"
-    )
+    jwt_secret: SecretStr = SecretStr("local-development-only-change-before-staging-32-characters")
     jwt_issuer: str = "dr-ai-api"
     jwt_audience: str = "dr-ai-app"
     access_token_minutes: int = 10
@@ -25,6 +23,12 @@ class Settings(BaseSettings):
     seed_patient_password: SecretStr | None = None
     seed_unrelated_patient_password: SecretStr | None = None
     cors_allowed_origins: list[str] = []
+    deepseek_api_key: SecretStr | None = None
+    deepseek_base_url: str = "https://api.deepseek.com/chat/completions"
+    deepseek_model: str = "deepseek-v4-flash"
+    deepseek_timeout_seconds: float = 8.0
+    chat_rate_limit_messages: int = 4
+    chat_rate_limit_window_seconds: int = 60
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -44,9 +48,7 @@ class Settings(BaseSettings):
         if self.environment in {"staging", "production"} and "*" in (
             origin.strip() for origin in self.cors_allowed_origins
         ):
-            raise ValueError(
-                "DR_AI_CORS_ALLOWED_ORIGINS cannot contain * in staging or production"
-            )
+            raise ValueError("DR_AI_CORS_ALLOWED_ORIGINS cannot contain * in staging or production")
         return self
 
 

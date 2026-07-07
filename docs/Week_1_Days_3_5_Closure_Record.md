@@ -5,7 +5,11 @@ Recorded: 2026-07-04
 Status: complete for repository implementation, local verification, native
 runtime checks, and Tencent HTTPS staging deployment.
 
-Week 2 status: not started.
+Week 2 status: Days 6-7 and Days 8-9 complete in the working tree as of
+2026-07-05. Day 10 polish closure supersedes the earlier "Remaining Week 2
+work" note below without rewriting this historical Week 1 record. See
+[Week 2, Days 6-7 Closure Record](Week_2_Days_6_7_Closure_Record.md) and
+[Week 2, Days 8-9 Closure Record](Week_2_Days_8_9_Closure_Record.md).
 
 ## Closure outcome
 
@@ -41,10 +45,12 @@ The migration creates:
 
 It also creates the PostgreSQL `user_role` enum with `doctor` and `patient`.
 
-Clinical Week 2-3 entities and behavior remain unavailable. The database is
-ready for future migration expansion, but records, uploads, assessments,
-recovery-plan workflows, medication behavior, reminders, chat, DeepSeek, and
-consultations were not implemented in this gate.
+At the time of this Week 1 gate, clinical Week 2-3 entities and behavior were
+unavailable. Week 2 Days 6-7 later added read-only medical records,
+medications, and doctor notes in revision `20260705_0002`; upload,
+assessment, recovery-plan workflows, reminders, chat, DeepSeek, and
+consultations still remain outside the Week 1 gate and are tracked in the
+Week 2 closure record.
 
 ## Synthetic accounts and seed procedure
 
@@ -293,12 +299,13 @@ not be merged without separate authorization.
 
 ## Remaining Week 2 work
 
-Week 2 remains not started. Approved next scope:
+Superseded note, 2026-07-05: Week 2 Days 8-9 and the Day 10 polish gate later
+closed the upload, simulated assessment, cross-patient denial, and failure
+recovery items referenced here. This section is retained as historical Week 1
+handoff context.
 
-- patient search/list and richer profile;
-- medical history, medications, and doctor notes;
-- loading, empty, validation, unauthorized, and network-error states for the
-  expanded care loop;
+Week 2 Days 6-7 is complete in the working tree. Approved next scope:
+
 - presigned demo-image upload;
 - deterministic simulated assessment fixture service;
 - assessment result screen with simulation label and limitations;

@@ -4,9 +4,11 @@ import 'package:dr_ai_app/app/app.dart';
 import 'package:dr_ai_app/app/routing/app_role.dart';
 import 'package:dr_ai_app/app/routing/router.dart';
 import 'package:dr_ai_app/core/api/api_error.dart';
+import 'package:dr_ai_app/design_system/dr_ai_tokens.dart';
 import 'package:dr_ai_app/features/auth/application/auth_controller.dart';
 import 'package:dr_ai_app/features/auth/domain/auth_models.dart';
 import 'package:dr_ai_app/features/dashboard/domain/dashboard_data.dart';
+import 'package:dr_ai_app/features/patient/application/patient_care_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -32,7 +34,44 @@ void setViewport(WidgetTester tester, Size size) {
   });
 }
 
+double contrastRatio(Color foreground, Color background) {
+  final light = foreground.computeLuminance();
+  final dark = background.computeLuminance();
+  final lighter = light > dark ? light : dark;
+  final darker = light > dark ? dark : light;
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+Future<void> openDoctorPatientWorkflow(WidgetTester tester) async {
+  await tester.tap(find.text('Patient Management'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.byKey(const Key('patient-row-SYN-PATIENT-001')));
+  await tester.pumpAndSettle();
+  await tester.drag(
+    find.byKey(const Key('patient-care-bundle-list')),
+    const Offset(0, -560),
+  );
+  await tester.pumpAndSettle();
+}
+
 void main() {
+  test('core Dr. AI color pairs keep readable contrast', () {
+    expect(contrastRatio(DrAiColors.white, DrAiColors.brand), greaterThan(4.5));
+    expect(
+      contrastRatio(DrAiColors.white, DrAiColors.brandDark),
+      greaterThan(4.5),
+    );
+    expect(contrastRatio(DrAiColors.ink, DrAiColors.white), greaterThan(4.5));
+    expect(
+      contrastRatio(DrAiColors.ink, DrAiColors.patientAccent),
+      greaterThan(4.5),
+    );
+    expect(
+      contrastRatio(DrAiColors.danger, DrAiColors.white),
+      greaterThan(4.5),
+    );
+  });
+
   testWidgets('signed-out users see validation before a login request', (
     tester,
   ) async {
@@ -139,8 +178,8 @@ void main() {
     );
 
     expect(find.text('Recovery Plan'), findsWidgets);
-    expect(find.text('No Medical Records'), findsOneWidget);
-    expect(find.text('No Imaging Results'), findsOneWidget);
+    expect(find.text('Contact Doctor'), findsOneWidget);
+    expect(find.text('Medical Fee'), findsOneWidget);
   });
 
   testWidgets('logout clears the session and returns to sign in', (
@@ -180,6 +219,105 @@ void main() {
       );
     },
   );
+
+  testWidgets('beta support surface is reachable and local-only', (
+    tester,
+  ) async {
+    setViewport(tester, const Size(412, 917));
+    await pumpApp(tester, FakeDrAiRepository());
+
+    await tester.tap(find.byKey(const Key('login-beta-support-link')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Beta support'), findsOneWidget);
+    expect(find.byKey(const Key('beta-privacy-section')), findsOneWidget);
+    expect(find.byKey(const Key('beta-consent-section')), findsOneWidget);
+
+    Future<void> tapConsentCheckbox(Key rowKey) async {
+      final row = find.byKey(rowKey);
+      await tester.ensureVisible(row);
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.descendant(of: row, matching: find.byType(Checkbox)),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    await tapConsentCheckbox(const Key('consent-synthetic-only-checkbox'));
+    await tapConsentCheckbox(const Key('consent-no-emergency-checkbox'));
+    await tapConsentCheckbox(const Key('consent-no-real-data-checkbox'));
+    await tester.pumpAndSettle();
+    expect(find.text('Consent readiness prepared locally.'), findsOneWidget);
+
+    await tester.dragUntilVisible(
+      find.byKey(const Key('beta-deletion-section')),
+      find.byKey(const Key('beta-support-list')),
+      const Offset(0, -520),
+    );
+    expect(find.byKey(const Key('beta-deletion-section')), findsOneWidget);
+    await tester.enterText(
+      find.byKey(const Key('account-deletion-confirm-field')),
+      'REQUEST DEMO DELETION',
+    );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(
+      find.byKey(const Key('account-deletion-prepare-button')),
+    );
+    final deletionButton = tester.widget<FilledButton>(
+      find.byKey(const Key('account-deletion-prepare-button')),
+    );
+    expect(deletionButton.onPressed, isNotNull);
+    await tester.tap(find.byKey(const Key('account-deletion-prepare-button')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const Key('account-deletion-prepared-status')),
+      findsOneWidget,
+    );
+
+    await tester.dragUntilVisible(
+      find.byKey(const Key('beta-feedback-section')),
+      find.byKey(const Key('beta-support-list')),
+      const Offset(0, -520),
+    );
+    await tester.enterText(
+      find.byKey(const Key('beta-feedback-field')),
+      'Synthetic beta feedback draft only.',
+    );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(
+      find.byKey(const Key('beta-feedback-prepare-button')),
+    );
+    await tester.tap(find.byKey(const Key('beta-feedback-prepare-button')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const Key('beta-feedback-prepared-status')),
+      findsOneWidget,
+    );
+
+    await tester.dragUntilVisible(
+      find.byKey(const Key('beta-limitations-section')),
+      find.byKey(const Key('beta-support-list')),
+      const Offset(0, -520),
+    );
+    expect(find.byKey(const Key('beta-limitations-section')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('beta support route is public from a direct web path', (
+    tester,
+  ) async {
+    final router = createRouter(null);
+    addTearDown(router.dispose);
+    await tester.pumpWidget(
+      ProviderScope(child: MaterialApp.router(routerConfig: router)),
+    );
+
+    router.go('/beta-support');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Beta support'), findsOneWidget);
+    expect(find.byKey(const Key('beta-support-list')), findsOneWidget);
+  });
 
   testWidgets('patient role cannot navigate to the doctor route', (
     tester,
@@ -228,6 +366,161 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('doctor can search and open assigned patient management', (
+    tester,
+  ) async {
+    setViewport(tester, const Size(1280, 832));
+    await pumpApp(tester, FakeDrAiRepository(restoredSession: doctorSession));
+
+    await tester.tap(find.text('Patient Management'));
+    await tester.pumpAndSettle();
+    expect(find.text('Patient Management'), findsWidgets);
+    expect(
+      find.byKey(const Key('patient-row-SYN-PATIENT-001')),
+      findsOneWidget,
+    );
+
+    await tester.enterText(
+      find.byKey(const Key('patient-search-field')),
+      'Riley',
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('patient-row-SYN-PATIENT-001')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Patient Profile'), findsOneWidget);
+    expect(find.text('Medical History'), findsOneWidget);
+    expect(find.text('Medications'), findsOneWidget);
+    expect(find.text('Doctor Notes'), findsOneWidget);
+    expect(find.text('Synthetic care-loop note'), findsOneWidget);
+    await tester.drag(
+      find.byKey(const Key('patient-care-bundle-list')),
+      const Offset(0, -560),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.textContaining('Research simulation - not for diagnosis.'),
+      findsOneWidget,
+    );
+
+    await tester.ensureVisible(
+      find.byKey(const Key('demo-upload-presign-button')),
+    );
+    await tester.tap(find.byKey(const Key('demo-upload-presign-button')));
+    await tester.pumpAndSettle();
+    expect(find.text('Demo upload prepared'), findsOneWidget);
+
+    await tester.ensureVisible(find.byKey(const Key('assessment-run-button')));
+    await tester.tap(find.byKey(const Key('assessment-run-button')));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Risk: moderate'), findsWidgets);
+    expect(find.text('Fixture model: fixture-simulator-1.0.0'), findsWidgets);
+
+    await tester.ensureVisible(
+      find.byKey(const Key('recovery-plan-title-field')),
+    );
+    await tester.enterText(
+      find.byKey(const Key('recovery-plan-title-field')),
+      'Updated synthetic recovery plan',
+    );
+    await tester.tap(find.byKey(const Key('recovery-plan-save-button')));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('saved as'), findsOneWidget);
+
+    await tester.drag(
+      find.byKey(const Key('patient-care-bundle-list')),
+      const Offset(0, -320),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('recovery-plan-activate-button')));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('active'), findsWidgets);
+  });
+
+  testWidgets('upload failure preserves metadata and recovers on retry', (
+    tester,
+  ) async {
+    setViewport(tester, const Size(1280, 832));
+    final repository = FakeDrAiRepository(
+      restoredSession: doctorSession,
+      presignError: const ApiError(
+        code: 'service_unavailable',
+        message: 'Upload preparation is temporarily unavailable.',
+        statusCode: 503,
+      ),
+    );
+    await pumpApp(tester, repository);
+    await openDoctorPatientWorkflow(tester);
+
+    await tester.ensureVisible(
+      find.byKey(const Key('demo-upload-filename-field')),
+    );
+    await tester.enterText(
+      find.byKey(const Key('demo-upload-filename-field')),
+      'retry-synthetic-scan.png',
+    );
+    await tester.enterText(
+      find.byKey(const Key('demo-upload-size-field')),
+      '4096',
+    );
+    await tester.tap(find.byKey(const Key('demo-upload-presign-button')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Unable to reach Dr. AI. Check your connection and try again.'),
+      findsOneWidget,
+    );
+    expect(find.text('retry-synthetic-scan.png'), findsOneWidget);
+    expect(find.text('4096'), findsOneWidget);
+
+    repository.presignError = null;
+    await tester.tap(find.byKey(const Key('demo-upload-presign-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Demo upload prepared'), findsOneWidget);
+    expect(find.text('retry-synthetic-scan.png'), findsOneWidget);
+    expect(find.text('4096'), findsOneWidget);
+  });
+
+  testWidgets('assessment failure preserves form state and recovers on retry', (
+    tester,
+  ) async {
+    setViewport(tester, const Size(1280, 832));
+    final repository = FakeDrAiRepository(restoredSession: doctorSession);
+    await pumpApp(tester, repository);
+    await openDoctorPatientWorkflow(tester);
+
+    await tester.ensureVisible(
+      find.byKey(const Key('assessment-fixture-field')),
+    );
+    await tester.tap(find.byKey(const Key('assessment-fixture-field')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('synthetic_lung_case_002').last);
+    await tester.pumpAndSettle();
+
+    repository.assessmentError = const ApiError(
+      code: 'service_unavailable',
+      message: 'Assessment simulation is temporarily unavailable.',
+      statusCode: 503,
+    );
+    await tester.ensureVisible(find.byKey(const Key('assessment-run-button')));
+    await tester.tap(find.byKey(const Key('assessment-run-button')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Unable to reach Dr. AI. Check your connection and try again.'),
+      findsOneWidget,
+    );
+    expect(find.text('synthetic_lung_case_002'), findsOneWidget);
+
+    repository.assessmentError = null;
+    await tester.tap(find.byKey(const Key('assessment-run-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Risk: moderate'), findsWidgets);
+    expect(find.text('synthetic_lung_case_002'), findsOneWidget);
+  });
+
   testWidgets('patient dashboard renders seeded mobile state at 412x917', (
     tester,
   ) async {
@@ -241,12 +534,168 @@ void main() {
       ),
     );
 
-    expect(find.text('Today'), findsOneWidget);
+    expect(find.text('Today'), findsWidgets);
+    expect(find.text('Demo medication reminder'), findsOneWidget);
+    expect(
+      find.byKey(const Key('patient-medication-notification-shell')),
+      findsOneWidget,
+    );
     expect(find.text('Contact Doctor'), findsOneWidget);
     expect(find.text('Medical Fee'), findsOneWidget);
-    expect(find.text('No Medical Records'), findsOneWidget);
     expect(find.text('Dashboard'), findsOneWidget);
+    await tester.drag(
+      find.byKey(const Key('patient-dashboard-list')),
+      const Offset(0, -920),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('patient-self-records')), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('patient can complete a Today recovery task', (tester) async {
+    setViewport(tester, const Size(412, 917));
+    final repository = FakeDrAiRepository(
+      restoredSession: patientSession,
+      loginSession: patientSession,
+      dashboard: patientDashboard,
+    );
+    await pumpApp(tester, repository);
+
+    expect(find.byKey(const Key('today-task-medication')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('today-task-medication')));
+    await tester.pumpAndSettle();
+
+    expect(repository.patientToday.tasks.first.isCompleted, isTrue);
+    expect(find.byKey(const Key('today-task-medication')), findsOneWidget);
+  });
+
+  testWidgets('patient educational chat streams and clears after success', (
+    tester,
+  ) async {
+    setViewport(tester, const Size(412, 917));
+    final repository = FakeDrAiRepository(
+      restoredSession: patientSession,
+      loginSession: patientSession,
+      dashboard: patientDashboard,
+    );
+    await pumpApp(tester, repository);
+
+    await tester.dragUntilVisible(
+      find.byKey(const Key('educational-chat-input')),
+      find.byKey(const Key('patient-dashboard-list')),
+      const Offset(0, -360),
+    );
+    await tester.enterText(
+      find.byKey(const Key('educational-chat-input')),
+      'What should I ask about the synthetic recovery plan?',
+    );
+    await tester.ensureVisible(
+      find.byKey(const Key('educational-chat-send-button')),
+    );
+    await tester.tap(find.byKey(const Key('educational-chat-send-button')));
+    await tester.pumpAndSettle();
+
+    expect(repository.chatMessagesSent, 1);
+    expect(
+      repository.lastChatMessage,
+      'What should I ask about the synthetic recovery plan?',
+    );
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(DrAiApp)),
+    );
+    final chatState = container.read(educationalChatControllerProvider);
+    expect(
+      chatState.messages.last.content,
+      contains('Prepare questions for your clinician'),
+    );
+    final input = tester.widget<TextField>(
+      find.byKey(const Key('educational-chat-input')),
+    );
+    expect(input.controller?.text, isEmpty);
+  });
+
+  testWidgets('patient chat failure preserves typed question', (tester) async {
+    setViewport(tester, const Size(412, 917));
+    final repository = FakeDrAiRepository(
+      restoredSession: patientSession,
+      loginSession: patientSession,
+      dashboard: patientDashboard,
+      chatError: const ApiError(
+        code: 'rate_limited',
+        message: 'Educational chat is temporarily rate limited.',
+        statusCode: 429,
+      ),
+    );
+    await pumpApp(tester, repository);
+
+    await tester.dragUntilVisible(
+      find.byKey(const Key('educational-chat-input')),
+      find.byKey(const Key('patient-dashboard-list')),
+      const Offset(0, -360),
+    );
+    await tester.enterText(
+      find.byKey(const Key('educational-chat-input')),
+      'Keep this typed question after failure',
+    );
+    await tester.ensureVisible(
+      find.byKey(const Key('educational-chat-send-button')),
+    );
+    await tester.tap(find.byKey(const Key('educational-chat-send-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('temporarily rate limited'), findsOneWidget);
+    final input = tester.widget<TextField>(
+      find.byKey(const Key('educational-chat-input')),
+    );
+    expect(input.controller?.text, 'Keep this typed question after failure');
+  });
+
+  testWidgets(
+    'patient completion failure keeps local Today interaction visible',
+    (tester) async {
+      setViewport(tester, const Size(412, 917));
+      final repository = FakeDrAiRepository(
+        restoredSession: patientSession,
+        loginSession: patientSession,
+        dashboard: patientDashboard,
+        completionError: const ApiError(
+          code: 'service_unavailable',
+          message: 'Completion sync failed.',
+          statusCode: 503,
+        ),
+      );
+      await pumpApp(tester, repository);
+
+      await tester.tap(find.byKey(const Key('today-task-medication')));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Completion could not sync'), findsOneWidget);
+      expect(find.byKey(const Key('today-task-medication')), findsOneWidget);
+    },
+  );
+
+  testWidgets('doctor can request specialist consultation and read status', (
+    tester,
+  ) async {
+    setViewport(tester, const Size(1280, 832));
+    final repository = FakeDrAiRepository(restoredSession: doctorSession);
+    await pumpApp(tester, repository);
+    await openDoctorPatientWorkflow(tester);
+
+    await tester.dragUntilVisible(
+      find.byKey(const Key('consultation-request-button')),
+      find.byKey(const Key('patient-care-bundle-list')),
+      const Offset(0, -600),
+    );
+    await tester.tap(find.byKey(const Key('consultation-request-button')));
+    await tester.pumpAndSettle();
+
+    expect(repository.consultations.items, isNotEmpty);
+    expect(find.textContaining('consultation requested'), findsWidgets);
+    expect(
+      find.textContaining('Pulmonology demo review - requested'),
+      findsWidgets,
+    );
   });
 
   testWidgets('core controls expose accessible labels and disabled states', (
@@ -265,7 +714,7 @@ void main() {
       );
 
       expect(
-        find.bySemanticsLabel('See more recovery tasks unavailable in Week 1'),
+        find.bySemanticsLabel('See more recovery tasks unavailable in summary'),
         findsWidgets,
       );
       expect(
@@ -276,6 +725,47 @@ void main() {
     } finally {
       semantics.dispose();
     }
+  });
+
+  testWidgets('app shell exposes deterministic keyboard focus traversal', (
+    tester,
+  ) async {
+    setViewport(tester, const Size(412, 917));
+    await pumpApp(tester, FakeDrAiRepository());
+
+    expect(find.byType(FocusTraversalGroup), findsWidgets);
+    await tester.tap(find.byKey(const Key('email-field')));
+    await tester.pump();
+    expect(FocusManager.instance.primaryFocus, isNotNull);
+  });
+
+  testWidgets('patient dashboard supports enlarged text on narrow mobile', (
+    tester,
+  ) async {
+    tester.binding.platformDispatcher.textScaleFactorTestValue = 1.3;
+    addTearDown(
+      tester.binding.platformDispatcher.clearTextScaleFactorTestValue,
+    );
+    setViewport(tester, const Size(360, 780));
+    await pumpApp(
+      tester,
+      FakeDrAiRepository(
+        restoredSession: patientSession,
+        loginSession: patientSession,
+        dashboard: patientDashboard,
+      ),
+    );
+
+    expect(find.byKey(const Key('patient-dashboard-list')), findsOneWidget);
+    expect(find.text('Today'), findsWidgets);
+    for (var index = 0; index < 4; index++) {
+      await tester.drag(
+        find.byKey(const Key('patient-dashboard-list')),
+        const Offset(0, -520),
+      );
+      await tester.pumpAndSettle();
+    }
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('dashboard network and empty states are explicit', (

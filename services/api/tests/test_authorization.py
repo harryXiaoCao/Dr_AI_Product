@@ -10,20 +10,14 @@ from app.seed import seed_database
 from tests.helpers import auth_header, login
 
 
-def test_doctor_patient_roles_and_cross_patient_isolation(
-    client: TestClient, settings
-) -> None:
+def test_doctor_patient_roles_and_cross_patient_isolation(client: TestClient, settings) -> None:
     with Session(engine) as db:
         seed_database(db, settings)
         assigned = db.scalar(
-            select(PatientProfile).where(
-                PatientProfile.synthetic_identifier == "SYN-PATIENT-001"
-            )
+            select(PatientProfile).where(PatientProfile.synthetic_identifier == "SYN-PATIENT-001")
         )
         unrelated = db.scalar(
-            select(PatientProfile).where(
-                PatientProfile.synthetic_identifier == "SYN-PATIENT-002"
-            )
+            select(PatientProfile).where(PatientProfile.synthetic_identifier == "SYN-PATIENT-002")
         )
         assigned_id = assigned.id
         unrelated_id = unrelated.id
@@ -35,15 +29,8 @@ def test_doctor_patient_roles_and_cross_patient_isolation(
     )
     doctor_headers = auth_header(doctor["access_token"])
     assert client.get("/api/v1/patients", headers=doctor_headers).status_code == 200
-    assert (
-        client.get(
-            f"/api/v1/patients/{assigned_id}", headers=doctor_headers
-        ).status_code
-        == 200
-    )
-    unrelated_probe = client.get(
-        f"/api/v1/patients/{unrelated_id}", headers=doctor_headers
-    )
+    assert client.get(f"/api/v1/patients/{assigned_id}", headers=doctor_headers).status_code == 200
+    unrelated_probe = client.get(f"/api/v1/patients/{unrelated_id}", headers=doctor_headers)
     assert unrelated_probe.status_code == 404
     assert unrelated_probe.json()["error"]["code"] == "not_found"
 
@@ -53,28 +40,15 @@ def test_doctor_patient_roles_and_cross_patient_isolation(
         settings.seed_patient_password.get_secret_value(),
     )
     patient_headers = auth_header(patient["access_token"])
+    assert client.get(f"/api/v1/patients/{assigned_id}", headers=patient_headers).status_code == 200
     assert (
-        client.get(
-            f"/api/v1/patients/{assigned_id}", headers=patient_headers
-        ).status_code
-        == 200
-    )
-    assert (
-        client.get(
-            f"/api/v1/patients/{unrelated_id}", headers=patient_headers
-        ).status_code
-        == 404
+        client.get(f"/api/v1/patients/{unrelated_id}", headers=patient_headers).status_code == 404
     )
     assert client.get("/api/v1/patients", headers=patient_headers).status_code == 404
-    assert (
-        client.get("/api/v1/patient/me/today", headers=doctor_headers).status_code
-        == 404
-    )
+    assert client.get("/api/v1/patient/me/today", headers=doctor_headers).status_code == 404
 
 
-def test_revoked_relationship_removes_doctor_access(
-    client: TestClient, settings
-) -> None:
+def test_revoked_relationship_removes_doctor_access(client: TestClient, settings) -> None:
     with Session(engine) as db:
         seed_database(db, settings)
         relationship = db.scalar(
@@ -95,9 +69,7 @@ def test_revoked_relationship_removes_doctor_access(
         headers=auth_header(doctor["access_token"]),
     )
     assert response.status_code == 404
-    assert response.json()["error"]["message"] == (
-        "The requested resource was not found."
-    )
+    assert response.json()["error"]["message"] == ("The requested resource was not found.")
 
 
 def test_role_specific_seeded_dashboards(client: TestClient, settings) -> None:

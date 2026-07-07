@@ -1,0 +1,8 @@
+# Copy this file to key.properties and replace every value with local upload-key
+# credentials before building a Play Console release artifact.
+#
+# Keep key.properties and the referenced keystore out of git.
+storePassword=replace-with-upload-keystore-store-password
+keyPassword=replace-with-upload-key-password
+keyAlias=upload
+storeFile=../upload-keystore.jks

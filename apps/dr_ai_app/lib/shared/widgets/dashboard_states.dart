@@ -2,15 +2,17 @@ import 'package:dr_ai_app/design_system/dr_ai_tokens.dart';
 import 'package:flutter/material.dart';
 
 class DashboardLoadingView extends StatelessWidget {
-  const DashboardLoadingView({super.key});
+  const DashboardLoadingView({
+    this.label = 'Loading synthetic dashboard',
+    super.key,
+  });
+
+  final String label;
 
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Semantics(
-        label: 'Loading synthetic dashboard',
-        child: const CircularProgressIndicator(),
-      ),
+      child: Semantics(label: label, child: const CircularProgressIndicator()),
     );
   }
 }

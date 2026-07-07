@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -8,8 +9,13 @@ from app.database import SessionLocal
 from app.models import (
     CareRelationship,
     DashboardSnapshot,
+    DoctorNote,
     DoctorProfile,
+    MedicalRecord,
+    Medication,
     PatientProfile,
+    RecoveryPlan,
+    RecoveryTask,
     User,
     UserRole,
 )
@@ -21,6 +27,11 @@ class SeedResult:
     users_created: int
     relationships_created: int
     dashboards_created: int
+    records_created: int
+    medications_created: int
+    notes_created: int
+    recovery_plans_created: int
+    recovery_tasks_created: int
 
 
 def _required_password(settings: Settings, field_name: str) -> str:
@@ -73,13 +84,16 @@ def _get_or_create_user(
 def seed_database(db: Session, settings: Settings) -> SeedResult:
     doctor_password = _required_password(settings, "seed_doctor_password")
     patient_password = _required_password(settings, "seed_patient_password")
-    unrelated_password = _required_password(
-        settings, "seed_unrelated_patient_password"
-    )
+    unrelated_password = _required_password(settings, "seed_unrelated_patient_password")
 
     users_created = 0
     relationships_created = 0
     dashboards_created = 0
+    records_created = 0
+    medications_created = 0
+    notes_created = 0
+    recovery_plans_created = 0
+    recovery_tasks_created = 0
 
     doctor, created = _get_or_create_user(
         db,
@@ -227,17 +241,160 @@ def seed_database(db: Session, settings: Settings) -> SeedResult:
         (patient, patient_dashboard),
         (unrelated, patient_dashboard),
     ):
-        snapshot = db.scalar(
-            select(DashboardSnapshot).where(DashboardSnapshot.user_id == user.id)
-        )
+        snapshot = db.scalar(select(DashboardSnapshot).where(DashboardSnapshot.user_id == user.id))
         if snapshot is None:
             db.add(DashboardSnapshot(user_id=user.id, payload=payload))
             dashboards_created += 1
         else:
             snapshot.payload = payload
 
+    if not db.scalars(
+        select(MedicalRecord).where(MedicalRecord.patient_id == patient.patient_profile.id)
+    ).first():
+        db.add_all(
+            [
+                MedicalRecord(
+                    patient_id=patient.patient_profile.id,
+                    title="Synthetic intake summary",
+                    category="Demo visit",
+                    summary=(
+                        "Synthetic Week 2 fixture for care-loop navigation only. "
+                        "Not a diagnosis or medical advice."
+                    ),
+                    recorded_at=datetime(2026, 7, 1, 8, 30, tzinfo=UTC),
+                ),
+                MedicalRecord(
+                    patient_id=patient.patient_profile.id,
+                    title="Synthetic follow-up note",
+                    category="Demo follow-up",
+                    summary=(
+                        "Patient-reported demo symptoms are stable inside the "
+                        "non-clinical beta scenario."
+                    ),
+                    recorded_at=datetime(2026, 7, 3, 9, 0, tzinfo=UTC),
+                ),
+            ]
+        )
+        records_created += 2
+
+    if not db.scalars(
+        select(Medication).where(Medication.patient_id == patient.patient_profile.id)
+    ).first():
+        db.add_all(
+            [
+                Medication(
+                    patient_id=patient.patient_profile.id,
+                    name="Demo Sumatriptan Fixture",
+                    dosage="50 mg",
+                    schedule="As listed in the synthetic care plan",
+                    status="active",
+                    note="Fixture medication for UI validation; not a prescription.",
+                ),
+                Medication(
+                    patient_id=patient.patient_profile.id,
+                    name="Demo Hydration Reminder",
+                    dosage="Non-drug support item",
+                    schedule="Today",
+                    status="planned",
+                    note="Synthetic support task carried forward from the dashboard.",
+                ),
+            ]
+        )
+        medications_created += 2
+
+    if not db.scalars(
+        select(DoctorNote).where(DoctorNote.patient_id == patient.patient_profile.id)
+    ).first():
+        db.add_all(
+            [
+                DoctorNote(
+                    patient_id=patient.patient_profile.id,
+                    doctor_id=doctor.doctor_profile.id,
+                    title="Synthetic care-loop note",
+                    body=(
+                        "Doctor-facing fixture note for Week 2 navigation. "
+                        "No real patient information is present."
+                    ),
+                )
+            ]
+        )
+        notes_created += 1
+
+    if not db.scalars(
+        select(RecoveryPlan).where(RecoveryPlan.patient_id == patient.patient_profile.id)
+    ).first():
+        plan = RecoveryPlan(
+            patient_id=patient.patient_profile.id,
+            doctor_id=doctor.doctor_profile.id,
+            title="Synthetic Week 3 Recovery Plan",
+            instructions=(
+                "Demo-only recovery plan for invited beta workflow validation. "
+                "This is not diagnosis, treatment, or medical advice."
+            ),
+            status="active",
+            safety_label="Synthetic demonstration data only. Do not enter real patient data.",
+            activated_at=datetime(2026, 7, 5, 10, 0, tzinfo=UTC),
+        )
+        db.add(plan)
+        db.flush()
+        db.add_all(
+            [
+                RecoveryTask(
+                    plan_id=plan.id,
+                    patient_id=patient.patient_profile.id,
+                    category="medication",
+                    title="Demo medication reminder",
+                    detail="Review the synthetic medication fixture only.",
+                    due_label="Today",
+                    notification_time="09:00",
+                    sort_order=0,
+                ),
+                RecoveryTask(
+                    plan_id=plan.id,
+                    patient_id=patient.patient_profile.id,
+                    category="exercise",
+                    title="Light demo mobility",
+                    detail="Complete a short synthetic walking task if appropriate in the demo.",
+                    due_label="Today",
+                    notification_time=None,
+                    sort_order=1,
+                ),
+                RecoveryTask(
+                    plan_id=plan.id,
+                    patient_id=patient.patient_profile.id,
+                    category="diet",
+                    title="Demo hydration check",
+                    detail="Use this placeholder to validate diet and hydration task display.",
+                    due_label="Today",
+                    notification_time=None,
+                    sort_order=2,
+                ),
+                RecoveryTask(
+                    plan_id=plan.id,
+                    patient_id=patient.patient_profile.id,
+                    category="follow_up",
+                    title="Synthetic follow-up preparation",
+                    detail="Prepare demo questions for the assigned doctor workflow.",
+                    due_label="Today",
+                    notification_time=None,
+                    sort_order=3,
+                ),
+            ]
+        )
+        recovery_plans_created += 1
+        recovery_tasks_created += 4
+
     db.commit()
-    return SeedResult(users_created, relationships_created, dashboards_created)
+    return SeedResult(
+        users_created,
+        relationships_created,
+        dashboards_created,
+        records_created,
+        medications_created,
+        notes_created,
+        recovery_plans_created,
+        recovery_tasks_created,
+    )
 
 
 def main() -> None:
@@ -247,7 +404,12 @@ def main() -> None:
         "Synthetic seed complete: "
         f"users_created={result.users_created}, "
         f"relationships_created={result.relationships_created}, "
-        f"dashboards_created={result.dashboards_created}"
+        f"dashboards_created={result.dashboards_created}, "
+        f"records_created={result.records_created}, "
+        f"medications_created={result.medications_created}, "
+        f"notes_created={result.notes_created}, "
+        f"recovery_plans_created={result.recovery_plans_created}, "
+        f"recovery_tasks_created={result.recovery_tasks_created}"
     )
 
 

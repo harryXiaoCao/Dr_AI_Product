@@ -1,16 +1,32 @@
 # Dr. AI v1.0 API Contract
 
-Status: authentication and Week 1 dashboard reads implemented; deferred
-clinical endpoints remain unavailable
+Status: authentication, Week 1 dashboard reads, Week 2 patient-care,
+demo-upload, simulated-assessment, and Day 10 polish endpoints, plus Week 3
+recovery-plan, Today-task, completion, educational-chat, and consultation
+endpoints implemented; Week 4 Days 18-20 release-prep surfaces add no API
+changes; later real notification delivery, account deletion, feedback
+submission, and administrator audit workflows remain unavailable
 
 Contract version: `1.0.0`
 
-Recorded: 2026-07-04; authentication models frozen: 2026-07-04
+Recorded: 2026-07-04; authentication models frozen: 2026-07-04; Week 2 Days
+6-7 reads added: 2026-07-05; Week 2 Days 8-9 demo upload and simulated
+assessment endpoints added: 2026-07-05; Day 10 upload validation and recovery
+coverage added: 2026-07-05; Week 3 Days 11-12 recovery-plan and task
+completion endpoints added: 2026-07-05; Week 3 Days 13-14 educational-chat
+and consultation endpoints added: 2026-07-05; Week 3 Day 15 duplicate
+consultation reuse and safety fixture coverage added: 2026-07-05; Week 4
+Days 16-17 validation/log-hygiene hardening added: 2026-07-06; Week 4 Days
+18-20 release-prep surfaces added no API changes: 2026-07-06
 
 This contract defines the public HTTP boundary planned for Dr. AI v1.0. The
-current Week 1 backend exposes the authentication, identity, assigned-patient,
-and synthetic dashboard reads identified below. Every clinical route remains
-reserved for its scheduled week and must not be inferred to be available.
+current backend exposes the authentication, identity, assigned-patient,
+synthetic dashboard, Week 2 patient-care/upload/assessment routes, Day 10
+validation polish, and Week 3 Days 11-12 recovery-plan/task routes identified
+below, plus Week 3 Days 13-14 educational-chat and consultation routes. Later
+real notification delivery, account deletion, feedback submission, and
+administrator audit workflows remain reserved for later approval and must not
+be inferred to be available.
 
 Dr. AI v1.0 is an invited, non-clinical beta. It uses synthetic demonstration
 content only, accepts no real patient data, and provides no diagnosis or
@@ -24,8 +40,9 @@ medical advice.
   `2026-07-04T08:30:00Z`.
 - Resource identifiers are opaque strings. Clients must not infer meaning from
   them.
-- The maximum request size, upload media types, rate limits, and pagination
-  limits will be set before their corresponding endpoints are implemented.
+- Demo upload presign accepts only `image/jpeg`, `image/png`, and
+  `application/dicom` metadata up to `10_485_760` bytes. Rate limits and
+  cursor pagination limits will be set before their broader production use.
 - Secrets, raw tokens, medical content, and real patient data must not appear
   in URLs, logs, fixtures, or error messages.
 
@@ -143,12 +160,19 @@ Response:
 | `GET` | `/api/v1/patients` | Assigned patients | No | List patients in an active care relationship |
 | `GET` | `/api/v1/patients/{patient_id}` | Assigned patient | Own record only | Read a patient summary |
 | `GET` | `/api/v1/patients/{patient_id}/records` | Assigned patient | Own records only | List medical-record fixtures |
+| `GET` | `/api/v1/patients/{patient_id}/medications` | Assigned patient | Own medications only | List medication fixtures for one patient |
+| `GET` | `/api/v1/patients/{patient_id}/doctor-notes` | Assigned patient | No | List doctor-facing note fixtures |
+| `GET` | `/api/v1/patients/{patient_id}/care` | Assigned patient | Own records and medications only | Read profile, records, medications, and doctor-visible notes |
 | `POST` | `/api/v1/patients/{patient_id}/assets/presign` | Assigned patient | Own assets only | Request a short-lived demo upload URL |
 | `GET` | `/api/v1/patients/{patient_id}/assessments` | Assigned patient | Own results only | List assessment summaries |
 | `POST` | `/api/v1/patients/{patient_id}/assessments` | Assigned patient | No | Run a deterministic simulation |
 | `GET` | `/api/v1/patients/{patient_id}/recovery-plans` | Assigned patient | Own plans only | List recovery plans |
 | `POST` | `/api/v1/patients/{patient_id}/recovery-plans` | Assigned patient | No | Create a draft recovery plan |
+| `PUT` | `/api/v1/patients/{patient_id}/recovery-plans/{plan_id}` | Assigned patient | No | Edit a recovery plan |
+| `POST` | `/api/v1/patients/{patient_id}/recovery-plans/{plan_id}/activate` | Assigned patient | No | Activate a recovery plan |
 | `GET` | `/api/v1/patient/me/today` | No | Own data | Read the patient's current synthetic tasks |
+| `POST` | `/api/v1/patient/me/tasks/{task_id}/completion` | No | Own active task only | Complete a Today task |
+| `GET` | `/api/v1/patient/me/care` | No | Own records and medications only | Read own profile, medical-record fixtures, and medications |
 | `GET` | `/api/v1/medications` | Assigned patient scope | Own data | List medication fixtures |
 | `GET` | `/api/v1/reminders` | Assigned patient scope | Own data | List reminders |
 | `POST` | `/api/v1/chat/threads/{thread_id}/messages` | Authorized thread | Own thread | Send an educational-chat message |
@@ -159,9 +183,24 @@ Response:
 The singular `/patient/me/today` path is intentional and is implemented for
 the Week 1 patient dashboard. It represents the
 current patient's own view and is distinct from doctor-scoped `/patients`.
-`GET /api/v1/patients`, `GET /api/v1/patients/{patient_id}`, and
-`GET /api/v1/me/dashboard` are also implemented for the Week 1 gate. All other
-paths in this table remain unavailable.
+`GET /api/v1/patients`, `GET /api/v1/patients/{patient_id}`,
+`GET /api/v1/patients/{patient_id}/records`,
+`GET /api/v1/patients/{patient_id}/medications`,
+`GET /api/v1/patients/{patient_id}/doctor-notes`,
+`GET /api/v1/patients/{patient_id}/care`, `GET /api/v1/patient/me/care`,
+`POST /api/v1/patients/{patient_id}/assets/presign`,
+`GET /api/v1/patients/{patient_id}/assessments`,
+`POST /api/v1/patients/{patient_id}/assessments`,
+`GET /api/v1/patients/{patient_id}/recovery-plans`,
+`POST /api/v1/patients/{patient_id}/recovery-plans`,
+`PUT /api/v1/patients/{patient_id}/recovery-plans/{plan_id}`,
+`POST /api/v1/patients/{patient_id}/recovery-plans/{plan_id}/activate`,
+`POST /api/v1/patient/me/tasks/{task_id}/completion`,
+`POST /api/v1/chat/threads/{thread_id}/messages`,
+`GET /api/v1/consultations`, `POST /api/v1/consultations`,
+`GET /api/v1/medications`, and `GET /api/v1/me/dashboard` are also
+implemented. Administrator audit reads, real notification delivery, and real
+clinical workflows remain unavailable.
 
 ## Public enums
 
@@ -264,6 +303,62 @@ revealing that the resource exists would leak sensitive information.
   chat escalations create audit events without copying medical content into
   logs.
 
+## Demo upload presign contract
+
+The presign endpoint creates metadata for a synthetic demo upload only. It does
+not complete a real Tencent COS upload in Week 2 and must not accept real
+patient images.
+
+### Request
+
+`POST /api/v1/patients/{patient_id}/assets/presign`
+
+```json
+{
+  "filename": "synthetic-ct-demo.png",
+  "content_type": "image/png",
+  "size_bytes": 2048
+}
+```
+
+Rules:
+
+- `filename` must be a short safe filename using letters, numbers, spaces,
+  periods, underscores, or hyphens.
+- Surrounding whitespace is stripped from string request fields before
+  validation.
+- `content_type` must be `image/png`, `image/jpeg`, or `application/dicom`.
+- `size_bytes` must be between `1` and `10485760`.
+- The filename extension must match the content type: `.png` for `image/png`,
+  `.jpg` or `.jpeg` for `image/jpeg`, and `.dcm` or `.dicom` for
+  `application/dicom`.
+- Unsupported content types return `415 unsupported_media_type`; oversized
+  metadata returns `413 payload_too_large`; filename/content-type mismatch
+  returns `422 validation_failed`.
+
+### Response
+
+```json
+{
+  "asset_id": "asset-opaque-uuid",
+  "patient_id": "patient-opaque-uuid",
+  "upload_url": "https://demo-upload.invalid/demo-assets/patient/asset.png",
+  "method": "PUT",
+  "object_key": "demo-assets/patient-opaque-uuid/asset-opaque-uuid.png",
+  "headers": {
+    "Content-Type": "image/png",
+    "x-dr-ai-demo-upload": "synthetic-only"
+  },
+  "expires_at": "2026-07-05T08:45:00Z",
+  "max_size_bytes": 10485760,
+  "safety_label": "Synthetic demonstration data only. Do not enter real patient data."
+}
+```
+
+The response URL is a demo placeholder in the local Week 2 workflow. Logs and
+audit metadata must not store upload URLs, tokens, patient-owned content, or
+secrets.
+
 ## Simulated assessment contract
 
 Only deterministic synthetic fixtures are permitted in v1. The endpoint must
@@ -323,6 +418,247 @@ outcome leakage.
 The future validated-model adapter may use versioned CT, clinical, and genomic
 references, but it must preserve this response shape and remain unavailable
 until separately approved.
+
+## Recovery plan and Today task contract
+
+Week 3 Days 11-12 recovery plans are synthetic care-loop fixtures. They are not
+medical advice and must not contain real patient data.
+
+### Create or edit request
+
+`POST /api/v1/patients/{patient_id}/recovery-plans`
+
+`PUT /api/v1/patients/{patient_id}/recovery-plans/{plan_id}`
+
+```json
+{
+  "title": "Synthetic Week 3 Recovery Plan",
+  "instructions": "Demo-only recovery plan for workflow validation.",
+  "tasks": [
+    {
+      "category": "medication",
+      "title": "Demo medication reminder",
+      "detail": "Review the synthetic medication fixture only.",
+      "due_label": "Today",
+      "notification_time": "09:00"
+    },
+    {
+      "category": "exercise",
+      "title": "Light demo mobility",
+      "detail": "Short synthetic mobility task.",
+      "due_label": "Today"
+    },
+    {
+      "category": "diet",
+      "title": "Demo hydration check",
+      "detail": "Synthetic hydration reminder.",
+      "due_label": "Today"
+    },
+    {
+      "category": "follow_up",
+      "title": "Synthetic follow-up preparation",
+      "detail": "Prepare demo questions.",
+      "due_label": "Today"
+    }
+  ]
+}
+```
+
+Rules:
+
+- Only doctors with an active care relationship can create, edit, or activate
+  plans for a patient.
+- Patients cannot create, edit, or activate plans.
+- Each plan must include medication, exercise, diet, and follow-up tasks.
+- Medication tasks require a `notification_time` label so Flutter can schedule
+  the local demo notification shell.
+- Cross-patient and wrong-role attempts return neutral `404 not_found`.
+- Audit metadata records status, task count, task categories, and affected IDs;
+  it must not copy plan instructions or task details.
+
+### Plan response
+
+```json
+{
+  "plan_id": "plan-opaque-uuid",
+  "patient_id": "patient-opaque-uuid",
+  "title": "Synthetic Week 3 Recovery Plan",
+  "instructions": "Demo-only recovery plan for workflow validation.",
+  "status": "active",
+  "safety_label": "Synthetic demonstration data only. Do not enter real patient data.",
+  "created_at": "2026-07-05T08:30:00Z",
+  "updated_at": "2026-07-05T08:30:00Z",
+  "activated_at": "2026-07-05T08:45:00Z",
+  "tasks": [
+    {
+      "task_id": "task-opaque-uuid",
+      "plan_id": "plan-opaque-uuid",
+      "category": "medication",
+      "title": "Demo medication reminder",
+      "detail": "Review the synthetic medication fixture only.",
+      "due_label": "Today",
+      "notification_time": "09:00",
+      "medication_id": null,
+      "is_completed": false,
+      "completed_at": null,
+      "notification_status": "Local demo notification shell scheduled for 09:00"
+    }
+  ]
+}
+```
+
+`POST /api/v1/patients/{patient_id}/recovery-plans/{plan_id}/activate`
+returns the same shape with `status: active`. Activating a plan completes any
+previous active synthetic plan for the same patient.
+
+### Patient Today and completion
+
+`GET /api/v1/patient/me/today` preserves the Week 1 dashboard envelope and adds
+`data.active_recovery_plan` plus `data.today_tasks` when an active plan exists.
+
+`POST /api/v1/patient/me/tasks/{task_id}/completion`
+
+```json
+{
+  "completed": true
+}
+```
+
+Only the signed-in patient can complete their own active tasks. Duplicate
+completion calls return the already completed task instead of creating a
+second completion row.
+
+## Educational chat and consultation contract
+
+Week 3 Days 13-14 chat is educational question preparation only. It is not a
+diagnosis, triage tool, medication adviser, record interpreter, or clinical
+assessment.
+
+### Send chat message
+
+`POST /api/v1/chat/threads/{thread_id}/messages`
+
+The patient app uses the opaque `patient-education` thread key for the current
+patient's own educational thread. UUID thread IDs are also accepted when the
+thread belongs to the signed-in patient. Doctors do not use patient chat in
+this slice.
+
+```json
+{
+  "message": "What questions should I prepare about the synthetic recovery task?",
+  "stream": true
+}
+```
+
+Rules:
+
+- Patients can send messages only to their own chat thread.
+- Surrounding whitespace is stripped before safety checks, rate limiting, and
+  provider fallback handling.
+- Wrong-role and unknown/cross-patient thread probes return neutral
+  `404 not_found`.
+- Red-flag detection runs before rate limiting and before any DeepSeek call.
+- Red flags return the fixed emergency message and create a metadata-only
+  audit event.
+- Unsafe prompts, including diagnosis, medication-change, raw-record,
+  contact-information, or scan-interpretation requests, return a safe fallback.
+- Normal prompts are rate limited per user and return `429 rate_limited` when
+  the configured window is exceeded.
+- DeepSeek is called only by FastAPI using `deepseek-v4-flash` by default.
+- Local/test mode or an unset DeepSeek key uses the safe fallback path.
+- Timeout, malformed response, quota, and provider-unavailable failures return
+  bounded fallback content rather than exposing provider details.
+- Stored chat metadata includes prompt hash, prompt length, safety category,
+  fallback reason, and model label only; raw prompts and raw model output are
+  not stored in chat metadata or audit metadata.
+
+Response:
+
+```json
+{
+  "thread_id": "thread-opaque-uuid",
+  "thread_key": "patient-education",
+  "message_id": "message-opaque-uuid",
+  "assistant_message_id": "message-opaque-uuid",
+  "content": "Educational information only - not medical advice. ...",
+  "response_chunks": [
+    "Educational information only - not medical advice.",
+    "Prepare questions for your clinician."
+  ],
+  "response_mode": "stream_ready",
+  "safety_label": "Educational information only - not medical advice.",
+  "emergency_label": null,
+  "is_red_flag": false,
+  "fallback_reason": null,
+  "model": "deepseek-v4-flash",
+  "created_at": "2026-07-05T15:30:00Z"
+}
+```
+
+For red-flag handling, `is_red_flag` is `true`, `fallback_reason` is
+`red_flag`, and `emergency_label` is
+`If this may be an emergency, contact local emergency services now.`
+
+### Consultation requests
+
+`GET /api/v1/consultations`
+
+Doctors see consultation requests for patients in active care relationships.
+Patients see only their own consultation requests.
+
+`POST /api/v1/consultations`
+
+```json
+{
+  "patient_id": "patient-opaque-uuid",
+  "specialty": "Pulmonology demo review",
+  "question_summary": "Synthetic review of recovery-plan education questions.",
+  "priority": "routine"
+}
+```
+
+Rules:
+
+- Only doctors with an active care relationship can create requests.
+- Patients cannot create requests.
+- Cross-patient and wrong-role attempts return neutral `404 not_found`.
+- `priority` is `routine` or `soon`.
+- `specialty` and `question_summary` are stripped before validation and
+  duplicate detection.
+- Repeating the same `requested` consultation payload for the same doctor and
+  patient returns the existing request instead of creating a duplicate.
+- Both the specialty and summary must be synthetic and non-identifying; raw
+  records, contact information, diagnosis requests, medication-change
+  requests, or scan interpretation requests are rejected.
+- Status starts as `requested`. Specialist acceptance/completion workflows are
+  not implemented in this slice.
+- Audit metadata records specialty, priority, status, and affected IDs without
+  copying the question summary.
+
+Response:
+
+```json
+{
+  "consultation_id": "consultation-opaque-uuid",
+  "patient_id": "patient-opaque-uuid",
+  "specialty": "Pulmonology demo review",
+  "question_summary": "Synthetic review of recovery-plan education questions.",
+  "priority": "routine",
+  "status": "requested",
+  "safety_label": "Synthetic demonstration data only. Do not enter real patient data.",
+  "created_at": "2026-07-05T15:30:00Z",
+  "updated_at": "2026-07-05T15:30:00Z"
+}
+```
+
+List response:
+
+```json
+{
+  "items": [],
+  "next_cursor": null
+}
+```
 
 ## Safety labels
 

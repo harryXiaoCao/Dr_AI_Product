@@ -1,7 +1,10 @@
 import 'package:dr_ai_app/app/routing/app_role.dart';
+import 'package:dr_ai_app/core/api/api_error.dart';
 import 'package:dr_ai_app/design_system/dr_ai_tokens.dart';
 import 'package:dr_ai_app/features/auth/application/auth_controller.dart';
 import 'package:dr_ai_app/features/dashboard/domain/dashboard_data.dart';
+import 'package:dr_ai_app/features/patient/application/patient_care_providers.dart';
+import 'package:dr_ai_app/features/patient/domain/patient_care_data.dart';
 import 'package:dr_ai_app/shared/widgets/dashboard_states.dart';
 import 'package:dr_ai_app/shared/widgets/responsive_app_shell.dart';
 import 'package:flutter/material.dart';
@@ -27,13 +30,13 @@ class PatientDashboardScreen extends ConsumerWidget {
   }
 }
 
-class _PatientDashboard extends StatelessWidget {
+class _PatientDashboard extends ConsumerWidget {
   const _PatientDashboard({required this.data});
 
   final DashboardData data;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     if (data.data.isEmpty) {
       return const Center(
         child: Text(
@@ -55,6 +58,12 @@ class _PatientDashboard extends StatelessWidget {
     );
     final hasRecords = (data.data['medical_records'] as List).isNotEmpty;
     final hasImages = (data.data['imaging_results'] as List).isNotEmpty;
+    final care = ref.watch(ownPatientCareProvider);
+    final today = ref.watch(patientTodayProvider);
+    final notifications = ref.watch(medicationNotificationShellProvider);
+    final consultations = ref.watch(consultationListProvider);
+    final textScale = MediaQuery.textScalerOf(context).scale(1);
+    final cardScale = textScale.clamp(1.0, 1.6).toDouble();
 
     return ColoredBox(
       color: DrAiColors.brandSoft,
@@ -62,10 +71,26 @@ class _PatientDashboard extends StatelessWidget {
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 640),
           child: ListView(
+            key: const Key('patient-dashboard-list'),
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
             children: <Widget>[
               SizedBox(
-                height: 244,
+                height: 320 * cardScale,
+                child: _PatientSection(
+                  title: 'Today',
+                  child: _PatientTodayCard(
+                    today: today,
+                    notifications: notifications,
+                    onRetry: () {
+                      ref.invalidate(patientTodayProvider);
+                      ref.invalidate(medicationNotificationShellProvider);
+                    },
+                  ),
+                ),
+              ),
+              const SizedBox(height: 6),
+              SizedBox(
+                height: 192 * cardScale,
                 child: _PatientSection(
                   title: 'Recovery Plan',
                   child: Row(
@@ -89,14 +114,17 @@ class _PatientDashboard extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               SizedBox(
-                height: 244,
+                height: 244 * cardScale,
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
                     Expanded(
                       child: _PatientSection(
                         title: 'Contact Doctor',
-                        child: _ContactDoctor(doctor: doctor),
+                        child: _ContactDoctor(
+                          doctor: doctor,
+                          consultations: consultations,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 6),
@@ -111,7 +139,15 @@ class _PatientDashboard extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               SizedBox(
-                height: 198,
+                height: 334 * cardScale,
+                child: const _PatientSection(
+                  title: 'Ask Dr. AI',
+                  child: _EducationalChatCard(),
+                ),
+              ),
+              const SizedBox(height: 6),
+              SizedBox(
+                height: 198 * cardScale,
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
@@ -151,8 +187,427 @@ class _PatientDashboard extends StatelessWidget {
                   fontSize: 11,
                 ),
               ),
+              const SizedBox(height: 6),
+              SizedBox(
+                height: 260 * cardScale,
+                child: _PatientSelfCareCard(
+                  care: care,
+                  onRetry: () => ref.invalidate(ownPatientCareProvider),
+                ),
+              ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PatientTodayCard extends ConsumerWidget {
+  const _PatientTodayCard({
+    required this.today,
+    required this.notifications,
+    required this.onRetry,
+  });
+
+  final AsyncValue<PatientTodayData> today;
+  final AsyncValue<MedicationNotificationScheduleResult> notifications;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final completionState = ref.watch(recoveryTaskCompletionControllerProvider);
+    final locallyCompleted = completionState.hasValue
+        ? completionState.value ?? const <String>{}
+        : const <String>{};
+    return today.when(
+      loading: () =>
+          const DashboardLoadingView(label: 'Loading today recovery tasks'),
+      error: (error, stackTrace) => DashboardErrorView(
+        message: 'Unable to load today recovery tasks. Try again.',
+        onRetry: onRetry,
+      ),
+      data: (data) {
+        if (data.tasks.isEmpty) {
+          return const Center(
+            child: Text('No active synthetic tasks for today.'),
+          );
+        }
+        return ListView(
+          key: const Key('patient-today-task-list'),
+          children: <Widget>[
+            if (data.activePlan != null) ...<Widget>[
+              Text(
+                data.activePlan!.title,
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                data.activePlan!.instructions,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: DrAiColors.mutedInk,
+                  fontSize: 12,
+                ),
+              ),
+              const SizedBox(height: DrAiSpacing.xs),
+            ],
+            notifications.when(
+              loading: () => const Text(
+                'Preparing local medication notification shell...',
+                style: TextStyle(fontSize: 12, color: DrAiColors.mutedInk),
+              ),
+              error: (error, stackTrace) => const Text(
+                'Local medication notification shell is unavailable.',
+                style: TextStyle(fontSize: 12, color: DrAiColors.mutedInk),
+              ),
+              data: (result) => Text(
+                result.label,
+                key: const Key('patient-medication-notification-shell'),
+                style: const TextStyle(
+                  color: DrAiColors.brand,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            const SizedBox(height: DrAiSpacing.xs),
+            completionState.when(
+              data: (_) => const SizedBox.shrink(),
+              loading: () => const SizedBox.shrink(),
+              error: (error, stackTrace) => const Padding(
+                padding: EdgeInsets.only(top: DrAiSpacing.xs),
+                child: Text(
+                  'Completion could not sync. Your local tap is still visible; try again when the connection recovers.',
+                  style: TextStyle(color: DrAiColors.danger, fontSize: 12),
+                ),
+              ),
+            ),
+            for (final task in data.tasks)
+              _TodayTaskTile(
+                task: task,
+                locallyCompleted: locallyCompleted.contains(task.taskId),
+                isPending: completionState.isLoading,
+                onComplete: () => ref
+                    .read(recoveryTaskCompletionControllerProvider.notifier)
+                    .complete(task.taskId),
+              ),
+            const SizedBox(height: DrAiSpacing.xs),
+            Text(
+              data.safetyLabel,
+              style: const TextStyle(color: DrAiColors.mutedInk, fontSize: 11),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _EducationalChatCard extends ConsumerStatefulWidget {
+  const _EducationalChatCard();
+
+  @override
+  ConsumerState<_EducationalChatCard> createState() =>
+      _EducationalChatCardState();
+}
+
+class _EducationalChatCardState extends ConsumerState<_EducationalChatCard> {
+  final _messageController = TextEditingController();
+  final _chatScrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _messageController.dispose();
+    _chatScrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final chat = ref.watch(educationalChatControllerProvider);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_chatScrollController.hasClients) {
+        _chatScrollController.jumpTo(
+          _chatScrollController.position.maxScrollExtent,
+        );
+      }
+    });
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        const Text(
+          'Educational information only - not medical advice.',
+          style: TextStyle(
+            color: DrAiColors.danger,
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: DrAiSpacing.xs),
+        Expanded(
+          child: ListView.builder(
+            key: const Key('educational-chat-message-list'),
+            controller: _chatScrollController,
+            padding: const EdgeInsets.only(bottom: 2),
+            itemCount: chat.messages.length,
+            itemBuilder: (context, index) {
+              final message = chat.messages[index];
+              return _ChatBubble(message: message);
+            },
+          ),
+        ),
+        if (chat.errorMessage != null)
+          Padding(
+            padding: const EdgeInsets.only(top: DrAiSpacing.xs),
+            child: Text(
+              chat.errorMessage!,
+              style: const TextStyle(color: DrAiColors.danger, fontSize: 12),
+            ),
+          ),
+        const SizedBox(height: DrAiSpacing.xs),
+        Row(
+          children: <Widget>[
+            Expanded(
+              child: TextField(
+                key: const Key('educational-chat-input'),
+                controller: _messageController,
+                minLines: 1,
+                maxLines: 2,
+                maxLength: 800,
+                keyboardType: TextInputType.text,
+                textInputAction: TextInputAction.send,
+                onSubmitted: (_) => _send(),
+                decoration: const InputDecoration(
+                  counterText: '',
+                  isDense: true,
+                  hintText: 'Prepare a question for your clinician',
+                  prefixIcon: Icon(Icons.chat_bubble_outline),
+                ),
+              ),
+            ),
+            const SizedBox(width: DrAiSpacing.xs),
+            IconButton.filled(
+              key: const Key('educational-chat-send-button'),
+              tooltip: 'Send educational question',
+              onPressed: chat.isSending ? null : _send,
+              icon: chat.isSending
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.send_outlined),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Future<void> _send() async {
+    final sent = await ref
+        .read(educationalChatControllerProvider.notifier)
+        .send(_messageController.text);
+    if (sent && mounted) {
+      _messageController.clear();
+    }
+  }
+}
+
+class _ChatBubble extends StatelessWidget {
+  const _ChatBubble({required this.message});
+
+  final ChatDisplayMessage message;
+
+  @override
+  Widget build(BuildContext context) {
+    final isUser = message.role == 'user';
+    return Align(
+      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        key: Key('educational-chat-${message.role}-${message.id}'),
+        constraints: const BoxConstraints(maxWidth: 520),
+        margin: const EdgeInsets.only(bottom: DrAiSpacing.xs),
+        padding: const EdgeInsets.all(DrAiSpacing.xs),
+        decoration: BoxDecoration(
+          color: message.isRedFlag
+              ? DrAiColors.patientAccent
+              : isUser
+              ? DrAiColors.brand
+              : DrAiColors.surfaceSubtle,
+          borderRadius: BorderRadius.circular(DrAiRadii.md),
+          border: Border.all(color: DrAiColors.outline),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            if (message.content.isEmpty)
+              const Text(
+                'Streaming response...',
+                style: TextStyle(color: DrAiColors.mutedInk),
+              )
+            else
+              Text(
+                message.content,
+                style: TextStyle(
+                  color: isUser ? DrAiColors.white : DrAiColors.ink,
+                  fontSize: 12,
+                ),
+              ),
+            if (message.safetyLabel != null) ...<Widget>[
+              const SizedBox(height: 2),
+              Text(
+                message.safetyLabel!,
+                style: const TextStyle(
+                  color: DrAiColors.danger,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+            if (message.fallbackReason != null) ...<Widget>[
+              const SizedBox(height: 2),
+              Text(
+                'Fallback: ${message.fallbackReason}',
+                style: const TextStyle(
+                  color: DrAiColors.mutedInk,
+                  fontSize: 10,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TodayTaskTile extends StatelessWidget {
+  const _TodayTaskTile({
+    required this.task,
+    required this.locallyCompleted,
+    required this.isPending,
+    required this.onComplete,
+  });
+
+  final RecoveryTaskItem task;
+  final bool locallyCompleted;
+  final bool isPending;
+  final VoidCallback onComplete;
+
+  @override
+  Widget build(BuildContext context) {
+    final completed = task.isCompleted || locallyCompleted;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: DrAiSpacing.xs),
+      child: Material(
+        color: completed ? DrAiColors.patientAccent : DrAiColors.surfaceSubtle,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(DrAiRadii.md),
+          side: const BorderSide(color: DrAiColors.outline),
+        ),
+        child: CheckboxListTile(
+          key: Key('today-task-${task.category}'),
+          value: completed,
+          onChanged: completed || isPending ? null : (_) => onComplete(),
+          controlAffinity: ListTileControlAffinity.leading,
+          secondary: Icon(_taskIcon(task.category), color: DrAiColors.brand),
+          title: Text(
+            task.title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+          subtitle: Text(
+            '${_taskLabel(task.category)} - ${task.dueLabel}'
+            '${task.notificationTime == null ? '' : ' - ${task.notificationTime}'}\n'
+            '${task.detail}',
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+IconData _taskIcon(String category) {
+  return switch (category) {
+    'medication' => Icons.medication_outlined,
+    'exercise' => Icons.directions_walk_outlined,
+    'diet' => Icons.restaurant_outlined,
+    'follow_up' => Icons.event_available_outlined,
+    _ => Icons.check_circle_outline,
+  };
+}
+
+String _taskLabel(String category) {
+  return switch (category) {
+    'medication' => 'Medication',
+    'exercise' => 'Exercise',
+    'diet' => 'Diet',
+    'follow_up' => 'Follow-up',
+    _ => 'Task',
+  };
+}
+
+class _PatientSelfCareCard extends StatelessWidget {
+  const _PatientSelfCareCard({required this.care, required this.onRetry});
+
+  final AsyncValue<PatientCareBundle> care;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return _PatientSection(
+      title: 'Profile and Medications',
+      child: care.when(
+        loading: () =>
+            const DashboardLoadingView(label: 'Loading synthetic care profile'),
+        error: (error, stackTrace) => DashboardErrorView(
+          message: 'Unable to load synthetic profile. Try again.',
+          onRetry: onRetry,
+        ),
+        data: (bundle) => ListView(
+          children: <Widget>[
+            Text(
+              bundle.patient.displayName,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+            Text(
+              bundle.patient.syntheticIdentifier,
+              style: const TextStyle(color: DrAiColors.brand, fontSize: 12),
+            ),
+            const SizedBox(height: DrAiSpacing.xs),
+            Text(
+              bundle.records.isEmpty
+                  ? 'No Medical Records'
+                  : '${bundle.records.length} synthetic medical record(s)',
+              key: const Key('patient-self-records'),
+            ),
+            const SizedBox(height: DrAiSpacing.xs),
+            if (bundle.medications.isEmpty)
+              const Text('No synthetic medications')
+            else
+              for (final medication in bundle.medications)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: DrAiSpacing.xs),
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: DrAiColors.surfaceSubtle,
+                      borderRadius: BorderRadius.circular(DrAiRadii.md),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(DrAiSpacing.xs),
+                      child: Text(
+                        '${medication.name}\n${medication.dosage} - ${medication.schedule}',
+                      ),
+                    ),
+                  ),
+                ),
+          ],
         ),
       ),
     );
@@ -264,7 +719,7 @@ class _RecoveryDay extends StatelessWidget {
             child: Semantics(
               button: true,
               enabled: false,
-              label: 'See more recovery tasks unavailable in Week 1',
+              label: 'See more recovery tasks unavailable in summary',
               child: ExcludeSemantics(
                 child: DecoratedBox(
                   decoration: BoxDecoration(
@@ -291,9 +746,10 @@ class _RecoveryDay extends StatelessWidget {
 }
 
 class _ContactDoctor extends StatelessWidget {
-  const _ContactDoctor({required this.doctor});
+  const _ContactDoctor({required this.doctor, required this.consultations});
 
   final Map<String, dynamic> doctor;
+  final AsyncValue<ConsultationListData> consultations;
 
   @override
   Widget build(BuildContext context) {
@@ -338,6 +794,43 @@ class _ContactDoctor extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: DrAiSpacing.xs),
+          consultations.when(
+            loading: () => const Text(
+              'Checking specialist status...',
+              style: TextStyle(color: DrAiColors.outlineMuted, fontSize: 11),
+            ),
+            error: (error, stackTrace) => Text(
+              _patientSafeErrorMessage(error),
+              style: const TextStyle(
+                color: DrAiColors.outlineMuted,
+                fontSize: 11,
+              ),
+            ),
+            data: (data) {
+              if (data.items.isEmpty) {
+                return const Text(
+                  'No specialist request yet',
+                  style: TextStyle(
+                    color: DrAiColors.outlineMuted,
+                    fontSize: 11,
+                  ),
+                );
+              }
+              final latest = data.items.first;
+              return Text(
+                'Specialist: ${latest.status} - ${latest.specialty}',
+                key: const Key('patient-consultation-status'),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: DrAiColors.patientAccent,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              );
+            },
           ),
         ],
       ),
@@ -486,4 +979,17 @@ class _EmptyFeatureCard extends StatelessWidget {
       ),
     );
   }
+}
+
+String _patientSafeErrorMessage(Object error) {
+  if (error is ApiError) {
+    if (error.code == 'rate_limited') {
+      return 'Educational chat is temporarily rate limited.';
+    }
+    if (error.code == 'service_unavailable') {
+      return 'Unable to reach Dr. AI.';
+    }
+    return error.message;
+  }
+  return 'Unable to reach Dr. AI.';
 }

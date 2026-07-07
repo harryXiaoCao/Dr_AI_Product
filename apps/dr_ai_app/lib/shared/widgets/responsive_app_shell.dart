@@ -1,18 +1,22 @@
 import 'package:dr_ai_app/app/routing/app_role.dart';
 import 'package:dr_ai_app/design_system/dr_ai_tokens.dart';
 import 'package:dr_ai_app/features/auth/application/auth_controller.dart';
+import 'package:dr_ai_app/shared/widgets/brand_mark.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 class ResponsiveAppShell extends ConsumerWidget {
   const ResponsiveAppShell({
     required this.role,
     required this.child,
+    this.selectedIndex = 0,
     super.key,
   });
 
   final AppRole role;
   final Widget child;
+  final int selectedIndex;
 
   static const doctorDestinations = <NavigationDestination>[
     NavigationDestination(icon: Icon(Icons.dashboard), label: 'Dashboard'),
@@ -61,7 +65,9 @@ class ResponsiveAppShell extends ConsumerWidget {
         bottomNavigationBar: role == AppRole.patient
             ? NavigationBar(
                 height: 66,
-                selectedIndex: 0,
+                selectedIndex: selectedIndex,
+                onDestinationSelected: (index) =>
+                    _goToDestination(context, index),
                 labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
                 destinations: destinations,
               )
@@ -75,7 +81,9 @@ class ResponsiveAppShell extends ConsumerWidget {
           child: Row(
             children: <Widget>[
               NavigationRail(
-                selectedIndex: 0,
+                selectedIndex: selectedIndex,
+                onDestinationSelected: (index) =>
+                    _goToDestination(context, index),
                 labelType: width >= 760
                     ? NavigationRailLabelType.all
                     : NavigationRailLabelType.selected,
@@ -118,6 +126,10 @@ class ResponsiveAppShell extends ConsumerWidget {
 
   AppBar _appBar(BuildContext context, WidgetRef ref) {
     return AppBar(
+      leading: const Padding(
+        padding: EdgeInsets.all(10),
+        child: DrAiBrandMark(size: 32),
+      ),
       title: const Text('Dr. AI'),
       actions: <Widget>[
         IconButton(
@@ -141,11 +153,7 @@ class ResponsiveAppShell extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(horizontal: DrAiSpacing.md),
             child: Row(
               children: <Widget>[
-                const Icon(
-                  Icons.health_and_safety_outlined,
-                  color: DrAiColors.brand,
-                  size: 32,
-                ),
+                const DrAiBrandMark(size: 36),
                 if (!compact) ...<Widget>[
                   const SizedBox(width: DrAiSpacing.xs),
                   Text('Dr. AI', style: Theme.of(context).textTheme.titleLarge),
@@ -192,15 +200,7 @@ class ResponsiveAppShell extends ConsumerWidget {
         padding: const EdgeInsets.symmetric(horizontal: DrAiSpacing.md),
         child: Row(
           children: <Widget>[
-            Semantics(
-              label: 'Dr. AI',
-              image: true,
-              child: const Icon(
-                Icons.health_and_safety_outlined,
-                color: DrAiColors.brand,
-                size: 34,
-              ),
-            ),
+            const DrAiBrandMark(size: 38),
             const SizedBox(width: DrAiSpacing.xl),
             const SizedBox(
               width: 280,
@@ -215,7 +215,9 @@ class ResponsiveAppShell extends ConsumerWidget {
             Expanded(
               child: NavigationBar(
                 height: 52,
-                selectedIndex: 0,
+                selectedIndex: selectedIndex,
+                onDestinationSelected: (index) =>
+                    _goToDestination(context, index),
                 labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
                 destinations: doctorDestinations,
               ),
@@ -238,5 +240,17 @@ class ResponsiveAppShell extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  void _goToDestination(BuildContext context, int index) {
+    if (role == AppRole.doctor) {
+      if (index == 4) {
+        context.go('/doctor/patients');
+        return;
+      }
+      context.go('/doctor');
+      return;
+    }
+    context.go('/patient');
   }
 }

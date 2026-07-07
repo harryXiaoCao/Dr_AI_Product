@@ -1,7 +1,9 @@
 import 'package:dr_ai_app/design_system/dr_ai_tokens.dart';
 import 'package:dr_ai_app/features/auth/application/auth_controller.dart';
+import 'package:dr_ai_app/shared/widgets/brand_mark.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -49,11 +51,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
-                    const Icon(
-                      Icons.health_and_safety_outlined,
-                      size: 56,
-                      color: DrAiColors.brand,
-                    ),
+                    const DrAiBrandMark(size: 76),
                     const SizedBox(height: DrAiSpacing.md),
                     Text(
                       'Welcome to Dr. AI',
@@ -151,6 +149,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     TextButton(
                       onPressed: null,
                       child: const Text('Password reset unavailable in Week 1'),
+                    ),
+                    TextButton.icon(
+                      key: const Key('login-beta-support-link'),
+                      onPressed: () => context.go('/beta-support'),
+                      icon: const Icon(Icons.privacy_tip_outlined),
+                      label: const Text('Beta privacy and support'),
                     ),
                     const SizedBox(height: DrAiSpacing.lg),
                     const Text(

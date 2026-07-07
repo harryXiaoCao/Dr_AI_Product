@@ -1,9 +1,22 @@
 {$DR_AI_STAGING_HOST} {
 	encode zstd gzip
-	reverse_proxy api:8000
 	header {
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
 		X-Content-Type-Options "nosniff"
 		Referrer-Policy "no-referrer"
+	}
+
+	handle /api/* {
+		reverse_proxy api:8000
+	}
+
+	handle /health {
+		reverse_proxy api:8000
+	}
+
+	handle {
+		root * /srv/dr-ai-web
+		try_files {path} /index.html
+		file_server
 	}
 }

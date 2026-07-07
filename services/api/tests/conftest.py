@@ -12,9 +12,7 @@ TEST_DOCTOR_PASSWORD = secrets.token_urlsafe(18)
 TEST_PATIENT_PASSWORD = secrets.token_urlsafe(18)
 TEST_UNRELATED_PASSWORD = secrets.token_urlsafe(18)
 
-os.environ.setdefault(
-    "DR_AI_DATABASE_URL", "postgresql+psycopg://localhost/dr_ai_test"
-)
+os.environ.setdefault("DR_AI_DATABASE_URL", "postgresql+psycopg://localhost/dr_ai_test")
 os.environ["DR_AI_ENVIRONMENT"] = "test"
 os.environ["DR_AI_JWT_SECRET"] = secrets.token_urlsafe(48)
 os.environ["DR_AI_DOCTOR_INVITE_CODE"] = secrets.token_urlsafe(18)
@@ -43,9 +41,12 @@ def clean_database(migrated_database: None) -> Generator[None]:
     with engine.begin() as connection:
         connection.execute(
             text(
-                "TRUNCATE dashboard_snapshots, refresh_sessions, "
-                "care_relationships, patient_profiles, doctor_profiles, users "
-                "RESTART IDENTITY CASCADE"
+                "TRUNCATE audit_events, consultation_requests, chat_messages, chat_threads, "
+                "chat_rate_limits, simulated_assessments, demo_medical_assets, "
+                "recovery_task_completions, recovery_tasks, recovery_plans, "
+                "doctor_notes, medications, medical_records, "
+                "dashboard_snapshots, refresh_sessions, care_relationships, "
+                "patient_profiles, doctor_profiles, users RESTART IDENTITY CASCADE"
             )
         )
     yield

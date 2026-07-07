@@ -87,9 +87,7 @@ def _create_session(
 
 def _expected_invite(settings: Settings, role: UserRole) -> str | None:
     configured = (
-        settings.doctor_invite_code
-        if role == UserRole.doctor
-        else settings.patient_invite_code
+        settings.doctor_invite_code if role == UserRole.doctor else settings.patient_invite_code
     )
     return configured.get_secret_value() if configured else None
 
@@ -105,12 +103,8 @@ def register(
     settings: AppSettings,
 ) -> AuthTokenResponse:
     expected_invite = _expected_invite(settings, body.role)
-    if expected_invite is None or not secrets.compare_digest(
-        expected_invite, body.invite_code
-    ):
-        raise ApiError(
-            403, "forbidden", "Registration is not available for this invitation."
-        )
+    if expected_invite is None or not secrets.compare_digest(expected_invite, body.invite_code):
+        raise ApiError(403, "forbidden", "Registration is not available for this invitation.")
 
     user = User(
         email=_normalize_email(str(body.email)),
@@ -140,9 +134,7 @@ def register(
         db.commit()
     except IntegrityError:
         db.rollback()
-        raise ApiError(
-            409, "conflict", "An account already exists for this email."
-        ) from None
+        raise ApiError(409, "conflict", "An account already exists for this email.") from None
     db.refresh(user)
     return _create_session(db, user, settings)
 
@@ -170,14 +162,10 @@ def refresh(
     now = datetime.now(UTC)
     token_hash = hash_refresh_token(body.refresh_token)
     current = db.scalar(
-        select(RefreshSession)
-        .where(RefreshSession.token_hash == token_hash)
-        .with_for_update()
+        select(RefreshSession).where(RefreshSession.token_hash == token_hash).with_for_update()
     )
     if current is None:
-        raise ApiError(
-            401, "unauthenticated", "The refresh session is invalid or expired."
-        )
+        raise ApiError(401, "unauthenticated", "The refresh session is invalid or expired.")
     if current.used_at is not None or current.revoked_at is not None:
         db.execute(
             update(RefreshSession)
@@ -185,25 +173,17 @@ def refresh(
             .values(revoked_at=now)
         )
         db.commit()
-        raise ApiError(
-            401, "unauthenticated", "The refresh session is invalid or expired."
-        )
+        raise ApiError(401, "unauthenticated", "The refresh session is invalid or expired.")
     if current.expires_at <= now:
         current.revoked_at = now
         db.commit()
-        raise ApiError(
-            401, "unauthenticated", "The refresh session is invalid or expired."
-        )
+        raise ApiError(401, "unauthenticated", "The refresh session is invalid or expired.")
 
-    user = db.scalar(
-        select(User).where(User.id == current.user_id, User.is_active.is_(True))
-    )
+    user = db.scalar(select(User).where(User.id == current.user_id, User.is_active.is_(True)))
     if user is None:
         current.revoked_at = now
         db.commit()
-        raise ApiError(
-            401, "unauthenticated", "The refresh session is invalid or expired."
-        )
+        raise ApiError(401, "unauthenticated", "The refresh session is invalid or expired.")
 
     raw_refresh_token = new_refresh_token()
     replacement = RefreshSession(
@@ -231,15 +211,9 @@ def refresh(
 def logout(body: LogoutRequest, db: DbSession, user: CurrentUser) -> Response:
     token_hash = hash_refresh_token(body.refresh_token)
     current = db.scalar(
-        select(RefreshSession)
-        .where(RefreshSession.token_hash == token_hash)
-        .with_for_update()
+        select(RefreshSession).where(RefreshSession.token_hash == token_hash).with_for_update()
     )
-    if (
-        current is not None
-        and current.user_id == user.id
-        and current.revoked_at is None
-    ):
+    if current is not None and current.user_id == user.id and current.revoked_at is None:
         current.revoked_at = datetime.now(UTC)
         db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

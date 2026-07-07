@@ -23,9 +23,7 @@ def test_passwords_use_argon2id() -> None:
     assert not verify_password("different test passphrase", encoded)
 
 
-def test_invited_registration_requires_the_role_invite(
-    client: TestClient, settings
-) -> None:
+def test_invited_registration_requires_the_role_invite(client: TestClient, settings) -> None:
     denied = client.post(
         "/api/v1/auth/register",
         json={
@@ -94,9 +92,7 @@ def test_expired_access_token_is_rejected(client: TestClient, settings) -> None:
         settings.seed_doctor_password.get_secret_value(),
     )
     with Session(engine) as db:
-        user = db.scalar(
-            select(User).where(User.email == "doctor.demo@example.com")
-        )
+        user = db.scalar(select(User).where(User.email == "doctor.demo@example.com"))
         session = db.scalar(
             select(RefreshSession).where(
                 RefreshSession.token_hash.is_not(None),
@@ -116,9 +112,7 @@ def test_expired_access_token_is_rejected(client: TestClient, settings) -> None:
     assert tokens["access_token"] != expired
 
 
-def test_refresh_rotates_and_replay_revokes_family(
-    client: TestClient, settings
-) -> None:
+def test_refresh_rotates_and_replay_revokes_family(client: TestClient, settings) -> None:
     with Session(engine) as db:
         seed_database(db, settings)
     initial = login(
@@ -148,9 +142,7 @@ def test_refresh_rotates_and_replay_revokes_family(
     assert family_revoked.status_code == 401
 
 
-def test_logout_revokes_refresh_and_access_session(
-    client: TestClient, settings
-) -> None:
+def test_logout_revokes_refresh_and_access_session(client: TestClient, settings) -> None:
     with Session(engine) as db:
         seed_database(db, settings)
     tokens = login(
