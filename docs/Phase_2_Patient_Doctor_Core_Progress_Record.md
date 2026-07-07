@@ -155,3 +155,49 @@ Recorded during this local implementation pass:
 
 Full backend, Alembic, dependency, Flutter, and diff checks should be recorded
 in the final task status for this implementation pass.
+
+## Post-Closure Tencent Staging Redeploy
+
+Recorded: 2026-07-08T01:17:44+08:00
+
+After Phase 2 was committed locally as `8e9d344`, Tencent same-origin staging
+was redeployed so the live web/API environment matches the completed Phase 2
+patient/doctor core closure. This redeploy did not change production, tester
+accounts, monitoring/account settings, native store uploads, tags, pushes,
+pull requests, real patient data, or clinical workflows.
+
+Deployment evidence:
+
+- Pre-deploy local verification passed: backend Ruff, full backend tests
+  (`64 passed`), Alembic upgrade/check, `uv pip check`,
+  `./scripts/verify_flutter.sh`, Flutter web release build for
+  `https://dr-ai.43.132.169.195.sslip.io`, and `git diff --check`.
+- Built and pushed a sanitized API image on the Tencent CVM and deployed
+  immutable digest
+  `hkccr.ccs.tencentyun.com/dr-ai/dr-ai-backend@sha256:a1d55dd905acdd2113ed2dac163aaa7f0d1fc1a37ec4a0d2855b7e65e4250381`.
+- Applied Alembic migrations `20260707_0007`, `20260708_0008`, and
+  `20260708_0009` on staging.
+- Ran the synthetic seed twice on staging; both runs were idempotent with all
+  created counts at `0`.
+- Rebuilt Flutter web for the Tencent staging origin, updated the mounted
+  host-side `web/` directory in place, recreated API and Caddy containers, and
+  validated the Caddy config.
+- Credentialed staging smoke passed for health, doctor/patient login,
+  refresh/logout, assigned-patient search, neutral cross-patient denial, demo
+  upload presign, simulated assessment, recovery-plan save/activation,
+  patient Today/task completion, Ask Dr. AI, consultation readback, and Beta
+  support web surface.
+- Public checks passed for `/health`, `/`, `/beta-support`, and unauthenticated
+  `/api/v1/me` returning `401`.
+
+Install-prep status after redeploy:
+
+- Computer and phone browser/PWA inspection should use
+  `https://dr-ai.43.132.169.195.sslip.io`.
+- The Android debug APK was not rebuilt in this pass because Flutter is
+  configured for `/Volumes/AndroidAVD/sdk`, but that SDK mount was unavailable
+  locally. The existing `app-debug.apk` from 2026-07-07 is stale for Phase 2
+  and should not be used as Phase 2 evidence.
+- iPhone native install still requires selecting an Apple development team for
+  bundle id `com.harrycao.drai.drAiApp`; TestFlight/App Store Connect remains
+  separate from this staging redeploy.
