@@ -37,6 +37,30 @@ final ownPatientCareProvider = FutureProvider.autoDispose<PatientCareBundle>((
   return ref.read(repositoryProvider).loadOwnPatientCare();
 });
 
+final clinicalEventWorkflowControllerProvider =
+    StateNotifierProvider.autoDispose<
+      ClinicalEventWorkflowController,
+      AsyncValue<ClinicalEventItem?>
+    >((ref) {
+      return ClinicalEventWorkflowController(ref.read(repositoryProvider), ref);
+    });
+
+final clinicalEventUpdateControllerProvider =
+    StateNotifierProvider.autoDispose<
+      ClinicalEventUpdateController,
+      AsyncValue<ClinicalEventUpdateItem?>
+    >((ref) {
+      return ClinicalEventUpdateController(ref.read(repositoryProvider), ref);
+    });
+
+final medicalHistoryReviewControllerProvider =
+    StateNotifierProvider.autoDispose<
+      MedicalHistoryReviewController,
+      AsyncValue<MedicalHistoryReviewItem?>
+    >((ref) {
+      return MedicalHistoryReviewController(ref.read(repositoryProvider), ref);
+    });
+
 final assessmentListProvider = FutureProvider.autoDispose
     .family<AssessmentListData, String>((ref, patientId) async {
       ref.watch(authControllerProvider);
@@ -126,6 +150,7 @@ class MedicalImagingWorkflowController
 
   Future<void> prepare({
     required String patientId,
+    required String? clinicalEventId,
     required String filename,
     required String contentType,
     required int sizeBytes,
@@ -134,6 +159,7 @@ class MedicalImagingWorkflowController
     try {
       final presign = await _repository.presignMedicalImaging(
         patientId: patientId,
+        clinicalEventId: clinicalEventId,
         filename: filename,
         contentType: contentType,
         sizeBytes: sizeBytes,
@@ -180,6 +206,8 @@ class MedicalImagingWorkflowController
   Future<void> review({
     required String patientId,
     required String reviewStatus,
+    required String findingSummary,
+    required String measurementSummary,
   }) async {
     final current = state.asData?.value;
     final assetId = current?.asset?.id ?? current?.presign?.assetId;
@@ -192,6 +220,8 @@ class MedicalImagingWorkflowController
         patientId: patientId,
         assetId: assetId,
         reviewStatus: reviewStatus,
+        findingSummary: findingSummary,
+        measurementSummary: measurementSummary,
       );
       _ref.invalidate(patientCareBundleProvider(patientId));
       state = AsyncData(
@@ -259,6 +289,106 @@ final medicationWorkflowControllerProvider =
       return MedicationWorkflowController(ref.read(repositoryProvider), ref);
     });
 
+class ClinicalEventWorkflowController
+    extends StateNotifier<AsyncValue<ClinicalEventItem?>> {
+  ClinicalEventWorkflowController(this._repository, this._ref)
+    : super(const AsyncData<ClinicalEventItem?>(null));
+
+  final DrAiRepository _repository;
+  final Ref _ref;
+
+  Future<void> save({
+    required String patientId,
+    required String? clinicalEventId,
+    required String title,
+    required String chiefComplaint,
+    required String symptomSummary,
+    required String diagnosisSummary,
+    required String onsetDate,
+    required String status,
+  }) async {
+    state = const AsyncLoading<ClinicalEventItem?>();
+    try {
+      final event = await _repository.saveClinicalEvent(
+        patientId: patientId,
+        clinicalEventId: clinicalEventId,
+        title: title,
+        chiefComplaint: chiefComplaint,
+        symptomSummary: symptomSummary,
+        diagnosisSummary: diagnosisSummary,
+        onsetDate: onsetDate,
+        status: status,
+      );
+      state = AsyncData(event);
+      _ref.invalidate(patientCareBundleProvider(patientId));
+    } catch (error, stackTrace) {
+      state = AsyncError<ClinicalEventItem?>(error, stackTrace);
+    }
+  }
+}
+
+class ClinicalEventUpdateController
+    extends StateNotifier<AsyncValue<ClinicalEventUpdateItem?>> {
+  ClinicalEventUpdateController(this._repository, this._ref)
+    : super(const AsyncData<ClinicalEventUpdateItem?>(null));
+
+  final DrAiRepository _repository;
+  final Ref _ref;
+
+  Future<void> submit({
+    required String clinicalEventId,
+    required String updateType,
+    required String summary,
+  }) async {
+    state = const AsyncLoading<ClinicalEventUpdateItem?>();
+    try {
+      final update = await _repository.submitClinicalEventUpdate(
+        clinicalEventId: clinicalEventId,
+        updateType: updateType,
+        summary: summary,
+      );
+      state = AsyncData(update);
+      _ref.invalidate(ownPatientCareProvider);
+    } catch (error, stackTrace) {
+      state = AsyncError<ClinicalEventUpdateItem?>(error, stackTrace);
+    }
+  }
+}
+
+class MedicalHistoryReviewController
+    extends StateNotifier<AsyncValue<MedicalHistoryReviewItem?>> {
+  MedicalHistoryReviewController(this._repository, this._ref)
+    : super(const AsyncData<MedicalHistoryReviewItem?>(null));
+
+  final DrAiRepository _repository;
+  final Ref _ref;
+
+  Future<void> create({
+    required String patientId,
+    required String targetType,
+    required String targetId,
+    required String action,
+    required String amendmentSummary,
+    required String correctionRequest,
+  }) async {
+    state = const AsyncLoading<MedicalHistoryReviewItem?>();
+    try {
+      final review = await _repository.createMedicalHistoryReview(
+        patientId: patientId,
+        targetType: targetType,
+        targetId: targetId,
+        action: action,
+        amendmentSummary: amendmentSummary,
+        correctionRequest: correctionRequest,
+      );
+      state = AsyncData(review);
+      _ref.invalidate(patientCareBundleProvider(patientId));
+    } catch (error, stackTrace) {
+      state = AsyncError<MedicalHistoryReviewItem?>(error, stackTrace);
+    }
+  }
+}
+
 class MedicationWorkflowController extends StateNotifier<AsyncValue<String?>> {
   MedicationWorkflowController(this._repository, this._ref)
     : super(const AsyncData<String?>(null));
@@ -268,6 +398,7 @@ class MedicationWorkflowController extends StateNotifier<AsyncValue<String?>> {
 
   Future<void> saveMedication({
     required String patientId,
+    required String? clinicalEventId,
     required String? medicationId,
     required String name,
     required String dosage,
@@ -279,6 +410,7 @@ class MedicationWorkflowController extends StateNotifier<AsyncValue<String?>> {
     try {
       await _repository.saveMedication(
         patientId: patientId,
+        clinicalEventId: clinicalEventId,
         medicationId: medicationId,
         name: name,
         dosage: dosage,
@@ -295,6 +427,7 @@ class MedicationWorkflowController extends StateNotifier<AsyncValue<String?>> {
 
   Future<void> createPrescription({
     required String patientId,
+    required String? clinicalEventId,
     required String medicationId,
     required String name,
     required String dosage,
@@ -305,6 +438,7 @@ class MedicationWorkflowController extends StateNotifier<AsyncValue<String?>> {
     try {
       await _repository.createPrescription(
         patientId: patientId,
+        clinicalEventId: clinicalEventId,
         medicationId: medicationId,
         name: name,
         dosage: dosage,
@@ -360,6 +494,7 @@ class RecoveryPlanEditorController
 
   Future<void> saveDraft({
     required String patientId,
+    required String? clinicalEventId,
     required String? planId,
     required String title,
     required String instructions,
@@ -370,12 +505,14 @@ class RecoveryPlanEditorController
       final result = planId == null
           ? await _repository.createRecoveryPlan(
               patientId: patientId,
+              clinicalEventId: clinicalEventId,
               title: title,
               instructions: instructions,
               tasks: tasks,
             )
           : await _repository.updateRecoveryPlan(
               patientId: patientId,
+              clinicalEventId: clinicalEventId,
               planId: planId,
               title: title,
               instructions: instructions,
@@ -383,6 +520,7 @@ class RecoveryPlanEditorController
             );
       state = AsyncData(result);
       _ref.invalidate(recoveryPlanListProvider(patientId));
+      _ref.invalidate(patientCareBundleProvider(patientId));
     } catch (error, stackTrace) {
       state = AsyncError<RecoveryPlanData?>(error, stackTrace);
     }
@@ -676,6 +814,7 @@ class ConsultationRequestController
 
   Future<void> create({
     required String patientId,
+    required String? clinicalEventId,
     required String specialty,
     required String questionSummary,
     required String priority,
@@ -684,6 +823,7 @@ class ConsultationRequestController
     try {
       final result = await _repository.createConsultation(
         patientId: patientId,
+        clinicalEventId: clinicalEventId,
         specialty: specialty,
         questionSummary: questionSummary,
         priority: priority,

@@ -62,6 +62,31 @@ external account actions remain outside this Phase 2 closure.
 - Added patient Today production tracking depth with active-plan progress
   summary, completed/remaining task counts, completion percent, and task
   completion timestamps.
+- Added a persisted Clinical Event/Care Episode table as the central Phase 2
+  workflow-clarification object.
+- Added doctor-only Clinical Event create/update endpoints and doctor/patient
+  read endpoints, including patient-owned `/patient/me/clinical-events`
+  aliases.
+- Added nullable `clinical_event_id` links on visit history, diagnoses,
+  medications, prescriptions, medication/refill reminders, metadata-only
+  notifications, recovery plans, imaging assets, doctor notes, and consultation
+  requests.
+- Expanded care-bundle responses with `clinical_events`, linked-resource
+  counts, `recovery_plans`, and nullable event IDs on linked resources.
+- Extended Flutter care-bundle domain models to parse Clinical Events and
+  event-linked resource IDs.
+- Extended Flutter doctor Patient Management so Clinical Events are the active
+  organizing object above the workspace sections.
+- Added doctor-side Clinical Event create/update/select controls inside the
+  Clinical Events section.
+- Scoped doctor Patient Management readback for encounter updates, diagnosis,
+  medications, prescriptions, generated reminders, recovery plans, imaging,
+  doctor notes, consultation requests, and activity timeline rows to the
+  selected Clinical Event where linked event IDs exist.
+- Wired the selected `clinical_event_id` into Flutter medication schedule save,
+  prescription issue, medical imaging presign, recovery-plan create/update,
+  and specialist consultation request calls. Existing backend request fields
+  remain nullable for backward compatibility.
 - Extended Flutter doctor Patient Management with recovery-plan review status,
   submit/review/approve/complete controls, and progress readback.
 - Extended Flutter patient Today with a compact active-plan progress line.
@@ -69,6 +94,30 @@ external account actions remain outside this Phase 2 closure.
   change.
 - Added focused backend and Flutter widget coverage for recovery-plan review
   semantics and patient Today progress.
+- Added derived Clinical Event timeline readback so event responses show
+  ordered episode activity beyond linked-resource counts.
+- Added doctor-entered manual imaging finding/result fields to the doctor-only
+  imaging review flow, backed by migration `20260708_0011`.
+- Tightened recovery-plan activation so approving a replacement completes
+  active plans only within the same Clinical Event; the doctor UI also
+  surfaces the active-plan-per-event state.
+- Extended Flutter doctor Patient Management to display event timeline rows
+  and manual imaging findings/results inside the selected Clinical Event
+  context.
+- Added audited medical-history review overlays backed by migration
+  `20260708_0012`, allowing assigned doctors to mark patient-entered history
+  as verified, request correction, or add a clinician amendment without
+  overwriting the original patient-entered allergy, chronic-disease, or record
+  row.
+- Added patient-submitted Clinical Event update rows backed by migration
+  `20260708_0012`, with patient-owned submission/readback and inclusion in
+  Clinical Event responses, care bundles, linked-resource counts, and the
+  derived event timeline.
+- Extended Flutter doctor Patient Management with a Medical History review
+  panel and visible doctor review/amendment audit overlay.
+- Extended the Flutter patient dashboard with a compact Clinical Event update
+  submission panel that lets patients report an update without touching
+  doctor-owned diagnosis fields.
 
 ## RBAC And Data Boundary
 
@@ -94,14 +143,28 @@ external account actions remain outside this Phase 2 closure.
   make clinical interpretations in this slice.
 - Doctors and patients can list/read imaging metadata only through an active
   care relationship or own-patient boundary. Review status changes are
-  doctor-only.
+  doctor-only. Manual imaging findings/results are doctor-entered fields; the
+  backend does not generate or infer those findings.
 - Recovery-plan create/edit/review/approve/complete mutations are doctor-only
   and scoped to an active care relationship.
 - Patients can read only their own active Today tasks and complete only their
   own active tasks.
+- Clinical Event create/update remains doctor-only and scoped to an active
+  care relationship. Patients can read their own events but cannot mutate
+  event diagnosis summaries or doctor diagnosis records.
+- Medical-history verification, correction requests, and clinician amendments
+  are doctor-only overlays scoped to an active care relationship. They do not
+  overwrite patient-entered history rows.
+- Patients can submit updates only to their own Clinical Events. Patient
+  updates are separate timeline entries and do not mutate doctor diagnosis
+  summaries or diagnosis records.
+- Event-linked resource writes validate that `clinical_event_id` belongs to the
+  same authorized patient; wrong-role and cross-patient probes keep returning
+  neutral `404 not_found`.
 - Recovery-plan edits are blocked while a plan is in review and after approval
   or completion. Approval makes the plan active and completes any previous
-  active plan for the same patient.
+  active plan for the same Clinical Event, while preserving active plans for
+  unrelated Clinical Events.
 - Closing a recovery plan requires all active plan tasks to be completed.
 
 ## Audit Behavior
@@ -118,14 +181,37 @@ external account actions remain outside this Phase 2 closure.
   schedules, medication notes, prescription notes, reminder labels, or other
   clinical content.
 - Imaging audit metadata stores actor role, content type, byte counts,
-  storage provider, upload status, review status, and boolean checksum/ETag
-  presence only.
+  storage provider, upload status, review status, boolean checksum/ETag
+  presence, and booleans for whether manual findings/result fields were
+  supplied only.
 - Imaging audit metadata does not copy filenames, object keys, upload URLs,
-  ETags, checksums, image contents, review notes, or clinical interpretations.
+  ETags, checksums, image contents, manual finding/result text, review notes,
+  or clinical interpretations.
 - Recovery-plan audit metadata stores status, review status, task counts,
   completed task counts, categories, source transition, and resource IDs only.
 - Recovery-plan audit metadata does not copy plan titles, instructions, task
   titles, task details, notification labels, or clinical content.
+- Clinical Event and event-link audit metadata stores actor role, statuses,
+  field names, resource IDs, counts, and event IDs only.
+- Clinical Event and event-link audit metadata does not copy event titles,
+  chief complaints, symptom summaries, diagnosis summaries, visit summaries,
+  diagnosis labels, medication names, prescription notes, reminder labels,
+  filenames, object keys, consultation questions, doctor notes, or clinical
+  content.
+- Medical-history review audit metadata stores actor role, target type,
+  target ID, action, and booleans for supplied amendment/correction text only.
+  It does not copy patient-entered history labels or amendment/correction
+  content.
+- Patient Clinical Event update audit metadata stores actor role, event ID,
+  update type, and a summary-presence boolean only. It does not copy the
+  patient's update text or alter doctor-owned diagnosis content.
+
+## Remaining Phase 2 Workflow Clarification Work
+
+- No known remaining items from the eight-functionality Phase 2 workflow
+  clarification list remain open locally. Future hardening, external delivery,
+  real-data readiness, AI assistance, clinic operations, specialist/admin UI,
+  and localization remain separate gated phases.
 
 ## Deferred Beyond Phase 2
 
@@ -149,9 +235,16 @@ external account actions remain outside this Phase 2 closure.
 Recorded during this local implementation pass:
 
 - `uv run ruff check .`: passed after backend formatting fixes.
-- `uv run pytest tests/test_phase2_patient_doctor_core.py -q`: `7 passed`.
+- `uv run pytest tests/test_phase2_patient_doctor_core.py -q`: `8 passed`
+  after the Clinical Event backend/API slice.
+- `uv run pytest tests/test_phase2_patient_doctor_core.py -q`: `10 passed`
+  after the audited Medical History review and patient Clinical Event update
+  closure slice.
+- `uv run alembic upgrade head`: passed through migration `20260708_0012`.
+- `uv run alembic check`: passed with no new upgrade operations detected.
 - `./scripts/verify_flutter.sh`: passed with analysis clean and widget/golden
-  tests passing after recovery-plan/Today golden updates.
+  tests passing after the audited history review and patient event-update UI
+  updates.
 
 Full backend, Alembic, dependency, Flutter, and diff checks should be recorded
 in the final task status for this implementation pass.

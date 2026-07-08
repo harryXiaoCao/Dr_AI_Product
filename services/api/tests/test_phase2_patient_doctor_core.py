@@ -5,7 +5,15 @@ from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from app.database import engine
-from app.models import AuditEvent, MedicalImagingAsset, PatientProfile
+from app.models import (
+    AuditEvent,
+    ClinicalEvent,
+    ClinicalEventUpdate,
+    MedicalHistoryReview,
+    MedicalImagingAsset,
+    Notification,
+    PatientProfile,
+)
 from app.seed import seed_database
 from tests.helpers import auth_header, login
 
@@ -15,6 +23,21 @@ PHASE2_TABLES = {
     "visit_history",
     "diagnoses",
     "medical_imaging_assets",
+    "clinical_events",
+    "clinical_event_updates",
+    "medical_history_reviews",
+}
+PHASE2_EVENT_LINK_TABLES = {
+    "medications",
+    "doctor_notes",
+    "visit_history",
+    "diagnoses",
+    "medical_imaging_assets",
+    "recovery_plans",
+    "consultation_requests",
+    "prescriptions",
+    "medication_reminders",
+    "notifications",
 }
 PHASE2_RECOVERY_COLUMNS = {
     "review_status",
@@ -23,6 +46,12 @@ PHASE2_RECOVERY_COLUMNS = {
     "reviewed_at",
     "approved_at",
     "completed_at",
+}
+PHASE2_IMAGING_FINDING_COLUMNS = {
+    "finding_summary",
+    "measurement_summary",
+    "observed_at",
+    "treatment_relevance_date",
 }
 
 
@@ -73,6 +102,25 @@ def test_phase2_tables_are_present_and_seed_keeps_them_empty(settings) -> None:
             ).all()
         )
         assert PHASE2_RECOVERY_COLUMNS.issubset(recovery_columns)
+        imaging_columns = set(
+            db.scalars(
+                text(
+                    "SELECT column_name FROM information_schema.columns "
+                    "WHERE table_name = 'medical_imaging_assets'"
+                )
+            ).all()
+        )
+        assert PHASE2_IMAGING_FINDING_COLUMNS.issubset(imaging_columns)
+        for table_name in PHASE2_EVENT_LINK_TABLES:
+            columns = set(
+                db.scalars(
+                    text(
+                        "SELECT column_name FROM information_schema.columns "
+                        f"WHERE table_name = '{table_name}'"
+                    )
+                ).all()
+            )
+            assert "clinical_event_id" in columns, table_name
 
 
 def test_patient_can_update_allowed_profile_and_allergy_surfaces(
@@ -117,9 +165,7 @@ def test_patient_can_update_allowed_profile_and_allergy_surfaces(
     assert cross_patient_response.json()["error"]["code"] == "not_found"
 
     with Session(engine) as db:
-        audits = db.scalars(
-            select(AuditEvent).where(AuditEvent.patient_id == assigned_id)
-        ).all()
+        audits = db.scalars(select(AuditEvent).where(AuditEvent.patient_id == assigned_id)).all()
         event_types = {audit.event_type for audit in audits}
         assert "patient_profile_updated" in event_types
         allergy_audit = next(
@@ -218,9 +264,7 @@ def test_doctor_can_crud_core_medical_history_and_notes_with_metadata_only_audit
     )
 
     with Session(engine) as db:
-        audits = db.scalars(
-            select(AuditEvent).where(AuditEvent.patient_id == assigned_id)
-        ).all()
+        audits = db.scalars(select(AuditEvent).where(AuditEvent.patient_id == assigned_id)).all()
         event_types = {audit.event_type for audit in audits}
         assert {
             "visit_history_created",
@@ -236,6 +280,385 @@ def test_doctor_can_crud_core_medical_history_and_notes_with_metadata_only_audit
         assert "Demo-only visit summary" not in serialized_metadata
         assert "Synthetic observation" not in serialized_metadata
         assert "Doctor-facing demo note" not in serialized_metadata
+
+
+def test_clinical_event_links_phase2_resources_with_safe_boundaries(
+    client: TestClient, settings
+) -> None:
+    assigned_id, unrelated_id = _seed_patient_ids(settings)
+    doctor_headers = _doctor_headers(client, settings)
+    patient_headers = _patient_headers(client, settings)
+
+    event_response = client.post(
+        f"/api/v1/patients/{assigned_id}/clinical-events",
+        headers=doctor_headers,
+        json={
+            "title": "Synthetic headache care episode",
+            "chief_complaint": "Synthetic headache follow-up",
+            "symptom_summary": "Demo-only symptom summary.",
+            "diagnosis_summary": "Demo-only provisional diagnosis summary.",
+            "onset_date": "2026-07-01",
+            "status": "active",
+        },
+    )
+    assert event_response.status_code == 200
+    event_payload = event_response.json()
+    event_id = event_payload["id"]
+    assert event_payload["linked_resource_counts"]["diagnoses"] == 0
+
+    updated_event = client.put(
+        f"/api/v1/patients/{assigned_id}/clinical-events/{event_id}",
+        headers=doctor_headers,
+        json={
+            "title": "Synthetic headache care episode updated",
+            "chief_complaint": "Synthetic headache monitoring",
+            "symptom_summary": "Updated demo-only symptom summary.",
+            "diagnosis_summary": "Updated demo-only diagnosis summary.",
+            "onset_date": "2026-07-01",
+            "status": "monitoring",
+        },
+    )
+    assert updated_event.status_code == 200
+    assert updated_event.json()["status"] == "monitoring"
+
+    patient_event_list = client.get("/api/v1/patient/me/clinical-events", headers=patient_headers)
+    assert patient_event_list.status_code == 200
+    assert patient_event_list.json()["items"][0]["id"] == event_id
+
+    patient_event_detail = client.get(
+        f"/api/v1/patient/me/clinical-events/{event_id}",
+        headers=patient_headers,
+    )
+    assert patient_event_detail.status_code == 200
+    assert (
+        patient_event_detail.json()["diagnosis_summary"] == "Updated demo-only diagnosis summary."
+    )
+
+    patient_update = client.post(
+        f"/api/v1/patient/me/clinical-events/{event_id}/updates",
+        headers=patient_headers,
+        json={
+            "update_type": "symptom_update",
+            "summary": "Patient self-reported demo-only symptom update.",
+            "occurred_at": "2026-07-08T12:00:00Z",
+        },
+    )
+    assert patient_update.status_code == 200
+    patient_update_payload = patient_update.json()
+    assert patient_update_payload["clinical_event_id"] == event_id
+    assert patient_update_payload["update_type"] == "symptom_update"
+
+    patient_updates = client.get(
+        f"/api/v1/patient/me/clinical-events/{event_id}/updates",
+        headers=patient_headers,
+    )
+    assert patient_updates.status_code == 200
+    assert patient_updates.json()["items"][0]["id"] == patient_update_payload["id"]
+
+    patient_event_update = client.put(
+        f"/api/v1/patients/{assigned_id}/clinical-events/{event_id}",
+        headers=patient_headers,
+        json={
+            "title": "Blocked patient event update",
+            "chief_complaint": "Blocked patient complaint",
+        },
+    )
+    assert patient_event_update.status_code == 404
+    assert patient_event_update.json()["error"]["code"] == "not_found"
+
+    cross_patient_event = client.post(
+        f"/api/v1/patients/{unrelated_id}/clinical-events",
+        headers=doctor_headers,
+        json={
+            "title": "Blocked cross-patient event",
+            "chief_complaint": "Blocked cross-patient complaint",
+        },
+    )
+    assert cross_patient_event.status_code == 404
+    assert cross_patient_event.json()["error"]["code"] == "not_found"
+
+    medication = client.post(
+        f"/api/v1/patients/{assigned_id}/medications",
+        headers=doctor_headers,
+        json={
+            "clinical_event_id": event_id,
+            "name": "Synthetic event medication",
+            "dosage": "Demo dose",
+            "schedule": "Demo schedule",
+            "status": "active",
+            "note": "Demo-only event medication note.",
+        },
+    )
+    assert medication.status_code == 200
+    medication_id = medication.json()["id"]
+    assert medication.json()["clinical_event_id"] == event_id
+
+    visit = client.post(
+        f"/api/v1/patients/{assigned_id}/visit-history",
+        headers=doctor_headers,
+        json={
+            "clinical_event_id": event_id,
+            "visit_type": "follow_up",
+            "title": "Synthetic event update",
+            "summary": "Demo-only event update summary.",
+            "occurred_at": "2026-07-08T09:00:00Z",
+            "clinician_label": "Demo clinician",
+        },
+    )
+    assert visit.status_code == 200
+    assert visit.json()["clinical_event_id"] == event_id
+
+    diagnosis = client.post(
+        f"/api/v1/patients/{assigned_id}/diagnoses",
+        headers=doctor_headers,
+        json={
+            "clinical_event_id": event_id,
+            "label": "Synthetic event diagnosis",
+            "status": "active",
+            "diagnosed_on": "2026-07-08",
+            "notes": "Demo-only event diagnosis note.",
+        },
+    )
+    assert diagnosis.status_code == 200
+    diagnosis_id = diagnosis.json()["id"]
+    assert diagnosis.json()["clinical_event_id"] == event_id
+
+    patient_diagnosis_update = client.put(
+        f"/api/v1/patients/{assigned_id}/diagnoses/{diagnosis_id}",
+        headers=patient_headers,
+        json={
+            "clinical_event_id": event_id,
+            "label": "Blocked patient diagnosis edit",
+            "status": "resolved",
+        },
+    )
+    assert patient_diagnosis_update.status_code == 404
+    assert patient_diagnosis_update.json()["error"]["code"] == "not_found"
+
+    note = client.post(
+        f"/api/v1/patients/{assigned_id}/doctor-notes",
+        headers=doctor_headers,
+        json={
+            "clinical_event_id": event_id,
+            "title": "Synthetic event note",
+            "body": "Demo-only event note body.",
+        },
+    )
+    assert note.status_code == 200
+    assert note.json()["clinical_event_id"] == event_id
+
+    prescription = client.post(
+        f"/api/v1/patients/{assigned_id}/prescriptions",
+        headers=doctor_headers,
+        json={
+            "clinical_event_id": event_id,
+            "status": "issued",
+            "issued_at": "2026-07-08T10:00:00Z",
+            "notes": "Demo-only event prescription note.",
+            "medications": [
+                {
+                    "medication_id": medication_id,
+                    "name": "Synthetic event medication",
+                    "dosage": "Demo dose",
+                    "schedule": "Demo schedule",
+                }
+            ],
+        },
+    )
+    assert prescription.status_code == 200
+    prescription_id = prescription.json()["id"]
+    assert prescription.json()["clinical_event_id"] == event_id
+    prescription_line_id = prescription.json()["medications"][0]["id"]
+
+    reminder = client.post(
+        f"/api/v1/patients/{assigned_id}/medication-reminders",
+        headers=doctor_headers,
+        json={
+            "clinical_event_id": event_id,
+            "prescription_medication_id": prescription_line_id,
+            "reminder_type": "medication",
+            "schedule_label": "Demo event medication reminder",
+            "channel": "in_app",
+            "status": "active",
+            "next_due_at": "2026-07-08T11:00:00Z",
+        },
+    )
+    assert reminder.status_code == 200
+    reminder_id = reminder.json()["id"]
+    assert reminder.json()["clinical_event_id"] == event_id
+
+    imaging = client.post(
+        f"/api/v1/patients/{assigned_id}/imaging/presign",
+        headers=doctor_headers,
+        json={
+            "clinical_event_id": event_id,
+            "filename": "event-image.png",
+            "content_type": "image/png",
+            "size_bytes": 1024,
+        },
+    )
+    assert imaging.status_code == 200
+    asset_id = imaging.json()["asset_id"]
+    assert imaging.json()["clinical_event_id"] == event_id
+
+    completed_imaging = client.post(
+        f"/api/v1/patients/{assigned_id}/imaging/{asset_id}/complete",
+        headers=doctor_headers,
+        json={"uploaded_size_bytes": 1024},
+    )
+    assert completed_imaging.status_code == 200
+    assert completed_imaging.json()["clinical_event_id"] == event_id
+
+    reviewed_imaging = client.post(
+        f"/api/v1/patients/{assigned_id}/imaging/{asset_id}/review",
+        headers=doctor_headers,
+        json={
+            "review_status": "reviewed",
+            "finding_summary": "Manual demo-only imaging finding.",
+            "measurement_summary": "Manual demo-only measurement.",
+            "observed_at": "2026-07-08T10:30:00Z",
+            "treatment_relevance_date": "2026-07-08",
+        },
+    )
+    assert reviewed_imaging.status_code == 200
+    assert reviewed_imaging.json()["finding_summary"] == "Manual demo-only imaging finding."
+    assert reviewed_imaging.json()["measurement_summary"] == "Manual demo-only measurement."
+
+    recovery_plan = client.post(
+        f"/api/v1/patients/{assigned_id}/recovery-plans",
+        headers=doctor_headers,
+        json={
+            "clinical_event_id": event_id,
+            "title": "Synthetic event recovery plan",
+            "instructions": "Demo-only event recovery instructions.",
+            "tasks": [
+                {
+                    "category": "medication",
+                    "title": "Synthetic event medication task",
+                    "detail": "Demo-only event medication task.",
+                    "due_label": "Today",
+                    "notification_time": "09:00",
+                    "medication_id": medication_id,
+                },
+                {
+                    "category": "exercise",
+                    "title": "Synthetic event exercise task",
+                    "detail": "Demo-only event exercise task.",
+                    "due_label": "Daily",
+                },
+                {
+                    "category": "diet",
+                    "title": "Synthetic event diet task",
+                    "detail": "Demo-only event diet task.",
+                    "due_label": "Daily",
+                },
+                {
+                    "category": "follow_up",
+                    "title": "Synthetic event follow-up task",
+                    "detail": "Demo-only event follow-up task.",
+                    "due_label": "This week",
+                },
+            ],
+        },
+    )
+    assert recovery_plan.status_code == 200
+    assert recovery_plan.json()["clinical_event_id"] == event_id
+
+    consultation = client.post(
+        "/api/v1/consultations",
+        headers=doctor_headers,
+        json={
+            "patient_id": str(assigned_id),
+            "clinical_event_id": event_id,
+            "specialty": "Synthetic neurology",
+            "question_summary": "Demo-only specialist review question.",
+            "priority": "routine",
+        },
+    )
+    assert consultation.status_code == 200
+    assert consultation.json()["clinical_event_id"] == event_id
+
+    care = client.get(f"/api/v1/patients/{assigned_id}/care", headers=doctor_headers)
+    assert care.status_code == 200
+    care_payload = care.json()
+    linked_event = care_payload["clinical_events"][0]
+    assert linked_event["id"] == event_id
+    assert linked_event["patient_updates"][0]["id"] == patient_update_payload["id"]
+    assert linked_event["linked_resource_counts"]["diagnoses"] == 1
+    assert linked_event["linked_resource_counts"]["prescriptions"] == 1
+    assert linked_event["linked_resource_counts"]["recovery_plans"] == 1
+    assert linked_event["linked_resource_counts"]["imaging_assets"] == 1
+    timeline_types = {entry["entry_type"] for entry in linked_event["timeline"]}
+    assert {
+        "clinical_event_created",
+        "encounter_update",
+        "diagnosis_updated",
+        "prescription_issued",
+        "imaging_review",
+        "recovery_plan_updated",
+        "doctor_note",
+        "consultation_requested",
+        "patient_update",
+    }.issubset(timeline_types)
+    assert care_payload["visit_history"][0]["clinical_event_id"] == event_id
+    assert care_payload["diagnoses"][0]["clinical_event_id"] == event_id
+    assert care_payload["doctor_notes"][0]["clinical_event_id"] == event_id
+    assert any(
+        item["id"] == medication_id and item["clinical_event_id"] == event_id
+        for item in care_payload["medications"]
+    )
+    assert any(
+        item["id"] == prescription_id and item["clinical_event_id"] == event_id
+        for item in care_payload["prescriptions"]
+    )
+    assert any(
+        item["id"] == reminder_id and item["clinical_event_id"] == event_id
+        for item in care_payload["medication_reminders"]
+    )
+    assert care_payload["imaging_assets"][0]["clinical_event_id"] == event_id
+    assert (
+        care_payload["imaging_assets"][0]["finding_summary"]
+        == "Manual demo-only imaging finding."
+    )
+    assert care_payload["recovery_plans"][0]["clinical_event_id"] == event_id
+    assert care_payload["clinical_event_updates"][0]["id"] == patient_update_payload["id"]
+
+    patient_care = client.get("/api/v1/patient/me/care", headers=patient_headers)
+    assert patient_care.status_code == 200
+    assert patient_care.json()["clinical_events"][0]["id"] == event_id
+    assert (
+        patient_care.json()["clinical_events"][0]["diagnosis_summary"]
+        == "Updated demo-only diagnosis summary."
+    )
+    assert patient_care.json()["clinical_event_updates"][0]["id"] == patient_update_payload["id"]
+    assert patient_care.json()["doctor_notes"] == []
+
+    with Session(engine) as db:
+        event = db.get(ClinicalEvent, uuid.UUID(event_id))
+        assert event is not None
+        update = db.get(ClinicalEventUpdate, uuid.UUID(patient_update_payload["id"]))
+        assert update is not None
+        assert update.clinical_event_id == event.id
+        notification = db.scalar(
+            select(Notification).where(Notification.clinical_event_id == event.id)
+        )
+        assert notification is not None
+        audits = db.scalars(select(AuditEvent).where(AuditEvent.patient_id == assigned_id)).all()
+        event_types = {audit.event_type for audit in audits}
+        assert {
+            "clinical_event_created",
+            "clinical_event_updated",
+            "clinical_events_listed",
+            "clinical_event_read",
+            "clinical_event_patient_update_created",
+            "patient_care_bundle_read",
+        }.issubset(event_types)
+        serialized_metadata = " ".join(str(audit.metadata_json) for audit in audits)
+        assert "Synthetic headache" not in serialized_metadata
+        assert "Demo-only event" not in serialized_metadata
+        assert "event-image.png" not in serialized_metadata
+        assert "Manual demo-only imaging finding" not in serialized_metadata
+        assert "Patient self-reported demo-only symptom update" not in serialized_metadata
 
 
 def test_patient_can_read_history_but_cannot_write_doctor_owned_history(
@@ -262,6 +685,187 @@ def test_patient_can_read_history_but_cannot_write_doctor_owned_history(
     care_response = client.get("/api/v1/patient/me/care", headers=patient_headers)
     assert care_response.status_code == 200
     assert care_response.json()["doctor_notes"] == []
+
+
+def test_active_recovery_plan_replacement_is_scoped_to_clinical_event(
+    client: TestClient, settings
+) -> None:
+    assigned_id, _ = _seed_patient_ids(settings)
+    doctor_headers = _doctor_headers(client, settings)
+    task_payload = [
+        {
+            "category": "medication",
+            "title": "Synthetic medication task",
+            "detail": "Demo-only medication task detail.",
+            "due_label": "Today",
+            "notification_time": "09:00",
+        },
+        {
+            "category": "exercise",
+            "title": "Synthetic exercise task",
+            "detail": "Demo-only exercise task detail.",
+            "due_label": "Today",
+        },
+        {
+            "category": "diet",
+            "title": "Synthetic diet task",
+            "detail": "Demo-only diet task detail.",
+            "due_label": "Today",
+        },
+        {
+            "category": "follow_up",
+            "title": "Synthetic follow-up task",
+            "detail": "Demo-only follow-up task detail.",
+            "due_label": "Today",
+        },
+    ]
+
+    def create_event(title: str) -> str:
+        response = client.post(
+            f"/api/v1/patients/{assigned_id}/clinical-events",
+            headers=doctor_headers,
+            json={
+                "title": title,
+                "chief_complaint": "Synthetic event complaint",
+                "symptom_summary": "Demo-only symptom summary.",
+                "diagnosis_summary": "Demo-only diagnosis summary.",
+                "onset_date": "2026-07-08",
+                "status": "active",
+            },
+        )
+        assert response.status_code == 200
+        return response.json()["id"]
+
+    def create_and_approve_plan(event_id: str, title: str) -> str:
+        created = client.post(
+            f"/api/v1/patients/{assigned_id}/recovery-plans",
+            headers=doctor_headers,
+            json={
+                "clinical_event_id": event_id,
+                "title": title,
+                "instructions": "Demo-only event-scoped recovery instructions.",
+                "tasks": task_payload,
+            },
+        )
+        assert created.status_code == 200
+        plan_id = created.json()["plan_id"]
+        submitted = client.post(
+            f"/api/v1/patients/{assigned_id}/recovery-plans/{plan_id}/submit-review",
+            headers=doctor_headers,
+        )
+        assert submitted.status_code == 200
+        approved = client.post(
+            f"/api/v1/patients/{assigned_id}/recovery-plans/{plan_id}/approve",
+            headers=doctor_headers,
+        )
+        assert approved.status_code == 200
+        assert approved.json()["status"] == "active"
+        return plan_id
+
+    event_a = create_event("Synthetic event A")
+    event_b = create_event("Synthetic event B")
+    plan_a = create_and_approve_plan(event_a, "Synthetic event A plan")
+    plan_b = create_and_approve_plan(event_b, "Synthetic event B plan")
+    replacement_a = create_and_approve_plan(event_a, "Synthetic event A replacement plan")
+
+    plans = client.get(f"/api/v1/patients/{assigned_id}/recovery-plans", headers=doctor_headers)
+    assert plans.status_code == 200
+    status_by_id = {item["plan_id"]: item["status"] for item in plans.json()["items"]}
+    assert status_by_id[plan_a] == "completed"
+    assert status_by_id[plan_b] == "active"
+    assert status_by_id[replacement_a] == "active"
+
+
+def test_doctor_can_review_patient_entered_history_without_overwriting_it(
+    client: TestClient, settings
+) -> None:
+    assigned_id, unrelated_id = _seed_patient_ids(settings)
+    doctor_headers = _doctor_headers(client, settings)
+    patient_headers = _patient_headers(client, settings)
+
+    allergy = client.post(
+        f"/api/v1/patients/{assigned_id}/allergies",
+        headers=patient_headers,
+        json={
+            "label": "Synthetic patient-entered allergy",
+            "reaction": "Demo-only patient-entered reaction",
+            "severity": "moderate",
+            "status": "active",
+        },
+    )
+    assert allergy.status_code == 200
+    allergy_payload = allergy.json()
+
+    patient_review_attempt = client.post(
+        f"/api/v1/patients/{assigned_id}/medical-history-reviews",
+        headers=patient_headers,
+        json={
+            "target_type": "allergy",
+            "target_id": allergy_payload["id"],
+            "action": "verified",
+        },
+    )
+    assert patient_review_attempt.status_code == 404
+    assert patient_review_attempt.json()["error"]["code"] == "not_found"
+
+    verified = client.post(
+        f"/api/v1/patients/{assigned_id}/medical-history-reviews",
+        headers=doctor_headers,
+        json={
+            "target_type": "allergy",
+            "target_id": allergy_payload["id"],
+            "action": "verified",
+        },
+    )
+    assert verified.status_code == 200
+    assert verified.json()["action"] == "verified"
+
+    amendment = client.post(
+        f"/api/v1/patients/{assigned_id}/medical-history-reviews",
+        headers=doctor_headers,
+        json={
+            "target_type": "allergy",
+            "target_id": allergy_payload["id"],
+            "action": "amendment",
+            "amendment_summary": "Doctor amendment: synthetic review note.",
+        },
+    )
+    assert amendment.status_code == 200
+    amendment_payload = amendment.json()
+    assert amendment_payload["amendment_summary"] == "Doctor amendment: synthetic review note."
+
+    cross_patient_review = client.post(
+        f"/api/v1/patients/{unrelated_id}/medical-history-reviews",
+        headers=doctor_headers,
+        json={
+            "target_type": "allergy",
+            "target_id": allergy_payload["id"],
+            "action": "verified",
+        },
+    )
+    assert cross_patient_review.status_code == 404
+    assert cross_patient_review.json()["error"]["code"] == "not_found"
+
+    care = client.get(f"/api/v1/patients/{assigned_id}/care", headers=doctor_headers)
+    assert care.status_code == 200
+    care_payload = care.json()
+    assert care_payload["allergies"][0]["label"] == "Synthetic patient-entered allergy"
+    assert care_payload["medical_history_reviews"][0]["id"] == amendment_payload["id"]
+
+    patient_care = client.get("/api/v1/patient/me/care", headers=patient_headers)
+    assert patient_care.status_code == 200
+    assert patient_care.json()["medical_history_reviews"][0]["id"] == amendment_payload["id"]
+
+    with Session(engine) as db:
+        review = db.get(MedicalHistoryReview, uuid.UUID(amendment_payload["id"]))
+        assert review is not None
+        assert review.target_id == uuid.UUID(allergy_payload["id"])
+        audits = db.scalars(select(AuditEvent).where(AuditEvent.patient_id == assigned_id)).all()
+        event_types = {audit.event_type for audit in audits}
+        assert "medical_history_review_created" in event_types
+        serialized_metadata = " ".join(str(audit.metadata_json) for audit in audits)
+        assert "Synthetic patient-entered allergy" not in serialized_metadata
+        assert "Doctor amendment: synthetic review note" not in serialized_metadata
 
 
 def test_doctor_can_manage_medication_prescription_and_reminders_with_safe_readback(
@@ -450,9 +1054,7 @@ def test_doctor_can_manage_medication_prescription_and_reminders_with_safe_readb
     assert cross_patient_write.json()["error"]["code"] == "not_found"
 
     with Session(engine) as db:
-        audits = db.scalars(
-            select(AuditEvent).where(AuditEvent.patient_id == assigned_id)
-        ).all()
+        audits = db.scalars(select(AuditEvent).where(AuditEvent.patient_id == assigned_id)).all()
         event_types = {audit.event_type for audit in audits}
         assert {
             "medication_created",
@@ -533,10 +1135,18 @@ def test_phase2_imaging_upload_completion_review_and_safe_boundaries(
     review = client.post(
         f"/api/v1/patients/{assigned_id}/imaging/{asset_id}/review",
         headers=doctor_headers,
-        json={"review_status": "reviewed"},
+        json={
+            "review_status": "reviewed",
+            "finding_summary": "Manual synthetic imaging result.",
+            "measurement_summary": "Manual synthetic measurement.",
+            "observed_at": "2026-07-08T10:30:00Z",
+            "treatment_relevance_date": "2026-07-08",
+        },
     )
     assert review.status_code == 200
     assert review.json()["review_status"] == "reviewed"
+    assert review.json()["finding_summary"] == "Manual synthetic imaging result."
+    assert review.json()["measurement_summary"] == "Manual synthetic measurement."
     assert review.json()["reviewed_at"] is not None
 
     cross_patient_complete = client.post(
@@ -557,9 +1167,7 @@ def test_phase2_imaging_upload_completion_review_and_safe_boundaries(
         assert asset.object_key.startswith("medical-imaging-assets/")
         assert asset.upload_status == "uploaded"
         assert asset.review_status == "reviewed"
-        audits = db.scalars(
-            select(AuditEvent).where(AuditEvent.patient_id == assigned_id)
-        ).all()
+        audits = db.scalars(select(AuditEvent).where(AuditEvent.patient_id == assigned_id)).all()
         event_types = {audit.event_type for audit in audits}
         assert {
             "medical_imaging_upload_presigned",
@@ -573,6 +1181,8 @@ def test_phase2_imaging_upload_completion_review_and_safe_boundaries(
         assert "medical-imaging-assets/" not in serialized_metadata
         assert "tencent-cos-upload.invalid" not in serialized_metadata
         assert "phase2etag" not in serialized_metadata
+        assert "Manual synthetic imaging result" not in serialized_metadata
+        assert "Manual synthetic measurement" not in serialized_metadata
 
 
 def test_recovery_plan_review_today_progress_completion_and_safe_boundaries(
@@ -748,9 +1358,7 @@ def test_recovery_plan_review_today_progress_completion_and_safe_boundaries(
     assert plan_id not in str(after_close_today.json()["data"].get("active_recovery_plan"))
 
     with Session(engine) as db:
-        audits = db.scalars(
-            select(AuditEvent).where(AuditEvent.patient_id == assigned_id)
-        ).all()
+        audits = db.scalars(select(AuditEvent).where(AuditEvent.patient_id == assigned_id)).all()
         event_types = {audit.event_type for audit in audits}
         assert {
             "recovery_plan_created",

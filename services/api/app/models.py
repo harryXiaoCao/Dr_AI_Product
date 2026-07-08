@@ -75,6 +75,7 @@ class DoctorProfile(Base):
 
     user: Mapped[User] = relationship(back_populates="doctor_profile")
     care_relationships: Mapped[list["CareRelationship"]] = relationship(back_populates="doctor")
+    clinical_events: Mapped[list["ClinicalEvent"]] = relationship(back_populates="doctor")
 
 
 class PatientProfile(Base):
@@ -94,6 +95,9 @@ class PatientProfile(Base):
     user: Mapped[User] = relationship(back_populates="patient_profile")
     care_relationships: Mapped[list["CareRelationship"]] = relationship(back_populates="patient")
     medical_records: Mapped[list["MedicalRecord"]] = relationship(
+        back_populates="patient", cascade="all, delete-orphan"
+    )
+    medical_history_reviews: Mapped[list["MedicalHistoryReview"]] = relationship(
         back_populates="patient", cascade="all, delete-orphan"
     )
     medications: Mapped[list["Medication"]] = relationship(
@@ -132,6 +136,12 @@ class PatientProfile(Base):
     consultation_requests: Mapped[list["ConsultationRequest"]] = relationship(
         back_populates="patient", cascade="all, delete-orphan"
     )
+    clinical_events: Mapped[list["ClinicalEvent"]] = relationship(
+        back_populates="patient", cascade="all, delete-orphan"
+    )
+    clinical_event_updates: Mapped[list["ClinicalEventUpdate"]] = relationship(
+        back_populates="patient", cascade="all, delete-orphan"
+    )
 
 
 class CareRelationship(Base):
@@ -154,6 +164,82 @@ class CareRelationship(Base):
 
     doctor: Mapped[DoctorProfile] = relationship(back_populates="care_relationships")
     patient: Mapped[PatientProfile] = relationship(back_populates="care_relationships")
+
+
+class ClinicalEvent(Base):
+    __tablename__ = "clinical_events"
+    __table_args__ = (
+        Index("ix_clinical_events_patient_status", "patient_id", "status"),
+        Index("ix_clinical_events_doctor_updated", "doctor_id", "updated_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    patient_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("patient_profiles.id", ondelete="CASCADE")
+    )
+    doctor_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("doctor_profiles.id", ondelete="SET NULL")
+    )
+    title: Mapped[str] = mapped_column(String(160))
+    chief_complaint: Mapped[str] = mapped_column(String(240))
+    symptom_summary: Mapped[str | None] = mapped_column(Text)
+    diagnosis_summary: Mapped[str | None] = mapped_column(Text)
+    onset_date: Mapped[date | None] = mapped_column(Date)
+    status: Mapped[str] = mapped_column(String(40), default="active")
+    metadata_json: Mapped[dict[str, object]] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    patient: Mapped[PatientProfile] = relationship(back_populates="clinical_events")
+    doctor: Mapped[DoctorProfile | None] = relationship(back_populates="clinical_events")
+    medications: Mapped[list["Medication"]] = relationship(back_populates="clinical_event")
+    doctor_notes: Mapped[list["DoctorNote"]] = relationship(back_populates="clinical_event")
+    visit_history: Mapped[list["VisitHistory"]] = relationship(back_populates="clinical_event")
+    diagnoses: Mapped[list["Diagnosis"]] = relationship(back_populates="clinical_event")
+    imaging_assets: Mapped[list["MedicalImagingAsset"]] = relationship(
+        back_populates="clinical_event"
+    )
+    recovery_plans: Mapped[list["RecoveryPlan"]] = relationship(back_populates="clinical_event")
+    prescriptions: Mapped[list["Prescription"]] = relationship(back_populates="clinical_event")
+    medication_reminders: Mapped[list["MedicationReminder"]] = relationship(
+        back_populates="clinical_event"
+    )
+    notifications: Mapped[list["Notification"]] = relationship(back_populates="clinical_event")
+    consultation_requests: Mapped[list["ConsultationRequest"]] = relationship(
+        back_populates="clinical_event"
+    )
+    patient_updates: Mapped[list["ClinicalEventUpdate"]] = relationship(
+        back_populates="clinical_event", cascade="all, delete-orphan"
+    )
+
+
+class ClinicalEventUpdate(Base):
+    __tablename__ = "clinical_event_updates"
+    __table_args__ = (
+        Index("ix_clinical_event_updates_event_created", "clinical_event_id", "created_at"),
+        Index("ix_clinical_event_updates_patient_created", "patient_id", "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    patient_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("patient_profiles.id", ondelete="CASCADE")
+    )
+    clinical_event_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("clinical_events.id", ondelete="CASCADE")
+    )
+    submitted_by_user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE")
+    )
+    update_type: Mapped[str] = mapped_column(String(60))
+    summary: Mapped[str] = mapped_column(Text)
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    patient: Mapped[PatientProfile] = relationship(back_populates="clinical_event_updates")
+    clinical_event: Mapped[ClinicalEvent] = relationship(back_populates="patient_updates")
+    submitted_by: Mapped[User] = relationship()
 
 
 class RefreshSession(Base):
@@ -210,13 +296,44 @@ class MedicalRecord(Base):
     patient: Mapped[PatientProfile] = relationship(back_populates="medical_records")
 
 
-class Medication(Base):
-    __tablename__ = "medications"
-    __table_args__ = (Index("ix_medications_patient_status", "patient_id", "status"),)
+class MedicalHistoryReview(Base):
+    __tablename__ = "medical_history_reviews"
+    __table_args__ = (
+        Index("ix_medical_history_reviews_patient_created", "patient_id", "created_at"),
+        Index("ix_medical_history_reviews_target", "target_type", "target_id"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     patient_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("patient_profiles.id", ondelete="CASCADE")
+    )
+    doctor_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("doctor_profiles.id", ondelete="SET NULL")
+    )
+    target_type: Mapped[str] = mapped_column(String(40))
+    target_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True))
+    action: Mapped[str] = mapped_column(String(40))
+    amendment_summary: Mapped[str | None] = mapped_column(Text)
+    correction_request: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    patient: Mapped[PatientProfile] = relationship(back_populates="medical_history_reviews")
+    doctor: Mapped[DoctorProfile | None] = relationship()
+
+
+class Medication(Base):
+    __tablename__ = "medications"
+    __table_args__ = (
+        Index("ix_medications_patient_status", "patient_id", "status"),
+        Index("ix_medications_clinical_event", "clinical_event_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    patient_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("patient_profiles.id", ondelete="CASCADE")
+    )
+    clinical_event_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("clinical_events.id", ondelete="SET NULL")
     )
     name: Mapped[str] = mapped_column(String(160))
     dosage: Mapped[str] = mapped_column(String(120))
@@ -226,11 +343,15 @@ class Medication(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     patient: Mapped[PatientProfile] = relationship(back_populates="medications")
+    clinical_event: Mapped[ClinicalEvent | None] = relationship(back_populates="medications")
 
 
 class DoctorNote(Base):
     __tablename__ = "doctor_notes"
-    __table_args__ = (Index("ix_doctor_notes_patient_created", "patient_id", "created_at"),)
+    __table_args__ = (
+        Index("ix_doctor_notes_patient_created", "patient_id", "created_at"),
+        Index("ix_doctor_notes_clinical_event", "clinical_event_id"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     patient_id: Mapped[uuid.UUID] = mapped_column(
@@ -238,6 +359,9 @@ class DoctorNote(Base):
     )
     doctor_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("doctor_profiles.id", ondelete="CASCADE")
+    )
+    clinical_event_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("clinical_events.id", ondelete="SET NULL")
     )
     title: Mapped[str] = mapped_column(String(160))
     body: Mapped[str] = mapped_column(Text)
@@ -248,6 +372,7 @@ class DoctorNote(Base):
 
     patient: Mapped[PatientProfile] = relationship(back_populates="doctor_notes")
     doctor: Mapped[DoctorProfile] = relationship()
+    clinical_event: Mapped[ClinicalEvent | None] = relationship(back_populates="doctor_notes")
 
 
 class PatientAllergy(Base):
@@ -300,11 +425,17 @@ class ChronicDisease(Base):
 
 class VisitHistory(Base):
     __tablename__ = "visit_history"
-    __table_args__ = (Index("ix_visit_history_patient_occurred", "patient_id", "occurred_at"),)
+    __table_args__ = (
+        Index("ix_visit_history_patient_occurred", "patient_id", "occurred_at"),
+        Index("ix_visit_history_clinical_event", "clinical_event_id"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     patient_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("patient_profiles.id", ondelete="CASCADE")
+    )
+    clinical_event_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("clinical_events.id", ondelete="SET NULL")
     )
     visit_type: Mapped[str] = mapped_column(String(80))
     title: Mapped[str] = mapped_column(String(160))
@@ -321,15 +452,22 @@ class VisitHistory(Base):
 
     patient: Mapped[PatientProfile] = relationship(back_populates="visit_history")
     recorded_by: Mapped[User] = relationship()
+    clinical_event: Mapped[ClinicalEvent | None] = relationship(back_populates="visit_history")
 
 
 class Diagnosis(Base):
     __tablename__ = "diagnoses"
-    __table_args__ = (Index("ix_diagnoses_patient_status", "patient_id", "status"),)
+    __table_args__ = (
+        Index("ix_diagnoses_patient_status", "patient_id", "status"),
+        Index("ix_diagnoses_clinical_event", "clinical_event_id"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     patient_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("patient_profiles.id", ondelete="CASCADE")
+    )
+    clinical_event_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("clinical_events.id", ondelete="SET NULL")
     )
     label: Mapped[str] = mapped_column(String(160))
     status: Mapped[str] = mapped_column(String(40), default="active")
@@ -345,6 +483,7 @@ class Diagnosis(Base):
 
     patient: Mapped[PatientProfile] = relationship(back_populates="diagnoses")
     recorded_by: Mapped[User] = relationship()
+    clinical_event: Mapped[ClinicalEvent | None] = relationship(back_populates="diagnoses")
 
 
 class DemoMedicalAsset(Base):
@@ -375,11 +514,15 @@ class MedicalImagingAsset(Base):
     __table_args__ = (
         Index("ix_medical_imaging_patient_created", "patient_id", "created_at"),
         Index("ix_medical_imaging_patient_review", "patient_id", "review_status"),
+        Index("ix_medical_imaging_clinical_event", "clinical_event_id"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     patient_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("patient_profiles.id", ondelete="CASCADE")
+    )
+    clinical_event_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("clinical_events.id", ondelete="SET NULL")
     )
     uploaded_by_user_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE")
@@ -395,6 +538,10 @@ class MedicalImagingAsset(Base):
     object_key: Mapped[str] = mapped_column(String(260), unique=True)
     upload_status: Mapped[str] = mapped_column(String(40), default="pending_upload")
     review_status: Mapped[str] = mapped_column(String(40), default="not_ready")
+    finding_summary: Mapped[str | None] = mapped_column(Text)
+    measurement_summary: Mapped[str | None] = mapped_column(String(240))
+    observed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    treatment_relevance_date: Mapped[date | None] = mapped_column(Date)
     etag: Mapped[str | None] = mapped_column(String(128))
     checksum_sha256: Mapped[str | None] = mapped_column(String(64))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -408,6 +555,7 @@ class MedicalImagingAsset(Base):
     patient: Mapped[PatientProfile] = relationship(back_populates="imaging_assets")
     uploaded_by: Mapped[User] = relationship(foreign_keys=[uploaded_by_user_id])
     reviewed_by: Mapped[User | None] = relationship(foreign_keys=[reviewed_by_user_id])
+    clinical_event: Mapped[ClinicalEvent | None] = relationship(back_populates="imaging_assets")
 
 
 class SimulatedAssessment(Base):
@@ -450,6 +598,7 @@ class RecoveryPlan(Base):
     __table_args__ = (
         Index("ix_recovery_plans_patient_status", "patient_id", "status"),
         Index("ix_recovery_plans_patient_review", "patient_id", "review_status"),
+        Index("ix_recovery_plans_clinical_event", "clinical_event_id"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -458,6 +607,9 @@ class RecoveryPlan(Base):
     )
     doctor_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("doctor_profiles.id", ondelete="CASCADE")
+    )
+    clinical_event_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("clinical_events.id", ondelete="SET NULL")
     )
     title: Mapped[str] = mapped_column(String(160))
     instructions: Mapped[str] = mapped_column(Text)
@@ -480,6 +632,7 @@ class RecoveryPlan(Base):
     patient: Mapped[PatientProfile] = relationship(back_populates="recovery_plans")
     doctor: Mapped[DoctorProfile] = relationship()
     review_actor: Mapped[User | None] = relationship()
+    clinical_event: Mapped[ClinicalEvent | None] = relationship(back_populates="recovery_plans")
     tasks: Mapped[list["RecoveryTask"]] = relationship(
         back_populates="plan", cascade="all, delete-orphan", order_by="RecoveryTask.sort_order"
     )
@@ -493,9 +646,7 @@ class RecoveryTask(Base):
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    plan_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("recovery_plans.id", ondelete="CASCADE")
-    )
+    plan_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("recovery_plans.id", ondelete="CASCADE"))
     patient_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("patient_profiles.id", ondelete="CASCADE")
     )
@@ -526,9 +677,7 @@ class RecoveryTaskCompletion(Base):
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    task_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("recovery_tasks.id", ondelete="CASCADE")
-    )
+    task_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("recovery_tasks.id", ondelete="CASCADE"))
     patient_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("patient_profiles.id", ondelete="CASCADE")
     )
@@ -573,9 +722,7 @@ class ChatMessage(Base):
     __table_args__ = (Index("ix_chat_messages_thread_created", "thread_id", "created_at"),)
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    thread_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("chat_threads.id", ondelete="CASCADE")
-    )
+    thread_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("chat_threads.id", ondelete="CASCADE"))
     patient_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("patient_profiles.id", ondelete="CASCADE")
     )
@@ -614,11 +761,15 @@ class ConsultationRequest(Base):
     __table_args__ = (
         Index("ix_consultations_patient_status", "patient_id", "status"),
         Index("ix_consultations_requested_by_created", "requested_by_user_id", "created_at"),
+        Index("ix_consultations_clinical_event", "clinical_event_id"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     patient_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("patient_profiles.id", ondelete="CASCADE")
+    )
+    clinical_event_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("clinical_events.id", ondelete="SET NULL")
     )
     requested_by_user_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE")
@@ -635,6 +786,9 @@ class ConsultationRequest(Base):
 
     patient: Mapped[PatientProfile] = relationship(back_populates="consultation_requests")
     requested_by: Mapped[User] = relationship()
+    clinical_event: Mapped[ClinicalEvent | None] = relationship(
+        back_populates="consultation_requests"
+    )
 
 
 class AuditEvent(Base):
@@ -683,9 +837,7 @@ class Clinic(Base):
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    hospital_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("hospitals.id", ondelete="CASCADE")
-    )
+    hospital_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("hospitals.id", ondelete="CASCADE"))
     name: Mapped[str] = mapped_column(String(160))
     timezone: Mapped[str] = mapped_column(String(80), default="UTC")
     status: Mapped[str] = mapped_column(String(40), default="active")
@@ -888,11 +1040,17 @@ class EquipmentBooking(Base):
 
 class Prescription(Base):
     __tablename__ = "prescriptions"
-    __table_args__ = (Index("ix_prescriptions_patient_status", "patient_id", "status"),)
+    __table_args__ = (
+        Index("ix_prescriptions_patient_status", "patient_id", "status"),
+        Index("ix_prescriptions_clinical_event", "clinical_event_id"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     patient_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("patient_profiles.id", ondelete="CASCADE")
+    )
+    clinical_event_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("clinical_events.id", ondelete="SET NULL")
     )
     prescribed_by_user_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE")
@@ -907,6 +1065,7 @@ class Prescription(Base):
 
     patient: Mapped[PatientProfile] = relationship()
     prescribed_by: Mapped[User] = relationship()
+    clinical_event: Mapped[ClinicalEvent | None] = relationship(back_populates="prescriptions")
     medications: Mapped[list["PrescriptionMedication"]] = relationship(
         back_populates="prescription",
         cascade="all, delete-orphan",
@@ -940,11 +1099,15 @@ class MedicationReminder(Base):
     __table_args__ = (
         Index("ix_medication_reminders_patient_status", "patient_id", "status"),
         Index("ix_medication_reminders_next_due", "next_due_at"),
+        Index("ix_medication_reminders_clinical_event", "clinical_event_id"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     patient_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("patient_profiles.id", ondelete="CASCADE")
+    )
+    clinical_event_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("clinical_events.id", ondelete="SET NULL")
     )
     medication_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("medications.id", ondelete="SET NULL")
@@ -966,6 +1129,9 @@ class MedicationReminder(Base):
     patient: Mapped[PatientProfile] = relationship()
     medication: Mapped[Medication | None] = relationship()
     prescription_medication: Mapped[PrescriptionMedication | None] = relationship()
+    clinical_event: Mapped[ClinicalEvent | None] = relationship(
+        back_populates="medication_reminders"
+    )
 
 
 class Notification(Base):
@@ -973,12 +1139,16 @@ class Notification(Base):
     __table_args__ = (
         Index("ix_notifications_user_status", "user_id", "status"),
         Index("ix_notifications_patient_type", "patient_id", "notification_type"),
+        Index("ix_notifications_clinical_event", "clinical_event_id"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     patient_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("patient_profiles.id", ondelete="CASCADE")
+    )
+    clinical_event_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("clinical_events.id", ondelete="SET NULL")
     )
     notification_type: Mapped[str] = mapped_column(String(80))
     channel: Mapped[str] = mapped_column(String(40), default="in_app")
@@ -993,6 +1163,7 @@ class Notification(Base):
 
     user: Mapped[User] = relationship()
     patient: Mapped[PatientProfile | None] = relationship()
+    clinical_event: Mapped[ClinicalEvent | None] = relationship(back_populates="notifications")
 
 
 class Invoice(Base):

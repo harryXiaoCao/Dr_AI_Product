@@ -17,10 +17,14 @@ Tencent-COS-compatible upload metadata, metadata-only upload completion,
 imaging list/detail readback, doctor-only review status, neutral denials, and
 metadata-only audit events. Phase 2 recovery-plan APIs are implemented for
 draft, submit-for-review, request-changes, approve/active, complete, patient
-Today progress, neutral denials, and metadata-only audit events. Production
-v1.0 still needs the reserved specialist, administrator, admin support-queue
-handling, external notification delivery, and audit-read workflows before
-those surfaces can be treated as available.
+Today progress, neutral denials, and metadata-only audit events. Phase 2
+workflow clarification now adds persisted Clinical Event/Care Episode records,
+doctor-owned create/update, patient-own read aliases, nullable event links on
+core Phase 2 resources, event-linked care-bundle readback, neutral denials, and
+metadata-only audit events. Production v1.0 still needs the reserved
+specialist, administrator, admin support-queue handling, external notification
+delivery, and audit-read workflows before those surfaces can be treated as
+available.
 
 Contract version: `1.0.0`
 
@@ -42,7 +46,9 @@ prescription, medication/refill reminder, own-reminder read, and own
 metadata-notification endpoints added: 2026-07-07; Phase 2 imaging upload
 metadata, completion, list/detail, review, and care-bundle readback endpoints
 added: 2026-07-08; Phase 2 recovery-plan review, approval, completion, and
-Today progress endpoints added: 2026-07-08
+Today progress endpoints added: 2026-07-08; Phase 2 Clinical Event/Care
+Episode backend model, endpoints, resource links, and care-bundle readback
+added: 2026-07-08
 
 This contract preserves the public HTTP boundary implemented for the historical
 Dr. AI v1.0.0-beta.1 demo and records the intended shape of production v1.0
@@ -222,6 +228,12 @@ Response:
 | `DELETE` | `/api/v1/patients/{patient_id}/doctor-notes/{note_id}` | Assigned patient | No | Delete a doctor-facing note |
 | `PATCH` | `/api/v1/patients/{patient_id}/profile` | Assigned patient | Own profile | Update allowed demographics |
 | `PATCH` | `/api/v1/patient/me/profile` | No | Own profile | Update own allowed demographics |
+| `GET` | `/api/v1/patients/{patient_id}/clinical-events` | Assigned patient | Own data | List Clinical Events/Care Episodes |
+| `POST` | `/api/v1/patients/{patient_id}/clinical-events` | Assigned patient | No | Create a Clinical Event/Care Episode |
+| `GET` | `/api/v1/patients/{patient_id}/clinical-events/{event_id}` | Assigned patient | Own data | Read one Clinical Event/Care Episode |
+| `PUT` | `/api/v1/patients/{patient_id}/clinical-events/{event_id}` | Assigned patient | No | Edit a Clinical Event/Care Episode |
+| `GET` | `/api/v1/patients/{patient_id}/medical-history-reviews` | Assigned patient | Own data | List audited clinician review overlays for patient-entered history |
+| `POST` | `/api/v1/patients/{patient_id}/medical-history-reviews` | Assigned patient | No | Create a verification, correction request, or clinician amendment overlay |
 | `GET` | `/api/v1/patients/{patient_id}/allergies` | Assigned patient | Own data | List allergies |
 | `POST` | `/api/v1/patients/{patient_id}/allergies` | Assigned patient | Own data | Create an allergy entry |
 | `PUT` | `/api/v1/patients/{patient_id}/allergies/{allergy_id}` | Assigned patient | Own data | Edit an allergy entry |
@@ -266,6 +278,10 @@ Response:
 | `GET` | `/api/v1/patient/me/today` | No | Own data | Read the patient's current synthetic tasks |
 | `POST` | `/api/v1/patient/me/tasks/{task_id}/completion` | No | Own active task only | Complete a Today task |
 | `GET` | `/api/v1/patient/me/care` | No | Own records, medications, prescriptions, and reminders only | Read own profile, history, medications, prescriptions, and reminders |
+| `GET` | `/api/v1/patient/me/clinical-events` | No | Own events only | List own Clinical Events/Care Episodes |
+| `GET` | `/api/v1/patient/me/clinical-events/{event_id}` | No | Own event only | Read one own Clinical Event/Care Episode |
+| `GET` | `/api/v1/patient/me/clinical-events/{event_id}/updates` | No | Own event only | List patient-submitted updates for one own Clinical Event |
+| `POST` | `/api/v1/patient/me/clinical-events/{event_id}/updates` | No | Own event only | Submit a patient update without editing doctor diagnosis |
 | `GET` | `/api/v1/patient/me/imaging` | No | Own assets only | List own imaging upload/review metadata |
 | `GET` | `/api/v1/patient/me/imaging/{asset_id}` | No | Own asset only | Read one own imaging metadata record |
 | `GET` | `/api/v1/medications` | Assigned patient scope | Own data | List own medications |
@@ -287,6 +303,9 @@ current patient's own view and is distinct from doctor-scoped `/patients`.
 `GET /api/v1/patients/{patient_id}/medications`,
 `GET /api/v1/patients/{patient_id}/doctor-notes`,
 `GET /api/v1/patients/{patient_id}/care`, `GET /api/v1/patient/me/care`,
+`GET|POST|PUT /api/v1/patients/{patient_id}/clinical-events[...]`,
+`GET /api/v1/patient/me/clinical-events`,
+`GET /api/v1/patient/me/clinical-events/{event_id}`,
 `POST|PUT|DELETE /api/v1/patients/{patient_id}/medications[...]`,
 `PATCH /api/v1/patients/{patient_id}/profile`,
 `PATCH /api/v1/patient/me/profile`,
@@ -331,20 +350,36 @@ Phase 2 endpoints add persisted production workflow foundations for
 demographics, allergies, chronic diseases, visit history, diagnoses, doctor
 notes, medications, prescriptions, medication reminders, refill reminders, and
 metadata-only in-app queued notifications, imaging upload/review metadata, and
-recovery-plan review/approval/completion semantics. These APIs remain
-synthetic/de-identified only until real-data privacy, consent, legal, and
-security gates are cleared.
+recovery-plan review/approval/completion semantics. The workflow-clarification
+slice adds Clinical Events/Care Episodes as the central Phase 2 care object.
+These APIs remain synthetic/de-identified only until real-data privacy,
+consent, legal, and security gates are cleared.
 
 Rules:
 
 - Doctors can read and edit only patients in an active care relationship.
 - Patients can read only their own demographics, allergies, chronic diseases,
-  visit history, diagnoses, records, medications, prescriptions, reminders,
-  notification metadata, imaging metadata, and care-bundle data.
+  Clinical Events, visit history, diagnoses, records, medications,
+  prescriptions, reminders, notification metadata, imaging metadata,
+  recovery-plan metadata, and care-bundle data.
 - Patients can update only allowed own-profile fields, allergies, and chronic
   diseases in this slice.
+- Doctors create and update Clinical Events/Care Episodes. Patients can read
+  their own events but cannot edit event diagnosis summaries or doctor
+  diagnosis records.
+- Patients can submit separate Clinical Event updates for their own events.
+  Those updates appear in event readback and timeline context but do not edit
+  doctor-owned diagnosis summaries or diagnosis records.
+- Doctor medical-history verification, correction requests, and clinician
+  amendments are stored as audited overlays on patient-entered history. They
+  do not overwrite the original allergy, chronic-disease, or medical-record
+  rows.
 - Visit-history, diagnosis, doctor-note, medication, prescription, and
   reminder mutations are doctor-only.
+- `clinical_event_id` is optional and nullable on visit history, diagnoses,
+  medications, prescriptions, medication/refill reminders, metadata-only
+  notifications, recovery plans, imaging assets, doctor notes, and consultation
+  requests. When provided, it must belong to the same authorized patient.
 - Doctor notes are hidden from patient-owned care-bundle responses, and
   patient probes to doctor-note endpoints return neutral `404 not_found`.
 - Medication and refill reminders create or update metadata-only in-app
@@ -354,14 +389,16 @@ Rules:
   does not call Tencent COS, inspect uploaded files, create clinical
   interpretation, run model inference, or expose object keys after presign.
 - Imaging review is doctor-only and records `reviewed` or `rejected` status
-  without review notes or clinical findings.
+  plus optional manual doctor-entered finding/result fields. The backend does
+  not inspect files, generate findings, or make automated clinical claims.
 - Recovery-plan create, edit, submit-review, request-changes, approve,
   activate-compatible, and complete mutations are doctor-only.
 - Recovery-plan edits are allowed only while the plan is draft-editable. Edits
   are blocked while a plan is submitted for review and after approval or
   completion.
 - Approval activates the submitted plan, records review/approval timestamps,
-  and completes any previous active recovery plan for the same patient.
+  and completes any previous active recovery plan for the same Clinical Event
+  while preserving active plans for unrelated Clinical Events.
 - Completing a recovery plan requires all active plan tasks to be completed by
   the patient first.
 - `GET /api/v1/patient/me/today` returns active plan tasks plus
@@ -370,7 +407,8 @@ Rules:
 - Wrong-role, unrelated-patient, and cross-patient probes return neutral
   `404 not_found` when existence would leak sensitive information.
 - Write and sensitive-read audit events store metadata such as actor role,
-  field names, statuses, counts, and resource IDs only. Audit metadata must not
+  field names, statuses, transition labels, counts, and resource IDs only.
+  Audit metadata must not
   copy allergy labels, condition names, visit summaries, diagnosis labels,
   doctor-note titles, note bodies, medication names, dosages, schedules,
   prescription notes, reminder labels, filenames, object keys, upload URLs,
@@ -378,10 +416,56 @@ Rules:
   task titles, task details, notification labels, or other medical content.
 
 Expanded care-bundle responses now include `demographics` under `patient` plus
-top-level `allergies`, `chronic_diseases`, `visit_history`, `diagnoses`,
-`imaging_assets`, `medications`, `prescriptions`, and
-`medication_reminders`. Doctor-scoped care bundles include `doctor_notes`;
+top-level `clinical_events`, `allergies`, `chronic_diseases`, `visit_history`,
+`diagnoses`, `imaging_assets`, `medications`, `prescriptions`,
+`medication_reminders`, `recovery_plans`, `medical_history_reviews`, and
+`clinical_event_updates`. Event-linked resources include their nullable
+`clinical_event_id`. Doctor-scoped care bundles include `doctor_notes`;
 patient-owned care bundles return an empty `doctor_notes` list.
+
+Clinical Event create/update requests accept:
+
+```json
+{
+  "title": "Synthetic care episode title",
+  "chief_complaint": "Synthetic chief complaint",
+  "symptom_summary": "Optional synthetic symptom summary.",
+  "diagnosis_summary": "Optional doctor-entered diagnosis summary.",
+  "onset_date": "2026-07-01",
+  "status": "active"
+}
+```
+
+Responses include `id`, `patient_id`, nullable `doctor_id`, the same content
+fields, `linked_resource_counts`, `patient_updates`, timestamps, and the
+synthetic-data safety label. The linked-resource counts are safe metadata
+only; they do not copy medical content. Existing resource create/update
+payloads remain compatible when `clinical_event_id` is omitted. The Flutter
+doctor Patient Management client now treats the selected Clinical Event as the
+active workspace context and sends `clinical_event_id` for medication schedule
+saves, prescription issue, medical imaging presign, recovery-plan
+create/update, and specialist consultation request calls when an event is
+selected.
+
+Clinical Event responses include a derived `timeline` array. Timeline entries
+are generated from event-linked resources such as encounter updates,
+diagnosis updates, prescriptions, recovery plans, imaging reviews, doctor
+notes, consultation requests, and patient-submitted updates. Timeline entries
+are supporting workflow context; they are not an automated medical
+interpretation.
+
+Medical-history review create requests accept `target_type`
+(`allergy`, `chronic_disease`, or `medical_record`), `target_id`, `action`
+(`verified`, `amendment`, or `correction_requested`), and the action-specific
+`amendment_summary` or `correction_request` text where required. Responses are
+separate review rows linked to the original target; source history rows remain
+unchanged.
+
+Patient Clinical Event update create requests accept `update_type`
+(`symptom_update`, `medication_note`, `recovery_check_in`, or
+`general_update`), `summary`, and optional `occurred_at`. Responses are
+patient-authored update rows linked to the Clinical Event and are read back in
+the event timeline without changing doctor diagnosis fields.
 
 ## Public enums
 
@@ -396,6 +480,7 @@ RiskBand = low | moderate | high
 ConsultationStatus = requested | accepted | completed | cancelled
 RecoveryPlanStatus = draft | active | completed
 RecoveryPlanReviewStatus = draft | in_review | changes_requested | approved
+ClinicalEventStatus = active | monitoring | resolved | entered_in_error
 ```
 
 `specialist` and `admin` are reserved production roles. Their enum values exist
@@ -703,22 +788,29 @@ wrong-role and cross-patient probes return neutral `404 not_found`.
 
 List/detail responses include only metadata needed for status review:
 identifier, patient identifier, storage provider, content type, file extension,
-byte counts, upload status, review status, timestamps, and the synthetic-data
-safety label. They do not include filenames, object keys, upload URLs, ETags,
-checksums, credentials, image contents, review notes, or diagnostic findings.
+byte counts, upload status, review status, optional manual doctor-entered
+finding/result fields, timestamps, and the synthetic-data safety label. They
+do not include filenames, object keys, upload URLs, ETags, checksums,
+credentials, image contents, or generated diagnostic findings.
 
 `POST /api/v1/patients/{patient_id}/imaging/{asset_id}/review`
 
 ```json
 {
-  "review_status": "reviewed"
+  "review_status": "reviewed",
+  "finding_summary": "Manual doctor-entered finding/result text.",
+  "measurement_summary": "Manual doctor-entered measurement or observation.",
+  "observed_at": "2026-07-08T10:30:00Z",
+  "treatment_relevance_date": "2026-07-08"
 }
 ```
 
 Only assigned doctors can review imaging metadata. `review_status` is
-`reviewed` or `rejected`. Reviewing an asset that has not completed upload
-returns `409 conflict`. Review audit metadata records status only and does not
-store clinical interpretation.
+`reviewed` or `rejected`. The finding/result fields are optional, manual, and
+doctor-entered. Reviewing an asset that has not completed upload returns
+`409 conflict`. Review audit metadata records status and presence flags only;
+it does not copy manual finding/result text or store automated clinical
+interpretation.
 
 ## Simulated assessment contract
 

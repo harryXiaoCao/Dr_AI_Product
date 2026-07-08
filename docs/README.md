@@ -8,7 +8,16 @@ reminders, metadata-only in-app queued notification records,
 Tencent-COS-compatible upload metadata/finalization, imaging list/detail,
 doctor-only imaging review status, recovery-plan review/approval/completion,
 patient Today progress tracking, expanded care-bundle readback,
-doctor/patient Flutter surfaces, and focused RBAC/audit tests.
+doctor/patient Flutter surfaces, focused RBAC/audit tests, and the first
+frontend-only Clinical Event/Care Episode workflow clarification in doctor
+Patient Management. The deeper additive backend/API Clinical Event/Care
+Episode slice is now implemented locally with persisted events, nullable event
+links across core Phase 2 resources, patient-own reads, and focused
+RBAC/audit coverage. The latest local Phase 2 workflow polish adds derived
+Clinical Event timeline readback, manual doctor-entered imaging
+findings/results, event-scoped active Recovery Plan replacement, audited
+doctor Medical History review overlays, and patient-submitted Clinical Event
+updates that preserve doctor-owned diagnosis controls.
 
 ## Current Production Docs
 
@@ -46,8 +55,13 @@ completion as production v1.0 completion.
 
 ## Next Production Phase
 
-Phase 3 AI systems is the next planned production phase. External push, SMS,
-email, and native notification delivery remain gated beyond the Phase 2
-metadata-only in-app queue path. Phase 5 still owns specialist/admin UI, audit
-search, system status, and admin-managed support/deletion/feedback queue
-handling.
+The doctor Patient Management workspace now uses an active Clinical Event
+context for event create/update/select and event-linked medication,
+prescription, imaging, recovery-plan, medical-history review, and consultation
+writes. The eight-functionality Phase 2 workflow-clarification list is closed
+locally. Phase 3 AI systems must not start without explicit approval.
+External push, SMS, email, and native notification delivery remain gated
+beyond the Phase 2 metadata-only in-app queue path. Phase 5 still owns
+specialist/admin UI, audit search, system status, and admin-managed
+support/deletion/feedback queue handling. Phase 6 tracks the production
+multilingual foundation for Simplified Chinese and English.

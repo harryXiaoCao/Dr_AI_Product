@@ -110,6 +110,7 @@ class MedicalRecordListResponse(BaseModel):
 class MedicationResponse(BaseModel):
     id: UUID
     patient_id: UUID
+    clinical_event_id: UUID | None
     name: str
     dosage: str
     schedule: str
@@ -125,6 +126,7 @@ class MedicationListResponse(BaseModel):
 class MedicationRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
+    clinical_event_id: UUID | None = None
     name: str = Field(min_length=2, max_length=160)
     dosage: str = Field(min_length=1, max_length=120)
     schedule: str = Field(min_length=2, max_length=160)
@@ -146,6 +148,7 @@ class PrescriptionMedicationInput(BaseModel):
 class PrescriptionRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
+    clinical_event_id: UUID | None = None
     status: Literal["draft", "issued", "cancelled"] = "draft"
     issued_at: datetime | None = None
     notes: str | None = Field(default=None, max_length=1200)
@@ -165,6 +168,7 @@ class PrescriptionMedicationResponse(BaseModel):
 class PrescriptionResponse(BaseModel):
     id: UUID
     patient_id: UUID
+    clinical_event_id: UUID | None
     status: Literal["draft", "issued", "cancelled"]
     issued_at: datetime | None
     notes: str | None
@@ -181,6 +185,7 @@ class PrescriptionListResponse(BaseModel):
 class MedicationReminderRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
+    clinical_event_id: UUID | None = None
     medication_id: UUID | None = None
     prescription_medication_id: UUID | None = None
     reminder_type: Literal["medication", "refill"] = "medication"
@@ -193,6 +198,7 @@ class MedicationReminderRequest(BaseModel):
 class MedicationReminderResponse(BaseModel):
     id: UUID
     patient_id: UUID
+    clinical_event_id: UUID | None
     medication_id: UUID | None
     prescription_medication_id: UUID | None
     reminder_type: Literal["medication", "refill"]
@@ -212,6 +218,7 @@ class MedicationReminderListResponse(BaseModel):
 
 class NotificationResponse(BaseModel):
     id: UUID
+    clinical_event_id: UUID | None
     notification_type: str
     channel: Literal["in_app"]
     status: Literal["queued", "sent", "cancelled"]
@@ -230,6 +237,7 @@ class NotificationListResponse(BaseModel):
 class DoctorNoteResponse(BaseModel):
     id: UUID
     patient_id: UUID
+    clinical_event_id: UUID | None
     title: str
     body: str
     created_at: datetime
@@ -243,6 +251,9 @@ class DoctorNoteListResponse(BaseModel):
 
 class PatientCareBundleResponse(BaseModel):
     patient: PatientProfileResponse
+    clinical_events: list["ClinicalEventResponse"]
+    clinical_event_updates: list["ClinicalEventUpdateResponse"]
+    medical_history_reviews: list["MedicalHistoryReviewResponse"]
     allergies: list["PatientAllergyResponse"]
     chronic_diseases: list["ChronicDiseaseResponse"]
     visit_history: list["VisitHistoryResponse"]
@@ -252,6 +263,7 @@ class PatientCareBundleResponse(BaseModel):
     medications: list[MedicationResponse]
     prescriptions: list[PrescriptionResponse]
     medication_reminders: list[MedicationReminderResponse]
+    recovery_plans: list["RecoveryPlanResponse"]
     doctor_notes: list[DoctorNoteResponse]
 
 
@@ -305,9 +317,37 @@ class ChronicDiseaseListResponse(BaseModel):
     next_cursor: None = None
 
 
+class MedicalHistoryReviewRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    target_type: Literal["allergy", "chronic_disease", "medical_record"]
+    target_id: UUID
+    action: Literal["verified", "amendment", "correction_requested"]
+    amendment_summary: str | None = Field(default=None, max_length=1200)
+    correction_request: str | None = Field(default=None, max_length=1200)
+
+
+class MedicalHistoryReviewResponse(BaseModel):
+    id: UUID
+    patient_id: UUID
+    doctor_id: UUID | None
+    target_type: Literal["allergy", "chronic_disease", "medical_record"]
+    target_id: UUID
+    action: Literal["verified", "amendment", "correction_requested"]
+    amendment_summary: str | None
+    correction_request: str | None
+    created_at: datetime
+
+
+class MedicalHistoryReviewListResponse(BaseModel):
+    items: list[MedicalHistoryReviewResponse]
+    next_cursor: None = None
+
+
 class VisitHistoryRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
+    clinical_event_id: UUID | None = None
     visit_type: str = Field(min_length=2, max_length=80)
     title: str = Field(min_length=3, max_length=160)
     summary: str = Field(min_length=3, max_length=1200)
@@ -318,6 +358,7 @@ class VisitHistoryRequest(BaseModel):
 class VisitHistoryResponse(BaseModel):
     id: UUID
     patient_id: UUID
+    clinical_event_id: UUID | None
     visit_type: str
     title: str
     summary: str
@@ -335,6 +376,7 @@ class VisitHistoryListResponse(BaseModel):
 class DiagnosisRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
+    clinical_event_id: UUID | None = None
     label: str = Field(min_length=2, max_length=160)
     status: Literal["active", "resolved", "entered_in_error"] = "active"
     diagnosed_on: date | None = None
@@ -344,6 +386,7 @@ class DiagnosisRequest(BaseModel):
 class DiagnosisResponse(BaseModel):
     id: UUID
     patient_id: UUID
+    clinical_event_id: UUID | None
     label: str
     status: Literal["active", "resolved", "entered_in_error"]
     diagnosed_on: date | None
@@ -357,9 +400,87 @@ class DiagnosisListResponse(BaseModel):
     next_cursor: None = None
 
 
+class ClinicalEventRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    title: str = Field(min_length=3, max_length=160)
+    chief_complaint: str = Field(min_length=3, max_length=240)
+    symptom_summary: str | None = Field(default=None, max_length=1200)
+    diagnosis_summary: str | None = Field(default=None, max_length=1200)
+    onset_date: date | None = None
+    status: Literal["active", "monitoring", "resolved", "entered_in_error"] = "active"
+
+
+class ClinicalEventTimelineEntry(BaseModel):
+    entry_type: str
+    resource_id: UUID | None = None
+    title: str
+    occurred_at: datetime
+
+
+class ClinicalEventUpdateRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    update_type: Literal[
+        "symptom_update",
+        "medication_note",
+        "recovery_check_in",
+        "general_update",
+    ] = "general_update"
+    summary: str = Field(min_length=3, max_length=1200)
+    occurred_at: datetime | None = None
+
+
+class ClinicalEventUpdateResponse(BaseModel):
+    id: UUID
+    patient_id: UUID
+    clinical_event_id: UUID
+    submitted_by_user_id: UUID
+    update_type: Literal[
+        "symptom_update",
+        "medication_note",
+        "recovery_check_in",
+        "general_update",
+    ]
+    summary: str
+    occurred_at: datetime
+    created_at: datetime
+
+
+class ClinicalEventUpdateListResponse(BaseModel):
+    items: list[ClinicalEventUpdateResponse]
+    next_cursor: None = None
+
+
+class ClinicalEventResponse(BaseModel):
+    id: UUID
+    patient_id: UUID
+    doctor_id: UUID | None
+    title: str
+    chief_complaint: str
+    symptom_summary: str | None
+    diagnosis_summary: str | None
+    onset_date: date | None
+    status: Literal["active", "monitoring", "resolved", "entered_in_error"]
+    linked_resource_counts: dict[str, int]
+    timeline: list[ClinicalEventTimelineEntry] = Field(default_factory=list)
+    patient_updates: list[ClinicalEventUpdateResponse] = Field(default_factory=list)
+    created_at: datetime
+    updated_at: datetime
+    safety_label: Literal["Synthetic demonstration data only. Do not enter real patient data."] = (
+        "Synthetic demonstration data only. Do not enter real patient data."
+    )
+
+
+class ClinicalEventListResponse(BaseModel):
+    items: list[ClinicalEventResponse]
+    next_cursor: None = None
+
+
 class DoctorNoteCreateRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
+    clinical_event_id: UUID | None = None
     title: str = Field(min_length=3, max_length=160)
     body: str = Field(min_length=3, max_length=1200)
 
@@ -393,6 +514,7 @@ class DemoAssetPresignResponse(BaseModel):
 class MedicalImagingPresignRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
+    clinical_event_id: UUID | None = None
     filename: str = Field(min_length=3, max_length=160, pattern=r"^[A-Za-z0-9._ -]+$")
     content_type: str = Field(min_length=3, max_length=80)
     size_bytes: int = Field(ge=1)
@@ -401,6 +523,7 @@ class MedicalImagingPresignRequest(BaseModel):
 class MedicalImagingPresignResponse(BaseModel):
     asset_id: UUID
     patient_id: UUID
+    clinical_event_id: UUID | None
     upload_url: str
     method: Literal["PUT"] = "PUT"
     headers: dict[str, str]
@@ -436,11 +559,16 @@ class MedicalImagingReviewRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
     review_status: Literal["reviewed", "rejected"]
+    finding_summary: str | None = Field(default=None, max_length=1200)
+    measurement_summary: str | None = Field(default=None, max_length=240)
+    observed_at: datetime | None = None
+    treatment_relevance_date: date | None = None
 
 
 class MedicalImagingAssetResponse(BaseModel):
     id: UUID
     patient_id: UUID
+    clinical_event_id: UUID | None
     storage_provider: Literal["tencent_cos"]
     content_type: str
     file_extension: str
@@ -448,6 +576,10 @@ class MedicalImagingAssetResponse(BaseModel):
     uploaded_size_bytes: int | None
     upload_status: Literal["pending_upload", "uploaded", "failed", "expired"]
     review_status: Literal["not_ready", "pending_review", "reviewed", "rejected"]
+    finding_summary: str | None
+    measurement_summary: str | None
+    observed_at: datetime | None
+    treatment_relevance_date: date | None
     created_at: datetime
     updated_at: datetime
     expires_at: datetime
@@ -504,6 +636,7 @@ class RecoveryTaskInput(BaseModel):
 class RecoveryPlanCreateRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
+    clinical_event_id: UUID | None = None
     title: str = Field(min_length=3, max_length=160)
     instructions: str = Field(min_length=3, max_length=1200)
     tasks: list[RecoveryTaskInput] = Field(min_length=1, max_length=12)
@@ -537,6 +670,7 @@ class RecoveryPlanProgressResponse(BaseModel):
 class RecoveryPlanResponse(BaseModel):
     plan_id: UUID
     patient_id: UUID
+    clinical_event_id: UUID | None
     title: str
     instructions: str
     status: Literal["draft", "active", "completed"]
@@ -597,6 +731,7 @@ class ConsultationCreateRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
     patient_id: UUID
+    clinical_event_id: UUID | None = None
     specialty: str = Field(min_length=3, max_length=120)
     question_summary: str = Field(min_length=8, max_length=240)
     priority: Literal["routine", "soon"] = "routine"
@@ -605,6 +740,7 @@ class ConsultationCreateRequest(BaseModel):
 class ConsultationResponse(BaseModel):
     consultation_id: UUID
     patient_id: UUID
+    clinical_event_id: UUID | None
     specialty: str
     question_summary: str
     priority: Literal["routine", "soon"]

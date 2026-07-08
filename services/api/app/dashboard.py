@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Query, Response, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
 from app.ai_chat import DeepSeekChatError, deepseek_chat_adapter
@@ -19,11 +19,14 @@ from app.models import (
     ChatRateLimit,
     ChatThread,
     ChronicDisease,
+    ClinicalEvent,
+    ClinicalEventUpdate,
     ConsultationRequest,
     DashboardSnapshot,
     DemoMedicalAsset,
     Diagnosis,
     DoctorNote,
+    MedicalHistoryReview,
     MedicalImagingAsset,
     MedicalRecord,
     Medication,
@@ -49,6 +52,13 @@ from app.schemas import (
     ChronicDiseaseListResponse,
     ChronicDiseaseRequest,
     ChronicDiseaseResponse,
+    ClinicalEventListResponse,
+    ClinicalEventRequest,
+    ClinicalEventResponse,
+    ClinicalEventTimelineEntry,
+    ClinicalEventUpdateListResponse,
+    ClinicalEventUpdateRequest,
+    ClinicalEventUpdateResponse,
     ConsultationCreateRequest,
     ConsultationListResponse,
     ConsultationResponse,
@@ -62,6 +72,9 @@ from app.schemas import (
     DoctorNoteListResponse,
     DoctorNoteResponse,
     DoctorNoteUpdateRequest,
+    MedicalHistoryReviewListResponse,
+    MedicalHistoryReviewRequest,
+    MedicalHistoryReviewResponse,
     MedicalImagingAssetListResponse,
     MedicalImagingAssetResponse,
     MedicalImagingCompleteRequest,
@@ -218,6 +231,225 @@ def _demographics_response(profile: PatientProfile) -> PatientDemographicsRespon
     )
 
 
+def _clinical_event_linked_counts(
+    event: ClinicalEvent,
+    db: DbSession,
+) -> dict[str, int]:
+    return {
+        "visit_history": db.scalar(
+            select(func.count())
+            .select_from(VisitHistory)
+            .where(VisitHistory.clinical_event_id == event.id)
+        )
+        or 0,
+        "diagnoses": db.scalar(
+            select(func.count())
+            .select_from(Diagnosis)
+            .where(Diagnosis.clinical_event_id == event.id)
+        )
+        or 0,
+        "medications": db.scalar(
+            select(func.count())
+            .select_from(Medication)
+            .where(Medication.clinical_event_id == event.id)
+        )
+        or 0,
+        "prescriptions": db.scalar(
+            select(func.count())
+            .select_from(Prescription)
+            .where(Prescription.clinical_event_id == event.id)
+        )
+        or 0,
+        "medication_reminders": db.scalar(
+            select(func.count())
+            .select_from(MedicationReminder)
+            .where(MedicationReminder.clinical_event_id == event.id)
+        )
+        or 0,
+        "recovery_plans": db.scalar(
+            select(func.count())
+            .select_from(RecoveryPlan)
+            .where(RecoveryPlan.clinical_event_id == event.id)
+        )
+        or 0,
+        "imaging_assets": db.scalar(
+            select(func.count())
+            .select_from(MedicalImagingAsset)
+            .where(MedicalImagingAsset.clinical_event_id == event.id)
+        )
+        or 0,
+        "doctor_notes": db.scalar(
+            select(func.count())
+            .select_from(DoctorNote)
+            .where(DoctorNote.clinical_event_id == event.id)
+        )
+        or 0,
+        "consultations": db.scalar(
+            select(func.count())
+            .select_from(ConsultationRequest)
+            .where(ConsultationRequest.clinical_event_id == event.id)
+        )
+        or 0,
+        "notifications": db.scalar(
+            select(func.count())
+            .select_from(Notification)
+            .where(Notification.clinical_event_id == event.id)
+        )
+        or 0,
+        "patient_updates": db.scalar(
+            select(func.count())
+            .select_from(ClinicalEventUpdate)
+            .where(ClinicalEventUpdate.clinical_event_id == event.id)
+        )
+        or 0,
+    }
+
+
+def _clinical_event_response(event: ClinicalEvent, db: DbSession) -> ClinicalEventResponse:
+    return ClinicalEventResponse(
+        id=event.id,
+        patient_id=event.patient_id,
+        doctor_id=event.doctor_id,
+        title=event.title,
+        chief_complaint=event.chief_complaint,
+        symptom_summary=event.symptom_summary,
+        diagnosis_summary=event.diagnosis_summary,
+        onset_date=event.onset_date,
+        status=event.status,  # type: ignore[arg-type]
+        linked_resource_counts=_clinical_event_linked_counts(event, db),
+        timeline=_clinical_event_timeline(event, db),
+        patient_updates=[
+            _clinical_event_update_response(update)
+            for update in db.scalars(
+                select(ClinicalEventUpdate)
+                .where(ClinicalEventUpdate.clinical_event_id == event.id)
+                .order_by(ClinicalEventUpdate.occurred_at.desc())
+            ).all()
+        ],
+        created_at=event.created_at,
+        updated_at=event.updated_at,
+        safety_label=SYNTHETIC_DATA_LABEL,
+    )
+
+
+def _clinical_event_timeline(
+    event: ClinicalEvent,
+    db: DbSession,
+) -> list[ClinicalEventTimelineEntry]:
+    entries = [
+        ClinicalEventTimelineEntry(
+            entry_type="clinical_event_created",
+            resource_id=event.id,
+            title="Clinical Event created",
+            occurred_at=event.created_at,
+        )
+    ]
+    for visit in db.scalars(
+        select(VisitHistory).where(VisitHistory.clinical_event_id == event.id)
+    ).all():
+        entries.append(
+            ClinicalEventTimelineEntry(
+                entry_type="encounter_update",
+                resource_id=visit.id,
+                title=f"Encounter update recorded: {visit.visit_type}",
+                occurred_at=visit.occurred_at,
+            )
+        )
+    for diagnosis in db.scalars(
+        select(Diagnosis).where(Diagnosis.clinical_event_id == event.id)
+    ).all():
+        entries.append(
+            ClinicalEventTimelineEntry(
+                entry_type="diagnosis_updated",
+                resource_id=diagnosis.id,
+                title=f"Diagnosis status updated: {diagnosis.status}",
+                occurred_at=diagnosis.created_at,
+            )
+        )
+    for prescription in db.scalars(
+        select(Prescription).where(Prescription.clinical_event_id == event.id)
+    ).all():
+        entries.append(
+            ClinicalEventTimelineEntry(
+                entry_type="prescription_issued",
+                resource_id=prescription.id,
+                title=f"Prescription {prescription.status}",
+                occurred_at=prescription.issued_at,
+            )
+        )
+    for plan in db.scalars(
+        select(RecoveryPlan).where(RecoveryPlan.clinical_event_id == event.id)
+    ).all():
+        entries.append(
+            ClinicalEventTimelineEntry(
+                entry_type="recovery_plan_updated",
+                resource_id=plan.id,
+                title=f"Recovery plan {plan.status}; review {plan.review_status}",
+                occurred_at=plan.updated_at,
+            )
+        )
+    for asset in db.scalars(
+        select(MedicalImagingAsset).where(MedicalImagingAsset.clinical_event_id == event.id)
+    ).all():
+        entries.append(
+            ClinicalEventTimelineEntry(
+                entry_type="imaging_review",
+                resource_id=asset.id,
+                title=f"Imaging {asset.review_status}",
+                occurred_at=asset.reviewed_at or asset.uploaded_at or asset.created_at,
+            )
+        )
+    for note in db.scalars(
+        select(DoctorNote).where(DoctorNote.clinical_event_id == event.id)
+    ).all():
+        entries.append(
+            ClinicalEventTimelineEntry(
+                entry_type="doctor_note",
+                resource_id=note.id,
+                title="Doctor note added",
+                occurred_at=note.created_at,
+            )
+        )
+    for request in db.scalars(
+        select(ConsultationRequest).where(ConsultationRequest.clinical_event_id == event.id)
+    ).all():
+        entries.append(
+            ClinicalEventTimelineEntry(
+                entry_type="consultation_requested",
+                resource_id=request.id,
+                title=f"Specialist consultation {request.status}",
+                occurred_at=request.created_at,
+            )
+        )
+    for update in db.scalars(
+        select(ClinicalEventUpdate).where(ClinicalEventUpdate.clinical_event_id == event.id)
+    ).all():
+        entries.append(
+            ClinicalEventTimelineEntry(
+                entry_type="patient_update",
+                resource_id=update.id,
+                title=f"Patient update: {update.update_type}",
+                occurred_at=update.occurred_at,
+            )
+        )
+    return sorted(entries, key=lambda entry: entry.occurred_at, reverse=True)
+
+
+def _clinical_event_update_response(
+    update: ClinicalEventUpdate,
+) -> ClinicalEventUpdateResponse:
+    return ClinicalEventUpdateResponse(
+        id=update.id,
+        patient_id=update.patient_id,
+        clinical_event_id=update.clinical_event_id,
+        submitted_by_user_id=update.submitted_by_user_id,
+        update_type=update.update_type,  # type: ignore[arg-type]
+        summary=update.summary,
+        occurred_at=update.occurred_at,
+        created_at=update.created_at,
+    )
+
+
 def _record_response(record: MedicalRecord) -> MedicalRecordResponse:
     return MedicalRecordResponse(
         id=record.id,
@@ -229,10 +461,27 @@ def _record_response(record: MedicalRecord) -> MedicalRecordResponse:
     )
 
 
+def _medical_history_review_response(
+    review: MedicalHistoryReview,
+) -> MedicalHistoryReviewResponse:
+    return MedicalHistoryReviewResponse(
+        id=review.id,
+        patient_id=review.patient_id,
+        doctor_id=review.doctor_id,
+        target_type=review.target_type,  # type: ignore[arg-type]
+        target_id=review.target_id,
+        action=review.action,  # type: ignore[arg-type]
+        amendment_summary=review.amendment_summary,
+        correction_request=review.correction_request,
+        created_at=review.created_at,
+    )
+
+
 def _medication_response(medication: Medication) -> MedicationResponse:
     return MedicationResponse(
         id=medication.id,
         patient_id=medication.patient_id,
+        clinical_event_id=medication.clinical_event_id,
         name=medication.name,
         dosage=medication.dosage,
         schedule=medication.schedule,
@@ -260,6 +509,7 @@ def _prescription_response(prescription: Prescription) -> PrescriptionResponse:
     return PrescriptionResponse(
         id=prescription.id,
         patient_id=prescription.patient_id,
+        clinical_event_id=prescription.clinical_event_id,
         status=prescription.status,  # type: ignore[arg-type]
         issued_at=prescription.issued_at,
         notes=prescription.notes,
@@ -278,6 +528,7 @@ def _medication_reminder_response(reminder: MedicationReminder) -> MedicationRem
     return MedicationReminderResponse(
         id=reminder.id,
         patient_id=reminder.patient_id,
+        clinical_event_id=reminder.clinical_event_id,
         medication_id=reminder.medication_id,
         prescription_medication_id=reminder.prescription_medication_id,
         reminder_type=_reminder_type(reminder),  # type: ignore[arg-type]
@@ -294,6 +545,7 @@ def _medication_reminder_response(reminder: MedicationReminder) -> MedicationRem
 def _notification_response(notification: Notification) -> NotificationResponse:
     return NotificationResponse(
         id=notification.id,
+        clinical_event_id=notification.clinical_event_id,
         notification_type=notification.notification_type,
         channel=notification.channel,  # type: ignore[arg-type]
         status=notification.status,  # type: ignore[arg-type]
@@ -309,6 +561,7 @@ def _imaging_asset_response(asset: MedicalImagingAsset) -> MedicalImagingAssetRe
     return MedicalImagingAssetResponse(
         id=asset.id,
         patient_id=asset.patient_id,
+        clinical_event_id=asset.clinical_event_id,
         storage_provider=asset.storage_provider,  # type: ignore[arg-type]
         content_type=asset.content_type,
         file_extension=asset.file_extension,
@@ -316,6 +569,10 @@ def _imaging_asset_response(asset: MedicalImagingAsset) -> MedicalImagingAssetRe
         uploaded_size_bytes=asset.uploaded_size_bytes,
         upload_status=asset.upload_status,  # type: ignore[arg-type]
         review_status=asset.review_status,  # type: ignore[arg-type]
+        finding_summary=asset.finding_summary,
+        measurement_summary=asset.measurement_summary,
+        observed_at=asset.observed_at,
+        treatment_relevance_date=asset.treatment_relevance_date,
         created_at=asset.created_at,
         updated_at=asset.updated_at,
         expires_at=asset.expires_at,
@@ -329,6 +586,7 @@ def _note_response(note: DoctorNote) -> DoctorNoteResponse:
     return DoctorNoteResponse(
         id=note.id,
         patient_id=note.patient_id,
+        clinical_event_id=note.clinical_event_id,
         title=note.title,
         body=note.body,
         created_at=note.created_at,
@@ -366,6 +624,7 @@ def _visit_history_response(visit: VisitHistory) -> VisitHistoryResponse:
     return VisitHistoryResponse(
         id=visit.id,
         patient_id=visit.patient_id,
+        clinical_event_id=visit.clinical_event_id,
         visit_type=visit.visit_type,
         title=visit.title,
         summary=visit.summary,
@@ -380,6 +639,7 @@ def _diagnosis_response(diagnosis: Diagnosis) -> DiagnosisResponse:
     return DiagnosisResponse(
         id=diagnosis.id,
         patient_id=diagnosis.patient_id,
+        clinical_event_id=diagnosis.clinical_event_id,
         label=diagnosis.label,
         status=diagnosis.status,  # type: ignore[arg-type]
         diagnosed_on=diagnosis.diagnosed_on,
@@ -451,6 +711,7 @@ def _recovery_plan_response(plan: RecoveryPlan) -> RecoveryPlanResponse:
     return RecoveryPlanResponse(
         plan_id=plan.id,
         patient_id=plan.patient_id,
+        clinical_event_id=plan.clinical_event_id,
         title=plan.title,
         instructions=plan.instructions,
         status=plan.status,  # type: ignore[arg-type]
@@ -542,6 +803,7 @@ def _consultation_response(request: ConsultationRequest) -> ConsultationResponse
     return ConsultationResponse(
         consultation_id=request.id,
         patient_id=request.patient_id,
+        clinical_event_id=request.clinical_event_id,
         specialty=request.specialty,
         question_summary=request.question_summary,
         priority=request.priority,  # type: ignore[arg-type]
@@ -689,6 +951,56 @@ def _authorized_patient(
 
 def _require_doctor_user(user: CurrentUser) -> None:
     if user.role != UserRole.doctor or user.doctor_profile is None:
+        raise _neutral_not_found()
+
+
+def _authorized_clinical_event(
+    patient_id: uuid.UUID,
+    event_id: uuid.UUID,
+    user: CurrentUser,
+    db: DbSession,
+) -> tuple[PatientProfile, ClinicalEvent]:
+    profile = _authorized_patient(patient_id, user, db)
+    event = db.scalar(
+        select(ClinicalEvent).where(
+            ClinicalEvent.id == event_id,
+            ClinicalEvent.patient_id == profile.id,
+        )
+    )
+    if event is None:
+        raise _neutral_not_found()
+    return profile, event
+
+
+def _optional_clinical_event(
+    clinical_event_id: uuid.UUID | None,
+    *,
+    patient_id: uuid.UUID,
+    user: CurrentUser,
+    db: DbSession,
+) -> ClinicalEvent | None:
+    if clinical_event_id is None:
+        return None
+    _, event = _authorized_clinical_event(patient_id, clinical_event_id, user, db)
+    return event
+
+
+def _authorized_history_review_target(
+    patient_id: uuid.UUID,
+    target_type: str,
+    target_id: uuid.UUID,
+    db: DbSession,
+) -> None:
+    model_by_type = {
+        "allergy": PatientAllergy,
+        "chronic_disease": ChronicDisease,
+        "medical_record": MedicalRecord,
+    }
+    model = model_by_type.get(target_type)
+    if model is None:
+        raise _neutral_not_found()
+    target = db.scalar(select(model).where(model.id == target_id, model.patient_id == patient_id))
+    if target is None:
         raise _neutral_not_found()
 
 
@@ -979,6 +1291,7 @@ def _apply_medication_reminder_request(
     reminder: MedicationReminder,
     request: MedicationReminderRequest,
 ) -> None:
+    reminder.clinical_event_id = request.clinical_event_id
     reminder.medication_id = request.medication_id
     reminder.prescription_medication_id = request.prescription_medication_id
     reminder.schedule_label = request.schedule_label
@@ -999,6 +1312,7 @@ def _queue_reminder_notification(
     notification = Notification(
         user_id=profile.user_id,
         patient_id=profile.id,
+        clinical_event_id=reminder.clinical_event_id,
         notification_type=f"{_reminder_type(reminder)}_reminder",
         channel="in_app",
         status="queued",
@@ -1141,6 +1455,7 @@ def _recovery_plan_audit_metadata(
         "task_categories": sorted({task.category for task in tasks}),
         "replaced_active_count": replaced_active_count,
         "source": source,
+        "clinical_event_id": str(plan.clinical_event_id) if plan.clinical_event_id else None,
     }
 
 
@@ -1158,12 +1473,19 @@ def _complete_other_active_recovery_plans(
     plan: RecoveryPlan,
     db: DbSession,
 ) -> int:
-    active_plans = db.scalars(
-        select(RecoveryPlan).where(
-            RecoveryPlan.patient_id == profile.id,
-            RecoveryPlan.status == "active",
-            RecoveryPlan.id != plan.id,
+    active_query = select(RecoveryPlan).where(
+        RecoveryPlan.patient_id == profile.id,
+        RecoveryPlan.status == "active",
+        RecoveryPlan.id != plan.id,
+    )
+    if plan.clinical_event_id is not None:
+        active_query = active_query.where(
+            RecoveryPlan.clinical_event_id == plan.clinical_event_id
         )
+    else:
+        active_query = active_query.where(RecoveryPlan.clinical_event_id.is_(None))
+    active_plans = db.scalars(
+        active_query
     ).all()
     now = datetime.now(UTC)
     for active_plan in active_plans:
@@ -1411,6 +1733,152 @@ def update_patient_profile(
     return _patient_response(profile)
 
 
+@router.get("/patients/{patient_id}/clinical-events", response_model=ClinicalEventListResponse)
+def patient_clinical_events(
+    patient_id: uuid.UUID,
+    user: CurrentUser,
+    db: DbSession,
+) -> ClinicalEventListResponse:
+    profile = _authorized_patient(patient_id, user, db)
+    events = db.scalars(
+        select(ClinicalEvent)
+        .where(ClinicalEvent.patient_id == profile.id)
+        .order_by(ClinicalEvent.updated_at.desc())
+    ).all()
+    _record_audit_event(
+        db,
+        actor_user_id=user.id,
+        patient_id=profile.id,
+        event_type="clinical_events_listed",
+        resource_type="clinical_event",
+        resource_id=None,
+        metadata={
+            "actor_role": user.role.value,
+            "event_count": len(events),
+            "statuses": sorted({event.status for event in events}),
+        },
+    )
+    db.commit()
+    return ClinicalEventListResponse(
+        items=[_clinical_event_response(event, db) for event in events]
+    )
+
+
+@router.post("/patients/{patient_id}/clinical-events", response_model=ClinicalEventResponse)
+def create_patient_clinical_event(
+    patient_id: uuid.UUID,
+    request: ClinicalEventRequest,
+    user: CurrentUser,
+    db: DbSession,
+) -> ClinicalEventResponse:
+    _require_doctor_user(user)
+    profile = _authorized_patient(patient_id, user, db)
+    event = ClinicalEvent(
+        patient_id=profile.id,
+        doctor_id=user.doctor_profile.id,
+        title=request.title,
+        chief_complaint=request.chief_complaint,
+        symptom_summary=request.symptom_summary,
+        diagnosis_summary=request.diagnosis_summary,
+        onset_date=request.onset_date,
+        status=request.status,
+        metadata_json={"source": "phase2_workflow_clarification"},
+    )
+    db.add(event)
+    db.flush()
+    _record_audit_event(
+        db,
+        actor_user_id=user.id,
+        patient_id=profile.id,
+        event_type="clinical_event_created",
+        resource_type="clinical_event",
+        resource_id=event.id,
+        metadata={
+            "actor_role": user.role.value,
+            "status": event.status,
+            "fields": [
+                "title",
+                "chief_complaint",
+                "symptom_summary",
+                "diagnosis_summary",
+                "onset_date",
+                "status",
+            ],
+        },
+    )
+    db.commit()
+    db.refresh(event)
+    return _clinical_event_response(event, db)
+
+
+@router.get(
+    "/patients/{patient_id}/clinical-events/{event_id}",
+    response_model=ClinicalEventResponse,
+)
+def patient_clinical_event_detail(
+    patient_id: uuid.UUID,
+    event_id: uuid.UUID,
+    user: CurrentUser,
+    db: DbSession,
+) -> ClinicalEventResponse:
+    profile, event = _authorized_clinical_event(patient_id, event_id, user, db)
+    _record_audit_event(
+        db,
+        actor_user_id=user.id,
+        patient_id=profile.id,
+        event_type="clinical_event_read",
+        resource_type="clinical_event",
+        resource_id=event.id,
+        metadata={"actor_role": user.role.value, "status": event.status},
+    )
+    db.commit()
+    return _clinical_event_response(event, db)
+
+
+@router.put(
+    "/patients/{patient_id}/clinical-events/{event_id}",
+    response_model=ClinicalEventResponse,
+)
+def update_patient_clinical_event(
+    patient_id: uuid.UUID,
+    event_id: uuid.UUID,
+    request: ClinicalEventRequest,
+    user: CurrentUser,
+    db: DbSession,
+) -> ClinicalEventResponse:
+    _require_doctor_user(user)
+    profile, event = _authorized_clinical_event(patient_id, event_id, user, db)
+    event.title = request.title
+    event.chief_complaint = request.chief_complaint
+    event.symptom_summary = request.symptom_summary
+    event.diagnosis_summary = request.diagnosis_summary
+    event.onset_date = request.onset_date
+    event.status = request.status
+    _record_audit_event(
+        db,
+        actor_user_id=user.id,
+        patient_id=profile.id,
+        event_type="clinical_event_updated",
+        resource_type="clinical_event",
+        resource_id=event.id,
+        metadata={
+            "actor_role": user.role.value,
+            "status": event.status,
+            "fields": [
+                "title",
+                "chief_complaint",
+                "symptom_summary",
+                "diagnosis_summary",
+                "onset_date",
+                "status",
+            ],
+        },
+    )
+    db.commit()
+    db.refresh(event)
+    return _clinical_event_response(event, db)
+
+
 @router.get("/patients/{patient_id}/records", response_model=MedicalRecordListResponse)
 def patient_records(
     patient_id: uuid.UUID,
@@ -1448,8 +1916,15 @@ def create_patient_medication(
 ) -> MedicationResponse:
     _require_doctor_user(user)
     profile = _authorized_patient(patient_id, user, db)
+    event = _optional_clinical_event(
+        request.clinical_event_id,
+        patient_id=profile.id,
+        user=user,
+        db=db,
+    )
     medication = Medication(
         patient_id=profile.id,
+        clinical_event_id=event.id if event else None,
         name=request.name,
         dosage=request.dosage,
         schedule=request.schedule,
@@ -1465,7 +1940,11 @@ def create_patient_medication(
         event_type="medication_created",
         resource_type="medication",
         resource_id=medication.id,
-        metadata={"status": medication.status, "actor_role": user.role.value},
+        metadata={
+            "status": medication.status,
+            "actor_role": user.role.value,
+            "clinical_event_id": str(event.id) if event else None,
+        },
     )
     db.commit()
     db.refresh(medication)
@@ -1482,6 +1961,13 @@ def update_patient_medication(
 ) -> MedicationResponse:
     _require_doctor_user(user)
     profile, medication = _authorized_medication(patient_id, medication_id, user, db)
+    event = _optional_clinical_event(
+        request.clinical_event_id,
+        patient_id=profile.id,
+        user=user,
+        db=db,
+    )
+    medication.clinical_event_id = event.id if event else None
     medication.name = request.name
     medication.dosage = request.dosage
     medication.schedule = request.schedule
@@ -1494,7 +1980,11 @@ def update_patient_medication(
         event_type="medication_updated",
         resource_type="medication",
         resource_id=medication.id,
-        metadata={"status": medication.status, "actor_role": user.role.value},
+        metadata={
+            "status": medication.status,
+            "actor_role": user.role.value,
+            "clinical_event_id": str(event.id) if event else None,
+        },
     )
     db.commit()
     db.refresh(medication)
@@ -1549,9 +2039,16 @@ def create_patient_prescription(
 ) -> PrescriptionResponse:
     _require_doctor_user(user)
     profile = _authorized_patient(patient_id, user, db)
+    event = _optional_clinical_event(
+        request.clinical_event_id,
+        patient_id=profile.id,
+        user=user,
+        db=db,
+    )
     _validate_prescription_request(request, patient_id=profile.id, db=db)
     prescription = Prescription(
         patient_id=profile.id,
+        clinical_event_id=event.id if event else None,
         prescribed_by_user_id=user.id,
         status=request.status,
         issued_at=request.issued_at,
@@ -1572,6 +2069,7 @@ def create_patient_prescription(
             "status": prescription.status,
             "line_count": len(request.medications),
             "actor_role": user.role.value,
+            "clinical_event_id": str(event.id) if event else None,
         },
     )
     db.commit()
@@ -1592,7 +2090,14 @@ def update_patient_prescription(
 ) -> PrescriptionResponse:
     _require_doctor_user(user)
     profile, prescription = _authorized_prescription(patient_id, prescription_id, user, db)
+    event = _optional_clinical_event(
+        request.clinical_event_id,
+        patient_id=profile.id,
+        user=user,
+        db=db,
+    )
     _validate_prescription_request(request, patient_id=profile.id, db=db)
+    prescription.clinical_event_id = event.id if event else None
     prescription.status = request.status
     prescription.issued_at = request.issued_at
     prescription.notes = request.notes
@@ -1608,6 +2113,7 @@ def update_patient_prescription(
             "status": prescription.status,
             "line_count": len(request.medications),
             "actor_role": user.role.value,
+            "clinical_event_id": str(event.id) if event else None,
         },
     )
     db.commit()
@@ -1674,6 +2180,12 @@ def create_patient_medication_reminder(
 ) -> MedicationReminderResponse:
     _require_doctor_user(user)
     profile = _authorized_patient(patient_id, user, db)
+    event = _optional_clinical_event(
+        request.clinical_event_id,
+        patient_id=profile.id,
+        user=user,
+        db=db,
+    )
     _validate_medication_reminder_request(request, patient_id=profile.id, db=db)
     reminder = MedicationReminder(patient_id=profile.id)
     _apply_medication_reminder_request(reminder, request)
@@ -1693,6 +2205,7 @@ def create_patient_medication_reminder(
             "channel": reminder.channel,
             "notification_queued": notification is not None,
             "actor_role": user.role.value,
+            "clinical_event_id": str(event.id) if event else None,
         },
     )
     db.commit()
@@ -1713,6 +2226,12 @@ def update_patient_medication_reminder(
 ) -> MedicationReminderResponse:
     _require_doctor_user(user)
     profile, reminder = _authorized_medication_reminder(patient_id, reminder_id, user, db)
+    event = _optional_clinical_event(
+        request.clinical_event_id,
+        patient_id=profile.id,
+        user=user,
+        db=db,
+    )
     _validate_medication_reminder_request(request, patient_id=profile.id, db=db)
     cancelled_count = _cancel_queued_reminder_notifications(db, profile=profile, reminder=reminder)
     _apply_medication_reminder_request(reminder, request)
@@ -1732,6 +2251,7 @@ def update_patient_medication_reminder(
             "cancelled_queued_notifications": cancelled_count,
             "notification_queued": notification is not None,
             "actor_role": user.role.value,
+            "clinical_event_id": str(event.id) if event else None,
         },
     )
     db.commit()
@@ -1803,9 +2323,16 @@ def create_patient_doctor_note(
 ) -> DoctorNoteResponse:
     _require_doctor_user(user)
     profile = _authorized_patient(patient_id, user, db)
+    event = _optional_clinical_event(
+        request.clinical_event_id,
+        patient_id=profile.id,
+        user=user,
+        db=db,
+    )
     note = DoctorNote(
         patient_id=profile.id,
         doctor_id=user.doctor_profile.id,
+        clinical_event_id=event.id if event else None,
         title=request.title,
         body=request.body,
     )
@@ -1818,7 +2345,11 @@ def create_patient_doctor_note(
         event_type="doctor_note_created",
         resource_type="doctor_note",
         resource_id=note.id,
-        metadata={"fields": ["title", "body"], "actor_role": user.role.value},
+        metadata={
+            "fields": ["title", "body", "clinical_event_id"],
+            "actor_role": user.role.value,
+            "clinical_event_id": str(event.id) if event else None,
+        },
     )
     db.commit()
     db.refresh(note)
@@ -1834,6 +2365,13 @@ def update_patient_doctor_note(
     db: DbSession,
 ) -> DoctorNoteResponse:
     profile, note = _authorized_doctor_note(patient_id, note_id, user, db)
+    event = _optional_clinical_event(
+        request.clinical_event_id,
+        patient_id=profile.id,
+        user=user,
+        db=db,
+    )
+    note.clinical_event_id = event.id if event else None
     note.title = request.title
     note.body = request.body
     _record_audit_event(
@@ -1843,7 +2381,11 @@ def update_patient_doctor_note(
         event_type="doctor_note_updated",
         resource_type="doctor_note",
         resource_id=note.id,
-        metadata={"fields": ["title", "body"], "actor_role": user.role.value},
+        metadata={
+            "fields": ["title", "body", "clinical_event_id"],
+            "actor_role": user.role.value,
+            "clinical_event_id": str(event.id) if event else None,
+        },
     )
     db.commit()
     db.refresh(note)
@@ -2092,6 +2634,102 @@ def delete_patient_chronic_disease(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
+@router.get(
+    "/patients/{patient_id}/medical-history-reviews",
+    response_model=MedicalHistoryReviewListResponse,
+)
+def patient_medical_history_reviews(
+    patient_id: uuid.UUID,
+    user: CurrentUser,
+    db: DbSession,
+) -> MedicalHistoryReviewListResponse:
+    profile = _authorized_patient(patient_id, user, db)
+    reviews = db.scalars(
+        select(MedicalHistoryReview)
+        .where(MedicalHistoryReview.patient_id == profile.id)
+        .order_by(MedicalHistoryReview.created_at.desc())
+    ).all()
+    return MedicalHistoryReviewListResponse(
+        items=[_medical_history_review_response(item) for item in reviews]
+    )
+
+
+@router.post(
+    "/patients/{patient_id}/medical-history-reviews",
+    response_model=MedicalHistoryReviewResponse,
+)
+def create_patient_medical_history_review(
+    patient_id: uuid.UUID,
+    request: MedicalHistoryReviewRequest,
+    user: CurrentUser,
+    db: DbSession,
+) -> MedicalHistoryReviewResponse:
+    _require_doctor_user(user)
+    profile = _authorized_patient(patient_id, user, db)
+    if request.action == "amendment" and not request.amendment_summary:
+        raise ApiError(
+            422,
+            "validation_failed",
+            "The request could not be validated.",
+            [
+                {
+                    "field": "amendment_summary",
+                    "code": "required_for_amendment",
+                    "message": "Doctor amendments need an amendment summary.",
+                }
+            ],
+        )
+    if request.action == "correction_requested" and not request.correction_request:
+        raise ApiError(
+            422,
+            "validation_failed",
+            "The request could not be validated.",
+            [
+                {
+                    "field": "correction_request",
+                    "code": "required_for_correction_request",
+                    "message": "Correction requests need patient-facing correction text.",
+                }
+            ],
+        )
+    _authorized_history_review_target(
+        profile.id,
+        request.target_type,
+        request.target_id,
+        db,
+    )
+    review = MedicalHistoryReview(
+        patient_id=profile.id,
+        doctor_id=user.doctor_profile.id if user.doctor_profile else None,
+        target_type=request.target_type,
+        target_id=request.target_id,
+        action=request.action,
+        amendment_summary=request.amendment_summary,
+        correction_request=request.correction_request,
+    )
+    db.add(review)
+    db.flush()
+    _record_audit_event(
+        db,
+        actor_user_id=user.id,
+        patient_id=profile.id,
+        event_type="medical_history_review_created",
+        resource_type="medical_history_review",
+        resource_id=review.id,
+        metadata={
+            "actor_role": user.role.value,
+            "target_type": review.target_type,
+            "target_id": str(review.target_id),
+            "action": review.action,
+            "has_amendment_summary": request.amendment_summary is not None,
+            "has_correction_request": request.correction_request is not None,
+        },
+    )
+    db.commit()
+    db.refresh(review)
+    return _medical_history_review_response(review)
+
+
 @router.get("/patients/{patient_id}/visit-history", response_model=VisitHistoryListResponse)
 def patient_visit_history(
     patient_id: uuid.UUID,
@@ -2116,8 +2754,15 @@ def create_patient_visit_history(
 ) -> VisitHistoryResponse:
     _require_doctor_user(user)
     profile = _authorized_patient(patient_id, user, db)
+    event = _optional_clinical_event(
+        request.clinical_event_id,
+        patient_id=profile.id,
+        user=user,
+        db=db,
+    )
     visit = VisitHistory(
         patient_id=profile.id,
+        clinical_event_id=event.id if event else None,
         visit_type=request.visit_type,
         title=request.title,
         summary=request.summary,
@@ -2134,7 +2779,11 @@ def create_patient_visit_history(
         event_type="visit_history_created",
         resource_type="visit_history",
         resource_id=visit.id,
-        metadata={"visit_type": request.visit_type, "actor_role": user.role.value},
+        metadata={
+            "visit_type": request.visit_type,
+            "actor_role": user.role.value,
+            "clinical_event_id": str(event.id) if event else None,
+        },
     )
     db.commit()
     db.refresh(visit)
@@ -2154,6 +2803,13 @@ def update_patient_visit_history(
 ) -> VisitHistoryResponse:
     _require_doctor_user(user)
     profile, visit = _authorized_visit_history(patient_id, visit_id, user, db)
+    event = _optional_clinical_event(
+        request.clinical_event_id,
+        patient_id=profile.id,
+        user=user,
+        db=db,
+    )
+    visit.clinical_event_id = event.id if event else None
     visit.visit_type = request.visit_type
     visit.title = request.title
     visit.summary = request.summary
@@ -2166,7 +2822,11 @@ def update_patient_visit_history(
         event_type="visit_history_updated",
         resource_type="visit_history",
         resource_id=visit.id,
-        metadata={"visit_type": request.visit_type, "actor_role": user.role.value},
+        metadata={
+            "visit_type": request.visit_type,
+            "actor_role": user.role.value,
+            "clinical_event_id": str(event.id) if event else None,
+        },
     )
     db.commit()
     db.refresh(visit)
@@ -2223,8 +2883,15 @@ def create_patient_diagnosis(
 ) -> DiagnosisResponse:
     _require_doctor_user(user)
     profile = _authorized_patient(patient_id, user, db)
+    event = _optional_clinical_event(
+        request.clinical_event_id,
+        patient_id=profile.id,
+        user=user,
+        db=db,
+    )
     diagnosis = Diagnosis(
         patient_id=profile.id,
+        clinical_event_id=event.id if event else None,
         label=request.label,
         status=request.status,
         diagnosed_on=request.diagnosed_on,
@@ -2240,7 +2907,11 @@ def create_patient_diagnosis(
         event_type="diagnosis_created",
         resource_type="diagnosis",
         resource_id=diagnosis.id,
-        metadata={"status": request.status, "actor_role": user.role.value},
+        metadata={
+            "status": request.status,
+            "actor_role": user.role.value,
+            "clinical_event_id": str(event.id) if event else None,
+        },
     )
     db.commit()
     db.refresh(diagnosis)
@@ -2257,6 +2928,13 @@ def update_patient_diagnosis(
 ) -> DiagnosisResponse:
     _require_doctor_user(user)
     profile, diagnosis = _authorized_diagnosis(patient_id, diagnosis_id, user, db)
+    event = _optional_clinical_event(
+        request.clinical_event_id,
+        patient_id=profile.id,
+        user=user,
+        db=db,
+    )
+    diagnosis.clinical_event_id = event.id if event else None
     diagnosis.label = request.label
     diagnosis.status = request.status
     diagnosis.diagnosed_on = request.diagnosed_on
@@ -2268,7 +2946,11 @@ def update_patient_diagnosis(
         event_type="diagnosis_updated",
         resource_type="diagnosis",
         resource_id=diagnosis.id,
-        metadata={"status": request.status, "actor_role": user.role.value},
+        metadata={
+            "status": request.status,
+            "actor_role": user.role.value,
+            "clinical_event_id": str(event.id) if event else None,
+        },
     )
     db.commit()
     db.refresh(diagnosis)
@@ -2308,6 +2990,21 @@ def patient_care_bundle(
     db: DbSession,
 ) -> PatientCareBundleResponse:
     profile = _authorized_patient(patient_id, user, db)
+    clinical_events = db.scalars(
+        select(ClinicalEvent)
+        .where(ClinicalEvent.patient_id == profile.id)
+        .order_by(ClinicalEvent.updated_at.desc())
+    ).all()
+    clinical_event_updates = db.scalars(
+        select(ClinicalEventUpdate)
+        .where(ClinicalEventUpdate.patient_id == profile.id)
+        .order_by(ClinicalEventUpdate.occurred_at.desc())
+    ).all()
+    medical_history_reviews = db.scalars(
+        select(MedicalHistoryReview)
+        .where(MedicalHistoryReview.patient_id == profile.id)
+        .order_by(MedicalHistoryReview.created_at.desc())
+    ).all()
     allergies = db.scalars(
         select(PatientAllergy)
         .where(PatientAllergy.patient_id == profile.id)
@@ -2355,6 +3052,12 @@ def patient_care_bundle(
             MedicationReminder.created_at.desc(),
         )
     ).all()
+    recovery_plans = db.scalars(
+        select(RecoveryPlan)
+        .options(selectinload(RecoveryPlan.tasks).selectinload(RecoveryTask.completions))
+        .where(RecoveryPlan.patient_id == profile.id)
+        .order_by(RecoveryPlan.created_at.desc())
+    ).all()
     notes: list[DoctorNote] = []
     if user.role == UserRole.doctor:
         notes = list(
@@ -2373,6 +3076,9 @@ def patient_care_bundle(
         resource_id=profile.id,
         metadata={
             "actor_role": user.role.value,
+            "clinical_event_count": len(clinical_events),
+            "clinical_event_update_count": len(clinical_event_updates),
+            "medical_history_review_count": len(medical_history_reviews),
             "allergy_count": len(allergies),
             "chronic_disease_count": len(conditions),
             "visit_count": len(visits),
@@ -2382,12 +3088,20 @@ def patient_care_bundle(
             "medication_count": len(medications),
             "prescription_count": len(prescriptions),
             "medication_reminder_count": len(reminders),
+            "recovery_plan_count": len(recovery_plans),
             "doctor_note_count": len(notes),
         },
     )
     db.commit()
     return PatientCareBundleResponse(
         patient=_patient_response(profile),
+        clinical_events=[_clinical_event_response(item, db) for item in clinical_events],
+        clinical_event_updates=[
+            _clinical_event_update_response(item) for item in clinical_event_updates
+        ],
+        medical_history_reviews=[
+            _medical_history_review_response(item) for item in medical_history_reviews
+        ],
         allergies=[_allergy_response(item) for item in allergies],
         chronic_diseases=[_chronic_disease_response(item) for item in conditions],
         visit_history=[_visit_history_response(item) for item in visits],
@@ -2397,6 +3111,7 @@ def patient_care_bundle(
         medications=[_medication_response(item) for item in medications],
         prescriptions=[_prescription_response(item) for item in prescriptions],
         medication_reminders=[_medication_reminder_response(item) for item in reminders],
+        recovery_plans=[_recovery_plan_response(item) for item in recovery_plans],
         doctor_notes=[_note_response(item) for item in notes],
     )
 
@@ -2487,6 +3202,12 @@ def presign_medical_imaging_upload(
     db: DbSession,
 ) -> MedicalImagingPresignResponse:
     profile = _authorized_patient(patient_id, user, db)
+    event = _optional_clinical_event(
+        request.clinical_event_id,
+        patient_id=profile.id,
+        user=user,
+        db=db,
+    )
     content_type, extension = _validate_imaging_presign_request(request)
     expires_at = datetime.now(UTC) + timedelta(minutes=DEMO_UPLOAD_TTL_MINUTES)
     asset_id = uuid.uuid4()
@@ -2494,6 +3215,7 @@ def presign_medical_imaging_upload(
     asset = MedicalImagingAsset(
         id=asset_id,
         patient_id=profile.id,
+        clinical_event_id=event.id if event else None,
         uploaded_by_user_id=user.id,
         storage_provider=IMAGING_STORAGE_PROVIDER,
         content_type=content_type,
@@ -2520,12 +3242,14 @@ def presign_medical_imaging_upload(
             "storage_provider": IMAGING_STORAGE_PROVIDER,
             "upload_status": "pending_upload",
             "review_status": "not_ready",
+            "clinical_event_id": str(event.id) if event else None,
         },
     )
     db.commit()
     return MedicalImagingPresignResponse(
         asset_id=asset.id,
         patient_id=profile.id,
+        clinical_event_id=asset.clinical_event_id,
         upload_url=f"https://tencent-cos-upload.invalid/{object_key}",
         headers={
             "Content-Type": content_type,
@@ -2671,6 +3395,10 @@ def review_medical_imaging_asset(
             ],
         )
     asset.review_status = request.review_status
+    asset.finding_summary = request.finding_summary
+    asset.measurement_summary = request.measurement_summary
+    asset.observed_at = request.observed_at
+    asset.treatment_relevance_date = request.treatment_relevance_date
     asset.reviewed_by_user_id = user.id
     asset.reviewed_at = datetime.now(UTC)
     _record_audit_event(
@@ -2686,6 +3414,10 @@ def review_medical_imaging_asset(
             "storage_provider": asset.storage_provider,
             "upload_status": asset.upload_status,
             "review_status": asset.review_status,
+            "has_finding_summary": request.finding_summary is not None,
+            "has_measurement_summary": request.measurement_summary is not None,
+            "has_observed_at": request.observed_at is not None,
+            "has_treatment_relevance_date": request.treatment_relevance_date is not None,
         },
     )
     db.commit()
@@ -2709,6 +3441,91 @@ def own_imaging_asset_detail(
     if user.role != UserRole.patient or user.patient_profile is None:
         raise _neutral_not_found()
     return patient_imaging_asset_detail(user.patient_profile.id, asset_id, user, db)
+
+
+@router.get("/patient/me/clinical-events", response_model=ClinicalEventListResponse)
+def own_clinical_events(user: CurrentUser, db: DbSession) -> ClinicalEventListResponse:
+    if user.role != UserRole.patient or user.patient_profile is None:
+        raise _neutral_not_found()
+    return patient_clinical_events(user.patient_profile.id, user, db)
+
+
+@router.get("/patient/me/clinical-events/{event_id}", response_model=ClinicalEventResponse)
+def own_clinical_event_detail(
+    event_id: uuid.UUID,
+    user: CurrentUser,
+    db: DbSession,
+) -> ClinicalEventResponse:
+    if user.role != UserRole.patient or user.patient_profile is None:
+        raise _neutral_not_found()
+    return patient_clinical_event_detail(user.patient_profile.id, event_id, user, db)
+
+
+@router.get(
+    "/patient/me/clinical-events/{event_id}/updates",
+    response_model=ClinicalEventUpdateListResponse,
+)
+def own_clinical_event_updates(
+    event_id: uuid.UUID,
+    user: CurrentUser,
+    db: DbSession,
+) -> ClinicalEventUpdateListResponse:
+    if user.role != UserRole.patient or user.patient_profile is None:
+        raise _neutral_not_found()
+    profile, event = _authorized_clinical_event(user.patient_profile.id, event_id, user, db)
+    updates = db.scalars(
+        select(ClinicalEventUpdate)
+        .where(
+            ClinicalEventUpdate.patient_id == profile.id,
+            ClinicalEventUpdate.clinical_event_id == event.id,
+        )
+        .order_by(ClinicalEventUpdate.occurred_at.desc())
+    ).all()
+    return ClinicalEventUpdateListResponse(
+        items=[_clinical_event_update_response(item) for item in updates]
+    )
+
+
+@router.post(
+    "/patient/me/clinical-events/{event_id}/updates",
+    response_model=ClinicalEventUpdateResponse,
+)
+def create_own_clinical_event_update(
+    event_id: uuid.UUID,
+    request: ClinicalEventUpdateRequest,
+    user: CurrentUser,
+    db: DbSession,
+) -> ClinicalEventUpdateResponse:
+    if user.role != UserRole.patient or user.patient_profile is None:
+        raise _neutral_not_found()
+    profile, event = _authorized_clinical_event(user.patient_profile.id, event_id, user, db)
+    update = ClinicalEventUpdate(
+        patient_id=profile.id,
+        clinical_event_id=event.id,
+        submitted_by_user_id=user.id,
+        update_type=request.update_type,
+        summary=request.summary,
+        occurred_at=request.occurred_at or datetime.now(UTC),
+    )
+    db.add(update)
+    db.flush()
+    _record_audit_event(
+        db,
+        actor_user_id=user.id,
+        patient_id=profile.id,
+        event_type="clinical_event_patient_update_created",
+        resource_type="clinical_event_update",
+        resource_id=update.id,
+        metadata={
+            "actor_role": user.role.value,
+            "clinical_event_id": str(event.id),
+            "update_type": update.update_type,
+            "has_summary": True,
+        },
+    )
+    db.commit()
+    db.refresh(update)
+    return _clinical_event_update_response(update)
 
 
 @router.get("/patients/{patient_id}/assessments", response_model=AssessmentListResponse)
@@ -2849,10 +3666,17 @@ def create_recovery_plan(
     if user.role != UserRole.doctor or user.doctor_profile is None:
         raise _neutral_not_found()
     profile = _authorized_patient(patient_id, user, db)
+    event = _optional_clinical_event(
+        request.clinical_event_id,
+        patient_id=profile.id,
+        user=user,
+        db=db,
+    )
     _validate_recovery_tasks(request.tasks, patient_id=profile.id, db=db)
     plan = RecoveryPlan(
         patient_id=profile.id,
         doctor_id=user.doctor_profile.id,
+        clinical_event_id=event.id if event else None,
         title=request.title,
         instructions=request.instructions,
         status="draft",
@@ -2899,7 +3723,14 @@ def update_recovery_plan(
     ):
         raise _neutral_not_found()
     _ensure_recovery_plan_editable(plan)
+    event = _optional_clinical_event(
+        request.clinical_event_id,
+        patient_id=profile.id,
+        user=user,
+        db=db,
+    )
     _validate_recovery_tasks(request.tasks, patient_id=profile.id, db=db)
+    plan.clinical_event_id = event.id if event else None
     plan.title = request.title
     plan.instructions = request.instructions
     if plan.review_status == "changes_requested":
@@ -3204,6 +4035,21 @@ def own_patient_care(user: CurrentUser, db: DbSession) -> PatientCareBundleRespo
     if user.role != UserRole.patient or user.patient_profile is None:
         raise _neutral_not_found()
     profile = user.patient_profile
+    clinical_events = db.scalars(
+        select(ClinicalEvent)
+        .where(ClinicalEvent.patient_id == profile.id)
+        .order_by(ClinicalEvent.updated_at.desc())
+    ).all()
+    clinical_event_updates = db.scalars(
+        select(ClinicalEventUpdate)
+        .where(ClinicalEventUpdate.patient_id == profile.id)
+        .order_by(ClinicalEventUpdate.occurred_at.desc())
+    ).all()
+    medical_history_reviews = db.scalars(
+        select(MedicalHistoryReview)
+        .where(MedicalHistoryReview.patient_id == profile.id)
+        .order_by(MedicalHistoryReview.created_at.desc())
+    ).all()
     allergies = db.scalars(
         select(PatientAllergy)
         .where(PatientAllergy.patient_id == profile.id)
@@ -3251,6 +4097,12 @@ def own_patient_care(user: CurrentUser, db: DbSession) -> PatientCareBundleRespo
             MedicationReminder.created_at.desc(),
         )
     ).all()
+    recovery_plans = db.scalars(
+        select(RecoveryPlan)
+        .options(selectinload(RecoveryPlan.tasks).selectinload(RecoveryTask.completions))
+        .where(RecoveryPlan.patient_id == profile.id)
+        .order_by(RecoveryPlan.created_at.desc())
+    ).all()
     _record_audit_event(
         db,
         actor_user_id=user.id,
@@ -3260,6 +4112,9 @@ def own_patient_care(user: CurrentUser, db: DbSession) -> PatientCareBundleRespo
         resource_id=profile.id,
         metadata={
             "actor_role": user.role.value,
+            "clinical_event_count": len(clinical_events),
+            "clinical_event_update_count": len(clinical_event_updates),
+            "medical_history_review_count": len(medical_history_reviews),
             "allergy_count": len(allergies),
             "chronic_disease_count": len(conditions),
             "visit_count": len(visits),
@@ -3269,12 +4124,20 @@ def own_patient_care(user: CurrentUser, db: DbSession) -> PatientCareBundleRespo
             "medication_count": len(medications),
             "prescription_count": len(prescriptions),
             "medication_reminder_count": len(reminders),
+            "recovery_plan_count": len(recovery_plans),
             "doctor_note_count": 0,
         },
     )
     db.commit()
     return PatientCareBundleResponse(
         patient=_patient_response(profile),
+        clinical_events=[_clinical_event_response(item, db) for item in clinical_events],
+        clinical_event_updates=[
+            _clinical_event_update_response(item) for item in clinical_event_updates
+        ],
+        medical_history_reviews=[
+            _medical_history_review_response(item) for item in medical_history_reviews
+        ],
         allergies=[_allergy_response(item) for item in allergies],
         chronic_diseases=[_chronic_disease_response(item) for item in conditions],
         visit_history=[_visit_history_response(item) for item in visits],
@@ -3284,6 +4147,7 @@ def own_patient_care(user: CurrentUser, db: DbSession) -> PatientCareBundleRespo
         medications=[_medication_response(item) for item in medications],
         prescriptions=[_prescription_response(item) for item in prescriptions],
         medication_reminders=[_medication_reminder_response(item) for item in reminders],
+        recovery_plans=[_recovery_plan_response(item) for item in recovery_plans],
         doctor_notes=[],
     )
 
@@ -3392,6 +4256,12 @@ def create_consultation(
     if user.role != UserRole.doctor or user.doctor_profile is None:
         raise _neutral_not_found()
     profile = _authorized_patient(request.patient_id, user, db)
+    event = _optional_clinical_event(
+        request.clinical_event_id,
+        patient_id=profile.id,
+        user=user,
+        db=db,
+    )
     specialty = request.specialty.strip()
     question_summary = request.question_summary.strip()
     unsafe_details = _unsafe_consultation_fields(specialty, question_summary)
@@ -3406,6 +4276,7 @@ def create_consultation(
         select(ConsultationRequest).where(
             ConsultationRequest.patient_id == profile.id,
             ConsultationRequest.requested_by_user_id == user.id,
+            ConsultationRequest.clinical_event_id == (event.id if event else None),
             ConsultationRequest.specialty == specialty,
             ConsultationRequest.question_summary == question_summary,
             ConsultationRequest.priority == request.priority,
@@ -3416,6 +4287,7 @@ def create_consultation(
         return _consultation_response(existing)
     consultation = ConsultationRequest(
         patient_id=profile.id,
+        clinical_event_id=event.id if event else None,
         requested_by_user_id=user.id,
         specialty=specialty,
         question_summary=question_summary,
@@ -3436,6 +4308,7 @@ def create_consultation(
             "specialty": consultation.specialty,
             "priority": consultation.priority,
             "status": consultation.status,
+            "clinical_event_id": str(event.id) if event else None,
         },
     )
     db.commit()

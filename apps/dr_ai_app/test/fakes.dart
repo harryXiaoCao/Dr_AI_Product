@@ -154,6 +154,66 @@ const demoPatientSummary = PatientSummary(
       'Synthetic demonstration data only. Do not enter real patient data.',
 );
 
+final demoClinicalEvent = ClinicalEventItem(
+  id: 'clinical-event-test-id',
+  patientId: 'patient-profile-test-id',
+  doctorId: 'doctor-profile-test-id',
+  title: 'Synthetic headache care episode',
+  chiefComplaint: 'Synthetic recurring headache',
+  symptomSummary: 'Demo-only symptom summary for workflow validation.',
+  diagnosisSummary: 'Synthetic observation only; not a clinical claim.',
+  onsetDate: '2026-07-01',
+  status: 'active',
+  linkedResourceCounts: const <String, int>{
+    'visit_history': 1,
+    'diagnoses': 1,
+    'medications': 1,
+    'prescriptions': 1,
+    'medication_reminders': 2,
+    'recovery_plans': 1,
+    'imaging_assets': 1,
+    'doctor_notes': 1,
+    'consultations': 0,
+    'notifications': 0,
+  },
+  timeline: <ClinicalEventTimelineEntry>[
+    ClinicalEventTimelineEntry(
+      entryType: 'clinical_event_created',
+      resourceId: 'clinical-event-test-id',
+      title: 'Clinical Event created',
+      occurredAt: DateTime(2026, 7, 7, 9),
+    ),
+    ClinicalEventTimelineEntry(
+      entryType: 'imaging_review',
+      resourceId: 'imaging-test-id',
+      title: 'Imaging reviewed',
+      occurredAt: DateTime(2026, 7, 8, 9),
+    ),
+    ClinicalEventTimelineEntry(
+      entryType: 'patient_update',
+      resourceId: 'clinical-event-update-test-id',
+      title: 'Patient update: symptom_update',
+      occurredAt: DateTime(2026, 7, 8, 12),
+    ),
+  ],
+  patientUpdates: <ClinicalEventUpdateItem>[
+    ClinicalEventUpdateItem(
+      id: 'clinical-event-update-test-id',
+      patientId: 'patient-profile-test-id',
+      clinicalEventId: 'clinical-event-test-id',
+      submittedByUserId: 'patient-user-test-id',
+      updateType: 'symptom_update',
+      summary: 'Synthetic patient update for the care episode.',
+      occurredAt: DateTime(2026, 7, 8, 12),
+      createdAt: DateTime(2026, 7, 8, 12),
+    ),
+  ],
+  createdAt: DateTime(2026, 7, 7, 9),
+  updatedAt: DateTime(2026, 7, 8, 9),
+  safetyLabel:
+      'Synthetic demonstration data only. Do not enter real patient data.',
+);
+
 final demoPatientCareBundle = PatientCareBundle(
   patient: PatientProfile(
     patientId: 'patient-profile-test-id',
@@ -169,6 +229,32 @@ final demoPatientCareBundle = PatientCareBundle(
     preferredLanguage: 'English',
     contactPreference: 'in-app',
   ),
+  clinicalEvents: <ClinicalEventItem>[demoClinicalEvent],
+  clinicalEventUpdates: <ClinicalEventUpdateItem>[
+    ClinicalEventUpdateItem(
+      id: 'clinical-event-update-test-id',
+      patientId: 'patient-profile-test-id',
+      clinicalEventId: 'clinical-event-test-id',
+      submittedByUserId: 'patient-user-test-id',
+      updateType: 'symptom_update',
+      summary: 'Synthetic patient update for the care episode.',
+      occurredAt: DateTime(2026, 7, 8, 12),
+      createdAt: DateTime(2026, 7, 8, 12),
+    ),
+  ],
+  medicalHistoryReviews: <MedicalHistoryReviewItem>[
+    MedicalHistoryReviewItem(
+      id: 'medical-history-review-test-id',
+      patientId: 'patient-profile-test-id',
+      doctorId: 'doctor-profile-test-id',
+      targetType: 'allergy',
+      targetId: 'allergy-test-id',
+      action: 'verified',
+      amendmentSummary: null,
+      correctionRequest: null,
+      createdAt: DateTime(2026, 7, 8, 12),
+    ),
+  ],
   allergies: const <PatientAllergyItem>[
     PatientAllergyItem(
       id: 'allergy-test-id',
@@ -190,6 +276,7 @@ final demoPatientCareBundle = PatientCareBundle(
   visitHistory: <VisitHistoryItem>[
     VisitHistoryItem(
       id: 'visit-test-id',
+      clinicalEventId: 'clinical-event-test-id',
       visitType: 'follow_up',
       title: 'Synthetic follow-up visit',
       summary: 'Demo-only visit summary.',
@@ -200,6 +287,7 @@ final demoPatientCareBundle = PatientCareBundle(
   diagnoses: const <DiagnosisItem>[
     DiagnosisItem(
       id: 'diagnosis-test-id',
+      clinicalEventId: 'clinical-event-test-id',
       label: 'Synthetic observation',
       status: 'active',
       diagnosedOn: '2026-07-07',
@@ -219,6 +307,7 @@ final demoPatientCareBundle = PatientCareBundle(
     MedicalImagingAsset(
       id: 'imaging-test-id',
       patientId: 'patient-profile-test-id',
+      clinicalEventId: 'clinical-event-test-id',
       storageProvider: 'tencent_cos',
       contentType: 'image/png',
       fileExtension: 'png',
@@ -226,6 +315,8 @@ final demoPatientCareBundle = PatientCareBundle(
       uploadedSizeBytes: 4096,
       uploadStatus: 'uploaded',
       reviewStatus: 'pending_review',
+      findingSummary: null,
+      measurementSummary: null,
       createdAt: DateTime(2026, 7, 8, 9),
       updatedAt: DateTime(2026, 7, 8, 9),
       expiresAt: DateTime(2026, 7, 8, 9, 15),
@@ -238,6 +329,7 @@ final demoPatientCareBundle = PatientCareBundle(
   medications: <MedicationItem>[
     MedicationItem(
       id: 'medication-test-id',
+      clinicalEventId: 'clinical-event-test-id',
       name: 'Demo Sumatriptan Fixture',
       dosage: '50 mg',
       schedule: 'As listed in the synthetic care plan',
@@ -248,6 +340,7 @@ final demoPatientCareBundle = PatientCareBundle(
   prescriptions: <PrescriptionItem>[
     PrescriptionItem(
       id: 'prescription-test-id',
+      clinicalEventId: 'clinical-event-test-id',
       status: 'issued',
       issuedAt: DateTime(2026, 7, 7, 10),
       notes: 'Synthetic prescription fixture.',
@@ -267,6 +360,7 @@ final demoPatientCareBundle = PatientCareBundle(
   medicationReminders: <MedicationReminderItem>[
     MedicationReminderItem(
       id: 'medication-reminder-test-id',
+      clinicalEventId: 'clinical-event-test-id',
       reminderType: 'medication',
       scheduleLabel: 'In-app medication reminder',
       channel: 'in_app',
@@ -277,6 +371,7 @@ final demoPatientCareBundle = PatientCareBundle(
     ),
     MedicationReminderItem(
       id: 'refill-reminder-test-id',
+      clinicalEventId: 'clinical-event-test-id',
       reminderType: 'refill',
       scheduleLabel: 'In-app refill reminder',
       channel: 'in_app',
@@ -289,6 +384,7 @@ final demoPatientCareBundle = PatientCareBundle(
   doctorNotes: <DoctorNoteItem>[
     DoctorNoteItem(
       id: 'note-test-id',
+      clinicalEventId: 'clinical-event-test-id',
       title: 'Synthetic care-loop note',
       body: 'Doctor-facing fixture note for Week 2 navigation.',
       createdAt: DateTime(2026, 7, 5),
@@ -315,6 +411,7 @@ final demoPresign = DemoAssetPresign(
 final demoImagingPresign = MedicalImagingPresign(
   assetId: 'imaging-created-id',
   patientId: 'patient-profile-test-id',
+  clinicalEventId: 'clinical-event-test-id',
   uploadUrl:
       'https://tencent-cos-upload.invalid/medical-imaging-assets/asset.png',
   method: 'PUT',
@@ -334,6 +431,7 @@ final demoImagingPresign = MedicalImagingPresign(
 final demoImagingUploaded = MedicalImagingAsset(
   id: 'imaging-created-id',
   patientId: 'patient-profile-test-id',
+  clinicalEventId: 'clinical-event-test-id',
   storageProvider: 'tencent_cos',
   contentType: 'image/png',
   fileExtension: 'png',
@@ -341,6 +439,8 @@ final demoImagingUploaded = MedicalImagingAsset(
   uploadedSizeBytes: 4096,
   uploadStatus: 'uploaded',
   reviewStatus: 'pending_review',
+  findingSummary: null,
+  measurementSummary: null,
   createdAt: DateTime(2026, 7, 8, 10),
   updatedAt: DateTime(2026, 7, 8, 10),
   expiresAt: DateTime(2026, 7, 8, 10, 15),
@@ -353,6 +453,7 @@ final demoImagingUploaded = MedicalImagingAsset(
 final demoImagingReviewed = MedicalImagingAsset(
   id: 'imaging-created-id',
   patientId: 'patient-profile-test-id',
+  clinicalEventId: 'clinical-event-test-id',
   storageProvider: 'tencent_cos',
   contentType: 'image/png',
   fileExtension: 'png',
@@ -360,6 +461,8 @@ final demoImagingReviewed = MedicalImagingAsset(
   uploadedSizeBytes: 4096,
   uploadStatus: 'uploaded',
   reviewStatus: 'reviewed',
+  findingSummary: 'Manual demo imaging finding/result.',
+  measurementSummary: 'Manual demo measurement note.',
   createdAt: DateTime(2026, 7, 8, 10),
   updatedAt: DateTime(2026, 7, 8, 10, 4),
   expiresAt: DateTime(2026, 7, 8, 10, 15),
@@ -391,6 +494,7 @@ final demoAssessment = AssessmentResult(
 final demoRecoveryPlan = RecoveryPlanData(
   planId: 'recovery-plan-test-id',
   patientId: 'patient-profile-test-id',
+  clinicalEventId: 'clinical-event-test-id',
   title: 'Synthetic Week 3 Recovery Plan',
   instructions:
       'Demo-only recovery plan for invited beta workflow validation. Not medical advice.',
@@ -479,6 +583,7 @@ final demoChatResult = ChatMessageResult(
 final demoConsultation = ConsultationRequestItem(
   consultationId: 'consultation-test-id',
   patientId: 'patient-profile-test-id',
+  clinicalEventId: 'clinical-event-test-id',
   specialty: 'Pulmonology demo review',
   questionSummary: 'Synthetic review of recovery-plan education questions.',
   priority: 'routine',
@@ -553,12 +658,16 @@ class FakeDrAiRepository implements DrAiRepository {
   ApiError? consultationError;
   Completer<AuthSession>? loginCompleter;
   bool logoutCalled = false;
+  bool clinicalEventSaved = false;
+  bool clinicalEventUpdateSubmitted = false;
+  bool medicalHistoryReviewCreated = false;
   bool medicationSaved = false;
   bool prescriptionCreated = false;
   bool medicationReminderSaved = false;
   bool imagingPrepared = false;
   bool imagingCompleted = false;
   bool imagingReviewed = false;
+  String? lastClinicalEventId;
   int chatMessagesSent = 0;
   String? lastChatMessage;
 
@@ -632,8 +741,108 @@ class FakeDrAiRepository implements DrAiRepository {
   }
 
   @override
+  Future<ClinicalEventItem> saveClinicalEvent({
+    required String patientId,
+    required String? clinicalEventId,
+    required String title,
+    required String chiefComplaint,
+    required String symptomSummary,
+    required String diagnosisSummary,
+    required String onsetDate,
+    required String status,
+  }) async {
+    clinicalEventSaved = true;
+    lastClinicalEventId = clinicalEventId;
+    final event = ClinicalEventItem(
+      id: clinicalEventId ?? 'created-clinical-event-id',
+      patientId: patientId,
+      doctorId: 'doctor-profile-test-id',
+      title: title,
+      chiefComplaint: chiefComplaint,
+      symptomSummary: symptomSummary.isEmpty ? null : symptomSummary,
+      diagnosisSummary: diagnosisSummary.isEmpty ? null : diagnosisSummary,
+      onsetDate: onsetDate.isEmpty ? null : onsetDate,
+      status: status,
+      linkedResourceCounts: const <String, int>{},
+      createdAt: DateTime(2026, 7, 8, 11),
+      updatedAt: DateTime(2026, 7, 8, 11),
+      safetyLabel:
+          'Synthetic demonstration data only. Do not enter real patient data.',
+    );
+    patientCareBundle = _copyCareBundle(
+      patientCareBundle,
+      clinicalEvents: <ClinicalEventItem>[
+        event,
+        ...patientCareBundle.clinicalEvents.where(
+          (item) => item.id != event.id,
+        ),
+      ],
+    );
+    return event;
+  }
+
+  @override
+  Future<ClinicalEventUpdateItem> submitClinicalEventUpdate({
+    required String clinicalEventId,
+    required String updateType,
+    required String summary,
+  }) async {
+    clinicalEventUpdateSubmitted = true;
+    final update = ClinicalEventUpdateItem(
+      id: 'created-clinical-event-update-id',
+      patientId: 'patient-profile-test-id',
+      clinicalEventId: clinicalEventId,
+      submittedByUserId: 'patient-user-test-id',
+      updateType: updateType,
+      summary: summary,
+      occurredAt: DateTime(2026, 7, 8, 13),
+      createdAt: DateTime(2026, 7, 8, 13),
+    );
+    patientCareBundle = _copyCareBundle(
+      patientCareBundle,
+      clinicalEventUpdates: <ClinicalEventUpdateItem>[
+        update,
+        ...patientCareBundle.clinicalEventUpdates,
+      ],
+    );
+    return update;
+  }
+
+  @override
+  Future<MedicalHistoryReviewItem> createMedicalHistoryReview({
+    required String patientId,
+    required String targetType,
+    required String targetId,
+    required String action,
+    required String amendmentSummary,
+    required String correctionRequest,
+  }) async {
+    medicalHistoryReviewCreated = true;
+    final review = MedicalHistoryReviewItem(
+      id: 'created-medical-history-review-id',
+      patientId: patientId,
+      doctorId: 'doctor-profile-test-id',
+      targetType: targetType,
+      targetId: targetId,
+      action: action,
+      amendmentSummary: amendmentSummary.isEmpty ? null : amendmentSummary,
+      correctionRequest: correctionRequest.isEmpty ? null : correctionRequest,
+      createdAt: DateTime(2026, 7, 8, 13),
+    );
+    patientCareBundle = _copyCareBundle(
+      patientCareBundle,
+      medicalHistoryReviews: <MedicalHistoryReviewItem>[
+        review,
+        ...patientCareBundle.medicalHistoryReviews,
+      ],
+    );
+    return review;
+  }
+
+  @override
   Future<MedicationItem> saveMedication({
     required String patientId,
+    required String? clinicalEventId,
     required String? medicationId,
     required String name,
     required String dosage,
@@ -644,6 +853,7 @@ class FakeDrAiRepository implements DrAiRepository {
     medicationSaved = true;
     final medication = MedicationItem(
       id: medicationId ?? 'created-medication-id',
+      clinicalEventId: clinicalEventId,
       name: name,
       dosage: dosage,
       schedule: schedule,
@@ -665,6 +875,7 @@ class FakeDrAiRepository implements DrAiRepository {
   @override
   Future<PrescriptionItem> createPrescription({
     required String patientId,
+    required String? clinicalEventId,
     required String medicationId,
     required String name,
     required String dosage,
@@ -674,6 +885,7 @@ class FakeDrAiRepository implements DrAiRepository {
     prescriptionCreated = true;
     final prescription = PrescriptionItem(
       id: 'created-prescription-id',
+      clinicalEventId: clinicalEventId,
       status: 'issued',
       issuedAt: DateTime(2026, 7, 7, 12),
       notes: notes,
@@ -749,6 +961,7 @@ class FakeDrAiRepository implements DrAiRepository {
   @override
   Future<MedicalImagingPresign> presignMedicalImaging({
     required String patientId,
+    required String? clinicalEventId,
     required String filename,
     required String contentType,
     required int sizeBytes,
@@ -787,6 +1000,8 @@ class FakeDrAiRepository implements DrAiRepository {
     required String patientId,
     required String assetId,
     required String reviewStatus,
+    required String findingSummary,
+    required String measurementSummary,
   }) async {
     if (imagingError != null) {
       throw imagingError!;
@@ -838,6 +1053,7 @@ class FakeDrAiRepository implements DrAiRepository {
   @override
   Future<RecoveryPlanData> createRecoveryPlan({
     required String patientId,
+    required String? clinicalEventId,
     required String title,
     required String instructions,
     required List<RecoveryTaskInput> tasks,
@@ -847,6 +1063,7 @@ class FakeDrAiRepository implements DrAiRepository {
     }
     final plan = _planFromInput(
       patientId: patientId,
+      clinicalEventId: clinicalEventId,
       planId: 'created-recovery-plan-id',
       title: title,
       instructions: instructions,
@@ -862,6 +1079,7 @@ class FakeDrAiRepository implements DrAiRepository {
   @override
   Future<RecoveryPlanData> updateRecoveryPlan({
     required String patientId,
+    required String? clinicalEventId,
     required String planId,
     required String title,
     required String instructions,
@@ -872,6 +1090,7 @@ class FakeDrAiRepository implements DrAiRepository {
     }
     final plan = _planFromInput(
       patientId: patientId,
+      clinicalEventId: clinicalEventId,
       planId: planId,
       title: title,
       instructions: instructions,
@@ -902,6 +1121,7 @@ class FakeDrAiRepository implements DrAiRepository {
     final active = RecoveryPlanData(
       planId: current.planId,
       patientId: current.patientId,
+      clinicalEventId: current.clinicalEventId,
       title: current.title,
       instructions: current.instructions,
       status: 'active',
@@ -1061,6 +1281,7 @@ class FakeDrAiRepository implements DrAiRepository {
   @override
   Future<ConsultationRequestItem> createConsultation({
     required String patientId,
+    required String? clinicalEventId,
     required String specialty,
     required String questionSummary,
     required String priority,
@@ -1071,6 +1292,7 @@ class FakeDrAiRepository implements DrAiRepository {
     final request = ConsultationRequestItem(
       consultationId: 'created-consultation-id',
       patientId: patientId,
+      clinicalEventId: clinicalEventId,
       specialty: specialty,
       questionSummary: questionSummary,
       priority: priority,
@@ -1088,6 +1310,7 @@ class FakeDrAiRepository implements DrAiRepository {
 
   RecoveryPlanData _planFromInput({
     required String patientId,
+    required String? clinicalEventId,
     required String planId,
     required String title,
     required String instructions,
@@ -1097,6 +1320,7 @@ class FakeDrAiRepository implements DrAiRepository {
     return RecoveryPlanData(
       planId: planId,
       patientId: patientId,
+      clinicalEventId: clinicalEventId,
       title: title,
       instructions: instructions,
       status: status,
@@ -1158,6 +1382,7 @@ class FakeDrAiRepository implements DrAiRepository {
     return RecoveryPlanData(
       planId: current.planId,
       patientId: current.patientId,
+      clinicalEventId: current.clinicalEventId,
       title: current.title,
       instructions: current.instructions,
       status: status ?? current.status,
@@ -1192,12 +1417,20 @@ class FakeDrAiRepository implements DrAiRepository {
 PatientCareBundle _copyCareBundle(
   PatientCareBundle bundle, {
   List<MedicationItem>? medications,
+  List<ClinicalEventItem>? clinicalEvents,
+  List<ClinicalEventUpdateItem>? clinicalEventUpdates,
+  List<MedicalHistoryReviewItem>? medicalHistoryReviews,
   List<MedicalImagingAsset>? imagingAssets,
   List<PrescriptionItem>? prescriptions,
   List<MedicationReminderItem>? medicationReminders,
+  List<RecoveryPlanData>? recoveryPlans,
 }) {
   return PatientCareBundle(
     patient: bundle.patient,
+    clinicalEvents: clinicalEvents ?? bundle.clinicalEvents,
+    clinicalEventUpdates: clinicalEventUpdates ?? bundle.clinicalEventUpdates,
+    medicalHistoryReviews:
+        medicalHistoryReviews ?? bundle.medicalHistoryReviews,
     allergies: bundle.allergies,
     chronicDiseases: bundle.chronicDiseases,
     visitHistory: bundle.visitHistory,
@@ -1207,6 +1440,7 @@ PatientCareBundle _copyCareBundle(
     medications: medications ?? bundle.medications,
     prescriptions: prescriptions ?? bundle.prescriptions,
     medicationReminders: medicationReminders ?? bundle.medicationReminders,
+    recoveryPlans: recoveryPlans ?? bundle.recoveryPlans,
     doctorNotes: bundle.doctorNotes,
   );
 }

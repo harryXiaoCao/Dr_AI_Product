@@ -616,6 +616,8 @@ class _PatientSelfCareCard extends StatelessWidget {
               key: const Key('patient-self-history-summary'),
             ),
             const SizedBox(height: DrAiSpacing.xs),
+            _PatientEventUpdatePanel(bundle: bundle),
+            const SizedBox(height: DrAiSpacing.xs),
             if (bundle.medications.isEmpty)
               const Text('No synthetic medications')
             else
@@ -667,6 +669,146 @@ class _PatientSelfCareCard extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _PatientEventUpdatePanel extends ConsumerStatefulWidget {
+  const _PatientEventUpdatePanel({required this.bundle});
+
+  final PatientCareBundle bundle;
+
+  @override
+  ConsumerState<_PatientEventUpdatePanel> createState() =>
+      _PatientEventUpdatePanelState();
+}
+
+class _PatientEventUpdatePanelState
+    extends ConsumerState<_PatientEventUpdatePanel> {
+  final _summaryController = TextEditingController(
+    text: 'Synthetic patient update for the care episode.',
+  );
+  String _updateType = 'general_update';
+  String? _validationError;
+
+  @override
+  void dispose() {
+    _summaryController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final event = widget.bundle.clinicalEvents.isEmpty
+        ? null
+        : widget.bundle.clinicalEvents.first;
+    final state = ref.watch(clinicalEventUpdateControllerProvider);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: DrAiColors.surfaceSubtle,
+        borderRadius: BorderRadius.circular(DrAiRadii.md),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(DrAiSpacing.xs),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Text(
+              event == null
+                  ? 'No Clinical Event available for patient update'
+                  : 'Update: ${event.title}',
+              key: const Key('patient-event-update-title'),
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 4),
+            if (widget.bundle.clinicalEventUpdates.isNotEmpty)
+              Text(
+                'Latest patient update: ${widget.bundle.clinicalEventUpdates.first.summary}',
+                key: const Key('patient-event-latest-update'),
+              ),
+            if (event != null) ...<Widget>[
+              const SizedBox(height: 4),
+              DropdownButtonFormField<String>(
+                key: const Key('patient-event-update-type-field'),
+                initialValue: _updateType,
+                isExpanded: true,
+                decoration: const InputDecoration(
+                  labelText: 'Update type',
+                  isDense: true,
+                ),
+                items: const <DropdownMenuItem<String>>[
+                  DropdownMenuItem(
+                    value: 'general_update',
+                    child: Text('General update'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'symptom_update',
+                    child: Text('Symptom update'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'medication_note',
+                    child: Text('Medication note'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'recovery_check_in',
+                    child: Text('Recovery check-in'),
+                  ),
+                ],
+                onChanged: (value) =>
+                    setState(() => _updateType = value ?? 'general_update'),
+              ),
+              const SizedBox(height: 4),
+              TextField(
+                key: const Key('patient-event-update-summary-field'),
+                controller: _summaryController,
+                maxLength: 1200,
+                minLines: 1,
+                maxLines: 2,
+                decoration: const InputDecoration(
+                  counterText: '',
+                  labelText: 'Self-reported update',
+                  isDense: true,
+                ),
+              ),
+              if (_validationError != null)
+                Text(
+                  _validationError!,
+                  style: const TextStyle(color: DrAiColors.danger),
+                ),
+              state.when(
+                loading: () => const LinearProgressIndicator(),
+                error: (error, stackTrace) =>
+                    Text(_patientSafeErrorMessage(error)),
+                data: (update) => update == null
+                    ? const SizedBox.shrink()
+                    : Text('Update submitted: ${update.updateType}'),
+              ),
+              const SizedBox(height: 4),
+              FilledButton.icon(
+                key: const Key('patient-event-update-submit-button'),
+                onPressed: state.isLoading ? null : () => _submit(event.id),
+                icon: const Icon(Icons.send_outlined),
+                label: const Text('Send update'),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _submit(String eventId) {
+    if (_summaryController.text.trim().length < 3) {
+      setState(() => _validationError = 'Enter a short update first.');
+      return;
+    }
+    setState(() => _validationError = null);
+    ref
+        .read(clinicalEventUpdateControllerProvider.notifier)
+        .submit(
+          clinicalEventId: eventId,
+          updateType: _updateType,
+          summary: _summaryController.text.trim(),
+        );
   }
 }
 

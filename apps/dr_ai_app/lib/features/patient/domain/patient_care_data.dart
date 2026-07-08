@@ -103,6 +103,7 @@ class MedicalRecordItem {
 class MedicationItem {
   const MedicationItem({
     required this.id,
+    this.clinicalEventId,
     required this.name,
     required this.dosage,
     required this.schedule,
@@ -113,6 +114,7 @@ class MedicationItem {
   factory MedicationItem.fromJson(Map<String, dynamic> json) {
     return MedicationItem(
       id: json['id'] as String,
+      clinicalEventId: json['clinical_event_id'] as String?,
       name: json['name'] as String,
       dosage: json['dosage'] as String,
       schedule: json['schedule'] as String,
@@ -122,6 +124,7 @@ class MedicationItem {
   }
 
   final String id;
+  final String? clinicalEventId;
   final String name;
   final String dosage;
   final String schedule;
@@ -164,6 +167,7 @@ class PrescriptionMedicationItem {
 class PrescriptionItem {
   const PrescriptionItem({
     required this.id,
+    this.clinicalEventId,
     required this.status,
     required this.issuedAt,
     required this.notes,
@@ -173,6 +177,7 @@ class PrescriptionItem {
   factory PrescriptionItem.fromJson(Map<String, dynamic> json) {
     return PrescriptionItem(
       id: json['id'] as String,
+      clinicalEventId: json['clinical_event_id'] as String?,
       status: json['status'] as String,
       issuedAt: json['issued_at'] == null
           ? null
@@ -189,6 +194,7 @@ class PrescriptionItem {
   }
 
   final String id;
+  final String? clinicalEventId;
   final String status;
   final DateTime? issuedAt;
   final String? notes;
@@ -198,6 +204,7 @@ class PrescriptionItem {
 class MedicationReminderItem {
   const MedicationReminderItem({
     required this.id,
+    this.clinicalEventId,
     required this.reminderType,
     required this.scheduleLabel,
     required this.channel,
@@ -210,6 +217,7 @@ class MedicationReminderItem {
   factory MedicationReminderItem.fromJson(Map<String, dynamic> json) {
     return MedicationReminderItem(
       id: json['id'] as String,
+      clinicalEventId: json['clinical_event_id'] as String?,
       reminderType: json['reminder_type'] as String,
       scheduleLabel: json['schedule_label'] as String,
       channel: json['channel'] as String,
@@ -223,6 +231,7 @@ class MedicationReminderItem {
   }
 
   final String id;
+  final String? clinicalEventId;
   final String reminderType;
   final String scheduleLabel;
   final String channel;
@@ -235,6 +244,7 @@ class MedicationReminderItem {
 class DoctorNoteItem {
   const DoctorNoteItem({
     required this.id,
+    this.clinicalEventId,
     required this.title,
     required this.body,
     required this.createdAt,
@@ -243,6 +253,7 @@ class DoctorNoteItem {
   factory DoctorNoteItem.fromJson(Map<String, dynamic> json) {
     return DoctorNoteItem(
       id: json['id'] as String,
+      clinicalEventId: json['clinical_event_id'] as String?,
       title: json['title'] as String,
       body: json['body'] as String,
       createdAt: DateTime.parse(json['created_at'] as String),
@@ -250,6 +261,7 @@ class DoctorNoteItem {
   }
 
   final String id;
+  final String? clinicalEventId;
   final String title;
   final String body;
   final DateTime createdAt;
@@ -310,6 +322,7 @@ class ChronicDiseaseItem {
 class VisitHistoryItem {
   const VisitHistoryItem({
     required this.id,
+    this.clinicalEventId,
     required this.visitType,
     required this.title,
     required this.summary,
@@ -320,6 +333,7 @@ class VisitHistoryItem {
   factory VisitHistoryItem.fromJson(Map<String, dynamic> json) {
     return VisitHistoryItem(
       id: json['id'] as String,
+      clinicalEventId: json['clinical_event_id'] as String?,
       visitType: json['visit_type'] as String,
       title: json['title'] as String,
       summary: json['summary'] as String,
@@ -329,6 +343,7 @@ class VisitHistoryItem {
   }
 
   final String id;
+  final String? clinicalEventId;
   final String visitType;
   final String title;
   final String summary;
@@ -339,6 +354,7 @@ class VisitHistoryItem {
 class DiagnosisItem {
   const DiagnosisItem({
     required this.id,
+    this.clinicalEventId,
     required this.label,
     required this.status,
     required this.diagnosedOn,
@@ -348,6 +364,7 @@ class DiagnosisItem {
   factory DiagnosisItem.fromJson(Map<String, dynamic> json) {
     return DiagnosisItem(
       id: json['id'] as String,
+      clinicalEventId: json['clinical_event_id'] as String?,
       label: json['label'] as String,
       status: json['status'] as String,
       diagnosedOn: json['diagnosed_on'] as String?,
@@ -356,15 +373,185 @@ class DiagnosisItem {
   }
 
   final String id;
+  final String? clinicalEventId;
   final String label;
   final String status;
   final String? diagnosedOn;
   final String? notes;
 }
 
+class ClinicalEventItem {
+  const ClinicalEventItem({
+    required this.id,
+    required this.patientId,
+    required this.doctorId,
+    required this.title,
+    required this.chiefComplaint,
+    required this.symptomSummary,
+    required this.diagnosisSummary,
+    required this.onsetDate,
+    required this.status,
+    required this.linkedResourceCounts,
+    this.timeline = const <ClinicalEventTimelineEntry>[],
+    this.patientUpdates = const <ClinicalEventUpdateItem>[],
+    required this.createdAt,
+    required this.updatedAt,
+    required this.safetyLabel,
+  });
+
+  factory ClinicalEventItem.fromJson(Map<String, dynamic> json) {
+    return ClinicalEventItem(
+      id: json['id'] as String,
+      patientId: json['patient_id'] as String,
+      doctorId: json['doctor_id'] as String?,
+      title: json['title'] as String,
+      chiefComplaint: json['chief_complaint'] as String,
+      symptomSummary: json['symptom_summary'] as String?,
+      diagnosisSummary: json['diagnosis_summary'] as String?,
+      onsetDate: json['onset_date'] as String?,
+      status: json['status'] as String,
+      linkedResourceCounts:
+          ((json['linked_resource_counts'] as Map<String, dynamic>?) ??
+                  <String, dynamic>{})
+              .map((key, value) => MapEntry(key, value as int)),
+      timeline: ((json['timeline'] as List?) ?? <Object>[])
+          .map(
+            (item) => ClinicalEventTimelineEntry.fromJson(
+              item as Map<String, dynamic>,
+            ),
+          )
+          .toList(),
+      patientUpdates: ((json['patient_updates'] as List?) ?? <Object>[])
+          .map(
+            (item) =>
+                ClinicalEventUpdateItem.fromJson(item as Map<String, dynamic>),
+          )
+          .toList(),
+      createdAt: DateTime.parse(json['created_at'] as String),
+      updatedAt: DateTime.parse(json['updated_at'] as String),
+      safetyLabel: json['safety_label'] as String,
+    );
+  }
+
+  final String id;
+  final String patientId;
+  final String? doctorId;
+  final String title;
+  final String chiefComplaint;
+  final String? symptomSummary;
+  final String? diagnosisSummary;
+  final String? onsetDate;
+  final String status;
+  final Map<String, int> linkedResourceCounts;
+  final List<ClinicalEventTimelineEntry> timeline;
+  final List<ClinicalEventUpdateItem> patientUpdates;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final String safetyLabel;
+}
+
+class ClinicalEventTimelineEntry {
+  const ClinicalEventTimelineEntry({
+    required this.entryType,
+    required this.resourceId,
+    required this.title,
+    required this.occurredAt,
+  });
+
+  factory ClinicalEventTimelineEntry.fromJson(Map<String, dynamic> json) {
+    return ClinicalEventTimelineEntry(
+      entryType: json['entry_type'] as String,
+      resourceId: json['resource_id'] as String?,
+      title: json['title'] as String,
+      occurredAt: DateTime.parse(json['occurred_at'] as String),
+    );
+  }
+
+  final String entryType;
+  final String? resourceId;
+  final String title;
+  final DateTime occurredAt;
+}
+
+class ClinicalEventUpdateItem {
+  const ClinicalEventUpdateItem({
+    required this.id,
+    required this.patientId,
+    required this.clinicalEventId,
+    required this.submittedByUserId,
+    required this.updateType,
+    required this.summary,
+    required this.occurredAt,
+    required this.createdAt,
+  });
+
+  factory ClinicalEventUpdateItem.fromJson(Map<String, dynamic> json) {
+    return ClinicalEventUpdateItem(
+      id: json['id'] as String,
+      patientId: json['patient_id'] as String,
+      clinicalEventId: json['clinical_event_id'] as String,
+      submittedByUserId: json['submitted_by_user_id'] as String,
+      updateType: json['update_type'] as String,
+      summary: json['summary'] as String,
+      occurredAt: DateTime.parse(json['occurred_at'] as String),
+      createdAt: DateTime.parse(json['created_at'] as String),
+    );
+  }
+
+  final String id;
+  final String patientId;
+  final String clinicalEventId;
+  final String submittedByUserId;
+  final String updateType;
+  final String summary;
+  final DateTime occurredAt;
+  final DateTime createdAt;
+}
+
+class MedicalHistoryReviewItem {
+  const MedicalHistoryReviewItem({
+    required this.id,
+    required this.patientId,
+    required this.doctorId,
+    required this.targetType,
+    required this.targetId,
+    required this.action,
+    required this.amendmentSummary,
+    required this.correctionRequest,
+    required this.createdAt,
+  });
+
+  factory MedicalHistoryReviewItem.fromJson(Map<String, dynamic> json) {
+    return MedicalHistoryReviewItem(
+      id: json['id'] as String,
+      patientId: json['patient_id'] as String,
+      doctorId: json['doctor_id'] as String?,
+      targetType: json['target_type'] as String,
+      targetId: json['target_id'] as String,
+      action: json['action'] as String,
+      amendmentSummary: json['amendment_summary'] as String?,
+      correctionRequest: json['correction_request'] as String?,
+      createdAt: DateTime.parse(json['created_at'] as String),
+    );
+  }
+
+  final String id;
+  final String patientId;
+  final String? doctorId;
+  final String targetType;
+  final String targetId;
+  final String action;
+  final String? amendmentSummary;
+  final String? correctionRequest;
+  final DateTime createdAt;
+}
+
 class PatientCareBundle {
   const PatientCareBundle({
     required this.patient,
+    this.clinicalEvents = const <ClinicalEventItem>[],
+    this.clinicalEventUpdates = const <ClinicalEventUpdateItem>[],
+    this.medicalHistoryReviews = const <MedicalHistoryReviewItem>[],
     required this.allergies,
     required this.chronicDiseases,
     required this.visitHistory,
@@ -374,12 +561,34 @@ class PatientCareBundle {
     required this.medications,
     required this.prescriptions,
     required this.medicationReminders,
+    this.recoveryPlans = const <RecoveryPlanData>[],
     required this.doctorNotes,
   });
 
   factory PatientCareBundle.fromJson(Map<String, dynamic> json) {
     return PatientCareBundle(
       patient: PatientProfile.fromJson(json['patient'] as Map<String, dynamic>),
+      clinicalEvents: ((json['clinical_events'] as List?) ?? <Object>[])
+          .map(
+            (item) => ClinicalEventItem.fromJson(item as Map<String, dynamic>),
+          )
+          .toList(),
+      clinicalEventUpdates:
+          ((json['clinical_event_updates'] as List?) ?? <Object>[])
+              .map(
+                (item) => ClinicalEventUpdateItem.fromJson(
+                  item as Map<String, dynamic>,
+                ),
+              )
+              .toList(),
+      medicalHistoryReviews:
+          ((json['medical_history_reviews'] as List?) ?? <Object>[])
+              .map(
+                (item) => MedicalHistoryReviewItem.fromJson(
+                  item as Map<String, dynamic>,
+                ),
+              )
+              .toList(),
       allergies: ((json['allergies'] as List?) ?? <Object>[])
           .map(
             (item) => PatientAllergyItem.fromJson(item as Map<String, dynamic>),
@@ -425,6 +634,11 @@ class PatientCareBundle {
                 ),
               )
               .toList(),
+      recoveryPlans: ((json['recovery_plans'] as List?) ?? <Object>[])
+          .map(
+            (item) => RecoveryPlanData.fromJson(item as Map<String, dynamic>),
+          )
+          .toList(),
       doctorNotes: (json['doctor_notes'] as List)
           .map((item) => DoctorNoteItem.fromJson(item as Map<String, dynamic>))
           .toList(),
@@ -432,6 +646,9 @@ class PatientCareBundle {
   }
 
   final PatientProfile patient;
+  final List<ClinicalEventItem> clinicalEvents;
+  final List<ClinicalEventUpdateItem> clinicalEventUpdates;
+  final List<MedicalHistoryReviewItem> medicalHistoryReviews;
   final List<PatientAllergyItem> allergies;
   final List<ChronicDiseaseItem> chronicDiseases;
   final List<VisitHistoryItem> visitHistory;
@@ -441,6 +658,7 @@ class PatientCareBundle {
   final List<MedicationItem> medications;
   final List<PrescriptionItem> prescriptions;
   final List<MedicationReminderItem> medicationReminders;
+  final List<RecoveryPlanData> recoveryPlans;
   final List<DoctorNoteItem> doctorNotes;
 }
 
@@ -448,6 +666,7 @@ class MedicalImagingAsset {
   const MedicalImagingAsset({
     required this.id,
     required this.patientId,
+    this.clinicalEventId,
     required this.storageProvider,
     required this.contentType,
     required this.fileExtension,
@@ -455,6 +674,10 @@ class MedicalImagingAsset {
     required this.uploadedSizeBytes,
     required this.uploadStatus,
     required this.reviewStatus,
+    this.findingSummary,
+    this.measurementSummary,
+    this.observedAt,
+    this.treatmentRelevanceDate,
     required this.createdAt,
     required this.updatedAt,
     required this.expiresAt,
@@ -472,6 +695,7 @@ class MedicalImagingAsset {
     return MedicalImagingAsset(
       id: json['id'] as String,
       patientId: json['patient_id'] as String,
+      clinicalEventId: json['clinical_event_id'] as String?,
       storageProvider: json['storage_provider'] as String,
       contentType: json['content_type'] as String,
       fileExtension: json['file_extension'] as String,
@@ -479,6 +703,10 @@ class MedicalImagingAsset {
       uploadedSizeBytes: json['uploaded_size_bytes'] as int?,
       uploadStatus: json['upload_status'] as String,
       reviewStatus: json['review_status'] as String,
+      findingSummary: json['finding_summary'] as String?,
+      measurementSummary: json['measurement_summary'] as String?,
+      observedAt: optionalDate('observed_at'),
+      treatmentRelevanceDate: json['treatment_relevance_date'] as String?,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
       expiresAt: DateTime.parse(json['expires_at'] as String),
@@ -490,6 +718,7 @@ class MedicalImagingAsset {
 
   final String id;
   final String patientId;
+  final String? clinicalEventId;
   final String storageProvider;
   final String contentType;
   final String fileExtension;
@@ -497,6 +726,10 @@ class MedicalImagingAsset {
   final int? uploadedSizeBytes;
   final String uploadStatus;
   final String reviewStatus;
+  final String? findingSummary;
+  final String? measurementSummary;
+  final DateTime? observedAt;
+  final String? treatmentRelevanceDate;
   final DateTime createdAt;
   final DateTime updatedAt;
   final DateTime expiresAt;
@@ -509,6 +742,7 @@ class MedicalImagingPresign {
   const MedicalImagingPresign({
     required this.assetId,
     required this.patientId,
+    this.clinicalEventId,
     required this.uploadUrl,
     required this.method,
     required this.headers,
@@ -524,6 +758,7 @@ class MedicalImagingPresign {
     return MedicalImagingPresign(
       assetId: json['asset_id'] as String,
       patientId: json['patient_id'] as String,
+      clinicalEventId: json['clinical_event_id'] as String?,
       uploadUrl: json['upload_url'] as String,
       method: json['method'] as String,
       headers: (json['headers'] as Map<String, dynamic>).cast<String, String>(),
@@ -538,6 +773,7 @@ class MedicalImagingPresign {
 
   final String assetId;
   final String patientId;
+  final String? clinicalEventId;
   final String uploadUrl;
   final String method;
   final Map<String, String> headers;
@@ -726,6 +962,7 @@ class RecoveryPlanData {
   const RecoveryPlanData({
     required this.planId,
     required this.patientId,
+    this.clinicalEventId,
     required this.title,
     required this.instructions,
     required this.status,
@@ -751,6 +988,7 @@ class RecoveryPlanData {
     return RecoveryPlanData(
       planId: json['plan_id'] as String,
       patientId: json['patient_id'] as String,
+      clinicalEventId: json['clinical_event_id'] as String?,
       title: json['title'] as String,
       instructions: json['instructions'] as String,
       status: json['status'] as String,
@@ -777,6 +1015,7 @@ class RecoveryPlanData {
 
   final String planId;
   final String patientId;
+  final String? clinicalEventId;
   final String title;
   final String instructions;
   final String status;
@@ -931,6 +1170,7 @@ class ConsultationRequestItem {
   const ConsultationRequestItem({
     required this.consultationId,
     required this.patientId,
+    this.clinicalEventId,
     required this.specialty,
     required this.questionSummary,
     required this.priority,
@@ -944,6 +1184,7 @@ class ConsultationRequestItem {
     return ConsultationRequestItem(
       consultationId: json['consultation_id'] as String,
       patientId: json['patient_id'] as String,
+      clinicalEventId: json['clinical_event_id'] as String?,
       specialty: json['specialty'] as String,
       questionSummary: json['question_summary'] as String,
       priority: json['priority'] as String,
@@ -956,6 +1197,7 @@ class ConsultationRequestItem {
 
   final String consultationId;
   final String patientId;
+  final String? clinicalEventId;
   final String specialty;
   final String questionSummary;
   final String priority;

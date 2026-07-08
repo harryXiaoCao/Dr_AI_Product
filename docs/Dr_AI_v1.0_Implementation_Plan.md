@@ -2,7 +2,7 @@
 title: "Dr. AI v1.0 Implementation Plan"
 status: "Beta/demo MVP foundation exists; production/commercial v1.0 Phase 0 planning, Phase 1 data foundation, and Phase 2 patient/doctor core workflows are complete locally"
 created: "2026-07-02"
-last_updated: "2026-07-08T00:54:29+08:00"
+last_updated: "2026-07-08T14:08:00+08:00"
 owner: "Harry Cao"
 delivery_window: "Production v1.0 phase after completed beta foundation; implementation schedule to be estimated after Phase 1 planning starts"
 release_target: "Production/commercial v1.0 after beta foundation; invited beta remains historical milestone"
@@ -30,6 +30,9 @@ This file is the durable source of truth for implementing Dr. AI v1.0. Future ch
 | 2026-07-02 | Use synthetic or de-identified demonstration data only. | The one-month beta does not include the governance and validation required for real patient data. |
 | 2026-07-07 | Re-scope v1.0 from invited beta/demo MVP to production/commercial v1.0. | The beta foundation proves the core loop, but PRD-listed systems and visible dashboard modules must become functional production workflows or be removed/disabled before v1.0 is complete. |
 | 2026-07-07 | Close Phase 0 with production-scope decisions; do not start Phase 1 in the closure pass. | The surface audit and closure record settle kept, gated, removed/disabled, and deferred modules; production data-foundation implementation remains the next explicit phase. |
+| 2026-07-08 | Treat doctor Patient Management as a patient workspace, not a long mixed dashboard. | Phase 2 made the doctor/patient loop functional, but the doctor detail page now needs stable information architecture: assigned-patient navigation, selected-patient summary, and focused subsections for medical history, medications, prescriptions, reminders, recovery plans, imaging, notes, and activity. |
+| 2026-07-08 | Add a production localization foundation before broad UI expansion. | The commercial product targets Chinese customers and must support at least Simplified Chinese and English with real Flutter localization, Chinese-first copy review, locale-aware formatting, and no automatic translation of user-entered clinical content. |
+| 2026-07-08 | Center Phase 2 patient/doctor workflows on clinical events rather than isolated widgets. | Patient profile and medical history, doctor diagnoses, prescriptions, recovery plans, imaging findings, notes, and specialist consultation become understandable only when they link to a coherent medical problem/care episode. |
 
 ## Current Re-scope: Production v1.0
 
@@ -194,6 +197,62 @@ Closure evidence:
 - `docs/Phase_0_Production_v1_Surface_Audit.md`
 - `docs/Phase_0_Production_v1_Closure_Record.md`
 
+### Post-Phase-2 Product UX and Localization Hardening Decisions
+
+Phase 2 closed the patient/doctor core workflow locally and on staging. Before
+the doctor surface grows further, the doctor Patient Management page should be
+refactored as a calmer patient workspace instead of accumulating more content
+in a single vertical page.
+
+Doctor patient workspace target:
+
+- Preserve the existing Phase 2 API behavior, RBAC, audit safety, and synthetic
+  data boundaries unless a documented bug requires a narrow backend change.
+- Keep a narrow left column for assigned-patient search/list, basic workflow
+  status, and recent activity signals.
+- Add a selected-patient summary header in the detail pane with only
+  identity-safe essentials such as display name, age/sex when available,
+  active recovery-plan status, last-visit indicator, and risk-neutral workflow
+  status.
+- Split the detail pane into focused subsections by sidebar, tabs, or an
+  equivalent responsive navigation pattern: Overview, Profile, Medical History,
+  Clinical Events, Medications & Prescriptions, Recovery Plans, Imaging, and
+  Consultation & Activity.
+- Keep one primary task per subsection. Recovery-plan review controls should
+  not visually compete with imaging review, medication schedule editing,
+  prescription orders, or consultation/activity review.
+- Add loading, empty, validation, failure, unauthorized, and success states at
+  the subsection level where those states are visible.
+- On desktop/tablet, use a patient list plus detail workspace with subsection
+  navigation. On phone-width layouts, move the patient list into a separate
+  route/drawer/sheet and make subsection navigation compact.
+- Verify with focused Flutter widget tests and golden coverage for desktop and
+  phone-width layouts, section switching, empty states, and no-overflow
+  behavior.
+
+Localization target:
+
+- Use Flutter's official localization flow with generated accessors and ARB
+  files, starting with Simplified Chinese (`zh_Hans`) and English (`en`).
+- Treat Simplified Chinese as the primary production copy path for Chinese
+  customers, with English as the secondary supported locale.
+- Localize UI labels, actions, validation messages, empty states, status labels,
+  and user-facing errors through generated localization accessors instead of
+  hardcoded widget strings.
+- Keep backend responses machine-readable through stable codes/enums such as
+  `not_found`, `draft`, `pending_review`, `approved`, and `completed`;
+  translate those codes in Flutter rather than mixing server strings across
+  languages.
+- Do not automatically translate user-entered clinical content such as doctor
+  notes, medication names, plan instructions, imaging labels, patient messages,
+  or uploaded-record descriptions. Preserve those values exactly as entered
+  unless a later explicit clinical-translation feature is designed, reviewed,
+  and gated.
+- Apply locale-aware formatting for dates, times, phone numbers, reminder
+  schedules, and status text.
+- Keep SMS notification copy clinically neutral when the Phase 6
+  China-market SMS delivery gate is later closed.
+
 ### Production v1.0 Milestone Tracker
 
 - [x] Phase 0: Plan reconciliation and placeholder audit
@@ -341,6 +400,247 @@ Closure evidence:
       transitions, wrong-role/cross-patient neutral denials, Today progress,
       complete-only-after-all-tasks semantics, and metadata-only audit
       assertions.
+
+### Phase 2 Patient/Doctor Workflow Architecture Clarification
+
+The next Phase 2 cleanup should treat the doctor Patient Management page as a
+clinical-event workspace, not merely a set of disconnected CRUD panels. The
+central product object should be a **Clinical Event** or **Care Episode**:
+one medical problem, injury, illness, online diagnosis, or follow-up condition
+being managed over time. This term is preferred over "Visit" because one
+calendar appointment can contain multiple unrelated problems, while one problem
+can require multiple in-person or online interactions.
+
+Core relationship model:
+
+```text
+Patient Profile
+  -> shown in doctor Overview
+  -> edited by patient only
+
+Medical History
+  -> entered by patient
+  -> reviewed, verified, or amended by doctor with audit trail
+  -> informs Clinical Events
+
+Clinical Event / Care Episode
+  -> created and managed by doctor
+  -> contains symptoms, dates, diagnosis, status, and timeline
+  -> links prescriptions, medication schedules, recovery plan, imaging,
+     doctor notes, specialist consultation, and activity
+
+Prescription
+  -> doctor order linked to one Clinical Event
+  -> creates or updates Medication Schedule
+
+Medication Schedule
+  -> creates patient Today medication tasks and reminders automatically
+
+Recovery Plan
+  -> one active plan per Clinical Event
+  -> doctor-created/edited/completed, patient-facing timeline
+
+Imaging
+  -> uploaded/reviewed as a study linked to a Clinical Event
+  -> doctor records manual findings/results and relevant dates/events
+
+Consultation & Activity
+  -> notes, specialist review, system activity, and patient updates
+  -> linked to the relevant Clinical Event
+```
+
+Detailed workflow decisions:
+
+1. Patient Profile
+   - Patient Profile is patient-controlled basic identity/contact information:
+     avatar, display name, sex/gender, birth date, contact number, ID number,
+     emergency contact, preferred language, and contact preference.
+   - On the patient side, the avatar/profile entry point should open profile
+     editing, matching familiar mobile-app behavior.
+   - Doctors can review these fields in the doctor Overview page but should not
+     directly edit them. If a profile value appears wrong, the doctor can later
+     request patient correction or mark it as needing confirmation.
+
+2. Medical History
+   - Medical History is mostly patient-entered: allergies, chronic diseases,
+     past surgeries, family history, lifestyle/relevant history, long-term
+     medications, and previous major diagnoses.
+   - Patients should be able to set this up during or soon after onboarding and
+     update it later from their profile/history area.
+   - Doctors should generally avoid overwriting patient-entered history.
+     Doctors may review, mark items as clinician-verified, suggest correction,
+     or add a doctor amendment when medically necessary. Doctor amendments must
+     be audited and visually distinguishable from patient-entered content.
+
+3. Clinical Events / Care Episodes
+   - Replace the product concept "Visits and diagnoses" with Clinical Events or
+     Care Episodes. UI copy can use the clearer customer-facing label after
+     design review, but implementation should model the concept as a medical
+     problem over time rather than a single appointment.
+   - Doctors create and edit Clinical Events. Patients can read them and may
+     later submit self-reported updates, but patients should not edit the
+     doctor's diagnosis.
+   - A headache treated on July 1 and followed up on July 5 because the plan is
+     not working remains one Clinical Event with multiple updates. A headache
+     and broken bone discussed on the same day are two Clinical Events.
+   - Each Clinical Event should contain chief complaint/symptoms, onset date,
+     encounter/update dates, doctor diagnosis or provisional diagnosis, status
+     such as active/monitoring/resolved, and links to prescriptions, imaging,
+     recovery plan, notes, and specialist consultation.
+
+4. Medications and Prescriptions
+   - Prescription means the doctor's order: medication name, dose, route,
+     frequency, duration, quantity/refills where relevant, instructions,
+     prescribing doctor, issue date, and linked Clinical Event.
+   - Medication Schedule means what the patient is expected to take: active,
+     paused, or stopped state; timing; amount; adherence/completion state;
+     side-effect notes where appropriate; and patient-facing Today tasks.
+   - Doctor workflow: create or update a Prescription inside a Clinical Event.
+     The prescription automatically creates or updates the patient's active
+     Medication Schedule.
+   - Patient workflow: the patient dashboard should not become a dense list of
+     all medication metadata. It should show what matters now: due/overdue
+     medication tasks, incomplete items, and a compact active medication
+     summary, with details available behind a focused medication view.
+
+5. Reminders
+   - Reminders should not remain an independent doctor workspace section in the
+     next Phase 2 implementation slice.
+   - Medication reminders, refill reminders, recovery tasks, and follow-up
+     prompts should be generated from Medication Schedule, Recovery Plan, and
+     Clinical Event milestones rather than manually created as standalone
+     doctor reminders.
+   - A future custom-reminder feature can be designed later if a real product
+     need appears, but it should not compete with prescriptions or recovery
+     plan controls in Phase 2.
+
+6. Recovery Plan
+   - Recovery Plan is the long patient-facing care timeline for one Clinical
+     Event.
+   - Doctor workflow: create a plan, define the timeline, edit the plan while
+     appropriate, and manually mark it complete when the event is resolved.
+   - System workflow: a plan can later be automatically marked complete when
+     the planned time span ends and required tasks/check-ins are complete.
+   - Each active Clinical Event should have at most one active Recovery Plan.
+     A new unrelated event should get a new plan; a failed or insufficient plan
+     for the same event should usually become a revision/replacement inside the
+     same Clinical Event.
+   - Phase 3 may add AI-generated recovery-plan drafts, but Phase 2 should keep
+     the doctor-created/editable structure clear before AI assistance is added.
+
+7. Imaging
+   - Imaging should be linked to Clinical Events instead of floating as a
+     generic image list.
+   - Imaging workflow should include upload metadata/files, review status, and
+     doctor-entered imaging findings/results such as measurement, observation,
+     relevant date, medication/treatment date if applicable, and event linkage.
+   - Imaging findings can update the diagnosis, prescription, or recovery plan
+     for the linked Clinical Event, but the UI must avoid making automated
+     clinical claims.
+
+8. Consultation & Activity
+   - Combine Doctor Notes and Notifications/activity into a clearer
+     Consultation & Activity section.
+   - This section should include doctor private notes, specialist consultation
+     requests, specialist responses, patient-submitted updates where later
+     supported, and system timeline events such as prescription issued,
+     recovery plan updated, imaging reviewed, or event marked resolved.
+   - Activity is supporting context, not a primary clinical module. Notes and
+     specialist consultation should be linked to the relevant Clinical Event.
+
+Recommended doctor Patient Management sections after this clarification:
+
+- Overview: read-only patient profile summary, important verified history,
+  active Clinical Events, active recovery plan, and current medications.
+- Profile: read-only patient basic information with correction-request or
+  confirmation-needed affordance, not direct doctor editing.
+- Medical History: patient-entered history plus doctor verification/amendment
+  workflow.
+- Clinical Events: main doctor workspace for symptoms, diagnosis, status,
+  event updates, and links to all event-owned resources.
+- Medications & Prescriptions: prescription authoring plus generated medication
+  schedules; this replaces separate competing medication/prescription/reminder
+  workflows.
+- Recovery Plans: event-linked recovery timeline creation, editing, revision,
+  and completion.
+- Imaging: event-linked upload/review plus manual imaging findings/results.
+- Consultation & Activity: doctor notes, specialist review, and activity
+  timeline.
+
+Quality bar for the next implementation slice:
+
+- Product logic and workflow clarity matter more than completing every checkbox
+  quickly. A small, coherent, polished Phase 2 slice is preferred over broad
+  partial rewiring.
+- Keep real patient data and clinical claims out of the product.
+- Preserve existing RBAC, neutral denials, metadata-only audit principles, and
+  synthetic-data boundaries.
+- If backend/data-model changes are needed, keep them additive, tested, and
+  explicitly documented as Phase 2 workflow-clarification work.
+- Do not start Phase 3 AI generation, Phase 4 clinic operations, Phase 5
+  specialist/admin UI, or Phase 6 localization while implementing this Phase 2
+  workflow clarification.
+
+Current implementation status:
+
+- [x] First Clinical Event UI clarification slice.
+  - [x] Reframe doctor Patient Management navigation around Overview, Profile,
+    Medical History, Clinical Events, Medications & Prescriptions, Recovery
+    Plans, Imaging, and Consultation & Activity.
+  - [x] Add an event-context card that groups existing visit history,
+    diagnosis, prescriptions, medication schedules, generated reminders,
+    imaging, and notes around the active Clinical Event concept.
+  - [x] Remove the standalone doctor Reminders workspace section; reminder
+    rows now appear as generated medication-schedule outputs under
+    Medications & Prescriptions and Consultation & Activity.
+  - [x] Keep this slice frontend-only because the current Phase 2 API can
+    support the workflow clarification through existing care-bundle fields.
+  - [x] Add a persisted Clinical Event/Care Episode model and explicit foreign
+    keys from prescriptions, medication schedules, recovery plans, imaging,
+    notes, consultation, and activity as a deeper additive backend migration.
+    - [x] Add `clinical_events` plus nullable `clinical_event_id` links on
+      visit history, diagnoses, medications, prescriptions, medication/refill
+      reminders, metadata-only notifications, recovery plans, imaging assets,
+      doctor notes, and consultation requests.
+    - [x] Add doctor-only event create/update endpoints, doctor/patient event
+      reads, patient-owned event aliases, and care-bundle event readback with
+      linked-resource counts.
+    - [x] Keep existing endpoints backward-compatible by making
+      `clinical_event_id` optional.
+    - [x] Add focused RBAC/audit tests for doctor create/update, patient read,
+      patient mutation denial, cross-patient denial, event-linked resource
+      readback, generated notification linkage, and metadata-only audit.
+    - [x] Extend Flutter care-bundle domain models to parse event-linked
+      resources.
+  - [x] Add active Clinical Event workflow wiring in doctor Patient Management.
+    - [x] Add an always-visible active Clinical Event selector above doctor
+      workspace sections.
+    - [x] Add doctor-side Clinical Event create/update controls in the
+      Clinical Events section, with doctor-owned diagnosis copy and patient
+      read-only behavior documented in the UI.
+    - [x] Scope encounter updates, diagnosis readback, prescriptions,
+      medication schedules, generated reminders, recovery plans, imaging,
+      doctor notes, consultation requests, and activity timeline rows to the
+      selected Clinical Event where the resource carries `clinical_event_id`.
+    - [x] Pass selected `clinical_event_id` through Flutter client calls for
+      medication schedule saves, prescription issue, medical imaging presign,
+      recovery-plan create/update, and specialist consultation requests while
+      keeping backend fields nullable for backward compatibility.
+    - [x] Keep standalone doctor reminders removed; reminders remain generated
+      medication-schedule outputs.
+    - [x] Add focused Flutter widget/fake coverage for event create/update,
+      event selection, and event-linked doctor writes.
+  - [x] Remaining Phase 2 workflow clarification polish.
+    - [x] Add doctor verification/amendment affordances for patient-entered
+      Medical History with visible audit trail.
+    - [x] Add event-update/timeline entries beyond the current linked-resource
+      readback.
+    - [x] Enforce or clearly surface one active Recovery Plan per active
+      Clinical Event in the doctor UI/API.
+    - [x] Add manual doctor-entered imaging findings/results fields without
+      automated clinical claims.
+    - [x] Add patient-submitted Clinical Event updates while preserving
+      doctor-owned diagnosis controls.
 - [ ] Phase 3: AI systems
   - [ ] Define stable AI assessment request/response contract.
   - [ ] Implement diagnostic input collection.
@@ -393,6 +693,35 @@ Closure evidence:
   - [ ] Implement support/deletion/feedback queues.
   - [ ] Add specialist/admin/commercial tests.
 - [ ] Phase 6: Production hardening and release
+  - [x] Refactor doctor Patient Management into a focused patient workspace.
+    - [x] Add assigned-patient list/search navigation as a narrow, scannable
+      column on desktop/tablet.
+    - [x] Add selected-patient summary header with identity-safe essentials and
+      workflow status only.
+    - [x] Add subsection navigation for Overview, Profile, Medical History,
+      Clinical Events, Medications & Prescriptions, Recovery Plans, Imaging,
+      and Consultation & Activity.
+    - [x] Keep one primary task per subsection, with section-level loading,
+      empty, validation, failure, unauthorized, and success states.
+    - [x] Add responsive behavior for phone-width doctor layouts without text
+      overflow or overlapping controls.
+    - [x] Verify with focused Flutter widget/golden coverage and
+      `./scripts/verify_flutter.sh`.
+      - Focused widget coverage was added for desktop workspace navigation and
+        phone-width compact patient selection; dashboard golden baselines were
+        not updated because this slice did not intentionally change the frozen
+        dashboard golden surfaces.
+  - [ ] Add production multilingual foundation.
+    - [ ] Add Flutter localization generation with ARB files for English and
+      Simplified Chinese.
+    - [ ] Treat Simplified Chinese as the primary production copy path and
+      English as the secondary supported locale.
+    - [ ] Localize UI copy, actions, validation, empty states, status labels,
+      and user-facing errors through generated localization accessors.
+    - [ ] Keep API responses machine-readable and translate stable codes/enums
+      in Flutter.
+    - [ ] Do not automatically translate user-entered clinical content.
+    - [ ] Add locale-aware date, time, phone-number, and reminder formatting.
   - [ ] Add API 5xx monitoring.
   - [ ] Add auth/chat/assessment/upload monitoring.
   - [ ] Close external notification delivery gate with China-market SMS as the
@@ -542,23 +871,6 @@ The release will be an invited public beta through TestFlight, Android closed te
 
 Grounding sources: [PRD](/Users/Harry-Cao/Downloads/Dr_AI_Product_Requirements_Document_v1.0.docx), [research paper](/Users/Harry-Cao/Desktop/留学规划/科研/Prediction_of_Lung_Cancer_Metastasis_Risk_Based_on_GCAVE-GAN_Data_Augmentation_and_Multimodal_Feature_Fusion.pdf), and [Figma prototype](https://www.figma.com/proto/8EJikM9M97nVy3R5JLeC0O/Figma-basics?node-id=618-1051).
 
-## v1.0 Product Boundary
-
-### Included
-
-- Email/password authentication, secure session refresh, logout, and doctor/patient roles.
-- Doctor dashboard matching the existing Figma layout.
-- Patient mobile dashboard matching the existing patient frame.
-- Patient list, profile, medical history, notes, medications, and uploaded demo images.
-- Presigned image upload to Tencent COS.
-- Simulated multimodal lung-risk assessment with reproducible fixture results.
-- Recovery-plan creation and patient daily task view.
-- Medication schedules and local mobile notifications.
-- DeepSeek-powered educational chat with emergency escalation rules.
-- Asynchronous specialist-consultation request with status tracking.
-- Audit log for sensitive reads, writes, uploads, assessments, and chat escalation.
-- Synthetic demonstration patients and onboarding walkthrough.
-
 ### Historical beta deferrals
 
 - Real GCAVE-GAN/AMCM inference, clinical claims, or real-patient deployment.
@@ -685,92 +997,6 @@ Chat safeguards:
 - Every answer includes provenance and limitations.
 - Rate limits, output-length limits, timeout handling, and a safe fallback response are mandatory.
 
-## Four-Week Build Schedule - For Beta only, not for Production
-
-### Week 1 — Foundation and design freeze
-
-**Days 1–2**
-
-- Create Flutter and FastAPI projects, environment configuration, linting, tests, and CI.
-- Inspect both Figma frames in detail when the connector limit resets.
-- Produce the screen inventory, interaction map, design tokens, and reusable component list.
-- Freeze the golden workflow and API contract.
-
-**Days 3–4**
-
-- Implement database schema, migrations, synthetic seed data, and authentication.
-- Add role authorization and doctor–patient relationship enforcement.
-- Build responsive application shells and login states.
-
-**Day 5 gate**
-
-- Doctor can sign in on web and patient can sign in on mobile.
-- Both dashboards render seeded data at the two Figma reference sizes.
-- CI builds Flutter web, runs Flutter tests, and runs backend tests.
-- Staging API and database are reachable over HTTPS.
-
-### Week 2 — Complete the golden care loop
-
-**Days 6–7**
-
-- Patient search/list, profile, medical history, medications, and doctor notes.
-- Loading, empty, validation, unauthorized, and network-error states.
-
-**Days 8–9**
-
-- Presigned demo-image upload.
-- Assessment form and deterministic simulated assessment service.
-- Risk-result screen with simulation label, limitations, and audit events.
-
-**Day 10 gate**
-
-- Doctor can complete patient → record → upload → assessment → result.
-- No client can access an unrelated patient by changing an ID.
-- Upload and assessment failure states recover without losing form data.
-
-### Week 3 — Recovery, reminders, chat, and consultation
-
-**Days 11–12**
-
-- Doctor recovery-plan editor.
-- Patient “Today” view with medication, exercise, diet, and follow-up tasks.
-- Completion tracking and local medication notifications.
-
-**Days 13–14**
-
-- DeepSeek chat proxy, streaming response UI, red-flag escalation, rate limiting, and safe fallbacks.
-- Asynchronous specialist-consultation request and status display.
-
-**Day 15 gate**
-
-- Full doctor-led loop works across two accounts.
-- Patient immediately sees the activated plan.
-- Chat never exposes system prompts, secrets, or another patient’s data.
-- Existing Figma resource cards remain visually present but clearly read-only.
-
-### Week 4 — Hardening and beta release
-
-**Days 16–17**
-
-- Accessibility labels, keyboard navigation, contrast, text scaling, and responsive QA.
-- Security review, dependency scan, upload validation, audit coverage, and backup restore rehearsal.
-- Remove debug logs and verify that logs contain no patient content.
-
-**Days 18–19**
-
-- End-to-end tests on physical iOS and Android devices plus desktop browsers.
-- TestFlight build, Android closed-testing bundle, and production Flutter web deployment.
-- Beta privacy notice, consent, account deletion, feedback form, and known-limitations page.
-
-**Day 20 release gate**
-
-- Run a complete demo using a clean account and a second device.
-- Record a backup demo video.
-- Tag `v1.0.0-beta.1`, preserve migrations, seed script, API contract, and release notes.
-- Invite a small tester group and monitor crashes, API errors, chat failures, and assessment failures.
-
-Flutter’s official release process supports TestFlight and Android release bundles; signing should be tested before the final week. [iOS release guide](https://docs.flutter.dev/deployment/ios), [Android release guide](https://docs.flutter.dev/deployment/android)
-
 Local simulator policy: keep the daily loop on Flutter web, widget tests, and
 CI. Do not load the Android emulator or iOS Simulator for ordinary tasks.
 Reserve local simulators for native runtime checks, platform configuration
@@ -871,3 +1097,11 @@ Add one row whenever implementation status, scope, architecture, or a major deci
 | 2026-07-07 | Complete - Phase 2 medication core slice | Implemented the next Phase 2 patient/doctor core slice locally: doctor-owned medication CRUD, prescription CRUD with medication lines, medication reminders, refill reminders, metadata-only in-app queued notification records for active reminders, expanded care-bundle readback, patient own reminder/notification reads, doctor Patient Management medication workflow controls, patient prescription/reminder readback, neutral wrong-role/cross-patient denials, and metadata-only audit/notification assertions. No migration was required because Phase 1 already added prescription, prescription medication, medication reminder, and notification tables. No Phase 3 AI workflow, Phase 4 clinic operations, Phase 5 specialist/admin UI, deployment, push, tag, PR, external notification service, real patient data, or clinical claim was added. | `services/api/app/dashboard.py`, `services/api/app/schemas.py`, `services/api/app/models.py`, `services/api/tests/test_phase2_patient_doctor_core.py`, `apps/dr_ai_app/lib/features/doctor/presentation/patient_management_screen.dart`, `apps/dr_ai_app/lib/features/patient/`, `apps/dr_ai_app/test/app_test.dart`, `docs/Phase_2_Patient_Doctor_Core_Progress_Record.md`, `docs/Dr_AI_v1.0_API_Contract.md` | Continue Phase 2 only: Tencent COS upload finalization, imaging list/detail/review workflow, production recovery-plan draft/review/approve depth, patient Today production tracking depth, and remaining core workflow tests remain. |
 | 2026-07-08 | Complete - Phase 2 patient/doctor core closure | Closed Phase 2 locally after the existing medical-history, medication, and imaging slices by adding production recovery-plan review metadata, migration `20260708_0009`, doctor-only submit-review/request-changes/approve/activate-compatible/complete transitions, patient Today progress summaries, Flutter doctor review controls, Flutter patient Today progress readback, updated patient dashboard golden evidence, expanded API/docs, and focused RBAC/audit tests. External push/SMS/email/native notification delivery remains gated beyond Phase 2 because it requires credentials, account/service changes, and platform configuration; the Phase 2 safe path remains metadata-only in-app notification records. No Phase 3 AI inference, Phase 4 clinic operations, Phase 5 specialist/admin UI, deployment, push, tag, PR, external account action, real patient data, or clinical claim was added. | `services/api/migrations/versions/20260708_0009_phase2_recovery_plan_review.py`, `services/api/app/models.py`, `services/api/app/schemas.py`, `services/api/app/dashboard.py`, `services/api/tests/test_phase2_patient_doctor_core.py`, `apps/dr_ai_app/lib/features/doctor/presentation/patient_management_screen.dart`, `apps/dr_ai_app/lib/features/patient/`, `apps/dr_ai_app/test/app_test.dart`, `apps/dr_ai_app/test/goldens/patient_dashboard_412x917.png`, `docs/Phase_2_Patient_Doctor_Core_Progress_Record.md`, `docs/Dr_AI_v1.0_API_Contract.md`, `docs/README.md`, `README.md` | Phase 3 AI systems is the next planned production phase, but it must not start without explicit approval. |
 | 2026-07-08 | Complete - Phase 2 Tencent staging redeploy prep | Cleaned up the Phase 2 worktree with local commit `8e9d344`, redeployed Tencent same-origin staging to the completed Phase 2 API/web state, applied staging migrations through `20260708_0009`, confirmed idempotent synthetic seed runs, deployed immutable API digest `hkccr.ccs.tencentyun.com/dr-ai/dr-ai-backend@sha256:a1d55dd905acdd2113ed2dac163aaa7f0d1fc1a37ec4a0d2855b7e65e4250381`, refreshed the mounted web directory in place, recreated API/Caddy, validated Caddy, and passed credentialed staging smoke plus public route checks. Android debug APK rebuild is still blocked until `/Volumes/AndroidAVD/sdk` is mounted; the existing July 7 APK is stale for Phase 2. iPhone native install still requires Apple development-team signing setup. | `docs/Phase_2_Patient_Doctor_Core_Progress_Record.md`, `deploy/tencent/staging/README.md`, `scripts/run_staging_smoke.py`, staging URL: <https://dr-ai.43.132.169.195.sslip.io> | User inspection can start from the staging web/PWA. Rebuild the Android debug APK after the Android SDK mount is restored; use direct Xcode install or TestFlight only after Apple signing/account prerequisites are ready. |
+| 2026-07-08 | Planned - post-Phase-2 UX and multilingual hardening | Documented the future doctor Patient Management workspace reorganization and production multilingual foundation. The doctor workspace should move from a crowded single page to assigned-patient navigation, selected-patient summary, and focused subsections for overview, history, visits/diagnoses, medications, prescriptions, reminders, recovery plans, imaging, doctor notes, and activity. The localization foundation should support Simplified Chinese and English through Flutter localization, keep backend responses machine-readable, preserve user-entered clinical content without automatic translation, and use locale-aware formatting. No code behavior, deployment, push, tag, PR, external account action, real patient data, or clinical claim was added. | `docs/Dr_AI_v1.0_Implementation_Plan.md`, `docs/README.md` | The next doctor-workspace cleanup should be a focused frontend architecture slice that follows the documented Phase 6 UX hardening plan and avoids starting Phase 3 AI, Phase 4 clinic operations, Phase 5 specialist/admin UI, or multilingual implementation unless explicitly requested. |
+| 2026-07-08 | Complete - post-Phase-2 doctor workspace layout cleanup | Refactored the Flutter doctor Patient Management surface into a focused patient workspace: assigned-patient search/list remains a narrow left column on desktop/tablet, phone-width layouts use a compact patient-picker sheet, the detail pane has an identity-safe selected-patient summary header, and doctor work is split into Overview, Medical history, Visits and diagnoses, Medications, Prescriptions, Reminders, Recovery plan, Imaging, Doctor notes, and Notifications/activity subsections. Medication, prescription, reminder, recovery-plan, imaging, doctor-note, and activity controls now live in their focused subsections instead of competing in one long mixed page. Backend/API/RBAC/audit behavior, schemas, migrations, real patient data boundaries, clinical-claim boundaries, deployment, push, tag, PR, and external account state were unchanged. The multilingual/localization foundation remains future Phase 6 work and was not implemented in this slice. `./scripts/verify_flutter.sh` passed with analysis clean and all Flutter widget/golden tests passing; `git diff --check` passed. | `apps/dr_ai_app/lib/features/doctor/presentation/patient_management_screen.dart`, `apps/dr_ai_app/test/app_test.dart`, `docs/Dr_AI_v1.0_Implementation_Plan.md` | Keep production multilingual/localization foundation as a separate approved Phase 6 slice. |
+| 2026-07-08 | Complete - Tencent staging web redeploy for doctor workspace cleanup | After explicit approval, rebuilt Flutter web for `https://dr-ai.43.132.169.195.sslip.io`, backed up the existing Tencent host `web/` directory as `web.backup.20260708T134138`, synced the new `apps/dr_ai_app/build/web` bundle into the mounted staging `web/` directory in place, force-recreated Caddy so the bind mount sees the fresh files, and validated the Caddy config. Public checks passed for `/health` with staging/database ok, root web, `/beta-support`, unauthenticated `/api/v1/me` returning `401`, and deployed asset hashes matching the local web build. The API image/container, database, migrations, seed data, RBAC, audit behavior, production environment, tester/account settings, native store uploads, commits, pushes, tags, and pull requests were unchanged. Credentialed staging smoke was not run because `DR_AI_STAGING_*` smoke credentials were not loaded in this shell. | `apps/dr_ai_app/build/web`, `docs/Dr_AI_v1.0_Implementation_Plan.md`, staging URL: <https://dr-ai.43.132.169.195.sslip.io> | User can inspect the updated doctor Patient Management workspace on staging; hard refresh or clear PWA/browser site data if an installed app keeps an older service-worker cache. |
+| 2026-07-08 | Planned - Phase 2 clinical-event workflow clarification | Documented the next Phase 2 product-logic clarification under the Phase 2 milestone: Patient Profile is patient-edited and doctor-reviewed only; Medical History is patient-entered with doctor verification/amendment; "Visits and diagnoses" should become Clinical Events/Care Episodes; prescriptions generate medication schedules and patient Today tasks; standalone doctor Reminders should be removed; Recovery Plans and Imaging should link to Clinical Events; and Doctor Notes plus activity should become Consultation & Activity. This was documentation only. No code behavior, backend schema, API contract, migration, deployment, push, tag, PR, external account action, real patient data, or clinical claim was added. | `docs/Dr_AI_v1.0_Implementation_Plan.md` | Next approved implementation should be a carefully scoped Phase 2 workflow-clarification slice centered on Clinical Events/Care Episodes. Aesthetic and practical quality are more important than completing every listed task quickly. |
+| 2026-07-08 | Complete - Phase 2 Clinical Event UI clarification slice | Implemented the first Phase 2 workflow-clarification slice locally in the Flutter doctor Patient Management workspace. The doctor navigation now uses Overview, Profile, Medical History, Clinical Events, Medications & Prescriptions, Recovery Plans, Imaging, and Consultation & Activity; the Clinical Events view groups existing visit-history and diagnosis records around the active care-episode concept; medication, prescription, generated reminder, recovery, imaging, note, specialist consultation, and activity surfaces are visually linked back to the selected Clinical Event. The standalone doctor Reminders workspace section and manual reminder editor were removed from the doctor UI. Backend/API/schema/RBAC/audit behavior, migrations, deployment, push, tag, PR, external account state, real patient data, and clinical-claim boundaries were unchanged. | `apps/dr_ai_app/lib/features/doctor/presentation/patient_management_screen.dart`, `apps/dr_ai_app/test/app_test.dart`, `docs/Dr_AI_v1.0_Implementation_Plan.md`, `docs/README.md` | Continue Phase 2 workflow clarification only when approved: add a persisted Clinical Event/Care Episode model and explicit event links for prescriptions, medication schedules, recovery plans, imaging, notes, consultation, and activity as an additive backend/API migration with focused RBAC/audit tests. |
+| 2026-07-08 | Complete - Phase 2 Clinical Event backend/API slice | Implemented the deeper additive Phase 2 workflow-clarification backend/API slice locally: added migration `20260708_0010` with persisted `clinical_events`; added nullable `clinical_event_id` links for visit history, diagnoses, medications, prescriptions, medication/refill reminders, metadata-only notifications, recovery plans, imaging assets, doctor notes, and consultation requests; added doctor-only Clinical Event create/update endpoints plus doctor/patient reads and patient-owned aliases; expanded care-bundle readback with `clinical_events`, linked-resource counts, `recovery_plans`, and nullable event IDs; and extended Flutter care-bundle domain models to parse event-linked resources without changing the current UI layout. Focused tests cover doctor create/update, patient read/no-mutate, cross-patient/wrong-role neutral denial, event-linked resource readback, generated notification linkage, and metadata-only audit redaction. No Phase 3 AI generation, Phase 4 clinic operations, Phase 5 specialist/admin UI, Phase 6 localization, deployment, push, tag, PR, external account action, real patient data, or clinical claim was added. | `services/api/migrations/versions/20260708_0010_phase2_clinical_events.py`, `services/api/app/models.py`, `services/api/app/schemas.py`, `services/api/app/dashboard.py`, `services/api/tests/test_phase2_patient_doctor_core.py`, `apps/dr_ai_app/lib/features/patient/domain/patient_care_data.dart`, `docs/Phase_2_Patient_Doctor_Core_Progress_Record.md`, `docs/Dr_AI_v1.0_API_Contract.md`, `docs/README.md` | Continue Phase 2 workflow clarification only when approved: decide the next doctor/patient UI step for actively creating/selecting Clinical Events, event-filtered editing, and patient-submitted updates. Keep Phase 3 AI, Phase 4 clinic operations, Phase 5 specialist/admin UI, and Phase 6 localization separate. |
+| 2026-07-08 | Complete - Phase 2 Clinical Event workflow polish slice | Continued the Phase 2 workflow clarification locally by adding derived Clinical Event timeline entries to event/care-bundle readback, adding doctor-entered manual imaging finding/result fields through the existing doctor-only imaging review flow, adding migration `20260708_0011`, and tightening recovery-plan activation so approving a replacement completes active plans only inside the same Clinical Event while the doctor UI clearly surfaces the active-plan-per-event state. Flutter doctor Patient Management now displays event timeline rows and manual imaging findings inside the selected Clinical Event context. Focused backend coverage validates timeline readback, manual finding/result audit redaction, and event-scoped recovery-plan replacement. No Phase 3 AI generation, Phase 4 clinic operations, Phase 5 specialist/admin UI, Phase 6 localization, deployment, push, tag, PR, external account action, real patient data, or clinical claim was added. | `services/api/migrations/versions/20260708_0011_phase2_imaging_manual_findings.py`, `services/api/app/models.py`, `services/api/app/schemas.py`, `services/api/app/dashboard.py`, `services/api/tests/test_phase2_patient_doctor_core.py`, `apps/dr_ai_app/lib/features/auth/data/dr_ai_repository.dart`, `apps/dr_ai_app/lib/features/patient/application/patient_care_providers.dart`, `apps/dr_ai_app/lib/features/patient/domain/patient_care_data.dart`, `apps/dr_ai_app/lib/features/doctor/presentation/patient_management_screen.dart`, `apps/dr_ai_app/test/fakes.dart`, `docs/Phase_2_Patient_Doctor_Core_Progress_Record.md`, `docs/Dr_AI_v1.0_API_Contract.md`, `docs/README.md` | Remaining Phase 2 workflow clarification: audited doctor verification/amendment for patient-entered Medical History and patient-submitted Clinical Event updates that preserve doctor-owned diagnosis controls. |
+| 2026-07-08 | Complete - Phase 2 workflow clarification closure | Finished the remaining Phase 2 workflow-clarification items locally by adding migration `20260708_0012` with `medical_history_reviews` and `clinical_event_updates`; adding doctor-only audited medical-history verification, correction-request, and amendment overlays that preserve the patient-entered source history; adding patient-owned Clinical Event update submission/readback that appears in event responses and the derived timeline without mutating doctor-owned diagnosis summaries; and wiring Flutter doctor Patient Management and the patient dashboard to those workflows. Focused backend and Flutter tests cover doctor-only history review, patient-only own event updates, cross-patient/wrong-role neutral denial, care-bundle readback, timeline readback, diagnosis preservation, and metadata-only audit redaction. No Phase 3 AI generation, Phase 4 clinic operations, Phase 5 specialist/admin UI, Phase 6 localization, deployment, push, tag, PR, external account action, real patient data, or clinical claim was added. | `services/api/migrations/versions/20260708_0012_phase2_history_reviews_event_updates.py`, `services/api/app/models.py`, `services/api/app/schemas.py`, `services/api/app/dashboard.py`, `services/api/tests/test_phase2_patient_doctor_core.py`, `apps/dr_ai_app/lib/features/auth/data/dr_ai_repository.dart`, `apps/dr_ai_app/lib/features/patient/application/patient_care_providers.dart`, `apps/dr_ai_app/lib/features/patient/domain/patient_care_data.dart`, `apps/dr_ai_app/lib/features/doctor/presentation/patient_management_screen.dart`, `apps/dr_ai_app/lib/features/patient/presentation/patient_dashboard_screen.dart`, `apps/dr_ai_app/test/app_test.dart`, `apps/dr_ai_app/test/fakes.dart`, `docs/Phase_2_Patient_Doctor_Core_Progress_Record.md`, `docs/Dr_AI_v1.0_API_Contract.md`, `docs/README.md` | Phase 2 workflow clarification is complete locally against the eight-functionality list. Next production work should remain gated by the implementation plan: Phase 3 AI systems only with explicit approval, while Phase 4 clinic operations, Phase 5 specialist/admin UI, and Phase 6 localization remain separate. |

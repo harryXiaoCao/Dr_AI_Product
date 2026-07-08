@@ -12,6 +12,7 @@ import 'package:dr_ai_app/features/patient/application/patient_care_providers.da
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 
 import 'fakes.dart';
 
@@ -42,16 +43,26 @@ double contrastRatio(Color foreground, Color background) {
   return (lighter + 0.05) / (darker + 0.05);
 }
 
-Future<void> openDoctorPatientWorkflow(WidgetTester tester) async {
+Future<void> openDoctorPatientWorkflow(
+  WidgetTester tester, {
+  String section = 'imaging',
+}) async {
   await tester.tap(find.text('Patient Management'));
   await tester.pumpAndSettle();
   await tester.tap(find.byKey(const Key('patient-row-SYN-PATIENT-001')));
   await tester.pumpAndSettle();
-  await tester.dragUntilVisible(
-    find.byKey(const Key('demo-upload-presign-button')),
-    find.byKey(const Key('patient-care-bundle-list')),
-    const Offset(0, -600),
-  );
+  if (section != 'overview') {
+    final sectionButton = find.byKey(Key('doctor-section-$section'));
+    if (section == 'imaging' || section == 'consultationActivity') {
+      await tester.drag(
+        find.byKey(const Key('doctor-workspace-section-nav')),
+        const Offset(0, -260),
+      );
+      await tester.pumpAndSettle();
+    }
+    await tester.ensureVisible(sectionButton);
+    await tester.tap(sectionButton, warnIfMissed: false);
+  }
   await tester.pumpAndSettle();
 }
 
@@ -421,80 +432,155 @@ void main() {
     await tester.tap(find.byKey(const Key('patient-row-SYN-PATIENT-001')));
     await tester.pumpAndSettle();
 
-    expect(find.text('Patient Profile'), findsOneWidget);
+    expect(find.text('Patient Workspace'), findsOneWidget);
+    expect(
+      find.byKey(const Key('selected-patient-summary-header')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('active-clinical-event-bar')), findsOneWidget);
+    expect(
+      find.textContaining('Synthetic headache care episode'),
+      findsWidgets,
+    );
+    expect(
+      find.byKey(const Key('doctor-workspace-section-nav')),
+      findsOneWidget,
+    );
     expect(
       find.byKey(const Key('medical-history-overview-section')),
       findsOneWidget,
     );
+    expect(find.textContaining('Workflow: review ready'), findsWidgets);
+
+    await tester.tap(find.byKey(const Key('doctor-section-medicalHistory')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('allergies-section')), findsOneWidget);
+    expect(find.text('Synthetic pollen sensitivity'), findsOneWidget);
+    final historyReviewButton = find.byKey(
+      const Key('medical-history-review-save-button'),
+    );
+    await tester.ensureVisible(historyReviewButton);
+    await tester.pumpAndSettle();
+    await tester.tap(historyReviewButton);
+    await tester.pumpAndSettle();
+    expect(repository.medicalHistoryReviewCreated, isTrue);
+    expect(find.textContaining('Medical history review saved'), findsWidgets);
+
+    await tester.tap(find.byKey(const Key('doctor-section-profile')));
+    await tester.pumpAndSettle();
     expect(
-      find.textContaining('Allergies: Synthetic pollen sensitivity'),
+      find.byKey(const Key('doctor-profile-read-only-notice')),
       findsOneWidget,
     );
+
+    await tester.tap(find.byKey(const Key('doctor-section-clinicalEvents')));
+    await tester.pumpAndSettle();
     expect(
-      find.textContaining('Diagnoses: Synthetic observation'),
+      find.byKey(const Key('clinical-event-context-card')),
       findsOneWidget,
     );
-    expect(find.text('Medical History'), findsOneWidget);
-    expect(find.text('Medications'), findsOneWidget);
-    expect(find.text('Imaging'), findsOneWidget);
-    await tester.dragUntilVisible(
-      find.byKey(const Key('prescriptions-section')),
-      find.byKey(const Key('patient-care-bundle-list')),
-      const Offset(0, -360),
+    expect(find.byKey(const Key('clinical-event-editor')), findsOneWidget);
+    expect(
+      find.byKey(const Key('clinical-event-doctor-owned-notice')),
+      findsOneWidget,
+    );
+    await tester.enterText(
+      find.byKey(const Key('clinical-event-title-field')),
+      'Updated synthetic headache care episode',
+    );
+    await tester.tap(find.byKey(const Key('clinical-event-save-button')));
+    await tester.pumpAndSettle();
+    expect(repository.clinicalEventSaved, isTrue);
+    expect(repository.lastClinicalEventId, 'clinical-event-test-id');
+    expect(
+      find.byKey(const Key('clinical-event-save-success')),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const Key('clinical-event-new-button')));
+    await tester.pumpAndSettle();
+    expect(find.text('Create Clinical Event'), findsOneWidget);
+    await tester.tap(
+      find.byKey(const Key('clinical-event-chip-clinical-event-test-id')),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Prescriptions'), findsOneWidget);
-    await tester.dragUntilVisible(
+
+    expect(find.byKey(const Key('visit-history-section')), findsOneWidget);
+    expect(find.text('Synthetic observation'), findsOneWidget);
+
+    expect(find.byKey(const Key('doctor-section-reminders')), findsNothing);
+    await tester.tap(
+      find.byKey(const Key('doctor-section-medicationPrescriptions')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('medications-section')), findsOneWidget);
+    expect(find.byKey(const Key('prescriptions-section')), findsOneWidget);
+    expect(
       find.byKey(const Key('medication-reminders-section')),
-      find.byKey(const Key('patient-care-bundle-list')),
-      const Offset(0, -360),
+      findsOneWidget,
+    );
+    await tester.dragUntilVisible(
+      find.byKey(const Key('create-prescription-button')),
+      find.byKey(const Key('doctor-section-list-medicationPrescriptions')),
+      const Offset(0, -260),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Medication Reminders'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('create-prescription-button')));
+    await tester.pumpAndSettle();
+    expect(repository.prescriptionCreated, isTrue);
+    expect(
+      repository.patientCareBundle.prescriptions.first.clinicalEventId,
+      'clinical-event-test-id',
+    );
     await tester.dragUntilVisible(
       find.byKey(const Key('save-medication-button')),
-      find.byKey(const Key('patient-care-bundle-list')),
-      const Offset(0, -360),
+      find.byKey(const Key('doctor-section-list-medicationPrescriptions')),
+      const Offset(0, -260),
     );
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('save-medication-button')));
     await tester.pumpAndSettle();
     expect(repository.medicationSaved, isTrue);
     expect(
-      find.byKey(const Key('medication-workflow-success')),
-      findsOneWidget,
+      repository.patientCareBundle.medications.first.clinicalEventId,
+      'clinical-event-test-id',
     );
-
-    await tester.ensureVisible(
-      find.byKey(const Key('create-prescription-button')),
-    );
-    await tester.tap(find.byKey(const Key('create-prescription-button')));
-    await tester.pumpAndSettle();
-    expect(repository.prescriptionCreated, isTrue);
-
-    await tester.ensureVisible(
+    expect(find.byKey(const Key('medication-workflow-success')), findsWidgets);
+    expect(
       find.byKey(const Key('create-medication-reminder-button')),
+      findsNothing,
     );
+
+    await tester.drag(
+      find.byKey(const Key('doctor-workspace-section-nav')),
+      const Offset(0, -260),
+    );
+    await tester.pumpAndSettle();
     await tester.tap(
-      find.byKey(const Key('create-medication-reminder-button')),
-    );
-    await tester.pumpAndSettle();
-    expect(repository.medicationReminderSaved, isTrue);
-
-    await tester.dragUntilVisible(
-      find.byKey(const Key('demo-upload-presign-button')),
-      find.byKey(const Key('patient-care-bundle-list')),
-      const Offset(0, -600),
+      find.byKey(const Key('doctor-section-imaging')),
+      warnIfMissed: false,
     );
     await tester.pumpAndSettle();
     expect(
       find.textContaining('Research simulation - not for diagnosis.'),
       findsOneWidget,
     );
+    await tester.dragUntilVisible(
+      find.byKey(const Key('demo-upload-presign-button')),
+      find.byKey(const Key('doctor-section-list-imaging')),
+      const Offset(0, -220),
+    );
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('demo-upload-presign-button')));
     await tester.pumpAndSettle();
     expect(find.text('Demo upload prepared'), findsOneWidget);
 
+    await tester.dragUntilVisible(
+      find.byKey(const Key('imaging-prepare-button')),
+      find.byKey(const Key('doctor-section-list-imaging')),
+      const Offset(0, -280),
+    );
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('imaging-prepare-button')));
     await tester.pumpAndSettle();
     expect(repository.imagingPrepared, isTrue);
@@ -502,33 +588,49 @@ void main() {
     await tester.tap(find.byKey(const Key('imaging-complete-button')));
     await tester.pumpAndSettle();
     expect(repository.imagingCompleted, isTrue);
+    await tester.ensureVisible(find.byKey(const Key('imaging-review-button')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('imaging-review-button')));
     await tester.pumpAndSettle();
     expect(repository.imagingReviewed, isTrue);
     expect(find.textContaining('reviewed'), findsWidgets);
+    expect(
+      find.textContaining('Manual demo imaging finding/result'),
+      findsWidgets,
+    );
+    expect(find.textContaining('Manual demo measurement note'), findsWidgets);
 
-    await tester.ensureVisible(find.byKey(const Key('assessment-run-button')));
+    await tester.drag(
+      find.byKey(const Key('doctor-section-list-imaging')),
+      const Offset(0, -480),
+    );
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('assessment-run-button')));
     await tester.pumpAndSettle();
     expect(find.textContaining('Risk: moderate'), findsWidgets);
     expect(find.text('Fixture model: fixture-simulator-1.0.0'), findsWidgets);
 
-    await tester.ensureVisible(
-      find.byKey(const Key('recovery-plan-title-field')),
-    );
+    await tester.tap(find.byKey(const Key('doctor-section-recoveryPlans')));
+    await tester.pumpAndSettle();
     await tester.enterText(
       find.byKey(const Key('recovery-plan-title-field')),
       'Updated synthetic recovery plan',
     );
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+    await tester.drag(
+      find.byKey(const Key('doctor-section-list-recoveryPlans')),
+      const Offset(0, -680),
+    );
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('recovery-plan-save-button')));
     await tester.pumpAndSettle();
     expect(find.textContaining('saved as'), findsOneWidget);
-
-    await tester.drag(
-      find.byKey(const Key('patient-care-bundle-list')),
-      const Offset(0, -320),
+    expect(
+      repository.recoveryPlans.items.first.clinicalEventId,
+      'clinical-event-test-id',
     );
-    await tester.pumpAndSettle();
+
     await tester.tap(
       find.byKey(const Key('recovery-plan-submit-review-button')),
     );
@@ -585,6 +687,40 @@ void main() {
     expect(find.text('4096'), findsOneWidget);
   });
 
+  testWidgets('doctor patient workspace uses compact navigation on phone', (
+    tester,
+  ) async {
+    setViewport(tester, const Size(412, 917));
+    await pumpApp(tester, FakeDrAiRepository(restoredSession: doctorSession));
+
+    GoRouter.of(
+      tester.element(find.text('Dr. AI').first),
+    ).go('/doctor/patients');
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('patient-row-SYN-PATIENT-001')), findsNothing);
+    expect(find.byKey(const Key('open-patient-picker-button')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('open-patient-picker-button')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const Key('patient-row-SYN-PATIENT-001')),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const Key('patient-row-SYN-PATIENT-001')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('selected-patient-summary-header')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('doctor-compact-section-picker')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('doctor-workspace-section-nav')), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('assessment failure preserves form state and recovers on retry', (
     tester,
   ) async {
@@ -600,7 +736,7 @@ void main() {
     );
     await tester.dragUntilVisible(
       find.byKey(const Key('assessment-run-button')),
-      find.byKey(const Key('patient-care-bundle-list')),
+      find.byKey(const Key('doctor-section-list-imaging')),
       const Offset(0, -300),
     );
     await tester.ensureVisible(find.byKey(const Key('assessment-run-button')));
@@ -626,14 +762,12 @@ void main() {
     tester,
   ) async {
     setViewport(tester, const Size(412, 917));
-    await pumpApp(
-      tester,
-      FakeDrAiRepository(
-        restoredSession: patientSession,
-        loginSession: patientSession,
-        dashboard: patientDashboard,
-      ),
+    final repository = FakeDrAiRepository(
+      restoredSession: patientSession,
+      loginSession: patientSession,
+      dashboard: patientDashboard,
     );
+    await pumpApp(tester, repository);
 
     expect(find.text('Today'), findsWidgets);
     expect(find.text('Demo medication reminder'), findsOneWidget);
@@ -666,6 +800,27 @@ void main() {
       find.textContaining('Diagnoses: Synthetic observation'),
       findsOneWidget,
     );
+    await tester.dragUntilVisible(
+      find.byKey(const Key('patient-event-update-title')),
+      find.byKey(const Key('patient-dashboard-list')),
+      const Offset(0, -420),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('patient-event-update-title')), findsOneWidget);
+    final eventUpdateSubmitButton = find.byKey(
+      const Key('patient-event-update-submit-button'),
+    );
+    await tester.ensureVisible(eventUpdateSubmitButton);
+    await tester.pumpAndSettle();
+    await tester.drag(
+      find.byKey(const Key('patient-dashboard-list')),
+      const Offset(0, -160),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(eventUpdateSubmitButton);
+    await tester.pumpAndSettle();
+    expect(repository.clinicalEventUpdateSubmitted, isTrue);
+    expect(find.textContaining('Update submitted'), findsWidgets);
     await tester.dragUntilVisible(
       find.byKey(const Key('patient-self-prescriptions')),
       find.byKey(const Key('patient-dashboard-list')),
@@ -809,13 +964,8 @@ void main() {
     setViewport(tester, const Size(1280, 1000));
     final repository = FakeDrAiRepository(restoredSession: doctorSession);
     await pumpApp(tester, repository);
-    await openDoctorPatientWorkflow(tester);
+    await openDoctorPatientWorkflow(tester, section: 'consultationActivity');
 
-    await tester.dragUntilVisible(
-      find.byKey(const Key('consultation-request-button')),
-      find.byKey(const Key('patient-care-bundle-list')),
-      const Offset(0, -600),
-    );
     await tester.ensureVisible(
       find.byKey(const Key('consultation-request-button')),
     );
@@ -824,6 +974,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(repository.consultations.items, isNotEmpty);
+    expect(
+      repository.consultations.items.first.clinicalEventId,
+      'clinical-event-test-id',
+    );
     expect(find.textContaining('consultation requested'), findsWidgets);
     expect(
       find.textContaining('Pulmonology demo review - requested'),

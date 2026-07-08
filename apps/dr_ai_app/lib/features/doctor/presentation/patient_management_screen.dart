@@ -20,6 +20,8 @@ class _PatientManagementScreenState
     extends ConsumerState<PatientManagementScreen> {
   final _searchController = TextEditingController();
   String? _selectedPatientId;
+  String? _selectedClinicalEventId;
+  _DoctorPatientSection _selectedSection = _DoctorPatientSection.overview;
 
   @override
   void dispose() {
@@ -46,34 +48,129 @@ class _PatientManagementScreenState
                 selectedPatientId: _selectedPatientId,
                 onSearchChanged: (value) =>
                     ref.read(patientSearchQueryProvider.notifier).state = value,
-                onSelect: (patientId) =>
-                    setState(() => _selectedPatientId = patientId),
+                onSelect: (patientId) => setState(() {
+                  _selectedPatientId = patientId;
+                  _selectedClinicalEventId = null;
+                  _selectedSection = _DoctorPatientSection.overview;
+                }),
                 onRetry: () => ref.invalidate(patientListProvider),
               );
-              final detail = _PatientDetailPane(patientId: _selectedPatientId);
+              final detail = _PatientDetailPane(
+                patientId: _selectedPatientId,
+                selectedSection: _selectedSection,
+                selectedClinicalEventId: _selectedClinicalEventId,
+                compact: !wide,
+                onSectionChanged: (section) =>
+                    setState(() => _selectedSection = section),
+                onClinicalEventChanged: (eventId) =>
+                    setState(() => _selectedClinicalEventId = eventId),
+                onOpenPatientPicker: () =>
+                    _showPatientPicker(context, patients),
+              );
               if (wide) {
                 return Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
-                    SizedBox(width: 360, child: list),
+                    SizedBox(width: 320, child: list),
                     const SizedBox(width: DrAiSpacing.sm),
                     Expanded(child: detail),
                   ],
                 );
               }
-              return ListView(
-                children: <Widget>[
-                  SizedBox(height: 430, child: list),
-                  const SizedBox(height: DrAiSpacing.sm),
-                  SizedBox(height: 720, child: detail),
-                ],
-              );
+              return detail;
             },
           ),
         ),
       ),
     );
   }
+
+  Future<void> _showPatientPicker(
+    BuildContext context,
+    AsyncValue<PatientListData> patients,
+  ) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) => SafeArea(
+        child: SizedBox(
+          height: MediaQuery.sizeOf(sheetContext).height * 0.82,
+          child: Padding(
+            padding: const EdgeInsets.all(DrAiSpacing.sm),
+            child: _PatientSearchPane(
+              controller: _searchController,
+              patients: patients,
+              selectedPatientId: _selectedPatientId,
+              onSearchChanged: (value) =>
+                  ref.read(patientSearchQueryProvider.notifier).state = value,
+              onSelect: (patientId) {
+                setState(() {
+                  _selectedPatientId = patientId;
+                  _selectedClinicalEventId = null;
+                  _selectedSection = _DoctorPatientSection.overview;
+                });
+                Navigator.of(sheetContext).pop();
+              },
+              onRetry: () => ref.invalidate(patientListProvider),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+enum _DoctorPatientSection {
+  overview(
+    label: 'Overview',
+    icon: Icons.space_dashboard_outlined,
+    summary: 'Patient snapshot and active event context',
+  ),
+  profile(
+    label: 'Profile',
+    icon: Icons.badge_outlined,
+    summary: 'Patient-controlled information for doctor review',
+  ),
+  medicalHistory(
+    label: 'Medical history',
+    icon: Icons.description_outlined,
+    summary: 'Patient-entered history with clinician review context',
+  ),
+  clinicalEvents(
+    label: 'Clinical Events',
+    icon: Icons.fact_check_outlined,
+    summary: 'Problems over time with visits, diagnosis, and linked care',
+  ),
+  medicationPrescriptions(
+    label: 'Medications & Prescriptions',
+    icon: Icons.medication_outlined,
+    summary: 'Event-linked orders, schedules, and generated reminders',
+  ),
+  recoveryPlans(
+    label: 'Recovery Plans',
+    icon: Icons.assignment_turned_in_outlined,
+    summary: 'Event-linked timeline creation, review, and completion',
+  ),
+  imaging(
+    label: 'Imaging',
+    icon: Icons.image_search_outlined,
+    summary: 'Event-linked upload metadata and manual review status',
+  ),
+  consultationActivity(
+    label: 'Consultation & Activity',
+    icon: Icons.edit_note_outlined,
+    summary: 'Notes, specialist review, and supporting timeline',
+  );
+
+  const _DoctorPatientSection({
+    required this.label,
+    required this.icon,
+    required this.summary,
+  });
+
+  final String label;
+  final IconData icon;
+  final String summary;
 }
 
 class _PatientSearchPane extends StatelessWidget {
@@ -169,28 +266,58 @@ class _PatientSearchPane extends StatelessWidget {
 }
 
 class _PatientDetailPane extends ConsumerWidget {
-  const _PatientDetailPane({required this.patientId});
+  const _PatientDetailPane({
+    required this.patientId,
+    required this.selectedSection,
+    required this.selectedClinicalEventId,
+    required this.compact,
+    required this.onSectionChanged,
+    required this.onClinicalEventChanged,
+    required this.onOpenPatientPicker,
+  });
 
   final String? patientId;
+  final _DoctorPatientSection selectedSection;
+  final String? selectedClinicalEventId;
+  final bool compact;
+  final ValueChanged<_DoctorPatientSection> onSectionChanged;
+  final ValueChanged<String?> onClinicalEventChanged;
+  final VoidCallback onOpenPatientPicker;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final id = patientId;
     if (id == null) {
-      return const _CarePanel(
+      return _CarePanel(
         title: 'Patient Profile',
         icon: Icons.badge_outlined,
-        child: _EmptyState(
-          key: Key('patient-detail-empty'),
-          icon: Icons.touch_app_outlined,
-          title: 'Select a synthetic patient',
-          body: 'Open an assigned patient to review Week 2 records.',
+        child: Column(
+          children: <Widget>[
+            if (compact)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: OutlinedButton.icon(
+                  key: const Key('open-patient-picker-button'),
+                  onPressed: onOpenPatientPicker,
+                  icon: const Icon(Icons.people_outline),
+                  label: const Text('Choose patient'),
+                ),
+              ),
+            const Expanded(
+              child: _EmptyState(
+                key: Key('patient-detail-empty'),
+                icon: Icons.touch_app_outlined,
+                title: 'Select a synthetic patient',
+                body: 'Open an assigned patient to review core records.',
+              ),
+            ),
+          ],
         ),
       );
     }
     final bundle = ref.watch(patientCareBundleProvider(id));
     return _CarePanel(
-      title: 'Patient Profile',
+      title: 'Patient Workspace',
       icon: Icons.badge_outlined,
       child: bundle.when(
         loading: () =>
@@ -199,7 +326,16 @@ class _PatientDetailPane extends ConsumerWidget {
           message: _safeErrorMessage(error),
           onRetry: () => ref.invalidate(patientCareBundleProvider(id)),
         ),
-        data: (data) => _PatientCareBundleView(bundle: data, showNotes: true),
+        data: (data) => _PatientCareBundleView(
+          bundle: data,
+          showNotes: true,
+          selectedSection: selectedSection,
+          selectedClinicalEventId: selectedClinicalEventId,
+          compact: compact,
+          onSectionChanged: onSectionChanged,
+          onClinicalEventChanged: onClinicalEventChanged,
+          onOpenPatientPicker: onOpenPatientPicker,
+        ),
       ),
     );
   }
@@ -222,118 +358,1680 @@ class PatientCareBundleSummary extends StatelessWidget {
 }
 
 class _PatientCareBundleView extends StatelessWidget {
-  const _PatientCareBundleView({required this.bundle, required this.showNotes});
+  const _PatientCareBundleView({
+    required this.bundle,
+    required this.showNotes,
+    this.selectedSection = _DoctorPatientSection.overview,
+    this.selectedClinicalEventId,
+    this.compact = false,
+    this.onSectionChanged,
+    this.onClinicalEventChanged,
+    this.onOpenPatientPicker,
+  });
 
   final PatientCareBundle bundle;
   final bool showNotes;
+  final _DoctorPatientSection selectedSection;
+  final String? selectedClinicalEventId;
+  final bool compact;
+  final ValueChanged<_DoctorPatientSection>? onSectionChanged;
+  final ValueChanged<String?>? onClinicalEventChanged;
+  final VoidCallback? onOpenPatientPicker;
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
+    if (!showNotes) {
+      return ListView(
+        key: const Key('patient-care-bundle-list'),
+        children: <Widget>[
+          _ProfileHeader(bundle: bundle),
+          const SizedBox(height: DrAiSpacing.sm),
+          _medicalRecordsSection(bundle),
+        ],
+      );
+    }
+    final selectedEvent = _selectedClinicalEvent(
+      bundle,
+      selectedClinicalEventId,
+    );
+    final content = _WorkspaceSectionContent(
+      bundle: bundle,
+      selectedSection: selectedSection,
+      selectedEvent: selectedEvent,
+      onClinicalEventChanged: onClinicalEventChanged,
+    );
+    return Column(
       key: const Key('patient-care-bundle-list'),
       children: <Widget>[
-        _ProfileHeader(bundle: bundle),
-        const SizedBox(height: DrAiSpacing.sm),
-        _ItemSection<MedicalRecordItem>(
-          key: const Key('medical-history-section'),
-          title: 'Medical History',
-          icon: Icons.description_outlined,
-          items: bundle.records,
-          emptyTitle: 'No Medical Records',
-          itemBuilder: (item) => _InfoTile(
-            title: item.title,
-            subtitle: item.category,
-            body: item.summary,
-          ),
-        ),
-        const SizedBox(height: DrAiSpacing.sm),
-        _ItemSection<MedicalImagingAsset>(
-          key: const Key('imaging-assets-section'),
-          title: 'Imaging',
-          icon: Icons.image_search_outlined,
-          items: bundle.imagingAssets,
-          emptyTitle: 'No imaging assets',
-          itemBuilder: (item) => _InfoTile(
-            title: '${item.contentType} asset',
-            subtitle: '${item.uploadStatus} - ${item.reviewStatus}',
-            body:
-                '${item.sizeBytes} bytes via ${item.storageProvider}\n'
-                'Uploaded: ${_dateLabel(item.uploadedAt)}',
-          ),
-        ),
-        const SizedBox(height: DrAiSpacing.sm),
-        _ItemSection<MedicationItem>(
-          key: const Key('medications-section'),
-          title: 'Medications',
-          icon: Icons.medication_outlined,
-          items: bundle.medications,
-          emptyTitle: 'No synthetic medications',
-          itemBuilder: (item) => _InfoTile(
-            title: item.name,
-            subtitle: '${item.dosage} - ${item.status}',
-            body: '${item.schedule}\n${item.note}',
-          ),
-        ),
-        const SizedBox(height: DrAiSpacing.sm),
-        _ItemSection<PrescriptionItem>(
-          key: const Key('prescriptions-section'),
-          title: 'Prescriptions',
-          icon: Icons.receipt_long_outlined,
-          items: bundle.prescriptions,
-          emptyTitle: 'No prescriptions',
-          itemBuilder: (item) => _InfoTile(
-            title: '${item.status} prescription',
-            subtitle: '${item.medications.length} medication line(s)',
-            body: _prescriptionSummary(item),
-          ),
-        ),
-        const SizedBox(height: DrAiSpacing.sm),
-        _ItemSection<MedicationReminderItem>(
-          key: const Key('medication-reminders-section'),
-          title: 'Medication Reminders',
-          icon: Icons.notifications_active_outlined,
-          items: bundle.medicationReminders,
-          emptyTitle: 'No medication reminders',
-          itemBuilder: (item) => _InfoTile(
-            title: item.reminderType == 'refill'
-                ? 'Refill reminder'
-                : 'Medication reminder',
-            subtitle: '${item.status} - ${item.channel}',
-            body: '${item.scheduleLabel}\nNext: ${_dateLabel(item.nextDueAt)}',
-          ),
-        ),
-        if (showNotes) ...<Widget>[
-          const SizedBox(height: DrAiSpacing.sm),
-          _MedicationWorkflowPanel(bundle: bundle),
-          const SizedBox(height: DrAiSpacing.sm),
-          _ItemSection<DoctorNoteItem>(
-            key: const Key('doctor-notes-section'),
-            title: 'Doctor Notes',
-            icon: Icons.edit_note_outlined,
-            items: bundle.doctorNotes,
-            emptyTitle: 'No doctor notes',
-            itemBuilder: (item) => _InfoTile(
-              title: item.title,
-              subtitle: 'Doctor-facing synthetic note',
-              body: item.body,
+        if (compact)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: OutlinedButton.icon(
+              key: const Key('open-patient-picker-button'),
+              onPressed: onOpenPatientPicker,
+              icon: const Icon(Icons.people_outline),
+              label: const Text('Change patient'),
             ),
           ),
+        if (compact) const SizedBox(height: DrAiSpacing.xs),
+        _SelectedPatientSummaryHeader(bundle: bundle),
+        const SizedBox(height: DrAiSpacing.sm),
+        _ActiveClinicalEventBar(
+          bundle: bundle,
+          selectedEvent: selectedEvent,
+          compact: compact,
+          onChanged: onClinicalEventChanged,
+        ),
+        SizedBox(height: compact ? DrAiSpacing.xs : DrAiSpacing.sm),
+        if (compact)
+          _CompactSectionPicker(
+            selectedSection: selectedSection,
+            onChanged: onSectionChanged,
+          )
+        else
+          Expanded(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                SizedBox(
+                  width: 214,
+                  child: _SectionNavigation(
+                    selectedSection: selectedSection,
+                    onChanged: onSectionChanged,
+                  ),
+                ),
+                const SizedBox(width: DrAiSpacing.sm),
+                Expanded(child: content),
+              ],
+            ),
+          ),
+        if (compact) ...<Widget>[
           const SizedBox(height: DrAiSpacing.sm),
-          _DemoAssessmentWorkflow(patientId: bundle.patient.patientId),
-          const SizedBox(height: DrAiSpacing.sm),
-          _RecoveryPlanEditor(patientId: bundle.patient.patientId),
-          const SizedBox(height: DrAiSpacing.sm),
-          _ConsultationRequestPanel(patientId: bundle.patient.patientId),
+          Expanded(child: content),
         ],
       ],
     );
   }
 }
 
-class _MedicationWorkflowPanel extends ConsumerStatefulWidget {
-  const _MedicationWorkflowPanel({required this.bundle});
+class _SelectedPatientSummaryHeader extends ConsumerWidget {
+  const _SelectedPatientSummaryHeader({required this.bundle});
 
   final PatientCareBundle bundle;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final patient = bundle.patient;
+    final plans = ref.watch(recoveryPlanListProvider(patient.patientId));
+    final lastVisit = _lastVisitLabel(bundle.visitHistory);
+    final workflowStatus = _workflowStatus(bundle);
+    return DecoratedBox(
+      key: const Key('selected-patient-summary-header'),
+      decoration: BoxDecoration(
+        color: DrAiColors.ink,
+        borderRadius: BorderRadius.circular(DrAiRadii.md),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(DrAiSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Wrap(
+              spacing: DrAiSpacing.sm,
+              runSpacing: DrAiSpacing.xs,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: <Widget>[
+                Text(
+                  patient.displayName,
+                  style: const TextStyle(
+                    color: DrAiColors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                _DarkStatusChip(label: _ageSexLabel(patient)),
+              ],
+            ),
+            const SizedBox(height: DrAiSpacing.sm),
+            Wrap(
+              spacing: DrAiSpacing.xs,
+              runSpacing: DrAiSpacing.xs,
+              children: <Widget>[
+                _DarkStatusChip(
+                  label: plans.when(
+                    loading: () => 'Recovery plan loading',
+                    error: (error, stackTrace) => 'Recovery plan unavailable',
+                    data: _activePlanLabel,
+                  ),
+                ),
+                _DarkStatusChip(label: 'Last visit: $lastVisit'),
+                _DarkStatusChip(label: workflowStatus),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ActiveClinicalEventBar extends StatelessWidget {
+  const _ActiveClinicalEventBar({
+    required this.bundle,
+    required this.selectedEvent,
+    required this.compact,
+    required this.onChanged,
+  });
+
+  final PatientCareBundle bundle;
+  final ClinicalEventItem? selectedEvent;
+  final bool compact;
+  final ValueChanged<String?>? onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final events = bundle.clinicalEvents;
+    final event = selectedEvent;
+    return DecoratedBox(
+      key: const Key('active-clinical-event-bar'),
+      decoration: BoxDecoration(
+        color: DrAiColors.white,
+        borderRadius: BorderRadius.circular(DrAiRadii.md),
+        border: Border.all(color: DrAiColors.outline),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(DrAiSpacing.sm),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                const Icon(
+                  Icons.account_tree_outlined,
+                  color: DrAiColors.brand,
+                ),
+                const SizedBox(width: DrAiSpacing.xs),
+                Expanded(
+                  child: Text(
+                    'Active Clinical Event',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+                _LightMetricChip(
+                  label: event == null ? 'setup needed' : event.status,
+                ),
+              ],
+            ),
+            const SizedBox(height: DrAiSpacing.xs),
+            if (compact)
+              Text(
+                event == null
+                    ? 'Create a Clinical Event before event-linked care work.'
+                    : '${event.title} - ${event.chiefComplaint}',
+                style: const TextStyle(
+                  color: DrAiColors.mutedInk,
+                  fontSize: 12,
+                ),
+              )
+            else if (events.isEmpty)
+              const Text(
+                'Create a Clinical Event before authoring event-linked prescriptions, recovery plans, imaging, notes, or consultation.',
+                style: TextStyle(color: DrAiColors.mutedInk, fontSize: 12),
+              )
+            else
+              DropdownButtonFormField<String>(
+                key: const Key('clinical-event-selector'),
+                initialValue: event?.id,
+                isExpanded: true,
+                decoration: const InputDecoration(
+                  labelText: 'Selected care episode',
+                  prefixIcon: Icon(Icons.fact_check_outlined),
+                ),
+                items: <DropdownMenuItem<String>>[
+                  for (final event in events)
+                    DropdownMenuItem<String>(
+                      value: event.id,
+                      child: Text(
+                        '${event.title} - ${event.status}',
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                ],
+                onChanged: onChanged,
+              ),
+            if (!compact) ...<Widget>[
+              const SizedBox(height: DrAiSpacing.xs),
+              Text(
+                event == null
+                    ? 'Linked sections will show legacy patient-wide records until an event is selected.'
+                    : '${event.chiefComplaint} | ${_eventLinkSummary(event)}',
+                style: const TextStyle(
+                  color: DrAiColors.mutedInk,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DarkStatusChip extends StatelessWidget {
+  const _DarkStatusChip({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: DrAiColors.brandDark,
+        borderRadius: BorderRadius.circular(DrAiRadii.sm),
+        border: Border.all(color: DrAiColors.outlineMuted),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: DrAiSpacing.xs,
+          vertical: 6,
+        ),
+        child: Text(
+          label,
+          style: const TextStyle(color: DrAiColors.white, fontSize: 12),
+        ),
+      ),
+    );
+  }
+}
+
+class _SectionNavigation extends StatelessWidget {
+  const _SectionNavigation({
+    required this.selectedSection,
+    required this.onChanged,
+  });
+
+  final _DoctorPatientSection selectedSection;
+  final ValueChanged<_DoctorPatientSection>? onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: DrAiColors.surfaceSubtle,
+        borderRadius: BorderRadius.circular(DrAiRadii.md),
+        border: Border.all(color: DrAiColors.outline),
+      ),
+      child: ListView(
+        key: const Key('doctor-workspace-section-nav'),
+        padding: const EdgeInsets.all(DrAiSpacing.xs),
+        children: <Widget>[
+          for (final section in _DoctorPatientSection.values)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Material(
+                color: section == selectedSection
+                    ? DrAiColors.patientAccent
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(DrAiRadii.sm),
+                child: ListTile(
+                  key: Key('doctor-section-${section.name}'),
+                  dense: true,
+                  selected: section == selectedSection,
+                  leading: Icon(section.icon, color: DrAiColors.brand),
+                  title: Text(section.label, maxLines: 2),
+                  onTap: onChanged == null ? null : () => onChanged!(section),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CompactSectionPicker extends StatelessWidget {
+  const _CompactSectionPicker({
+    required this.selectedSection,
+    required this.onChanged,
+  });
+
+  final _DoctorPatientSection selectedSection;
+  final ValueChanged<_DoctorPatientSection>? onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return DropdownButtonFormField<_DoctorPatientSection>(
+      key: const Key('doctor-compact-section-picker'),
+      initialValue: selectedSection,
+      isExpanded: true,
+      decoration: const InputDecoration(
+        labelText: 'Workspace section',
+        prefixIcon: Icon(Icons.view_list_outlined),
+      ),
+      items: <DropdownMenuItem<_DoctorPatientSection>>[
+        for (final section in _DoctorPatientSection.values)
+          DropdownMenuItem<_DoctorPatientSection>(
+            value: section,
+            child: Text(section.label, overflow: TextOverflow.ellipsis),
+          ),
+      ],
+      onChanged: onChanged == null
+          ? null
+          : (value) {
+              if (value != null) {
+                onChanged!(value);
+              }
+            },
+    );
+  }
+}
+
+class _WorkspaceSectionContent extends StatelessWidget {
+  const _WorkspaceSectionContent({
+    required this.bundle,
+    required this.selectedSection,
+    required this.selectedEvent,
+    required this.onClinicalEventChanged,
+  });
+
+  final PatientCareBundle bundle;
+  final _DoctorPatientSection selectedSection;
+  final ClinicalEventItem? selectedEvent;
+  final ValueChanged<String?>? onClinicalEventChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return _SectionScaffold(
+      section: selectedSection,
+      child: ListView(
+        key: Key('doctor-section-list-${selectedSection.name}'),
+        children: <Widget>[
+          switch (selectedSection) {
+            _DoctorPatientSection.overview => _OverviewSection(
+              bundle: bundle,
+              selectedEvent: selectedEvent,
+            ),
+            _DoctorPatientSection.profile => _ProfileReviewSection(
+              bundle: bundle,
+            ),
+            _DoctorPatientSection.medicalHistory => _MedicalHistorySection(
+              bundle: bundle,
+            ),
+            _DoctorPatientSection.clinicalEvents => _ClinicalEventsSection(
+              bundle: bundle,
+              selectedEvent: selectedEvent,
+              onEventChanged: onClinicalEventChanged,
+            ),
+            _DoctorPatientSection.medicationPrescriptions =>
+              _MedicationPrescriptionsSection(
+                bundle: bundle,
+                selectedEvent: selectedEvent,
+              ),
+            _DoctorPatientSection.recoveryPlans => _RecoveryPlanEditor(
+              patientId: bundle.patient.patientId,
+              clinicalEventId: selectedEvent?.id,
+            ),
+            _DoctorPatientSection.imaging => _ImagingSection(
+              bundle: bundle,
+              selectedEvent: selectedEvent,
+            ),
+            _DoctorPatientSection.consultationActivity =>
+              _ConsultationActivitySection(
+                bundle: bundle,
+                selectedEvent: selectedEvent,
+              ),
+          },
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionScaffold extends StatelessWidget {
+  const _SectionScaffold({required this.section, required this.child});
+
+  final _DoctorPatientSection section;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: DrAiColors.white,
+        borderRadius: BorderRadius.circular(DrAiRadii.md),
+        border: Border.all(color: DrAiColors.outline),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(DrAiSpacing.sm),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                Icon(section.icon, color: DrAiColors.brand),
+                const SizedBox(width: DrAiSpacing.xs),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        section.label,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      Text(
+                        section.summary,
+                        style: const TextStyle(
+                          color: DrAiColors.mutedInk,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: DrAiSpacing.sm),
+            Expanded(child: child),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _OverviewSection extends StatelessWidget {
+  const _OverviewSection({required this.bundle, required this.selectedEvent});
+
+  final PatientCareBundle bundle;
+  final ClinicalEventItem? selectedEvent;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        _ProfileHeader(bundle: bundle),
+        const SizedBox(height: DrAiSpacing.sm),
+        _InfoTile(
+          title: 'Clinical event readiness',
+          subtitle: selectedEvent == null
+              ? _workflowStatus(bundle)
+              : 'Active event: ${selectedEvent!.status}',
+          body: selectedEvent == null
+              ? 'Create or select a Clinical Event to organize prescriptions, medication schedules, recovery plans, imaging, notes, and consultation around one care episode.'
+              : '${selectedEvent!.title} links ${_eventLinkSummary(selectedEvent!)}.',
+        ),
+        const SizedBox(height: DrAiSpacing.sm),
+        _ClinicalEventContextCard(bundle: bundle, selectedEvent: selectedEvent),
+      ],
+    );
+  }
+}
+
+class _ProfileReviewSection extends StatelessWidget {
+  const _ProfileReviewSection({required this.bundle});
+
+  final PatientCareBundle bundle;
+
+  @override
+  Widget build(BuildContext context) {
+    final patient = bundle.patient;
+    return Column(
+      children: <Widget>[
+        _InfoTile(
+          title: patient.displayName,
+          subtitle: patient.syntheticIdentifier,
+          body:
+              '${patient.relationshipLabel}\n'
+              '${_demographicsLine(patient)}\n'
+              'Doctor review only: patient-controlled profile fields are not edited from this workspace.',
+        ),
+        const SizedBox(height: DrAiSpacing.sm),
+        const _InlineMessage(
+          key: Key('doctor-profile-read-only-notice'),
+          message:
+              'Profile corrections should be requested from the patient; direct doctor editing is intentionally out of this Phase 2 slice.',
+          icon: Icons.lock_outline,
+        ),
+      ],
+    );
+  }
+}
+
+class _MedicalHistorySection extends StatelessWidget {
+  const _MedicalHistorySection({required this.bundle});
+
+  final PatientCareBundle bundle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: <Widget>[
+        const _InlineMessage(
+          key: Key('medical-history-patient-entered-notice'),
+          message:
+              'Medical history is patient-entered. Doctor verification, correction requests, and amendments are stored as visible audited overlays.',
+          icon: Icons.verified_user_outlined,
+        ),
+        const SizedBox(height: DrAiSpacing.sm),
+        _MedicalHistoryReviewPanel(bundle: bundle),
+        const SizedBox(height: DrAiSpacing.sm),
+        _medicalHistoryReviewsSection(bundle),
+        const SizedBox(height: DrAiSpacing.sm),
+        _ItemSection<PatientAllergyItem>(
+          key: const Key('allergies-section'),
+          title: 'Allergies',
+          icon: Icons.warning_amber_outlined,
+          items: bundle.allergies,
+          emptyTitle: 'No allergies recorded',
+          itemBuilder: (item) => _InfoTile(
+            title: item.label,
+            subtitle: '${item.severity} - ${item.status}',
+            body: item.reaction ?? 'No reaction detail recorded.',
+          ),
+        ),
+        const SizedBox(height: DrAiSpacing.sm),
+        _ItemSection<ChronicDiseaseItem>(
+          key: const Key('chronic-diseases-section'),
+          title: 'Chronic diseases',
+          icon: Icons.monitor_heart_outlined,
+          items: bundle.chronicDiseases,
+          emptyTitle: 'No chronic diseases recorded',
+          itemBuilder: (item) => _InfoTile(
+            title: item.name,
+            subtitle: '${item.status} - ${item.diagnosedOn ?? 'date unknown'}',
+            body: item.notes ?? 'No condition note recorded.',
+          ),
+        ),
+        const SizedBox(height: DrAiSpacing.sm),
+        _medicalRecordsSection(bundle),
+      ],
+    );
+  }
+}
+
+class _MedicalHistoryReviewPanel extends ConsumerStatefulWidget {
+  const _MedicalHistoryReviewPanel({required this.bundle});
+
+  final PatientCareBundle bundle;
+
+  @override
+  ConsumerState<_MedicalHistoryReviewPanel> createState() =>
+      _MedicalHistoryReviewPanelState();
+}
+
+class _MedicalHistoryReviewPanelState
+    extends ConsumerState<_MedicalHistoryReviewPanel> {
+  String _action = 'verified';
+  String? _targetKey;
+  final _amendmentController = TextEditingController(
+    text: 'Doctor amendment: synthetic reviewed history context.',
+  );
+  final _correctionController = TextEditingController(
+    text: 'Please confirm this synthetic history item in your profile.',
+  );
+  String? _validationError;
+
+  @override
+  void dispose() {
+    _amendmentController.dispose();
+    _correctionController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final targets = _historyReviewTargets(widget.bundle);
+    _targetKey ??= targets.isEmpty ? null : targets.first.key;
+    final state = ref.watch(medicalHistoryReviewControllerProvider);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: DrAiColors.surfaceSubtle,
+        borderRadius: BorderRadius.circular(DrAiRadii.md),
+        border: Border.all(color: DrAiColors.outline),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(DrAiSpacing.sm),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Text(
+              'Medical History Review',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: DrAiSpacing.xs),
+            if (targets.isEmpty)
+              const _InlineMessage(
+                message:
+                    'No patient-entered allergy, chronic disease, or record is available for doctor review yet.',
+                icon: Icons.info_outline,
+              )
+            else ...<Widget>[
+              DropdownButtonFormField<String>(
+                key: const Key('medical-history-review-target-field'),
+                initialValue: _targetKey,
+                isExpanded: true,
+                decoration: const InputDecoration(
+                  labelText: 'Patient-entered item',
+                  prefixIcon: Icon(Icons.history_edu_outlined),
+                ),
+                items: <DropdownMenuItem<String>>[
+                  for (final target in targets)
+                    DropdownMenuItem<String>(
+                      value: target.key,
+                      child: Text(target.label),
+                    ),
+                ],
+                onChanged: (value) => setState(() => _targetKey = value),
+              ),
+              const SizedBox(height: DrAiSpacing.xs),
+              DropdownButtonFormField<String>(
+                key: const Key('medical-history-review-action-field'),
+                initialValue: _action,
+                decoration: const InputDecoration(
+                  labelText: 'Review action',
+                  prefixIcon: Icon(Icons.verified_outlined),
+                ),
+                items: const <DropdownMenuItem<String>>[
+                  DropdownMenuItem(
+                    value: 'verified',
+                    child: Text('Mark verified'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'amendment',
+                    child: Text('Add doctor amendment'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'correction_requested',
+                    child: Text('Request patient correction'),
+                  ),
+                ],
+                onChanged: (value) =>
+                    setState(() => _action = value ?? 'verified'),
+              ),
+              const SizedBox(height: DrAiSpacing.xs),
+              TextField(
+                key: const Key('medical-history-amendment-field'),
+                controller: _amendmentController,
+                maxLength: 1200,
+                decoration: const InputDecoration(
+                  counterText: '',
+                  labelText: 'Doctor amendment',
+                  prefixIcon: Icon(Icons.edit_note_outlined),
+                ),
+              ),
+              const SizedBox(height: DrAiSpacing.xs),
+              TextField(
+                key: const Key('medical-history-correction-field'),
+                controller: _correctionController,
+                maxLength: 1200,
+                decoration: const InputDecoration(
+                  counterText: '',
+                  labelText: 'Patient correction request',
+                  prefixIcon: Icon(Icons.outgoing_mail),
+                ),
+              ),
+              if (_validationError != null)
+                _InlineMessage(
+                  message: _validationError!,
+                  icon: Icons.error_outline,
+                ),
+              const SizedBox(height: DrAiSpacing.xs),
+              FilledButton.icon(
+                key: const Key('medical-history-review-save-button'),
+                onPressed: state.isLoading ? null : _save,
+                icon: const Icon(Icons.save_outlined),
+                label: const Text('Save audited review'),
+              ),
+            ],
+            state.when(
+              loading: () => const Padding(
+                padding: EdgeInsets.only(top: DrAiSpacing.xs),
+                child: LinearProgressIndicator(),
+              ),
+              error: (error, stackTrace) =>
+                  _InlineMessage(message: _safeErrorMessage(error)),
+              data: (review) {
+                if (review == null) {
+                  return const SizedBox.shrink();
+                }
+                return _InlineMessage(
+                  message: 'Medical history review saved: ${review.action}.',
+                  icon: Icons.check_circle_outline,
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _save() {
+    final targets = _historyReviewTargets(widget.bundle);
+    final selected = targets
+        .where((target) => target.key == _targetKey)
+        .firstOrNull;
+    if (selected == null) {
+      setState(() => _validationError = 'Select a patient-entered item first.');
+      return;
+    }
+    if (_action == 'amendment' && _amendmentController.text.trim().length < 3) {
+      setState(() => _validationError = 'Enter a doctor amendment.');
+      return;
+    }
+    if (_action == 'correction_requested' &&
+        _correctionController.text.trim().length < 3) {
+      setState(() => _validationError = 'Enter a patient correction request.');
+      return;
+    }
+    setState(() => _validationError = null);
+    ref
+        .read(medicalHistoryReviewControllerProvider.notifier)
+        .create(
+          patientId: widget.bundle.patient.patientId,
+          targetType: selected.targetType,
+          targetId: selected.targetId,
+          action: _action,
+          amendmentSummary: _action == 'amendment'
+              ? _amendmentController.text.trim()
+              : '',
+          correctionRequest: _action == 'correction_requested'
+              ? _correctionController.text.trim()
+              : '',
+        );
+  }
+}
+
+class _HistoryReviewTarget {
+  const _HistoryReviewTarget({
+    required this.key,
+    required this.targetType,
+    required this.targetId,
+    required this.label,
+  });
+
+  final String key;
+  final String targetType;
+  final String targetId;
+  final String label;
+}
+
+class _ClinicalEventsSection extends StatelessWidget {
+  const _ClinicalEventsSection({
+    required this.bundle,
+    required this.selectedEvent,
+    required this.onEventChanged,
+  });
+
+  final PatientCareBundle bundle;
+  final ClinicalEventItem? selectedEvent;
+  final ValueChanged<String?>? onEventChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: <Widget>[
+        _ClinicalEventEditor(
+          bundle: bundle,
+          selectedEvent: selectedEvent,
+          onEventChanged: onEventChanged,
+        ),
+        const SizedBox(height: DrAiSpacing.sm),
+        _ClinicalEventContextCard(bundle: bundle, selectedEvent: selectedEvent),
+        const SizedBox(height: DrAiSpacing.sm),
+        _ItemSection<VisitHistoryItem>(
+          key: const Key('visit-history-section'),
+          title: 'Encounter updates',
+          icon: Icons.event_note_outlined,
+          items: _eventVisitHistory(bundle, selectedEvent),
+          emptyTitle: 'No encounter updates recorded',
+          itemBuilder: (item) => _InfoTile(
+            title: item.title,
+            subtitle: '${item.visitType} - ${_dateLabel(item.occurredAt)}',
+            body:
+                '${item.summary}\nClinician: ${item.clinicianLabel}\n'
+                'Clinical Event link: ${_eventTitle(bundle, selectedEvent)}',
+          ),
+        ),
+        const SizedBox(height: DrAiSpacing.sm),
+        _ItemSection<DiagnosisItem>(
+          key: const Key('diagnoses-section'),
+          title: 'Doctor diagnosis record',
+          icon: Icons.fact_check_outlined,
+          items: _eventDiagnoses(bundle, selectedEvent),
+          emptyTitle: 'No diagnoses recorded',
+          itemBuilder: (item) => _InfoTile(
+            title: item.label,
+            subtitle: '${item.status} - ${item.diagnosedOn ?? 'date unknown'}',
+            body:
+                '${item.notes ?? 'No diagnosis note recorded.'}\n'
+                'Patient can read this record but cannot edit doctor diagnosis.',
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MedicationPrescriptionsSection extends StatelessWidget {
+  const _MedicationPrescriptionsSection({
+    required this.bundle,
+    required this.selectedEvent,
+  });
+
+  final PatientCareBundle bundle;
+  final ClinicalEventItem? selectedEvent;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: <Widget>[
+        _EventLinkNotice(
+          text:
+              'Prescription orders and active medication schedules are shown under ${_eventTitle(bundle, selectedEvent)}. '
+              'Reminder rows below are generated schedule outputs, not a standalone doctor workspace.',
+        ),
+        const SizedBox(height: DrAiSpacing.sm),
+        _medicationsListSection(bundle, selectedEvent),
+        const SizedBox(height: DrAiSpacing.sm),
+        _prescriptionsListSection(bundle, selectedEvent),
+        const SizedBox(height: DrAiSpacing.sm),
+        _remindersListSection(bundle, selectedEvent),
+        const SizedBox(height: DrAiSpacing.sm),
+        _MedicationWorkflowPanel(
+          bundle: bundle,
+          clinicalEventId: selectedEvent?.id,
+          mode: _MedicationWorkflowMode.prescription,
+        ),
+        const SizedBox(height: DrAiSpacing.sm),
+        _MedicationWorkflowPanel(
+          bundle: bundle,
+          clinicalEventId: selectedEvent?.id,
+          mode: _MedicationWorkflowMode.medication,
+        ),
+      ],
+    );
+  }
+}
+
+class _ImagingSection extends StatelessWidget {
+  const _ImagingSection({required this.bundle, required this.selectedEvent});
+
+  final PatientCareBundle bundle;
+  final ClinicalEventItem? selectedEvent;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: <Widget>[
+        _EventLinkNotice(
+          text:
+              'Imaging is reviewed as supporting evidence for ${_eventTitle(bundle, selectedEvent)}. Findings remain doctor-entered; the app does not make automated clinical claims.',
+        ),
+        const SizedBox(height: DrAiSpacing.sm),
+        _imagingListSection(bundle, selectedEvent),
+        const SizedBox(height: DrAiSpacing.sm),
+        _DemoAssessmentWorkflow(
+          patientId: bundle.patient.patientId,
+          clinicalEventId: selectedEvent?.id,
+        ),
+      ],
+    );
+  }
+}
+
+class _ConsultationActivitySection extends StatelessWidget {
+  const _ConsultationActivitySection({
+    required this.bundle,
+    required this.selectedEvent,
+  });
+
+  final PatientCareBundle bundle;
+  final ClinicalEventItem? selectedEvent;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: <Widget>[
+        _ItemSection<DoctorNoteItem>(
+          key: const Key('doctor-notes-section'),
+          title: 'Doctor notes',
+          icon: Icons.edit_note_outlined,
+          items: _eventDoctorNotes(bundle, selectedEvent),
+          emptyTitle: 'No doctor notes',
+          itemBuilder: (item) => _InfoTile(
+            title: item.title,
+            subtitle: 'Linked to ${_eventTitle(bundle, selectedEvent)}',
+            body:
+                '${item.body}\nPrivate doctor-facing note; hidden from the patient care bundle.',
+          ),
+        ),
+        const SizedBox(height: DrAiSpacing.sm),
+        _SystemActivitySection(bundle: bundle, selectedEvent: selectedEvent),
+        const SizedBox(height: DrAiSpacing.sm),
+        _ConsultationRequestPanel(
+          patientId: bundle.patient.patientId,
+          clinicalEventId: selectedEvent?.id,
+        ),
+      ],
+    );
+  }
+}
+
+class _ClinicalEventContextCard extends StatelessWidget {
+  const _ClinicalEventContextCard({
+    required this.bundle,
+    required this.selectedEvent,
+  });
+
+  final PatientCareBundle bundle;
+  final ClinicalEventItem? selectedEvent;
+
+  @override
+  Widget build(BuildContext context) {
+    final eventTitle = _eventTitle(bundle, selectedEvent);
+    final visits = _eventVisitHistory(bundle, selectedEvent);
+    final diagnoses = _eventDiagnoses(bundle, selectedEvent);
+    final prescriptions = _eventPrescriptions(bundle, selectedEvent);
+    final reminders = _eventMedicationReminders(bundle, selectedEvent);
+    final imagingAssets = _eventImagingAssets(bundle, selectedEvent);
+    final doctorNotes = _eventDoctorNotes(bundle, selectedEvent);
+    final latestUpdate = visits.isEmpty
+        ? 'No encounter update recorded'
+        : _dateLabel(
+            ([...visits]..sort((a, b) => b.occurredAt.compareTo(a.occurredAt)))
+                .first
+                .occurredAt,
+          );
+    final diagnosisStatus = diagnoses.isEmpty
+        ? 'Diagnosis not recorded'
+        : '${diagnoses.first.status} diagnosis';
+    return DecoratedBox(
+      key: const Key('clinical-event-context-card'),
+      decoration: BoxDecoration(
+        color: DrAiColors.surfaceSubtle,
+        borderRadius: BorderRadius.circular(DrAiRadii.md),
+        border: Border.all(color: DrAiColors.outline),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(DrAiSpacing.sm),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                const Icon(
+                  Icons.account_tree_outlined,
+                  color: DrAiColors.brand,
+                ),
+                const SizedBox(width: DrAiSpacing.xs),
+                Expanded(
+                  child: Text(
+                    eventTitle,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: DrAiSpacing.xs),
+            const Text(
+              'Clinical Event groups one medical problem over time. Doctors create and update it; patients can read it but cannot edit doctor diagnosis.',
+              style: TextStyle(color: DrAiColors.mutedInk, fontSize: 12),
+            ),
+            const SizedBox(height: DrAiSpacing.sm),
+            Wrap(
+              spacing: DrAiSpacing.xs,
+              runSpacing: DrAiSpacing.xs,
+              children: <Widget>[
+                _LightMetricChip(label: diagnosisStatus),
+                _LightMetricChip(label: 'Latest update: $latestUpdate'),
+                _LightMetricChip(
+                  label: '${prescriptions.length} prescription(s)',
+                ),
+                _LightMetricChip(
+                  label: '${reminders.length} generated reminder(s)',
+                ),
+                _LightMetricChip(
+                  label: '${imagingAssets.length} imaging asset(s)',
+                ),
+                _LightMetricChip(label: '${doctorNotes.length} note(s)'),
+              ],
+            ),
+            if (selectedEvent != null &&
+                selectedEvent!.timeline.isNotEmpty) ...<Widget>[
+              const SizedBox(height: DrAiSpacing.sm),
+              Text(
+                'Event timeline',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+              const SizedBox(height: DrAiSpacing.xs),
+              for (final entry in selectedEvent!.timeline.take(4))
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      const Icon(
+                        Icons.timeline_outlined,
+                        size: 16,
+                        color: DrAiColors.mutedInk,
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          '${entry.title} - ${_dateLabel(entry.occurredAt)}',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ClinicalEventEditor extends ConsumerStatefulWidget {
+  const _ClinicalEventEditor({
+    required this.bundle,
+    required this.selectedEvent,
+    required this.onEventChanged,
+  });
+
+  final PatientCareBundle bundle;
+  final ClinicalEventItem? selectedEvent;
+  final ValueChanged<String?>? onEventChanged;
+
+  @override
+  ConsumerState<_ClinicalEventEditor> createState() =>
+      _ClinicalEventEditorState();
+}
+
+class _ClinicalEventEditorState extends ConsumerState<_ClinicalEventEditor> {
+  late final TextEditingController _titleController;
+  late final TextEditingController _chiefComplaintController;
+  late final TextEditingController _symptomSummaryController;
+  late final TextEditingController _diagnosisSummaryController;
+  late final TextEditingController _onsetDateController;
+  String _status = 'active';
+  String? _editingEventId;
+  String? _validationError;
+
+  @override
+  void initState() {
+    super.initState();
+    _titleController = TextEditingController();
+    _chiefComplaintController = TextEditingController();
+    _symptomSummaryController = TextEditingController();
+    _diagnosisSummaryController = TextEditingController();
+    _onsetDateController = TextEditingController();
+    _loadEvent(widget.selectedEvent);
+  }
+
+  @override
+  void didUpdateWidget(covariant _ClinicalEventEditor oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.selectedEvent?.id != widget.selectedEvent?.id) {
+      _loadEvent(widget.selectedEvent);
+    }
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _chiefComplaintController.dispose();
+    _symptomSummaryController.dispose();
+    _diagnosisSummaryController.dispose();
+    _onsetDateController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = ref.watch(clinicalEventWorkflowControllerProvider);
+    return DecoratedBox(
+      key: const Key('clinical-event-editor'),
+      decoration: BoxDecoration(
+        color: DrAiColors.surfaceSubtle,
+        borderRadius: BorderRadius.circular(DrAiRadii.md),
+        border: Border.all(color: DrAiColors.outline),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(DrAiSpacing.sm),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                const Icon(
+                  Icons.edit_calendar_outlined,
+                  color: DrAiColors.brand,
+                ),
+                const SizedBox(width: DrAiSpacing.xs),
+                Expanded(
+                  child: Text(
+                    'Clinical Event Editor',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: DrAiSpacing.xs),
+            Wrap(
+              spacing: DrAiSpacing.xs,
+              runSpacing: DrAiSpacing.xs,
+              children: <Widget>[
+                FilledButton.icon(
+                  key: const Key('clinical-event-save-button'),
+                  onPressed: state.isLoading ? null : _save,
+                  icon: const Icon(Icons.save_outlined),
+                  label: Text(
+                    _editingEventId == null
+                        ? 'Create Clinical Event'
+                        : 'Update Clinical Event',
+                  ),
+                ),
+                OutlinedButton.icon(
+                  key: const Key('clinical-event-new-button'),
+                  onPressed: state.isLoading ? null : _startNewEvent,
+                  icon: const Icon(Icons.add_circle_outline),
+                  label: const Text('New event'),
+                ),
+              ],
+            ),
+            const SizedBox(height: DrAiSpacing.xs),
+            if (widget.bundle.clinicalEvents.isEmpty)
+              const _InlineMessage(
+                message:
+                    'No Clinical Event exists yet. Create one before authoring linked care outputs.',
+                icon: Icons.info_outline,
+              )
+            else
+              Wrap(
+                spacing: DrAiSpacing.xs,
+                runSpacing: DrAiSpacing.xs,
+                children: <Widget>[
+                  for (final event in widget.bundle.clinicalEvents)
+                    ChoiceChip(
+                      key: Key('clinical-event-chip-${event.id}'),
+                      label: Text('${event.title} - ${event.status}'),
+                      selected: event.id == _editingEventId,
+                      onSelected: state.isLoading
+                          ? null
+                          : (_) {
+                              widget.onEventChanged?.call(event.id);
+                              setState(() => _loadEvent(event));
+                            },
+                    ),
+                ],
+              ),
+            const SizedBox(height: DrAiSpacing.sm),
+            TextField(
+              key: const Key('clinical-event-title-field'),
+              controller: _titleController,
+              maxLength: 160,
+              decoration: const InputDecoration(
+                counterText: '',
+                labelText: 'Clinical Event title',
+                prefixIcon: Icon(Icons.fact_check_outlined),
+              ),
+            ),
+            const SizedBox(height: DrAiSpacing.xs),
+            TextField(
+              key: const Key('clinical-event-chief-complaint-field'),
+              controller: _chiefComplaintController,
+              maxLength: 240,
+              decoration: const InputDecoration(
+                counterText: '',
+                labelText: 'Chief complaint',
+                prefixIcon: Icon(Icons.assignment_outlined),
+              ),
+            ),
+            const SizedBox(height: DrAiSpacing.xs),
+            Row(
+              children: <Widget>[
+                Expanded(
+                  child: TextField(
+                    key: const Key('clinical-event-onset-date-field'),
+                    controller: _onsetDateController,
+                    maxLength: 10,
+                    decoration: const InputDecoration(
+                      counterText: '',
+                      labelText: 'Onset date',
+                      helperText: 'YYYY-MM-DD or blank',
+                    ),
+                  ),
+                ),
+                const SizedBox(width: DrAiSpacing.xs),
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    key: const Key('clinical-event-status-field'),
+                    initialValue: _status,
+                    isExpanded: true,
+                    decoration: const InputDecoration(labelText: 'Status'),
+                    items: const <DropdownMenuItem<String>>[
+                      DropdownMenuItem(value: 'active', child: Text('active')),
+                      DropdownMenuItem(
+                        value: 'monitoring',
+                        child: Text('monitoring'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'resolved',
+                        child: Text('resolved'),
+                      ),
+                    ],
+                    onChanged: (value) =>
+                        setState(() => _status = value ?? 'active'),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: DrAiSpacing.xs),
+            TextField(
+              key: const Key('clinical-event-symptom-summary-field'),
+              controller: _symptomSummaryController,
+              maxLength: 1200,
+              minLines: 2,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                counterText: '',
+                labelText: 'Symptom/update summary',
+                prefixIcon: Icon(Icons.notes_outlined),
+              ),
+            ),
+            const SizedBox(height: DrAiSpacing.xs),
+            TextField(
+              key: const Key('clinical-event-diagnosis-summary-field'),
+              controller: _diagnosisSummaryController,
+              maxLength: 1200,
+              minLines: 2,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                counterText: '',
+                labelText: 'Doctor diagnosis or provisional diagnosis',
+                prefixIcon: Icon(Icons.medical_information_outlined),
+              ),
+            ),
+            const _InlineMessage(
+              key: Key('clinical-event-doctor-owned-notice'),
+              message:
+                  'Patients can read Clinical Events, but doctor diagnosis fields are doctor-managed and audited.',
+              icon: Icons.lock_outline,
+            ),
+            if (_validationError != null)
+              _InlineMessage(
+                message: _validationError!,
+                icon: Icons.error_outline,
+              ),
+            state.when(
+              loading: () => const Padding(
+                padding: EdgeInsets.only(top: DrAiSpacing.xs),
+                child: LinearProgressIndicator(),
+              ),
+              error: (error, stackTrace) =>
+                  _InlineMessage(message: _safeErrorMessage(error)),
+              data: (event) {
+                if (event == null) {
+                  return const SizedBox.shrink();
+                }
+                return _InlineMessage(
+                  key: const Key('clinical-event-save-success'),
+                  message:
+                      '${event.title} saved as ${event.status}. ${event.safetyLabel}',
+                  icon: Icons.check_circle_outline,
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _loadEvent(ClinicalEventItem? event) {
+    _editingEventId = event?.id;
+    _titleController.text = event?.title ?? 'Synthetic care episode';
+    _chiefComplaintController.text =
+        event?.chiefComplaint ?? 'Synthetic chief complaint';
+    _symptomSummaryController.text = event?.symptomSummary ?? '';
+    _diagnosisSummaryController.text = event?.diagnosisSummary ?? '';
+    _onsetDateController.text = event?.onsetDate ?? '';
+    _status = event?.status ?? 'active';
+  }
+
+  void _startNewEvent() {
+    setState(() {
+      widget.onEventChanged?.call(null);
+      _loadEvent(null);
+      _validationError = null;
+    });
+  }
+
+  bool _validate() {
+    final valid =
+        _titleController.text.trim().length >= 3 &&
+        _chiefComplaintController.text.trim().length >= 3 &&
+        (_onsetDateController.text.trim().isEmpty ||
+            RegExp(
+              r'^\d{4}-\d{2}-\d{2}$',
+            ).hasMatch(_onsetDateController.text.trim()));
+    setState(() {
+      _validationError = valid
+          ? null
+          : 'Use a title, chief complaint, and optional YYYY-MM-DD onset date.';
+    });
+    return valid;
+  }
+
+  Future<void> _save() async {
+    if (!_validate()) {
+      return;
+    }
+    await ref
+        .read(clinicalEventWorkflowControllerProvider.notifier)
+        .save(
+          patientId: widget.bundle.patient.patientId,
+          clinicalEventId: _editingEventId,
+          title: _titleController.text.trim(),
+          chiefComplaint: _chiefComplaintController.text.trim(),
+          symptomSummary: _symptomSummaryController.text.trim(),
+          diagnosisSummary: _diagnosisSummaryController.text.trim(),
+          onsetDate: _onsetDateController.text.trim(),
+          status: _status,
+        );
+    final saved = ref.read(clinicalEventWorkflowControllerProvider);
+    if (saved.hasValue && saved.value != null) {
+      widget.onEventChanged?.call(saved.value!.id);
+      setState(() => _loadEvent(saved.value));
+    }
+  }
+}
+
+class _EventLinkNotice extends StatelessWidget {
+  const _EventLinkNotice({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return _InlineMessage(
+      key: const Key('clinical-event-link-notice'),
+      message: text,
+      icon: Icons.account_tree_outlined,
+    );
+  }
+}
+
+class _SystemActivitySection extends StatelessWidget {
+  const _SystemActivitySection({
+    required this.bundle,
+    required this.selectedEvent,
+  });
+
+  final PatientCareBundle bundle;
+  final ClinicalEventItem? selectedEvent;
+
+  @override
+  Widget build(BuildContext context) {
+    final items = <_ActivityDisplayItem>[
+      if (selectedEvent != null)
+        for (final entry in selectedEvent!.timeline)
+          _ActivityDisplayItem(
+            title: entry.title,
+            subtitle: _dateLabel(entry.occurredAt),
+            body: 'Clinical Event timeline entry: ${entry.entryType}.',
+          ),
+      for (final prescription in _eventPrescriptions(bundle, selectedEvent))
+        _ActivityDisplayItem(
+          title: 'Prescription ${prescription.status}',
+          subtitle: _dateLabel(prescription.issuedAt),
+          body:
+              '${prescription.medications.length} medication line(s) linked to ${_eventTitle(bundle, selectedEvent)}.',
+        ),
+      for (final reminder in _eventMedicationReminders(bundle, selectedEvent))
+        _ActivityDisplayItem(
+          title: reminder.reminderType == 'refill'
+              ? 'Generated refill reminder'
+              : 'Generated medication reminder',
+          subtitle: '${reminder.status} - ${_dateLabel(reminder.nextDueAt)}',
+          body:
+              '${reminder.scheduleLabel}\nCreated from medication schedule context.',
+        ),
+      for (final asset in _eventImagingAssets(bundle, selectedEvent))
+        _ActivityDisplayItem(
+          title: 'Imaging ${asset.reviewStatus}',
+          subtitle: '${asset.uploadStatus} - ${asset.storageProvider}',
+          body:
+              'Manual review status for ${_eventTitle(bundle, selectedEvent)}.',
+        ),
+    ];
+    return _ItemSection<_ActivityDisplayItem>(
+      key: const Key('consultation-activity-timeline-section'),
+      title: 'Activity timeline',
+      icon: Icons.timeline_outlined,
+      items: items,
+      emptyTitle: 'No activity yet',
+      itemBuilder: (item) => _InfoTile(
+        title: item.title,
+        subtitle: item.subtitle,
+        body: item.body,
+      ),
+    );
+  }
+}
+
+class _ActivityDisplayItem {
+  const _ActivityDisplayItem({
+    required this.title,
+    required this.subtitle,
+    required this.body,
+  });
+
+  final String title;
+  final String subtitle;
+  final String body;
+}
+
+class _LightMetricChip extends StatelessWidget {
+  const _LightMetricChip({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: DrAiColors.white,
+        borderRadius: BorderRadius.circular(DrAiRadii.sm),
+        border: Border.all(color: DrAiColors.outline),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: DrAiSpacing.xs,
+          vertical: 6,
+        ),
+        child: Text(label, style: const TextStyle(fontSize: 12)),
+      ),
+    );
+  }
+}
+
+Widget _medicalRecordsSection(PatientCareBundle bundle) {
+  return _ItemSection<MedicalRecordItem>(
+    key: const Key('medical-history-section'),
+    title: 'Medical History',
+    icon: Icons.description_outlined,
+    items: bundle.records,
+    emptyTitle: 'No Medical Records',
+    itemBuilder: (item) => _InfoTile(
+      title: item.title,
+      subtitle: item.category,
+      body: item.summary,
+    ),
+  );
+}
+
+Widget _medicalHistoryReviewsSection(PatientCareBundle bundle) {
+  return _ItemSection<MedicalHistoryReviewItem>(
+    key: const Key('medical-history-reviews-section'),
+    title: 'Doctor review and amendments',
+    icon: Icons.verified_user_outlined,
+    items: bundle.medicalHistoryReviews,
+    emptyTitle: 'No doctor review records',
+    itemBuilder: (item) => _InfoTile(
+      title: _historyReviewActionLabel(item.action),
+      subtitle: '${item.targetType} - ${_dateLabel(item.createdAt)}',
+      body:
+          '${item.amendmentSummary ?? item.correctionRequest ?? 'Clinician verified patient-entered history.'}\n'
+          'Audit-linked overlay; original patient-entered item is preserved.',
+    ),
+  );
+}
+
+List<_HistoryReviewTarget> _historyReviewTargets(PatientCareBundle bundle) {
+  return <_HistoryReviewTarget>[
+    for (final allergy in bundle.allergies)
+      _HistoryReviewTarget(
+        key: 'allergy:${allergy.id}',
+        targetType: 'allergy',
+        targetId: allergy.id,
+        label: 'Allergy: ${allergy.label}',
+      ),
+    for (final condition in bundle.chronicDiseases)
+      _HistoryReviewTarget(
+        key: 'chronic_disease:${condition.id}',
+        targetType: 'chronic_disease',
+        targetId: condition.id,
+        label: 'Chronic disease: ${condition.name}',
+      ),
+    for (final record in bundle.records)
+      _HistoryReviewTarget(
+        key: 'medical_record:${record.id}',
+        targetType: 'medical_record',
+        targetId: record.id,
+        label: 'Medical record: ${record.title}',
+      ),
+  ];
+}
+
+String _historyReviewActionLabel(String action) {
+  return switch (action) {
+    'verified' => 'Clinician verified',
+    'amendment' => 'Doctor amendment',
+    'correction_requested' => 'Patient correction requested',
+    _ => action,
+  };
+}
+
+Widget _imagingListSection(
+  PatientCareBundle bundle,
+  ClinicalEventItem? selectedEvent,
+) {
+  return _ItemSection<MedicalImagingAsset>(
+    key: const Key('imaging-assets-section'),
+    title: 'Imaging',
+    icon: Icons.image_search_outlined,
+    items: _eventImagingAssets(bundle, selectedEvent),
+    emptyTitle: 'No imaging assets',
+    itemBuilder: (item) => _InfoTile(
+      title: '${item.contentType} asset',
+      subtitle: '${item.uploadStatus} - ${item.reviewStatus}',
+      body:
+          '${item.sizeBytes} bytes via ${item.storageProvider}\n'
+          'Uploaded: ${_dateLabel(item.uploadedAt)}\n'
+          'Finding/result: ${item.findingSummary ?? 'Pending manual doctor review'}\n'
+          'Measurement/observation: ${item.measurementSummary ?? 'Not recorded'}',
+    ),
+  );
+}
+
+Widget _medicationsListSection(
+  PatientCareBundle bundle,
+  ClinicalEventItem? selectedEvent,
+) {
+  return _ItemSection<MedicationItem>(
+    key: const Key('medications-section'),
+    title: 'Medications',
+    icon: Icons.medication_outlined,
+    items: _eventMedications(bundle, selectedEvent),
+    emptyTitle: 'No synthetic medications',
+    itemBuilder: (item) => _InfoTile(
+      title: item.name,
+      subtitle: '${item.dosage} - ${item.status}',
+      body: '${item.schedule}\n${item.note}',
+    ),
+  );
+}
+
+Widget _prescriptionsListSection(
+  PatientCareBundle bundle,
+  ClinicalEventItem? selectedEvent,
+) {
+  return _ItemSection<PrescriptionItem>(
+    key: const Key('prescriptions-section'),
+    title: 'Prescriptions',
+    icon: Icons.receipt_long_outlined,
+    items: _eventPrescriptions(bundle, selectedEvent),
+    emptyTitle: 'No prescriptions',
+    itemBuilder: (item) => _InfoTile(
+      title: '${item.status} prescription',
+      subtitle: '${item.medications.length} medication line(s)',
+      body: _prescriptionSummary(item),
+    ),
+  );
+}
+
+Widget _remindersListSection(
+  PatientCareBundle bundle,
+  ClinicalEventItem? selectedEvent,
+) {
+  return _ItemSection<MedicationReminderItem>(
+    key: const Key('medication-reminders-section'),
+    title: 'Medication Reminders',
+    icon: Icons.notifications_active_outlined,
+    items: _eventMedicationReminders(bundle, selectedEvent),
+    emptyTitle: 'No medication reminders',
+    itemBuilder: (item) => _InfoTile(
+      title: item.reminderType == 'refill'
+          ? 'Refill reminder'
+          : 'Medication reminder',
+      subtitle: '${item.status} - ${item.channel}',
+      body: '${item.scheduleLabel}\nNext: ${_dateLabel(item.nextDueAt)}',
+    ),
+  );
+}
+
+enum _MedicationWorkflowMode {
+  medication(
+    title: 'Medication Schedule Editor',
+    icon: Icons.medication_liquid_outlined,
+  ),
+  prescription(
+    title: 'Prescription Order Workflow',
+    icon: Icons.receipt_long_outlined,
+  );
+
+  const _MedicationWorkflowMode({required this.title, required this.icon});
+
+  final String title;
+  final IconData icon;
+}
+
+class _MedicationWorkflowPanel extends ConsumerStatefulWidget {
+  const _MedicationWorkflowPanel({
+    required this.bundle,
+    required this.clinicalEventId,
+    required this.mode,
+  });
+
+  final PatientCareBundle bundle;
+  final String? clinicalEventId;
+  final _MedicationWorkflowMode mode;
 
   @override
   ConsumerState<_MedicationWorkflowPanel> createState() =>
@@ -347,22 +2045,15 @@ class _MedicationWorkflowPanelState
   late final TextEditingController _scheduleController;
   late final TextEditingController _noteController;
   late final TextEditingController _prescriptionNoteController;
-  late final TextEditingController _reminderLabelController;
   String _status = 'active';
   String? _validationMessage;
 
-  MedicationItem? get _selectedMedication => widget.bundle.medications.isEmpty
-      ? null
-      : widget.bundle.medications.first;
-
-  PrescriptionMedicationItem? get _selectedPrescriptionMedication {
-    if (widget.bundle.prescriptions.isEmpty) {
-      return null;
-    }
-    final prescription = widget.bundle.prescriptions.first;
-    return prescription.medications.isEmpty
-        ? null
-        : prescription.medications.first;
+  MedicationItem? get _selectedMedication {
+    final medications = _eventMedicationsById(
+      widget.bundle.medications,
+      widget.clinicalEventId,
+    );
+    return medications.isEmpty ? null : medications.first;
   }
 
   @override
@@ -384,9 +2075,6 @@ class _MedicationWorkflowPanelState
     _prescriptionNoteController = TextEditingController(
       text: 'Synthetic prescription workflow only.',
     );
-    _reminderLabelController = TextEditingController(
-      text: 'In-app medication reminder',
-    );
     _status = medication?.status ?? 'active';
   }
 
@@ -397,7 +2085,6 @@ class _MedicationWorkflowPanelState
     _scheduleController.dispose();
     _noteController.dispose();
     _prescriptionNoteController.dispose();
-    _reminderLabelController.dispose();
     super.dispose();
   }
 
@@ -417,20 +2104,31 @@ class _MedicationWorkflowPanelState
           children: <Widget>[
             Row(
               children: <Widget>[
-                const Icon(
-                  Icons.medication_liquid_outlined,
-                  color: DrAiColors.brand,
-                ),
+                Icon(widget.mode.icon, color: DrAiColors.brand),
                 const SizedBox(width: DrAiSpacing.xs),
                 Expanded(
                   child: Text(
-                    'Medication Workflow',
+                    widget.mode.title,
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                 ),
               ],
             ),
             const SizedBox(height: DrAiSpacing.sm),
+            if (widget.mode == _MedicationWorkflowMode.prescription)
+              _InlineMessage(
+                message: _selectedMedication == null
+                    ? 'Save a medication before issuing a prescription.'
+                    : 'Prescription lines use the selected event medication values and feed the patient medication schedule.',
+                icon: Icons.info_outline,
+              ),
+            if (widget.clinicalEventId == null)
+              const _InlineMessage(
+                message:
+                    'Select or create a Clinical Event before saving new event-linked medication work.',
+                icon: Icons.account_tree_outlined,
+              ),
+            const SizedBox(height: DrAiSpacing.xs),
             TextField(
               key: const Key('medication-name-field'),
               controller: _nameController,
@@ -460,6 +2158,7 @@ class _MedicationWorkflowPanelState
                   child: DropdownButtonFormField<String>(
                     key: const Key('medication-status-field'),
                     initialValue: _status,
+                    isExpanded: true,
                     decoration: const InputDecoration(labelText: 'Status'),
                     items: const <DropdownMenuItem<String>>[
                       DropdownMenuItem(value: 'active', child: Text('active')),
@@ -485,18 +2184,36 @@ class _MedicationWorkflowPanelState
                 labelText: 'Schedule',
               ),
             ),
-            const SizedBox(height: DrAiSpacing.xs),
-            TextField(
-              key: const Key('medication-note-field'),
-              controller: _noteController,
-              maxLength: 800,
-              minLines: 2,
-              maxLines: 3,
-              decoration: const InputDecoration(
-                counterText: '',
-                labelText: 'Medication note',
+            if (widget.mode == _MedicationWorkflowMode.medication) ...<Widget>[
+              const SizedBox(height: DrAiSpacing.xs),
+              TextField(
+                key: const Key('medication-note-field'),
+                controller: _noteController,
+                maxLength: 800,
+                minLines: 2,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  counterText: '',
+                  labelText: 'Medication note',
+                ),
               ),
-            ),
+            ],
+            if (widget.mode ==
+                _MedicationWorkflowMode.prescription) ...<Widget>[
+              const SizedBox(height: DrAiSpacing.xs),
+              TextField(
+                key: const Key('prescription-note-field'),
+                controller: _prescriptionNoteController,
+                maxLength: 400,
+                minLines: 2,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  counterText: '',
+                  labelText: 'Prescription note',
+                  prefixIcon: Icon(Icons.notes_outlined),
+                ),
+              ),
+            ],
             if (_validationMessage != null)
               _InlineMessage(message: _validationMessage!),
             state.when(
@@ -516,38 +2233,28 @@ class _MedicationWorkflowPanelState
               spacing: DrAiSpacing.xs,
               runSpacing: DrAiSpacing.xs,
               children: <Widget>[
-                FilledButton.icon(
-                  key: const Key('save-medication-button'),
-                  onPressed: state.isLoading ? null : _saveMedication,
-                  icon: const Icon(Icons.save_outlined),
-                  label: Text(
-                    _selectedMedication == null
-                        ? 'Add medication'
-                        : 'Update medication',
+                if (widget.mode == _MedicationWorkflowMode.medication)
+                  FilledButton.icon(
+                    key: const Key('save-medication-button'),
+                    onPressed: state.isLoading || widget.clinicalEventId == null
+                        ? null
+                        : _saveMedication,
+                    icon: const Icon(Icons.save_outlined),
+                    label: Text(
+                      _selectedMedication == null
+                          ? 'Add medication'
+                          : 'Update medication',
+                    ),
                   ),
-                ),
-                OutlinedButton.icon(
-                  key: const Key('create-prescription-button'),
-                  onPressed: state.isLoading ? null : _createPrescription,
-                  icon: const Icon(Icons.receipt_long_outlined),
-                  label: const Text('Issue prescription'),
-                ),
-                OutlinedButton.icon(
-                  key: const Key('create-medication-reminder-button'),
-                  onPressed: state.isLoading
-                      ? null
-                      : () => _saveReminder(reminderType: 'medication'),
-                  icon: const Icon(Icons.notifications_outlined),
-                  label: const Text('Medication reminder'),
-                ),
-                OutlinedButton.icon(
-                  key: const Key('create-refill-reminder-button'),
-                  onPressed: state.isLoading
-                      ? null
-                      : () => _saveReminder(reminderType: 'refill'),
-                  icon: const Icon(Icons.event_repeat_outlined),
-                  label: const Text('Refill reminder'),
-                ),
+                if (widget.mode == _MedicationWorkflowMode.prescription)
+                  FilledButton.icon(
+                    key: const Key('create-prescription-button'),
+                    onPressed: state.isLoading || widget.clinicalEventId == null
+                        ? null
+                        : _createPrescription,
+                    icon: const Icon(Icons.receipt_long_outlined),
+                    label: const Text('Issue prescription'),
+                  ),
               ],
             ),
           ],
@@ -577,6 +2284,7 @@ class _MedicationWorkflowPanelState
         .read(medicationWorkflowControllerProvider.notifier)
         .saveMedication(
           patientId: widget.bundle.patient.patientId,
+          clinicalEventId: widget.clinicalEventId,
           medicationId: _selectedMedication?.id,
           name: _nameController.text.trim(),
           dosage: _dosageController.text.trim(),
@@ -601,6 +2309,7 @@ class _MedicationWorkflowPanelState
         .read(medicationWorkflowControllerProvider.notifier)
         .createPrescription(
           patientId: widget.bundle.patient.patientId,
+          clinicalEventId: widget.clinicalEventId,
           medicationId: medication.id,
           name: _nameController.text.trim(),
           dosage: _dosageController.text.trim(),
@@ -608,54 +2317,16 @@ class _MedicationWorkflowPanelState
           notes: _prescriptionNoteController.text.trim(),
         );
   }
-
-  Future<void> _saveReminder({required String reminderType}) async {
-    final medication = _selectedMedication;
-    final prescriptionMedication = _selectedPrescriptionMedication;
-    if (reminderType == 'medication' && medication == null) {
-      setState(() {
-        _validationMessage = 'Save a medication before creating a reminder.';
-      });
-      return;
-    }
-    if (reminderType == 'refill' && prescriptionMedication == null) {
-      setState(() {
-        _validationMessage =
-            'Issue a prescription before creating a refill reminder.';
-      });
-      return;
-    }
-    setState(() => _validationMessage = null);
-    MedicationReminderItem? existing;
-    for (final item in widget.bundle.medicationReminders) {
-      if (item.reminderType == reminderType) {
-        existing = item;
-        break;
-      }
-    }
-    await ref
-        .read(medicationWorkflowControllerProvider.notifier)
-        .saveMedicationReminder(
-          patientId: widget.bundle.patient.patientId,
-          reminderId: existing?.id,
-          medicationId: reminderType == 'medication' ? medication?.id : null,
-          prescriptionMedicationId: reminderType == 'refill'
-              ? prescriptionMedication?.id
-              : null,
-          reminderType: reminderType,
-          scheduleLabel: _reminderLabelController.text.trim().isEmpty
-              ? 'In-app medication reminder'
-              : _reminderLabelController.text.trim(),
-          status: 'active',
-          nextDueAt: DateTime.now().toUtc().add(const Duration(days: 1)),
-        );
-  }
 }
 
 class _DemoAssessmentWorkflow extends ConsumerStatefulWidget {
-  const _DemoAssessmentWorkflow({required this.patientId});
+  const _DemoAssessmentWorkflow({
+    required this.patientId,
+    required this.clinicalEventId,
+  });
 
   final String patientId;
+  final String? clinicalEventId;
 
   @override
   ConsumerState<_DemoAssessmentWorkflow> createState() =>
@@ -668,6 +2339,12 @@ class _DemoAssessmentWorkflowState
     text: 'synthetic-ct-demo.png',
   );
   final _sizeController = TextEditingController(text: '2048');
+  final _findingController = TextEditingController(
+    text: 'Manual demo finding entered by doctor after imaging review.',
+  );
+  final _measurementController = TextEditingController(
+    text: 'Demo measurement note: no automated interpretation.',
+  );
   String _contentType = 'image/png';
   String _fixtureId = 'synthetic_lung_case_001';
   String? _uploadValidationError;
@@ -677,6 +2354,8 @@ class _DemoAssessmentWorkflowState
   void dispose() {
     _filenameController.dispose();
     _sizeController.dispose();
+    _findingController.dispose();
+    _measurementController.dispose();
     super.dispose();
   }
 
@@ -722,6 +2401,7 @@ class _DemoAssessmentWorkflowState
                   child: DropdownButtonFormField<String>(
                     key: const Key('demo-upload-content-type-field'),
                     initialValue: _contentType,
+                    isExpanded: true,
                     decoration: const InputDecoration(
                       labelText: 'Content type',
                       prefixIcon: Icon(Icons.tune_outlined),
@@ -793,13 +2473,40 @@ class _DemoAssessmentWorkflowState
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: DrAiSpacing.xs),
+            TextField(
+              key: const Key('imaging-finding-field'),
+              controller: _findingController,
+              maxLength: 1200,
+              minLines: 2,
+              maxLines: 4,
+              decoration: const InputDecoration(
+                counterText: '',
+                labelText: 'Manual doctor-entered finding/result',
+                prefixIcon: Icon(Icons.fact_check_outlined),
+              ),
+            ),
+            const SizedBox(height: DrAiSpacing.xs),
+            TextField(
+              key: const Key('imaging-measurement-field'),
+              controller: _measurementController,
+              maxLength: 240,
+              decoration: const InputDecoration(
+                counterText: '',
+                labelText: 'Manual measurement or observation',
+                prefixIcon: Icon(Icons.straighten_outlined),
+              ),
+            ),
+            const SizedBox(height: DrAiSpacing.xs),
             Wrap(
               spacing: DrAiSpacing.xs,
               runSpacing: DrAiSpacing.xs,
               children: <Widget>[
                 OutlinedButton.icon(
                   key: const Key('imaging-prepare-button'),
-                  onPressed: imagingState.isLoading ? null : _prepareImaging,
+                  onPressed:
+                      imagingState.isLoading || widget.clinicalEventId == null
+                      ? null
+                      : _prepareImaging,
                   icon: const Icon(Icons.add_photo_alternate_outlined),
                   label: const Text('Prepare imaging'),
                 ),
@@ -851,6 +2558,12 @@ class _DemoAssessmentWorkflowState
               },
             ),
             const SizedBox(height: DrAiSpacing.md),
+            if (widget.clinicalEventId == null)
+              const _InlineMessage(
+                message:
+                    'Select or create a Clinical Event before preparing event-linked imaging metadata.',
+                icon: Icons.account_tree_outlined,
+              ),
             Text(
               'Assessment Form',
               style: Theme.of(context).textTheme.titleMedium,
@@ -859,6 +2572,7 @@ class _DemoAssessmentWorkflowState
             DropdownButtonFormField<String>(
               key: const Key('assessment-fixture-field'),
               initialValue: _fixtureId,
+              isExpanded: true,
               decoration: const InputDecoration(
                 labelText: 'Synthetic fixture',
                 prefixIcon: Icon(Icons.science_outlined),
@@ -975,6 +2689,7 @@ class _DemoAssessmentWorkflowState
         .read(medicalImagingWorkflowControllerProvider.notifier)
         .prepare(
           patientId: widget.patientId,
+          clinicalEventId: widget.clinicalEventId,
           filename: filename,
           contentType: _contentType,
           sizeBytes: size,
@@ -996,9 +2711,22 @@ class _DemoAssessmentWorkflowState
   }
 
   void _reviewImaging() {
+    if (_findingController.text.trim().length < 3) {
+      setState(() {
+        _uploadValidationError =
+            'Enter a manual imaging finding/result before review.';
+      });
+      return;
+    }
+    setState(() => _uploadValidationError = null);
     ref
         .read(medicalImagingWorkflowControllerProvider.notifier)
-        .review(patientId: widget.patientId, reviewStatus: 'reviewed');
+        .review(
+          patientId: widget.patientId,
+          reviewStatus: 'reviewed',
+          findingSummary: _findingController.text.trim(),
+          measurementSummary: _measurementController.text.trim(),
+        );
   }
 
   void _runAssessment() {
@@ -1021,9 +2749,13 @@ class _DemoAssessmentWorkflowState
 }
 
 class _RecoveryPlanEditor extends ConsumerStatefulWidget {
-  const _RecoveryPlanEditor({required this.patientId});
+  const _RecoveryPlanEditor({
+    required this.patientId,
+    required this.clinicalEventId,
+  });
 
   final String patientId;
+  final String? clinicalEventId;
 
   @override
   ConsumerState<_RecoveryPlanEditor> createState() =>
@@ -1083,6 +2815,12 @@ class _RecoveryPlanEditorState extends ConsumerState<_RecoveryPlanEditor> {
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: DrAiSpacing.xs),
+            if (widget.clinicalEventId == null)
+              const _InlineMessage(
+                message:
+                    'Select or create a Clinical Event before creating an event-linked recovery plan.',
+                icon: Icons.account_tree_outlined,
+              ),
             plans.when(
               loading: () =>
                   const DashboardLoadingView(label: 'Loading recovery plans'),
@@ -1092,17 +2830,24 @@ class _RecoveryPlanEditorState extends ConsumerState<_RecoveryPlanEditor> {
                     ref.invalidate(recoveryPlanListProvider(widget.patientId)),
               ),
               data: (data) {
-                _selectInitialPlan(data.items);
-                final selectedPlan = data.items
+                final eventPlans = _eventRecoveryPlansById(
+                  data.items,
+                  widget.clinicalEventId,
+                );
+                final activeEventPlans = eventPlans
+                    .where((plan) => plan.status == 'active')
+                    .toList();
+                _selectInitialPlan(eventPlans);
+                final selectedPlan = eventPlans
                     .where((plan) => plan.planId == _selectedPlanId)
                     .firstOrNull;
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
-                    if (data.items.isEmpty)
+                    if (eventPlans.isEmpty)
                       const _InlineMessage(
                         message:
-                            'No recovery plan yet. Save a synthetic draft first.',
+                            'No recovery plan for this Clinical Event yet. Save a synthetic draft first.',
                         icon: Icons.info_outline,
                       )
                     else
@@ -1110,7 +2855,7 @@ class _RecoveryPlanEditorState extends ConsumerState<_RecoveryPlanEditor> {
                         spacing: DrAiSpacing.xs,
                         runSpacing: DrAiSpacing.xs,
                         children: <Widget>[
-                          for (final plan in data.items)
+                          for (final plan in eventPlans)
                             ChoiceChip(
                               label: Text(
                                 '${plan.title} - ${plan.status} / ${plan.reviewStatus}',
@@ -1131,6 +2876,16 @@ class _RecoveryPlanEditorState extends ConsumerState<_RecoveryPlanEditor> {
                         icon: Icons.fact_check_outlined,
                       ),
                     ],
+                    const SizedBox(height: DrAiSpacing.xs),
+                    _InlineMessage(
+                      key: const Key('recovery-plan-active-event-guardrail'),
+                      message: activeEventPlans.isEmpty
+                          ? 'No active Recovery Plan for this Clinical Event.'
+                          : activeEventPlans.length == 1
+                          ? 'One active Recovery Plan is linked to this Clinical Event.'
+                          : 'Multiple active plans are visible for this event; approve a replacement to resolve the workflow.',
+                      icon: Icons.assignment_turned_in_outlined,
+                    ),
                     const SizedBox(height: DrAiSpacing.sm),
                     TextField(
                       key: const Key('recovery-plan-title-field'),
@@ -1212,7 +2967,11 @@ class _RecoveryPlanEditorState extends ConsumerState<_RecoveryPlanEditor> {
                       children: <Widget>[
                         FilledButton.icon(
                           key: const Key('recovery-plan-save-button'),
-                          onPressed: editorState.isLoading ? null : _save,
+                          onPressed:
+                              editorState.isLoading ||
+                                  widget.clinicalEventId == null
+                              ? null
+                              : _save,
                           icon: const Icon(Icons.save_outlined),
                           label: const Text('Save draft'),
                         ),
@@ -1371,6 +3130,7 @@ class _RecoveryPlanEditorState extends ConsumerState<_RecoveryPlanEditor> {
         .read(recoveryPlanEditorControllerProvider.notifier)
         .saveDraft(
           patientId: widget.patientId,
+          clinicalEventId: widget.clinicalEventId,
           planId: _selectedPlanId,
           title: _titleController.text.trim(),
           instructions: _instructionsController.text.trim(),
@@ -1438,9 +3198,13 @@ class _RecoveryPlanEditorState extends ConsumerState<_RecoveryPlanEditor> {
 }
 
 class _ConsultationRequestPanel extends ConsumerStatefulWidget {
-  const _ConsultationRequestPanel({required this.patientId});
+  const _ConsultationRequestPanel({
+    required this.patientId,
+    required this.clinicalEventId,
+  });
 
   final String patientId;
+  final String? clinicalEventId;
 
   @override
   ConsumerState<_ConsultationRequestPanel> createState() =>
@@ -1489,6 +3253,12 @@ class _ConsultationRequestPanelState
               'Synthetic asynchronous request only. No appointments, billing, video, voice, or clinical assessment.',
               style: TextStyle(color: DrAiColors.mutedInk, fontSize: 12),
             ),
+            if (widget.clinicalEventId == null)
+              const _InlineMessage(
+                message:
+                    'Select or create a Clinical Event before requesting event-linked specialist review.',
+                icon: Icons.account_tree_outlined,
+              ),
             const SizedBox(height: DrAiSpacing.xs),
             TextField(
               key: const Key('consultation-specialty-field'),
@@ -1558,7 +3328,9 @@ class _ConsultationRequestPanelState
             const SizedBox(height: DrAiSpacing.xs),
             FilledButton.icon(
               key: const Key('consultation-request-button'),
-              onPressed: createState.isLoading ? null : _submit,
+              onPressed: createState.isLoading || widget.clinicalEventId == null
+                  ? null
+                  : _submit,
               icon: const Icon(Icons.outgoing_mail),
               label: const Text('Request specialist review'),
             ),
@@ -1573,7 +3345,12 @@ class _ConsultationRequestPanelState
               ),
               data: (data) {
                 final items = data.items
-                    .where((item) => item.patientId == widget.patientId)
+                    .where(
+                      (item) =>
+                          item.patientId == widget.patientId &&
+                          (widget.clinicalEventId == null ||
+                              item.clinicalEventId == widget.clinicalEventId),
+                    )
                     .toList();
                 if (items.isEmpty) {
                   return const _EmptyState(
@@ -1617,6 +3394,7 @@ class _ConsultationRequestPanelState
         .read(consultationRequestControllerProvider.notifier)
         .create(
           patientId: widget.patientId,
+          clinicalEventId: widget.clinicalEventId,
           specialty: specialty,
           questionSummary: summary,
           priority: _priority,
@@ -1691,6 +3469,183 @@ String _demographicsLine(PatientProfile patient) {
     if (patient.contactPreference != null) patient.contactPreference!,
   ];
   return values.isEmpty ? 'Demographics not recorded' : values.join(' - ');
+}
+
+String _ageSexLabel(PatientProfile patient) {
+  final values = <String>[
+    if (patient.birthYear != null)
+      'Age ${DateTime.now().year - patient.birthYear!}',
+    if (patient.sex != null && patient.sex!.trim().isNotEmpty) patient.sex!,
+  ];
+  return values.isEmpty ? 'Age/sex not recorded' : values.join(' - ');
+}
+
+String _activePlanLabel(RecoveryPlanListData data) {
+  RecoveryPlanData? activePlan;
+  for (final plan in data.items) {
+    if (plan.status == 'active') {
+      activePlan = plan;
+      break;
+    }
+  }
+  activePlan ??= data.items.isEmpty ? null : data.items.first;
+  if (activePlan == null) {
+    return 'Recovery plan: none';
+  }
+  return 'Recovery plan: ${activePlan.status} / ${activePlan.reviewStatus}';
+}
+
+String _lastVisitLabel(List<VisitHistoryItem> visits) {
+  if (visits.isEmpty) {
+    return 'none recorded';
+  }
+  final sorted = [...visits]
+    ..sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
+  return _dateLabel(sorted.first.occurredAt);
+}
+
+String _workflowStatus(PatientCareBundle bundle) {
+  final hasActivity =
+      bundle.records.isNotEmpty ||
+      bundle.visitHistory.isNotEmpty ||
+      bundle.diagnoses.isNotEmpty ||
+      bundle.medications.isNotEmpty ||
+      bundle.prescriptions.isNotEmpty ||
+      bundle.imagingAssets.isNotEmpty ||
+      bundle.doctorNotes.isNotEmpty;
+  return hasActivity ? 'Workflow: review ready' : 'Workflow: setup needed';
+}
+
+ClinicalEventItem? _selectedClinicalEvent(
+  PatientCareBundle bundle,
+  String? preferredEventId,
+) {
+  if (bundle.clinicalEvents.isEmpty) {
+    return null;
+  }
+  if (preferredEventId != null) {
+    for (final event in bundle.clinicalEvents) {
+      if (event.id == preferredEventId) {
+        return event;
+      }
+    }
+  }
+  for (final event in bundle.clinicalEvents) {
+    if (event.status == 'active' || event.status == 'monitoring') {
+      return event;
+    }
+  }
+  return bundle.clinicalEvents.first;
+}
+
+String _eventTitle(PatientCareBundle bundle, ClinicalEventItem? selectedEvent) {
+  if (selectedEvent != null) {
+    return 'Clinical Event: ${selectedEvent.title}';
+  }
+  if (bundle.diagnoses.isNotEmpty) {
+    return 'Clinical Event: ${bundle.diagnoses.first.label}';
+  }
+  if (bundle.visitHistory.isNotEmpty) {
+    return 'Clinical Event: ${bundle.visitHistory.first.title}';
+  }
+  return 'Clinical Event: setup needed';
+}
+
+String _eventLinkSummary(ClinicalEventItem event) {
+  final counts = event.linkedResourceCounts;
+  return '${counts['prescriptions'] ?? 0} prescription(s), '
+      '${counts['medications'] ?? 0} medication schedule item(s), '
+      '${counts['recovery_plans'] ?? 0} recovery plan(s), '
+      '${counts['imaging_assets'] ?? 0} imaging asset(s), '
+      '${counts['doctor_notes'] ?? 0} note(s)';
+}
+
+List<VisitHistoryItem> _eventVisitHistory(
+  PatientCareBundle bundle,
+  ClinicalEventItem? selectedEvent,
+) {
+  return _eventItems(bundle.visitHistory, selectedEvent?.id, (item) {
+    return item.clinicalEventId;
+  });
+}
+
+List<DiagnosisItem> _eventDiagnoses(
+  PatientCareBundle bundle,
+  ClinicalEventItem? selectedEvent,
+) {
+  return _eventItems(bundle.diagnoses, selectedEvent?.id, (item) {
+    return item.clinicalEventId;
+  });
+}
+
+List<MedicationItem> _eventMedications(
+  PatientCareBundle bundle,
+  ClinicalEventItem? selectedEvent,
+) {
+  return _eventMedicationsById(bundle.medications, selectedEvent?.id);
+}
+
+List<MedicationItem> _eventMedicationsById(
+  List<MedicationItem> items,
+  String? clinicalEventId,
+) {
+  return _eventItems(items, clinicalEventId, (item) => item.clinicalEventId);
+}
+
+List<PrescriptionItem> _eventPrescriptions(
+  PatientCareBundle bundle,
+  ClinicalEventItem? selectedEvent,
+) {
+  return _eventItems(bundle.prescriptions, selectedEvent?.id, (item) {
+    return item.clinicalEventId;
+  });
+}
+
+List<MedicationReminderItem> _eventMedicationReminders(
+  PatientCareBundle bundle,
+  ClinicalEventItem? selectedEvent,
+) {
+  return _eventItems(bundle.medicationReminders, selectedEvent?.id, (item) {
+    return item.clinicalEventId;
+  });
+}
+
+List<RecoveryPlanData> _eventRecoveryPlansById(
+  List<RecoveryPlanData> items,
+  String? clinicalEventId,
+) {
+  return _eventItems(items, clinicalEventId, (item) => item.clinicalEventId);
+}
+
+List<MedicalImagingAsset> _eventImagingAssets(
+  PatientCareBundle bundle,
+  ClinicalEventItem? selectedEvent,
+) {
+  return _eventItems(bundle.imagingAssets, selectedEvent?.id, (item) {
+    return item.clinicalEventId;
+  });
+}
+
+List<DoctorNoteItem> _eventDoctorNotes(
+  PatientCareBundle bundle,
+  ClinicalEventItem? selectedEvent,
+) {
+  return _eventItems(bundle.doctorNotes, selectedEvent?.id, (item) {
+    return item.clinicalEventId;
+  });
+}
+
+List<T> _eventItems<T>(
+  List<T> items,
+  String? clinicalEventId,
+  String? Function(T item) eventIdForItem,
+) {
+  if (clinicalEventId == null) {
+    return items;
+  }
+  return items
+      .where((item) => eventIdForItem(item) == clinicalEventId)
+      .toList();
 }
 
 String _historyLine(PatientCareBundle bundle) {
@@ -1946,6 +3901,8 @@ class _ImagingWorkflowCard extends StatelessWidget {
               '${presign?.safetyLabel ?? ''}'
         : '${asset.contentType}, ${asset.uploadedSizeBytes ?? asset.sizeBytes} bytes\n'
               'Reviewed: ${_dateLabel(asset.reviewedAt)}\n'
+              'Finding/result: ${asset.findingSummary ?? 'Pending manual doctor review'}\n'
+              'Measurement/observation: ${asset.measurementSummary ?? 'Not recorded'}\n'
               '${asset.safetyLabel}';
     return Padding(
       key: const Key('imaging-workflow-status'),
