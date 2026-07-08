@@ -294,3 +294,49 @@ Install-prep status after redeploy:
 - iPhone native install still requires selecting an Apple development team for
   bundle id `com.harrycao.drai.drAiApp`; TestFlight/App Store Connect remains
   separate from this staging redeploy.
+
+## Workflow-Clarification Tencent Staging Redeploy
+
+Recorded: 2026-07-08T22:57:20+08:00
+
+After the Phase 2 Clinical Event workflow-clarification closure was committed
+locally as `33d70e5` and pushed to GitHub branch
+`codex/phase-2-patient-doctor-core`, Tencent same-origin staging was redeployed
+so the live web/API environment matches the completed eight-functionality
+workflow-clarification slice. This redeploy did not change production, tester
+accounts, monitoring/account settings, native store uploads, tags, pull
+requests, real patient data, or clinical workflows.
+
+Deployment evidence:
+
+- Built and pushed a sanitized API image on the Tencent CVM and deployed
+  immutable digest
+  `hkccr.ccs.tencentyun.com/dr-ai/dr-ai-backend@sha256:25532802291eae937b06266288047436646a72524d119965714879b2e44e42d7`.
+- Applied Alembic migrations `20260708_0010`, `20260708_0011`, and
+  `20260708_0012` on staging.
+- Ran the synthetic seed twice on staging; both runs were idempotent with all
+  created counts at `0`.
+- Rebuilt Flutter web for
+  `https://dr-ai.43.132.169.195.sslip.io`, confirmed the build was `41M` with
+  `30` files, and found no database/JWT/DeepSeek/SSH/password env marker
+  matches in the web build.
+- Backed up the previous host-side web directory as
+  `web.backup.20260708T145110Z`, synced the new web build in place, validated
+  Caddy, and recreated the Caddy container. The remote `web/` directory now
+  contains `30` files and is `42M`.
+- Public HTTPS checks passed for `/health`, `/`, `/beta-support`, and
+  unauthenticated `/api/v1/me` returning `401`.
+- Credentialed staging smoke passed for health, doctor/patient login,
+  refresh/logout, assigned-patient search, neutral cross-patient denial, demo
+  upload presign, simulated assessment, recovery-plan save/activation,
+  patient Today/task completion, Ask Dr. AI, consultation readback, and Beta
+  support web surface.
+- Focused Phase 2 live smoke passed for the new workflow-clarification
+  endpoints: doctor medical-history review overlay creation, doctor Clinical
+  Event creation, patient Clinical Event update creation, and event readback
+  preserving doctor diagnosis while including the patient update in the
+  timeline.
+
+Inspection URL:
+
+- `https://dr-ai.43.132.169.195.sslip.io`
