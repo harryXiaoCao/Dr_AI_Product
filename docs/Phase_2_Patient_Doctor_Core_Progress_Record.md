@@ -353,3 +353,44 @@ Deployment evidence:
 Inspection URL:
 
 - `https://dr-ai.43.132.169.195.sslip.io`
+
+## Manual-Testing Onboarding Tencent Staging Redeploy
+
+Recorded: 2026-07-08T23:42:47+08:00
+
+After the Phase 2 manual-testing onboarding cleanup was committed locally as
+`b14f10d` and pushed to GitHub branch
+`codex/phase-2-patient-doctor-core`, Tencent same-origin staging was redeployed
+so the live web/API environment supports from-zero invited patient/doctor
+manual testing. This redeploy did not merge into `main`, change production,
+alter tester/account settings, upload native store builds, create tags or pull
+requests, use real patient data, start Phase 3 AI generation, or perform a
+destructive staging database reset.
+
+Deployment evidence:
+
+- Built and pushed a sanitized API image on the Tencent CVM and deployed
+  immutable digest
+  `hkccr.ccs.tencentyun.com/dr-ai/dr-ai-backend@sha256:719bbef7331e4e1616e881a20f8b60367d468a02778c64922999da03e12464d9`.
+- Ran Alembic `upgrade head` on staging. No new migration was needed for this
+  cleanup slice.
+- Did not rerun the synthetic seed. Existing seed records remain only as
+  optional staging smoke/regression scaffolding; the intended inspection path
+  is invited registration, patient-code connection, and user-created records.
+- Rebuilt Flutter web for
+  `https://dr-ai.43.132.169.195.sslip.io`, confirmed the local build was `41M`,
+  found no database/JWT/DeepSeek/SSH/password env marker matches in the web
+  build, synced the host-side `web/` directory in place, validated Caddy, and
+  recreated the Caddy container. The remote `web/` directory now contains `90`
+  files and is `42M`.
+- Public HTTPS checks passed for `/health`, `/`, `/beta-support`, and
+  unauthenticated `/api/v1/me` returning `401`.
+- Focused live onboarding smoke passed without printing invite codes, patient
+  codes, passwords, access tokens, or refresh tokens: invited patient and
+  doctor registration, fresh patient care-bundle readback with a generated
+  patient code, doctor patient-code connection after neutral pre-connection
+  denial, and Clinical Event creation after connection.
+
+Inspection URL:
+
+- `https://dr-ai.43.132.169.195.sslip.io`
