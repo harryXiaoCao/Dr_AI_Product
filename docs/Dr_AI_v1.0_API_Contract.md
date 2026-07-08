@@ -108,7 +108,10 @@ beta contract is implemented.
 
 Invited registration is disabled for a role when its server-side invite code is
 unset. The role comes from the accepted invitation and is persisted by the
-server; Flutter cannot elevate it.
+server; Flutter cannot elevate it. Manual Phase 2 testing should no longer
+depend on seeded demo accounts: create invited patient and doctor accounts,
+have the patient share their generated patient code, and let the doctor connect
+that code before creating Clinical Events and related care records.
 
 ### `POST /api/v1/auth/register`
 
@@ -216,6 +219,7 @@ Response:
 | `GET` | `/api/v1/me` | Own profile | Own profile | Read current identity and role |
 | `GET` | `/api/v1/me/dashboard` | Own dashboard | Own dashboard | Read the current role's synthetic seeded dashboard |
 | `GET` | `/api/v1/patients` | Assigned patients | No | List patients in an active care relationship |
+| `POST` | `/api/v1/patients/connect` | Patient code supplied by patient | No | Connect an assigned patient by patient code |
 | `GET` | `/api/v1/patients/{patient_id}` | Assigned patient | Own record only | Read a patient summary |
 | `GET` | `/api/v1/patients/{patient_id}/records` | Assigned patient | Own records only | List medical-record fixtures |
 | `GET` | `/api/v1/patients/{patient_id}/medications` | Assigned patient | Own medications only | List medications for one patient |
@@ -358,6 +362,9 @@ consent, legal, and security gates are cleared.
 Rules:
 
 - Doctors can read and edit only patients in an active care relationship.
+- Doctors can create an active care relationship by submitting a patient code
+  shared by the owning patient. The connection endpoint stores metadata-only
+  audit details and does not copy the patient code into audit metadata.
 - Patients can read only their own demographics, allergies, chronic diseases,
   Clinical Events, visit history, diagnoses, records, medications,
   prescriptions, reminders, notification metadata, imaging metadata,

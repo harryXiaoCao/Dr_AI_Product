@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:dr_ai_app/app/routing/app_role.dart';
 import 'package:dr_ai_app/core/api/api_error.dart';
 import 'package:dr_ai_app/core/config/app_config.dart';
 import 'package:dr_ai_app/features/auth/data/dr_ai_repository.dart';
@@ -53,6 +54,37 @@ class AuthController extends AsyncNotifier<AuthState> {
     }
   }
 
+  Future<void> register({
+    required String email,
+    required String password,
+    required AppRole role,
+    required String inviteCode,
+  }) async {
+    state = const AsyncLoading();
+    try {
+      final session = await ref
+          .read(repositoryProvider)
+          .register(
+            email: email,
+            password: password,
+            role: role,
+            inviteCode: inviteCode,
+          );
+      state = AsyncData(AuthState.signedIn(session.user));
+    } on ApiError catch (error) {
+      state = AsyncData(
+        AuthState.signedOut(errorMessage: _registerErrorMessage(error)),
+      );
+    } on Exception {
+      state = const AsyncData(
+        AuthState.signedOut(
+          errorMessage:
+              'Unable to create the account. Check your connection and try again.',
+        ),
+      );
+    }
+  }
+
   Future<void> logout() async {
     state = const AsyncLoading();
     try {
@@ -74,6 +106,22 @@ class AuthController extends AsyncNotifier<AuthState> {
 String _loginErrorMessage(ApiError error) {
   if (error.code == 'unauthenticated') {
     return 'The email or password is incorrect.';
+  }
+  if (error.code == 'service_unavailable') {
+    return 'Unable to reach Dr. AI. Check your connection and try again.';
+  }
+  return error.message;
+}
+
+String _registerErrorMessage(ApiError error) {
+  if (error.code == 'forbidden') {
+    return 'This invite code is not available for the selected role.';
+  }
+  if (error.code == 'conflict') {
+    return 'An account already exists for this email.';
+  }
+  if (error.code == 'validation_failed') {
+    return 'Check the email, password, role, and invite code.';
   }
   if (error.code == 'service_unavailable') {
     return 'Unable to reach Dr. AI. Check your connection and try again.';

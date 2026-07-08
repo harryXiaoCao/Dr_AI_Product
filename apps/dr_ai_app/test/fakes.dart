@@ -658,6 +658,8 @@ class FakeDrAiRepository implements DrAiRepository {
   ApiError? consultationError;
   Completer<AuthSession>? loginCompleter;
   bool logoutCalled = false;
+  bool registerCalled = false;
+  bool patientConnected = false;
   bool clinicalEventSaved = false;
   bool clinicalEventUpdateSubmitted = false;
   bool medicalHistoryReviewCreated = false;
@@ -683,6 +685,28 @@ class FakeDrAiRepository implements DrAiRepository {
       throw loginError!;
     }
     return loginSession;
+  }
+
+  @override
+  Future<AuthSession> register({
+    required String email,
+    required String password,
+    required AppRole role,
+    required String inviteCode,
+  }) async {
+    registerCalled = true;
+    return AuthSession(
+      accessToken: 'registered-access-token',
+      refreshToken: 'registered-refresh-token',
+      user: SessionUser(
+        id: 'registered-user-id',
+        email: email,
+        role: role,
+        displayName: role == AppRole.doctor
+            ? 'Invited Doctor'
+            : 'Invited Patient',
+      ),
+    );
   }
 
   @override
@@ -722,6 +746,15 @@ class FakeDrAiRepository implements DrAiRepository {
       );
     }
     return patientList;
+  }
+
+  @override
+  Future<PatientSummary> connectPatientByCode(String patientCode) async {
+    patientConnected = true;
+    patientList = const PatientListData(
+      items: <PatientSummary>[demoPatientSummary],
+    );
+    return demoPatientSummary;
   }
 
   @override

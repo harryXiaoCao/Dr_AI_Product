@@ -9,9 +9,16 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 abstract interface class DrAiRepository {
   Future<AuthSession?> restore();
   Future<AuthSession> login(String email, String password);
+  Future<AuthSession> register({
+    required String email,
+    required String password,
+    required AppRole role,
+    required String inviteCode,
+  });
   Future<void> logout();
   Future<DashboardData> loadDashboard(AppRole role);
   Future<PatientListData> loadPatients({String? query});
+  Future<PatientSummary> connectPatientByCode(String patientCode);
   Future<PatientCareBundle> loadPatientCareBundle(String patientId);
   Future<PatientCareBundle> loadOwnPatientCare();
   Future<ClinicalEventItem> saveClinicalEvent({
@@ -187,6 +194,29 @@ class DioDrAiRepository implements DrAiRepository {
     }
   }
 
+  @override
+  Future<AuthSession> register({
+    required String email,
+    required String password,
+    required AppRole role,
+    required String inviteCode,
+  }) async {
+    try {
+      final response = await client.post<Map<String, dynamic>>(
+        '/api/v1/auth/register',
+        data: <String, String>{
+          'email': email.trim(),
+          'password': password,
+          'role': role.wireValue,
+          'invite_code': inviteCode.trim(),
+        },
+      );
+      return await _saveSession(AuthSession.fromJson(response.data!));
+    } on DioException catch (error) {
+      throw _toApiError(error);
+    }
+  }
+
   Future<AuthSession> _refresh(String refreshToken) async {
     try {
       final response = await client.post<Map<String, dynamic>>(
@@ -262,6 +292,15 @@ class DioDrAiRepository implements DrAiRepository {
       },
     );
     return PatientListData.fromJson(response);
+  }
+
+  @override
+  Future<PatientSummary> connectPatientByCode(String patientCode) async {
+    final response = await _authorizedPost(
+      '/api/v1/patients/connect',
+      data: <String, String>{'patient_code': patientCode.trim()},
+    );
+    return PatientSummary.fromJson(response);
   }
 
   @override

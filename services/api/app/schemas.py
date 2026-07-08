@@ -69,6 +69,12 @@ class PatientListResponse(BaseModel):
     next_cursor: None = None
 
 
+class PatientConnectRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    patient_code: str = Field(min_length=6, max_length=80)
+
+
 class PatientProfileResponse(PatientSummaryResponse):
     relationship_label: str
     overview: str

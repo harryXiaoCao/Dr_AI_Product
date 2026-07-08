@@ -197,6 +197,8 @@ class _PatientSearchPane extends StatelessWidget {
       icon: Icons.people_outline,
       child: Column(
         children: <Widget>[
+          const _PatientConnectPanel(),
+          const SizedBox(height: DrAiSpacing.sm),
           TextField(
             key: const Key('patient-search-field'),
             controller: controller,
@@ -223,9 +225,10 @@ class _PatientSearchPane extends StatelessWidget {
                 if (data.items.isEmpty) {
                   return const _EmptyState(
                     key: Key('patient-list-empty'),
-                    icon: Icons.person_search_outlined,
-                    title: 'No synthetic patients found',
-                    body: 'Adjust the search term or clear the field.',
+                    icon: Icons.person_add_alt_1_outlined,
+                    title: 'No connected patients yet',
+                    body:
+                        'Ask the patient for their code, connect them here, then build the care workspace from zero.',
                   );
                 }
                 return ListView.separated(
@@ -262,6 +265,115 @@ class _PatientSearchPane extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+class _PatientConnectPanel extends ConsumerStatefulWidget {
+  const _PatientConnectPanel();
+
+  @override
+  ConsumerState<_PatientConnectPanel> createState() =>
+      _PatientConnectPanelState();
+}
+
+class _PatientConnectPanelState extends ConsumerState<_PatientConnectPanel> {
+  final _patientCodeController = TextEditingController();
+  String? _validationError;
+
+  @override
+  void dispose() {
+    _patientCodeController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = ref.watch(patientConnectionControllerProvider);
+    final connected = state.asData?.value;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: DrAiColors.surfaceSubtle,
+        borderRadius: BorderRadius.circular(DrAiRadii.md),
+        border: Border.all(color: DrAiColors.outline),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(DrAiSpacing.sm),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            const Text(
+              'Connect patient by code',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: DrAiSpacing.xs),
+            TextField(
+              key: const Key('patient-connect-code-field'),
+              controller: _patientCodeController,
+              maxLength: 80,
+              textCapitalization: TextCapitalization.characters,
+              decoration: InputDecoration(
+                counterText: '',
+                labelText: 'Patient code',
+                helperText: 'Shown on the patient dashboard after sign-up',
+                errorText: _validationError,
+                prefixIcon: const Icon(Icons.badge_outlined),
+              ),
+              onSubmitted: (_) => _connect(),
+            ),
+            const SizedBox(height: DrAiSpacing.xs),
+            FilledButton.icon(
+              key: const Key('patient-connect-button'),
+              onPressed: state.isLoading ? null : _connect,
+              icon: state.isLoading
+                  ? const SizedBox.square(
+                      dimension: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.person_add_alt_1_outlined),
+              label: const Text('Connect'),
+            ),
+            state.when(
+              data: (_) => connected == null
+                  ? const SizedBox.shrink()
+                  : Padding(
+                      padding: const EdgeInsets.only(top: DrAiSpacing.xs),
+                      child: Text(
+                        'Connected ${connected.displayName}.',
+                        key: const Key('patient-connect-success'),
+                        style: const TextStyle(
+                          color: DrAiColors.brand,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+              loading: () => const SizedBox.shrink(),
+              error: (error, stackTrace) => Padding(
+                padding: const EdgeInsets.only(top: DrAiSpacing.xs),
+                child: Text(
+                  _safeErrorMessage(error),
+                  key: const Key('patient-connect-error'),
+                  style: const TextStyle(
+                    color: DrAiColors.danger,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _connect() async {
+    final code = _patientCodeController.text.trim();
+    if (code.length < 6) {
+      setState(() => _validationError = 'Enter the patient code.');
+      return;
+    }
+    setState(() => _validationError = null);
+    await ref.read(patientConnectionControllerProvider.notifier).connect(code);
   }
 }
 

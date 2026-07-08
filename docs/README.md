@@ -17,7 +17,10 @@ RBAC/audit coverage. The latest local Phase 2 workflow polish adds derived
 Clinical Event timeline readback, manual doctor-entered imaging
 findings/results, event-scoped active Recovery Plan replacement, audited
 doctor Medical History review overlays, and patient-submitted Clinical Event
-updates that preserve doctor-owned diagnosis controls.
+updates that preserve doctor-owned diagnosis controls. The latest local
+cleanup adds invited sign-up, fresh-patient onboarding with a patient code, and
+doctor-side patient-code connection so manual testing can start from empty
+accounts rather than relying on seeded demo relationships.
 
 ## Current Production Docs
 
@@ -59,7 +62,9 @@ The doctor Patient Management workspace now uses an active Clinical Event
 context for event create/update/select and event-linked medication,
 prescription, imaging, recovery-plan, medical-history review, and consultation
 writes. The eight-functionality Phase 2 workflow-clarification list is closed
-locally. Phase 3 AI systems must not start without explicit approval.
+locally, and manual inspection should use invited sign-up plus patient-code
+connection to create data from zero. Phase 3 AI systems must not start without
+explicit approval.
 External push, SMS, email, and native notification delivery remain gated
 beyond the Phase 2 metadata-only in-app queue path. Phase 5 still owns
 specialist/admin UI, audit search, system status, and admin-managed

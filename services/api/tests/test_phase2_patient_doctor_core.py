@@ -15,7 +15,7 @@ from app.models import (
     PatientProfile,
 )
 from app.seed import seed_database
-from tests.helpers import auth_header, login
+from tests.helpers import auth_header, login, register
 
 PHASE2_TABLES = {
     "patient_allergies",
@@ -121,6 +121,88 @@ def test_phase2_tables_are_present_and_seed_keeps_them_empty(settings) -> None:
                 ).all()
             )
             assert "clinical_event_id" in columns, table_name
+
+
+def test_invited_accounts_can_connect_and_create_care_from_zero(
+    client: TestClient,
+    settings,
+) -> None:
+    patient = register(
+        client,
+        email="zero.patient@example.com",
+        password="generated patient passphrase",
+        role="patient",
+        invite_code=settings.patient_invite_code.get_secret_value(),
+    )
+    doctor = register(
+        client,
+        email="zero.doctor@example.com",
+        password="generated doctor passphrase",
+        role="doctor",
+        invite_code=settings.doctor_invite_code.get_secret_value(),
+    )
+    patient_headers = auth_header(patient["access_token"])
+    doctor_headers = auth_header(doctor["access_token"])
+
+    own_care = client.get("/api/v1/patient/me/care", headers=patient_headers)
+    assert own_care.status_code == 200
+    patient_id = own_care.json()["patient"]["patient_id"]
+    patient_code = own_care.json()["patient"]["synthetic_identifier"]
+    assert patient_code.startswith("SYN-")
+    assert own_care.json()["clinical_events"] == []
+    assert own_care.json()["allergies"] == []
+
+    patients_before = client.get("/api/v1/patients", headers=doctor_headers)
+    assert patients_before.status_code == 200
+    assert patients_before.json()["items"] == []
+
+    patient_probe_before = client.get(
+        f"/api/v1/patients/{patient_id}/care",
+        headers=doctor_headers,
+    )
+    assert patient_probe_before.status_code == 404
+    assert patient_probe_before.json()["error"]["code"] == "not_found"
+
+    connected = client.post(
+        "/api/v1/patients/connect",
+        headers=doctor_headers,
+        json={"patient_code": patient_code.lower()},
+    )
+    assert connected.status_code == 200
+    assert connected.json()["patient_id"] == patient_id
+
+    repeated = client.post(
+        "/api/v1/patients/connect",
+        headers=doctor_headers,
+        json={"patient_code": patient_code},
+    )
+    assert repeated.status_code == 200
+
+    patients_after = client.get("/api/v1/patients", headers=doctor_headers)
+    assert patients_after.status_code == 200
+    assert [item["patient_id"] for item in patients_after.json()["items"]] == [patient_id]
+
+    created_event = client.post(
+        f"/api/v1/patients/{patient_id}/clinical-events",
+        headers=doctor_headers,
+        json={
+            "title": "From-zero care episode",
+            "chief_complaint": "From-zero onboarding symptom",
+            "symptom_summary": "Created after invite signup and patient-code connection.",
+            "diagnosis_summary": "Doctor-owned provisional text for test only.",
+            "status": "active",
+        },
+    )
+    assert created_event.status_code == 200
+    assert created_event.json()["title"] == "From-zero care episode"
+
+    with Session(engine) as db:
+        relationship_audits = db.scalars(
+            select(AuditEvent).where(AuditEvent.event_type == "care_relationship_connected")
+        ).all()
+        assert len(relationship_audits) == 2
+        assert relationship_audits[0].metadata_json["patient_code_supplied"] is True
+        assert patient_code not in str(relationship_audits[0].metadata_json)
 
 
 def test_patient_can_update_allowed_profile_and_allergy_surfaces(

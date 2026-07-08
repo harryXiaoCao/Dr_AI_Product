@@ -23,6 +23,14 @@ final patientCareBundleProvider = FutureProvider.autoDispose
       return ref.read(repositoryProvider).loadPatientCareBundle(patientId);
     });
 
+final patientConnectionControllerProvider =
+    StateNotifierProvider.autoDispose<
+      PatientConnectionController,
+      AsyncValue<PatientSummary?>
+    >((ref) {
+      return PatientConnectionController(ref.read(repositoryProvider), ref);
+    });
+
 final ownPatientCareProvider = FutureProvider.autoDispose<PatientCareBundle>((
   ref,
 ) async {
@@ -36,6 +44,26 @@ final ownPatientCareProvider = FutureProvider.autoDispose<PatientCareBundle>((
   }
   return ref.read(repositoryProvider).loadOwnPatientCare();
 });
+
+class PatientConnectionController
+    extends StateNotifier<AsyncValue<PatientSummary?>> {
+  PatientConnectionController(this._repository, this._ref)
+    : super(const AsyncData<PatientSummary?>(null));
+
+  final DrAiRepository _repository;
+  final Ref _ref;
+
+  Future<void> connect(String patientCode) async {
+    state = const AsyncLoading<PatientSummary?>();
+    try {
+      final patient = await _repository.connectPatientByCode(patientCode);
+      _ref.invalidate(patientListProvider);
+      state = AsyncData(patient);
+    } catch (error, stackTrace) {
+      state = AsyncError<PatientSummary?>(error, stackTrace);
+    }
+  }
+}
 
 final clinicalEventWorkflowControllerProvider =
     StateNotifierProvider.autoDispose<

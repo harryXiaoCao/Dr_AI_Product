@@ -9,6 +9,7 @@ import 'package:dr_ai_app/features/auth/application/auth_controller.dart';
 import 'package:dr_ai_app/features/auth/domain/auth_models.dart';
 import 'package:dr_ai_app/features/dashboard/domain/dashboard_data.dart';
 import 'package:dr_ai_app/features/patient/application/patient_care_providers.dart';
+import 'package:dr_ai_app/features/patient/domain/patient_care_data.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -120,6 +121,43 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Quick Access'), findsOneWidget);
     expect(find.text('Dr. Avery Demo'), findsWidgets);
+  });
+
+  testWidgets('invited registration routes a new patient to onboarding', (
+    tester,
+  ) async {
+    setViewport(tester, const Size(412, 917));
+    final repository = FakeDrAiRepository(
+      dashboard: const DashboardData(
+        role: AppRole.patient,
+        data: <String, Object>{},
+      ),
+    );
+    await pumpApp(tester, repository);
+
+    await tester.tap(find.byKey(const Key('auth-mode-toggle')));
+    await tester.pumpAndSettle();
+    expect(find.text('Create your Dr. AI account'), findsOneWidget);
+    expect(find.byKey(const Key('register-role-selector')), findsOneWidget);
+
+    await tester.enterText(
+      find.byKey(const Key('email-field')),
+      'new.patient@example.com',
+    );
+    await tester.enterText(
+      find.byKey(const Key('password-field')),
+      'test-only patient password',
+    );
+    await tester.enterText(
+      find.byKey(const Key('invite-code-field')),
+      'patient-invite-code',
+    );
+    await tester.tap(find.byKey(const Key('login-button')));
+    await tester.pumpAndSettle();
+
+    expect(repository.registerCalled, isTrue);
+    expect(find.byKey(const Key('patient-onboarding-code')), findsOneWidget);
+    expect(find.textContaining('Share this patient code'), findsOneWidget);
   });
 
   testWidgets('login displays the standardized safe API error', (tester) async {
@@ -419,6 +457,7 @@ void main() {
     await tester.tap(find.text('Patient Management'));
     await tester.pumpAndSettle();
     expect(find.text('Patient Management'), findsWidgets);
+    expect(find.text('Connect patient by code'), findsOneWidget);
     expect(
       find.byKey(const Key('patient-row-SYN-PATIENT-001')),
       findsOneWidget,
@@ -721,6 +760,33 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('doctor can connect a from-zero patient by code', (tester) async {
+    setViewport(tester, const Size(1280, 832));
+    final repository = FakeDrAiRepository(
+      restoredSession: doctorSession,
+      patientList: const PatientListData(items: <PatientSummary>[]),
+    );
+    await pumpApp(tester, repository);
+
+    await tester.tap(find.text('Patient Management'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('patient-list-empty')), findsOneWidget);
+
+    await tester.enterText(
+      find.byKey(const Key('patient-connect-code-field')),
+      'SYN-PATIENT-001',
+    );
+    await tester.tap(find.byKey(const Key('patient-connect-button')));
+    await tester.pumpAndSettle();
+
+    expect(repository.patientConnected, isTrue);
+    expect(find.byKey(const Key('patient-connect-success')), findsOneWidget);
+    expect(
+      find.byKey(const Key('patient-row-SYN-PATIENT-001')),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('assessment failure preserves form state and recovers on retry', (
     tester,
   ) async {
@@ -831,6 +897,33 @@ void main() {
     expect(find.textContaining('Refill reminder'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'fresh patient dashboard shows onboarding code without seed data',
+    (tester) async {
+      setViewport(tester, const Size(412, 917));
+      await pumpApp(
+        tester,
+        FakeDrAiRepository(
+          restoredSession: patientSession,
+          loginSession: patientSession,
+          dashboard: const DashboardData(
+            role: AppRole.patient,
+            data: <String, Object>{},
+          ),
+        ),
+      );
+
+      expect(find.byKey(const Key('patient-onboarding-list')), findsOneWidget);
+      expect(find.byKey(const Key('patient-onboarding-code')), findsOneWidget);
+      expect(
+        find.textContaining('Patient code: SYN-PATIENT-001'),
+        findsWidgets,
+      );
+      expect(find.textContaining('Share this patient code'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('patient can complete a Today recovery task', (tester) async {
     setViewport(tester, const Size(412, 917));

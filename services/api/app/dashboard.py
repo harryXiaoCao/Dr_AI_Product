@@ -95,6 +95,7 @@ from app.schemas import (
     PatientAllergyRequest,
     PatientAllergyResponse,
     PatientCareBundleResponse,
+    PatientConnectRequest,
     PatientDemographicsResponse,
     PatientDemographicsUpdateRequest,
     PatientListResponse,
@@ -1699,6 +1700,61 @@ def assigned_patients(
             for profile in profiles
         ]
     )
+
+
+@router.post("/patients/connect", response_model=PatientProfileResponse)
+def connect_patient_by_code(
+    request: PatientConnectRequest,
+    user: CurrentUser,
+    db: DbSession,
+) -> PatientProfileResponse:
+    if user.role != UserRole.doctor or user.doctor_profile is None:
+        raise _neutral_not_found()
+    patient_code = request.patient_code.strip()
+    profile = db.scalar(
+        select(PatientProfile).where(
+            func.lower(PatientProfile.synthetic_identifier) == patient_code.lower()
+        )
+    )
+    if profile is None:
+        raise _neutral_not_found()
+    relationship = db.scalar(
+        select(CareRelationship).where(
+            CareRelationship.doctor_id == user.doctor_profile.id,
+            CareRelationship.patient_id == profile.id,
+        )
+    )
+    created = relationship is None
+    reactivated = False
+    if relationship is None:
+        relationship = CareRelationship(
+            doctor_id=user.doctor_profile.id,
+            patient_id=profile.id,
+            is_active=True,
+        )
+        db.add(relationship)
+        db.flush()
+    elif not relationship.is_active:
+        relationship.is_active = True
+        relationship.revoked_at = None
+        reactivated = True
+    _record_audit_event(
+        db,
+        actor_user_id=user.id,
+        patient_id=profile.id,
+        event_type="care_relationship_connected",
+        resource_type="care_relationship",
+        resource_id=relationship.id,
+        metadata={
+            "actor_role": user.role.value,
+            "created": created,
+            "reactivated": reactivated,
+            "patient_code_supplied": True,
+        },
+    )
+    db.commit()
+    db.refresh(profile)
+    return _patient_response(profile)
 
 
 @router.get("/patients/{patient_id}", response_model=PatientProfileResponse)

@@ -37,12 +37,11 @@ class _PatientDashboard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final care = ref.watch(ownPatientCareProvider);
     if (data.data.isEmpty) {
-      return const Center(
-        child: Text(
-          'No synthetic dashboard data is available.',
-          key: Key('patient-empty'),
-        ),
+      return _PatientOnboardingDashboard(
+        care: care,
+        onRetry: () => ref.invalidate(ownPatientCareProvider),
       );
     }
     final recoveryDays = List<Map<String, dynamic>>.from(
@@ -58,7 +57,6 @@ class _PatientDashboard extends ConsumerWidget {
     );
     final hasRecords = (data.data['medical_records'] as List).isNotEmpty;
     final hasImages = (data.data['imaging_results'] as List).isNotEmpty;
-    final care = ref.watch(ownPatientCareProvider);
     final today = ref.watch(patientTodayProvider);
     final notifications = ref.watch(medicationNotificationShellProvider);
     final consultations = ref.watch(consultationListProvider);
@@ -198,6 +196,131 @@ class _PatientDashboard extends ConsumerWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _PatientOnboardingDashboard extends StatelessWidget {
+  const _PatientOnboardingDashboard({
+    required this.care,
+    required this.onRetry,
+  });
+
+  final AsyncValue<PatientCareBundle> care;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: DrAiColors.brandSoft,
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 640),
+          child: ListView(
+            key: const Key('patient-onboarding-list'),
+            padding: const EdgeInsets.all(DrAiSpacing.md),
+            children: <Widget>[
+              _PatientOnboardingPanel(
+                title: 'Start your care workspace',
+                child: care.when(
+                  loading: () => const DashboardLoadingView(
+                    label: 'Loading your patient code',
+                  ),
+                  error: (error, stackTrace) => DashboardErrorView(
+                    message: 'Unable to load your profile. Try again.',
+                    onRetry: onRetry,
+                  ),
+                  data: (bundle) => Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      const Text(
+                        'Share this patient code with your doctor so they can connect your account.',
+                        style: TextStyle(color: DrAiColors.mutedInk),
+                      ),
+                      const SizedBox(height: DrAiSpacing.sm),
+                      SelectableText(
+                        bundle.patient.syntheticIdentifier,
+                        key: const Key('patient-onboarding-code'),
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.headlineSmall
+                            ?.copyWith(
+                              color: DrAiColors.brand,
+                              fontWeight: FontWeight.w800,
+                            ),
+                      ),
+                      const SizedBox(height: DrAiSpacing.sm),
+                      Text(
+                        _patientDemographicsLine(bundle.patient),
+                        key: const Key('patient-onboarding-profile-line'),
+                      ),
+                      const SizedBox(height: DrAiSpacing.xs),
+                      Text(
+                        _patientHistorySummary(bundle),
+                        key: const Key('patient-onboarding-history-line'),
+                      ),
+                      const SizedBox(height: DrAiSpacing.sm),
+                      const Text(
+                        'After your doctor connects this code, they can create a Clinical Event and start prescriptions, imaging, recovery plans, and consultation activity from a clean workspace.',
+                        style: TextStyle(
+                          color: DrAiColors.mutedInk,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: DrAiSpacing.md),
+              SizedBox(
+                height: 340,
+                child: _PatientSelfCareCard(care: care, onRetry: onRetry),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PatientOnboardingPanel extends StatelessWidget {
+  const _PatientOnboardingPanel({required this.title, required this.child});
+
+  final String title;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: DrAiColors.white,
+        borderRadius: BorderRadius.circular(DrAiRadii.md),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Container(
+            height: 40,
+            alignment: Alignment.center,
+            decoration: const BoxDecoration(
+              color: DrAiColors.brand,
+              borderRadius: BorderRadius.vertical(
+                top: Radius.circular(DrAiRadii.md),
+              ),
+            ),
+            child: Text(
+              title,
+              style: const TextStyle(
+                color: DrAiColors.white,
+                fontSize: 16,
+                height: 1.4,
+              ),
+            ),
+          ),
+          Padding(padding: const EdgeInsets.all(DrAiSpacing.md), child: child),
+        ],
       ),
     );
   }
@@ -589,7 +712,7 @@ class _PatientSelfCareCard extends StatelessWidget {
               style: const TextStyle(fontWeight: FontWeight.w700),
             ),
             Text(
-              bundle.patient.syntheticIdentifier,
+              'Patient code: ${bundle.patient.syntheticIdentifier}',
               style: const TextStyle(color: DrAiColors.brand, fontSize: 12),
             ),
             const SizedBox(height: DrAiSpacing.xs),

@@ -1,3 +1,4 @@
+import 'package:dr_ai_app/app/routing/app_role.dart';
 import 'package:dr_ai_app/design_system/dr_ai_tokens.dart';
 import 'package:dr_ai_app/features/auth/application/auth_controller.dart';
 import 'package:dr_ai_app/shared/widgets/brand_mark.dart';
@@ -16,12 +17,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _inviteCodeController = TextEditingController();
   bool _obscurePassword = true;
+  bool _isRegistering = false;
+  AppRole _selectedRole = AppRole.patient;
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _inviteCodeController.dispose();
     super.dispose();
   }
 
@@ -29,9 +34,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (!_formKey.currentState!.validate()) {
       return;
     }
-    await ref
-        .read(authControllerProvider.notifier)
-        .login(_emailController.text, _passwordController.text);
+    final controller = ref.read(authControllerProvider.notifier);
+    if (_isRegistering) {
+      await controller.register(
+        email: _emailController.text,
+        password: _passwordController.text,
+        role: _selectedRole,
+        inviteCode: _inviteCodeController.text,
+      );
+    } else {
+      await controller.login(_emailController.text, _passwordController.text);
+    }
   }
 
   @override
@@ -54,13 +67,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     const DrAiBrandMark(size: 76),
                     const SizedBox(height: DrAiSpacing.md),
                     Text(
-                      'Welcome to Dr. AI',
+                      _isRegistering
+                          ? 'Create your Dr. AI account'
+                          : 'Welcome to Dr. AI',
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.headlineMedium,
                     ),
                     const SizedBox(height: DrAiSpacing.xs),
-                    const Text(
-                      'Sign in to your invited beta account.',
+                    Text(
+                      _isRegistering
+                          ? 'Use an invite code to start from an empty account.'
+                          : 'Sign in to your invited account.',
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: DrAiSpacing.lg),
@@ -104,10 +121,61 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ),
                         ),
                       ),
-                      validator: (value) =>
-                          (value ?? '').isEmpty ? 'Enter your password.' : null,
+                      validator: (value) {
+                        final password = value ?? '';
+                        if (password.isEmpty) {
+                          return 'Enter your password.';
+                        }
+                        if (_isRegistering && password.length < 12) {
+                          return 'Use at least 12 characters.';
+                        }
+                        return null;
+                      },
                       onFieldSubmitted: (_) => _submit(),
                     ),
+                    if (_isRegistering) ...<Widget>[
+                      const SizedBox(height: DrAiSpacing.md),
+                      SegmentedButton<AppRole>(
+                        key: const Key('register-role-selector'),
+                        segments: const <ButtonSegment<AppRole>>[
+                          ButtonSegment<AppRole>(
+                            value: AppRole.patient,
+                            icon: Icon(Icons.person_outline),
+                            label: Text('Patient'),
+                          ),
+                          ButtonSegment<AppRole>(
+                            value: AppRole.doctor,
+                            icon: Icon(Icons.medical_services_outlined),
+                            label: Text('Doctor'),
+                          ),
+                        ],
+                        selected: <AppRole>{_selectedRole},
+                        onSelectionChanged: (roles) =>
+                            setState(() => _selectedRole = roles.first),
+                      ),
+                      const SizedBox(height: DrAiSpacing.md),
+                      TextFormField(
+                        key: const Key('invite-code-field'),
+                        controller: _inviteCodeController,
+                        autofillHints: const <String>[
+                          AutofillHints.oneTimeCode,
+                        ],
+                        decoration: const InputDecoration(
+                          labelText: 'Invite code',
+                          helperText:
+                              'Doctor access remains invite-controlled.',
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (value) {
+                          final invite = value?.trim() ?? '';
+                          if (invite.length < 8) {
+                            return 'Enter your invite code.';
+                          }
+                          return null;
+                        },
+                        onFieldSubmitted: (_) => _submit(),
+                      ),
+                    ],
                     if (noticeMessage != null) ...<Widget>[
                       const SizedBox(height: DrAiSpacing.md),
                       Semantics(
@@ -143,9 +211,28 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 color: DrAiColors.white,
                               ),
                             )
-                          : const Text('Sign in'),
+                          : Text(_isRegistering ? 'Create account' : 'Sign in'),
                     ),
                     const SizedBox(height: DrAiSpacing.sm),
+                    TextButton.icon(
+                      key: const Key('auth-mode-toggle'),
+                      onPressed: auth.isLoading
+                          ? null
+                          : () => setState(() {
+                              _isRegistering = !_isRegistering;
+                              _formKey.currentState?.reset();
+                            }),
+                      icon: Icon(
+                        _isRegistering
+                            ? Icons.login_outlined
+                            : Icons.person_add_alt_1_outlined,
+                      ),
+                      label: Text(
+                        _isRegistering
+                            ? 'Already have an account? Sign in'
+                            : 'Create invited account',
+                      ),
+                    ),
                     TextButton(
                       onPressed: null,
                       child: const Text('Password reset unavailable in Week 1'),

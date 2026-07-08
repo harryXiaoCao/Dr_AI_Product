@@ -118,6 +118,11 @@ external account actions remain outside this Phase 2 closure.
 - Extended the Flutter patient dashboard with a compact Clinical Event update
   submission panel that lets patients report an update without touching
   doctor-owned diagnosis fields.
+- Added Phase 2 manual-testing onboarding cleanup so testers can create
+  invited doctor/patient accounts from zero in Flutter, see the patient's
+  generated patient code, connect that patient from doctor Patient Management,
+  and then create Clinical Events and care records without relying on the
+  seeded demo relationship.
 
 ## RBAC And Data Boundary
 
@@ -158,6 +163,9 @@ external account actions remain outside this Phase 2 closure.
 - Patients can submit updates only to their own Clinical Events. Patient
   updates are separate timeline entries and do not mutate doctor diagnosis
   summaries or diagnosis records.
+- Doctors can connect a patient by patient-shared code. This creates or
+  reactivates only that doctor-patient care relationship; wrong-role and
+  invalid-code probes keep returning neutral `404 not_found`.
 - Event-linked resource writes validate that `clinical_event_id` belongs to the
   same authorized patient; wrong-role and cross-patient probes keep returning
   neutral `404 not_found`.
@@ -205,6 +213,9 @@ external account actions remain outside this Phase 2 closure.
 - Patient Clinical Event update audit metadata stores actor role, event ID,
   update type, and a summary-presence boolean only. It does not copy the
   patient's update text or alter doctor-owned diagnosis content.
+- Patient-code connection audit metadata stores actor role, created/reactivated
+  booleans, and a code-supplied boolean only. It does not copy the patient code
+  into audit metadata.
 
 ## Remaining Phase 2 Workflow Clarification Work
 
@@ -223,9 +234,11 @@ external account actions remain outside this Phase 2 closure.
   gate using phone-number-based messaging, with native push, native local
   notifications, or email added only if a later product/release decision needs
   them.
-- Controlled invite onboarding and account registration remain in the
-  authentication/account lifecycle scope; Phase 2 does not create a separate
-  doctor-side patient-account creation workflow.
+- Seeded demo accounts and relationships remain optional staging smoke and
+  regression scaffolding. Manual product testing should use invited sign-up,
+  patient-code connection, and user-created records from zero. A future
+  staging-only database reset can remove accumulated synthetic inspection data,
+  but it should be confirmed separately because it is destructive.
 - Real patient data, clinical claims, real model inference, specialist/admin
   workflows, clinic operations, billing, analytics, deployment, pushes, tags,
   pull requests, and external account actions remain out of Phase 2.
