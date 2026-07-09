@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.database import engine
-from app.models import RefreshSession, User
+from app.models import DoctorProfile, PatientProfile, RefreshSession, User
 from app.security import (
     create_access_token,
     hash_password,
@@ -23,32 +23,93 @@ def test_passwords_use_argon2id() -> None:
     assert not verify_password("different test passphrase", encoded)
 
 
-def test_invited_registration_requires_the_role_invite(client: TestClient, settings) -> None:
-    denied = client.post(
+def test_registration_accepts_phone_required_and_optional_email(client: TestClient) -> None:
+    missing_phone = client.post(
         "/api/v1/auth/register",
         json={
             "email": "new.patient@example.com",
             "password": "generated test passphrase",
             "role": "patient",
-            "invite_code": "incorrect-invite",
+            "verification_code": "123456",
+            "terms_accepted": True,
         },
     )
-    assert denied.status_code == 403
-    assert denied.json()["error"]["code"] == "forbidden"
+    assert missing_phone.status_code == 422
 
     created = client.post(
         "/api/v1/auth/register",
         json={
             "email": "new.patient@example.com",
+            "phone_number": "+8613800099999",
             "password": "generated test passphrase",
             "role": "patient",
-            "invite_code": settings.patient_invite_code.get_secret_value(),
+            "verification_code": "123456",
+            "terms_accepted": True,
+            "patient_profile": {
+                "display_name": "Riley Patient",
+                "contact_phone": "+8613800099999",
+                "country": "China",
+                "province": "Guangdong",
+                "city": "Shenzhen",
+                "home_address": "100 Recovery Road",
+            },
         },
     )
     assert created.status_code == 201
     assert created.json()["user"]["role"] == "patient"
+    assert created.json()["user"]["phone_number"] == "+8613800099999"
     assert created.json()["access_token"]
     assert created.json()["refresh_token"]
+    with Session(engine) as db:
+        profile = db.scalar(
+            select(PatientProfile).where(PatientProfile.display_name == "Riley Patient")
+        )
+        assert profile is not None
+        assert profile.country == "China"
+        assert profile.home_address == "100 Recovery Road"
+
+
+def test_phone_registration_login_and_doctor_hospital_intake(client: TestClient) -> None:
+    created = client.post(
+        "/api/v1/auth/register",
+        json={
+            "phone_number": "+8613800012345",
+            "password": "generated test passphrase",
+            "role": "doctor",
+            "verification_code": "123456",
+            "terms_accepted": True,
+            "doctor_profile": {
+                "display_name": "Dr. Lin Wei",
+                "contact_phone": "+8613800012345",
+                "avatar_url": "data:image/png;base64,ZmFrZQ==",
+                "country": "China",
+                "province": "Guangdong",
+                "city": "Shenzhen",
+                "hospital_name": "Nanshan Care Center",
+                "custom_hospital": True,
+            },
+        },
+    )
+    assert created.status_code == 201
+    assert created.json()["user"]["phone_number"] == "+8613800012345"
+    assert created.json()["user"]["display_name"] == "Dr. Lin Wei"
+    with Session(engine) as db:
+        profile = db.scalar(
+            select(DoctorProfile).where(DoctorProfile.display_name == "Dr. Lin Wei")
+        )
+        assert profile is not None
+        assert profile.avatar_url == "data:image/png;base64,ZmFrZQ=="
+        assert profile.hospital_name == "Nanshan Care Center"
+
+    login_response = client.post(
+        "/api/v1/auth/login",
+        json={
+            "phone_number": "+8613800012345",
+            "password": "generated test passphrase",
+        },
+    )
+    assert login_response.status_code == 200
+    assert login_response.json()["user"]["role"] == "doctor"
 
 
 def test_login_success_failure_and_me(client: TestClient, settings) -> None:

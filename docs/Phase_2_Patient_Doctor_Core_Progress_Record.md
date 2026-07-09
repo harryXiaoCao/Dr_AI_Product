@@ -354,6 +354,34 @@ Inspection URL:
 
 - `https://dr-ai.43.132.169.195.sslip.io`
 
+## Post-Inspection Product Quality Reset
+
+Recorded: 2026-07-09
+
+After staging inspection, Phase 2 should be treated as a technical workflow
+foundation, not as a commercially acceptable product surface. The user-facing
+app still feels like a prototype: weak typography, missing first-class
+patient avatar/profile setup, insufficient patient onboarding, too much
+synthetic/demo language in the product experience, and doctor/patient screens
+that do not yet communicate the calm trust expected from a real healthcare
+application.
+
+This does not invalidate the Phase 2 backend/API/RBAC/audit work, but it does
+change the next step. Phase 3 AI systems should remain blocked until the
+product-quality gate in `Dr_AI_v1.0_Product_Quality_Gate.md` is closed.
+
+Immediate next work:
+
+- audit live staging screenshots as patient and doctor;
+- define a real production visual system and typography direction;
+- implement patient avatar/profile setup and profile editing from the profile
+  entry point;
+- guide first-time patients through profile, medical history, and doctor
+  connection;
+- make doctor empty states and patient connection feel like a product flow;
+- remove normal-flow "synthetic", "demo", "fixture", and "seed" copy from the
+  user experience while preserving concise no-real-data staging warnings.
+
 ## Manual-Testing Onboarding Tencent Staging Redeploy
 
 Recorded: 2026-07-08T23:42:47+08:00

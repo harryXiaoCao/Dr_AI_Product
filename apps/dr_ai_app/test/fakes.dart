@@ -224,10 +224,17 @@ final demoPatientCareBundle = PatientCareBundle(
     relationshipLabel: 'Active synthetic care relationship',
     overview:
         'SYN-PATIENT-001 is synthetic demonstration content for the Dr. AI v1.0 invited beta.',
+    birthDate: '1988-01-02',
     birthYear: 1988,
     sex: 'not specified',
+    gender: 'not specified',
+    contactPhone: '+8613800000000',
+    emergencyContactName: 'Casey Cao',
+    emergencyContactPhone: '+8613800000001',
     preferredLanguage: 'English',
     contactPreference: 'in-app',
+    avatarUrl: null,
+    medicalHistorySetupCompleted: true,
   ),
   clinicalEvents: <ClinicalEventItem>[demoClinicalEvent],
   clinicalEventUpdates: <ClinicalEventUpdateItem>[
@@ -390,6 +397,30 @@ final demoPatientCareBundle = PatientCareBundle(
       createdAt: DateTime(2026, 7, 5),
     ),
   ],
+);
+
+final incompleteOnboardingPatientCareBundle = _copyCareBundle(
+  demoPatientCareBundle,
+  patient: const PatientProfile(
+    patientId: 'patient-profile-test-id',
+    displayName: 'New Patient',
+    syntheticIdentifier: 'SYN-PATIENT-001',
+    safetyLabel:
+        'Synthetic demonstration data only. Do not enter real patient data.',
+    relationshipLabel: 'No doctor connected yet',
+    overview: 'Complete your profile so a doctor can recognize your account.',
+    birthDate: null,
+    birthYear: null,
+    sex: null,
+    gender: null,
+    contactPhone: null,
+    emergencyContactName: null,
+    emergencyContactPhone: null,
+    preferredLanguage: null,
+    contactPreference: null,
+    avatarUrl: null,
+    medicalHistorySetupCompleted: false,
+  ),
 );
 
 final demoPresign = DemoAssetPresign(
@@ -659,6 +690,10 @@ class FakeDrAiRepository implements DrAiRepository {
   Completer<AuthSession>? loginCompleter;
   bool logoutCalled = false;
   bool registerCalled = false;
+  bool patientProfileUpdated = false;
+  bool patientAllergyCreated = false;
+  bool patientMedicalRecordCreated = false;
+  bool chronicDiseaseCreated = false;
   bool patientConnected = false;
   bool clinicalEventSaved = false;
   bool clinicalEventUpdateSubmitted = false;
@@ -689,10 +724,14 @@ class FakeDrAiRepository implements DrAiRepository {
 
   @override
   Future<AuthSession> register({
+    required String phoneNumber,
     required String email,
     required String password,
     required AppRole role,
-    required String inviteCode,
+    required String verificationCode,
+    required bool termsAccepted,
+    PatientSignupProfile? patientProfile,
+    DoctorSignupProfile? doctorProfile,
   }) async {
     registerCalled = true;
     return AuthSession(
@@ -700,7 +739,7 @@ class FakeDrAiRepository implements DrAiRepository {
       refreshToken: 'registered-refresh-token',
       user: SessionUser(
         id: 'registered-user-id',
-        email: email,
+        email: email.isEmpty ? phoneNumber : email,
         role: role,
         displayName: role == AppRole.doctor
             ? 'Invited Doctor'
@@ -771,6 +810,117 @@ class FakeDrAiRepository implements DrAiRepository {
       throw patientCareError!;
     }
     return patientCareBundle;
+  }
+
+  @override
+  Future<PatientProfile> updateOwnPatientProfile({
+    required String displayName,
+    required String birthDate,
+    required String gender,
+    required String contactPhone,
+    required String emergencyContactName,
+    required String emergencyContactPhone,
+    required String preferredLanguage,
+    required String contactPreference,
+    required String avatarUrl,
+    required bool medicalHistorySetupCompleted,
+  }) async {
+    patientProfileUpdated = true;
+    final updated = PatientProfile(
+      patientId: patientCareBundle.patient.patientId,
+      displayName: displayName,
+      syntheticIdentifier: patientCareBundle.patient.syntheticIdentifier,
+      safetyLabel: patientCareBundle.patient.safetyLabel,
+      relationshipLabel: patientCareBundle.patient.relationshipLabel,
+      overview: patientCareBundle.patient.overview,
+      birthDate: birthDate.isEmpty ? null : birthDate,
+      birthYear: birthDate.length >= 4
+          ? int.tryParse(birthDate.substring(0, 4))
+          : null,
+      sex: gender,
+      gender: gender,
+      contactPhone: contactPhone.isEmpty ? null : contactPhone,
+      emergencyContactName: emergencyContactName.isEmpty
+          ? null
+          : emergencyContactName,
+      emergencyContactPhone: emergencyContactPhone.isEmpty
+          ? null
+          : emergencyContactPhone,
+      preferredLanguage: preferredLanguage,
+      contactPreference: contactPreference,
+      avatarUrl: avatarUrl.isEmpty ? null : avatarUrl,
+      medicalHistorySetupCompleted: medicalHistorySetupCompleted,
+    );
+    patientCareBundle = _copyCareBundle(patientCareBundle, patient: updated);
+    return updated;
+  }
+
+  @override
+  Future<PatientAllergyItem> createPatientAllergy({
+    required String patientId,
+    required String label,
+    required String reaction,
+    required String severity,
+  }) async {
+    patientAllergyCreated = true;
+    final allergy = PatientAllergyItem(
+      id: 'created-allergy-id',
+      label: label,
+      reaction: reaction.isEmpty ? null : reaction,
+      severity: severity,
+      status: 'active',
+    );
+    patientCareBundle = _copyCareBundle(
+      patientCareBundle,
+      allergies: <PatientAllergyItem>[allergy, ...patientCareBundle.allergies],
+    );
+    return allergy;
+  }
+
+  @override
+  Future<MedicalRecordItem> createPatientMedicalRecord({
+    required String patientId,
+    required String title,
+    required String category,
+    required String summary,
+  }) async {
+    patientMedicalRecordCreated = true;
+    final record = MedicalRecordItem(
+      id: 'created-record-id',
+      title: title,
+      category: category,
+      summary: summary,
+      recordedAt: DateTime.parse('2026-07-09T00:00:00Z'),
+    );
+    patientCareBundle = _copyCareBundle(
+      patientCareBundle,
+      records: <MedicalRecordItem>[record, ...patientCareBundle.records],
+    );
+    return record;
+  }
+
+  @override
+  Future<ChronicDiseaseItem> createChronicDisease({
+    required String patientId,
+    required String name,
+    required String notes,
+  }) async {
+    chronicDiseaseCreated = true;
+    final condition = ChronicDiseaseItem(
+      id: 'created-condition-id',
+      name: name,
+      status: 'active',
+      diagnosedOn: null,
+      notes: notes.isEmpty ? null : notes,
+    );
+    patientCareBundle = _copyCareBundle(
+      patientCareBundle,
+      chronicDiseases: <ChronicDiseaseItem>[
+        condition,
+        ...patientCareBundle.chronicDiseases,
+      ],
+    );
+    return condition;
   }
 
   @override
@@ -1449,26 +1599,30 @@ class FakeDrAiRepository implements DrAiRepository {
 
 PatientCareBundle _copyCareBundle(
   PatientCareBundle bundle, {
+  PatientProfile? patient,
   List<MedicationItem>? medications,
   List<ClinicalEventItem>? clinicalEvents,
   List<ClinicalEventUpdateItem>? clinicalEventUpdates,
   List<MedicalHistoryReviewItem>? medicalHistoryReviews,
+  List<PatientAllergyItem>? allergies,
+  List<ChronicDiseaseItem>? chronicDiseases,
+  List<MedicalRecordItem>? records,
   List<MedicalImagingAsset>? imagingAssets,
   List<PrescriptionItem>? prescriptions,
   List<MedicationReminderItem>? medicationReminders,
   List<RecoveryPlanData>? recoveryPlans,
 }) {
   return PatientCareBundle(
-    patient: bundle.patient,
+    patient: patient ?? bundle.patient,
     clinicalEvents: clinicalEvents ?? bundle.clinicalEvents,
     clinicalEventUpdates: clinicalEventUpdates ?? bundle.clinicalEventUpdates,
     medicalHistoryReviews:
         medicalHistoryReviews ?? bundle.medicalHistoryReviews,
-    allergies: bundle.allergies,
-    chronicDiseases: bundle.chronicDiseases,
+    allergies: allergies ?? bundle.allergies,
+    chronicDiseases: chronicDiseases ?? bundle.chronicDiseases,
     visitHistory: bundle.visitHistory,
     diagnoses: bundle.diagnoses,
-    records: bundle.records,
+    records: records ?? bundle.records,
     imagingAssets: imagingAssets ?? bundle.imagingAssets,
     medications: medications ?? bundle.medications,
     prescriptions: prescriptions ?? bundle.prescriptions,

@@ -1,4 +1,5 @@
 import 'package:dr_ai_app/app/routing/app_role.dart';
+import 'package:dr_ai_app/features/auth/presentation/legal_placeholder_screen.dart';
 import 'package:dr_ai_app/features/auth/presentation/login_screen.dart';
 import 'package:dr_ai_app/features/beta/presentation/beta_support_screen.dart';
 import 'package:dr_ai_app/features/doctor/presentation/doctor_dashboard_screen.dart';
@@ -22,14 +23,19 @@ GoRouter createRouter(AppRole? role, {String? initialLocation}) {
       if (path == '/') {
         return role == null ? '/login' : homePath;
       }
+      if (path == '/beta-support') {
+        return '/privacy';
+      }
+      final publicLegalPath =
+          path == '/privacy' || path == '/terms' || path == '/privacy-policy';
       if (role == null) {
-        return path == '/login' || path == '/beta-support' ? null : '/login';
+        return path == '/login' || publicLegalPath ? null : '/login';
       }
       if (path == '/login') {
         return homePath;
       }
       if (role == AppRole.unsupported) {
-        return path == '/unauthorized' || path == '/beta-support'
+        return path == '/unauthorized' || publicLegalPath
             ? null
             : '/unauthorized';
       }
@@ -58,8 +64,18 @@ GoRouter createRouter(AppRole? role, {String? initialLocation}) {
         builder: (context, state) => const PatientDashboardScreen(),
       ),
       GoRoute(
-        path: '/beta-support',
+        path: '/privacy',
         builder: (context, state) => const BetaSupportScreen(),
+      ),
+      GoRoute(
+        path: '/terms',
+        builder: (context, state) =>
+            const LegalPlaceholderScreen(title: 'Terms of Service'),
+      ),
+      GoRoute(
+        path: '/privacy-policy',
+        builder: (context, state) =>
+            const LegalPlaceholderScreen(title: 'Privacy Policy'),
       ),
       GoRoute(
         path: '/unauthorized',

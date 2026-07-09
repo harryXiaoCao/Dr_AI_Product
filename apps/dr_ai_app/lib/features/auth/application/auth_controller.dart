@@ -55,20 +55,28 @@ class AuthController extends AsyncNotifier<AuthState> {
   }
 
   Future<void> register({
+    required String phoneNumber,
     required String email,
     required String password,
     required AppRole role,
-    required String inviteCode,
+    required String verificationCode,
+    required bool termsAccepted,
+    PatientSignupProfile? patientProfile,
+    DoctorSignupProfile? doctorProfile,
   }) async {
     state = const AsyncLoading();
     try {
       final session = await ref
           .read(repositoryProvider)
           .register(
+            phoneNumber: phoneNumber,
             email: email,
             password: password,
             role: role,
-            inviteCode: inviteCode,
+            verificationCode: verificationCode,
+            termsAccepted: termsAccepted,
+            patientProfile: patientProfile,
+            doctorProfile: doctorProfile,
           );
       state = AsyncData(AuthState.signedIn(session.user));
     } on ApiError catch (error) {
@@ -115,13 +123,13 @@ String _loginErrorMessage(ApiError error) {
 
 String _registerErrorMessage(ApiError error) {
   if (error.code == 'forbidden') {
-    return 'This invite code is not available for the selected role.';
+    return 'Registration is not available for the selected role.';
   }
   if (error.code == 'conflict') {
-    return 'An account already exists for this email.';
+    return 'An account already exists for this contact.';
   }
   if (error.code == 'validation_failed') {
-    return 'Check the email, password, role, and invite code.';
+    return 'Check the phone number, email, password, role, and verification code.';
   }
   if (error.code == 'service_unavailable') {
     return 'Unable to reach Dr. AI. Check your connection and try again.';

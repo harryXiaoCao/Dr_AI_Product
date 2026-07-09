@@ -31,8 +31,7 @@ Use synthetic content only. Do not submit real patient data.
 
 PostgreSQL 17 is the development and CI database. Create `dr_ai` and
 `dr_ai_test`, copy `.env.example` to the ignored `.env`, and generate unique
-local values for the JWT secret, invite codes, and three synthetic seed
-passwords.
+local values for the JWT secret and three synthetic seed passwords.
 
 ```bash
 uv sync --locked --dev

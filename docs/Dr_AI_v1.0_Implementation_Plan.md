@@ -1,8 +1,8 @@
 ---
 title: "Dr. AI v1.0 Implementation Plan"
-status: "Beta/demo MVP foundation exists; production/commercial v1.0 Phase 0 planning, Phase 1 data foundation, and Phase 2 patient/doctor core workflows are complete locally"
+status: "Beta/demo MVP foundation exists; Phase 2 patient/doctor core workflows are implemented, but a production product-quality gate now blocks Phase 3"
 created: "2026-07-02"
-last_updated: "2026-07-08T14:08:00+08:00"
+last_updated: "2026-07-09T00:09:07+08:00"
 owner: "Harry Cao"
 delivery_window: "Production v1.0 phase after completed beta foundation; implementation schedule to be estimated after Phase 1 planning starts"
 release_target: "Production/commercial v1.0 after beta foundation; invited beta remains historical milestone"
@@ -33,6 +33,8 @@ This file is the durable source of truth for implementing Dr. AI v1.0. Future ch
 | 2026-07-08 | Treat doctor Patient Management as a patient workspace, not a long mixed dashboard. | Phase 2 made the doctor/patient loop functional, but the doctor detail page now needs stable information architecture: assigned-patient navigation, selected-patient summary, and focused subsections for medical history, medications, prescriptions, reminders, recovery plans, imaging, notes, and activity. |
 | 2026-07-08 | Add a production localization foundation before broad UI expansion. | The commercial product targets Chinese customers and must support at least Simplified Chinese and English with real Flutter localization, Chinese-first copy review, locale-aware formatting, and no automatic translation of user-entered clinical content. |
 | 2026-07-08 | Center Phase 2 patient/doctor workflows on clinical events rather than isolated widgets. | Patient profile and medical history, doctor diagnoses, prescriptions, recovery plans, imaging findings, notes, and specialist consultation become understandable only when they link to a coherent medical problem/care episode. |
+| 2026-07-09 | Add a production product-quality gate before Phase 3. | The Phase 2 data/workflow foundation is useful, but the current visible app still feels like a prototype. Commercial readiness now requires a real-app UX pass before AI work resumes. |
+| 2026-07-09 | Treat aesthetic quality as a functional healthcare requirement. | Typography, spacing, profile/avatar setup, empty states, and removal of demo/test language affect trust and must be designed deliberately, not patched after feature work. |
 
 ## Current Re-scope: Production v1.0
 
@@ -41,6 +43,14 @@ The 2026-07-02 approved one-month plan is now a preserved historical beta plan, 
 Production/commercial v1.0 is still in progress. v1.0 is complete only when the visible product surfaces are functional production workflows backed by real state, not static cards, demo-only summaries, or partial flows. Existing PRD functionality belongs inside v1.0 production development unless this document explicitly marks it as safety/regulatory gated, technical stretch-gated, or not v1.0.
 
 Current planning rule: every visible doctor, patient, specialist, and admin dashboard card, button, route, and module must either be implemented to the agreed v1.0 level or intentionally removed/disabled in production-facing UI. Placeholder cards must not remain in a production release.
+
+Immediate product-quality rule: Phase 3 AI systems must not start until
+`Dr_AI_v1.0_Product_Quality_Gate.md` is closed. The current patient/doctor
+workflow is technically wired, but it does not yet look or feel like a real
+commercial healthcare application. Before adding AI, the app needs a deliberate
+real-app UX pass covering visual quality, typography, patient avatar/profile
+setup, first-use onboarding, useful empty states, and removal of normal-flow
+synthetic/demo wording.
 
 ### Production v1.0 Product Boundary
 
@@ -143,7 +153,7 @@ Current planning rule: every visible doctor, patient, specialist, and admin dash
 - Audit event read/search.
 - System status.
 - Support, deletion, and feedback request queue.
-- Configuration for invite codes, roles, and clinic metadata.
+- Configuration for registration policy, roles, and clinic metadata.
 
 #### M. Commercial readiness
 
@@ -196,6 +206,35 @@ Closure evidence:
 
 - `docs/Phase_0_Production_v1_Surface_Audit.md`
 - `docs/Phase_0_Production_v1_Closure_Record.md`
+
+### Production Product-Quality Gate Before Phase 3
+
+Phase 2 is complete only in the narrow sense that the patient/doctor workflow
+foundation exists. It is not proof that the product is commercially convincing.
+The next required work is documented in
+`docs/Dr_AI_v1.0_Product_Quality_Gate.md`.
+
+This gate is intentionally placed before Phase 3 because AI will not rescue a
+weak product surface. A real commercial healthcare app must first make the
+ordinary user journey feel credible: sign up, set up identity, complete profile
+and medical history, connect doctor and patient, start a Clinical Event, and
+understand what happens next.
+
+Blocking standards:
+
+- The patient avatar/profile entry point must exist and open profile editing.
+- Patient profile setup must include display name, birth date or age,
+  sex/gender, contact number, emergency contact, preferred language, and
+  contact preference.
+- The patient dashboard must guide a new patient through profile/history setup
+  and doctor connection instead of feeling like an empty test shell.
+- Doctor Patient Management must feel like a calm clinical workspace, not a
+  stack of exposed CRUD panels.
+- User-facing normal flows must not be dominated by "synthetic", "demo",
+  "fixture", or "seed" language. Staging/no-real-data warnings should be clear
+  but should not make every screen feel fake.
+- Typography, spacing, color, avatar treatment, and visual hierarchy must be
+  deliberately designed and screenshot-reviewed on mobile and desktop.
 
 ### Post-Phase-2 Product UX and Localization Hardening Decisions
 
@@ -652,7 +691,34 @@ Current implementation status:
     - [x] Keep seeded demo data optional for staging smoke/regression only;
       manual workflow testing should start from registered accounts and
       user-created records.
+- [ ] Phase 2.5: Product quality and first-use readiness gate
+  - [ ] Audit staging as a real patient and doctor with screenshots.
+  - [ ] Define a production typography and visual-system direction for English
+    and Simplified Chinese.
+  - [ ] Replace default-looking/generic typography, weak spacing, and crowded
+    hierarchy in the patient and doctor surfaces.
+  - [ ] Add a real patient avatar/profile entry point that opens profile
+    editing.
+  - [ ] Make patient profile setup a guided first-use flow: avatar, display
+    name, birth date or age, sex/gender, contact number, emergency contact,
+    preferred language, and contact preference.
+  - [ ] Add a patient medical-history setup entry point during or immediately
+    after onboarding.
+  - [ ] Rework fresh patient dashboard empty states so the next action is
+    obvious without relying on seed/demo context.
+  - [ ] Rework doctor no-patient and selected-patient empty states around
+    patient-code connection and Clinical Event creation.
+  - [ ] Remove normal-flow "synthetic", "demo", "fixture", and "seed" wording
+    from user-facing product surfaces; keep staging/no-real-data warnings
+    concise and environment-level.
+  - [ ] Keep seeded data available only for regression/smoke checks, not as the
+    manual testing default.
+  - [ ] Verify the app by screenshots and first-use walkthroughs, not only by
+    endpoint coverage and widget tests.
+  - [ ] Update docs with product-quality evidence before opening Phase 3.
 - [ ] Phase 3: AI systems
+  - [ ] Do not start until Phase 2.5 is complete and the product-quality gate
+    is explicitly closed.
   - [ ] Define stable AI assessment request/response contract.
   - [ ] Implement diagnostic input collection.
   - [ ] Add CT/image reference selection.
@@ -1106,7 +1172,7 @@ Add one row whenever implementation status, scope, architecture, or a major deci
 | 2026-07-07 | Complete - Phase 1 production data foundation | Finished the remaining Phase 1 foundation slice without starting Phase 2/4/5 workflows: added route-level RBAC helpers, registered authenticated `/api/v1/support-requests` submission and requester-scoped status endpoints, kept specialist/admin support access fail-closed, persisted support/deletion/feedback queue rows with redacted body storage and audit metadata, added support request create/list/status audit events, and expanded tests for future-role denial, wrong-requester isolation, unsafe-content rejection, seed/demo separation, and no-side-effect admin/specialist probes. No patient/doctor CRUD workflow, clinic-operation workflow, specialist/admin UI, admin queue handling, deployment, push, tag, PR, commit, or external account action was performed. | `services/api/app/support.py`, `services/api/app/rbac.py`, `services/api/app/main.py`, `services/api/app/schemas.py`, `services/api/tests/test_phase1_production_foundation.py`, `docs/Phase_1_Production_Data_Foundation_Record.md`, `docs/Dr_AI_v1.0_API_Contract.md`, `docs/Dr_AI_v1.0_Implementation_Plan.md` | Phase 2 patient/doctor core workflows remain next and must be explicitly requested. Phase 5 still owns specialist/admin UI, audit search, system status, and admin-managed support queue handling. |
 | 2026-07-07 | Complete - Tencent staging redeploy for Phase 1 foundation | After explicit approval, redeployed Tencent same-origin staging so live web/API matches the completed Phase 1 foundation. Built and pushed a sanitized API image on the CVM, deployed immutable digest `hkccr.ccs.tencentyun.com/dr-ai/dr-ai-backend@sha256:d10187ae5178b089581a05b603f77c32ece079341bef7b3a93d8f79c3035af93`, applied Alembic migration `20260707_0006`, confirmed two idempotent synthetic seed runs, rebuilt and installed the Flutter web bundle for `https://dr-ai.43.132.169.195.sslip.io`, validated/recreated Caddy, and verified public health/web routes plus credentialed staging smoke. The new Phase 1 support endpoints passed create/list/status, cross-requester `404`, and unsafe-content `422` staging probes. No production deployment, tester/account/monitoring change, native store upload, tag, push, PR, real patient data, or clinical workflow was performed. | `docs/Phase_1_Production_Data_Foundation_Record.md`, `deploy/tencent/staging/README.md`, `scripts/run_staging_smoke.py`, staging URL: <https://dr-ai.43.132.169.195.sslip.io> | Staging is current for Phase 1. Begin Phase 2 only when explicitly requested; keep Phase 5 admin support queue handling and specialist/admin UI deferred. |
 | 2026-07-07 | Complete - Phase 2 medication core slice | Implemented the next Phase 2 patient/doctor core slice locally: doctor-owned medication CRUD, prescription CRUD with medication lines, medication reminders, refill reminders, metadata-only in-app queued notification records for active reminders, expanded care-bundle readback, patient own reminder/notification reads, doctor Patient Management medication workflow controls, patient prescription/reminder readback, neutral wrong-role/cross-patient denials, and metadata-only audit/notification assertions. No migration was required because Phase 1 already added prescription, prescription medication, medication reminder, and notification tables. No Phase 3 AI workflow, Phase 4 clinic operations, Phase 5 specialist/admin UI, deployment, push, tag, PR, external notification service, real patient data, or clinical claim was added. | `services/api/app/dashboard.py`, `services/api/app/schemas.py`, `services/api/app/models.py`, `services/api/tests/test_phase2_patient_doctor_core.py`, `apps/dr_ai_app/lib/features/doctor/presentation/patient_management_screen.dart`, `apps/dr_ai_app/lib/features/patient/`, `apps/dr_ai_app/test/app_test.dart`, `docs/Phase_2_Patient_Doctor_Core_Progress_Record.md`, `docs/Dr_AI_v1.0_API_Contract.md` | Continue Phase 2 only: Tencent COS upload finalization, imaging list/detail/review workflow, production recovery-plan draft/review/approve depth, patient Today production tracking depth, and remaining core workflow tests remain. |
-| 2026-07-08 | Complete - Phase 2 patient/doctor core closure | Closed Phase 2 locally after the existing medical-history, medication, and imaging slices by adding production recovery-plan review metadata, migration `20260708_0009`, doctor-only submit-review/request-changes/approve/activate-compatible/complete transitions, patient Today progress summaries, Flutter doctor review controls, Flutter patient Today progress readback, updated patient dashboard golden evidence, expanded API/docs, and focused RBAC/audit tests. External push/SMS/email/native notification delivery remains gated beyond Phase 2 because it requires credentials, account/service changes, and platform configuration; the Phase 2 safe path remains metadata-only in-app notification records. No Phase 3 AI inference, Phase 4 clinic operations, Phase 5 specialist/admin UI, deployment, push, tag, PR, external account action, real patient data, or clinical claim was added. | `services/api/migrations/versions/20260708_0009_phase2_recovery_plan_review.py`, `services/api/app/models.py`, `services/api/app/schemas.py`, `services/api/app/dashboard.py`, `services/api/tests/test_phase2_patient_doctor_core.py`, `apps/dr_ai_app/lib/features/doctor/presentation/patient_management_screen.dart`, `apps/dr_ai_app/lib/features/patient/`, `apps/dr_ai_app/test/app_test.dart`, `apps/dr_ai_app/test/goldens/patient_dashboard_412x917.png`, `docs/Phase_2_Patient_Doctor_Core_Progress_Record.md`, `docs/Dr_AI_v1.0_API_Contract.md`, `docs/README.md`, `README.md` | Phase 3 AI systems is the next planned production phase, but it must not start without explicit approval. |
+| 2026-07-08 | Complete - Phase 2 patient/doctor core closure | Closed Phase 2 locally after the existing medical-history, medication, and imaging slices by adding production recovery-plan review metadata, migration `20260708_0009`, doctor-only submit-review/request-changes/approve/activate-compatible/complete transitions, patient Today progress summaries, Flutter doctor review controls, Flutter patient Today progress readback, updated patient dashboard golden evidence, expanded API/docs, and focused RBAC/audit tests. External push/SMS/email/native notification delivery remains gated beyond Phase 2 because it requires credentials, account/service changes, and platform configuration; the Phase 2 safe path remains metadata-only in-app notification records. No Phase 3 AI inference, Phase 4 clinic operations, Phase 5 specialist/admin UI, deployment, push, tag, PR, external account action, real patient data, or clinical claim was added. | `services/api/migrations/versions/20260708_0009_phase2_recovery_plan_review.py`, `services/api/app/models.py`, `services/api/app/schemas.py`, `services/api/app/dashboard.py`, `services/api/tests/test_phase2_patient_doctor_core.py`, `apps/dr_ai_app/lib/features/doctor/presentation/patient_management_screen.dart`, `apps/dr_ai_app/lib/features/patient/`, `apps/dr_ai_app/test/app_test.dart`, `apps/dr_ai_app/test/goldens/patient_dashboard_412x917.png`, `docs/Phase_2_Patient_Doctor_Core_Progress_Record.md`, `docs/Dr_AI_v1.0_API_Contract.md`, `docs/README.md`, `README.md` | Superseded by the 2026-07-09 product-quality reset: Phase 2.5 Product Quality and First-Use Readiness must close before Phase 3 AI starts. |
 | 2026-07-08 | Complete - Phase 2 Tencent staging redeploy prep | Cleaned up the Phase 2 worktree with local commit `8e9d344`, redeployed Tencent same-origin staging to the completed Phase 2 API/web state, applied staging migrations through `20260708_0009`, confirmed idempotent synthetic seed runs, deployed immutable API digest `hkccr.ccs.tencentyun.com/dr-ai/dr-ai-backend@sha256:a1d55dd905acdd2113ed2dac163aaa7f0d1fc1a37ec4a0d2855b7e65e4250381`, refreshed the mounted web directory in place, recreated API/Caddy, validated Caddy, and passed credentialed staging smoke plus public route checks. Android debug APK rebuild is still blocked until `/Volumes/AndroidAVD/sdk` is mounted; the existing July 7 APK is stale for Phase 2. iPhone native install still requires Apple development-team signing setup. | `docs/Phase_2_Patient_Doctor_Core_Progress_Record.md`, `deploy/tencent/staging/README.md`, `scripts/run_staging_smoke.py`, staging URL: <https://dr-ai.43.132.169.195.sslip.io> | User inspection can start from the staging web/PWA. Rebuild the Android debug APK after the Android SDK mount is restored; use direct Xcode install or TestFlight only after Apple signing/account prerequisites are ready. |
 | 2026-07-08 | Planned - post-Phase-2 UX and multilingual hardening | Documented the future doctor Patient Management workspace reorganization and production multilingual foundation. The doctor workspace should move from a crowded single page to assigned-patient navigation, selected-patient summary, and focused subsections for overview, history, visits/diagnoses, medications, prescriptions, reminders, recovery plans, imaging, doctor notes, and activity. The localization foundation should support Simplified Chinese and English through Flutter localization, keep backend responses machine-readable, preserve user-entered clinical content without automatic translation, and use locale-aware formatting. No code behavior, deployment, push, tag, PR, external account action, real patient data, or clinical claim was added. | `docs/Dr_AI_v1.0_Implementation_Plan.md`, `docs/README.md` | The next doctor-workspace cleanup should be a focused frontend architecture slice that follows the documented Phase 6 UX hardening plan and avoids starting Phase 3 AI, Phase 4 clinic operations, Phase 5 specialist/admin UI, or multilingual implementation unless explicitly requested. |
 | 2026-07-08 | Complete - post-Phase-2 doctor workspace layout cleanup | Refactored the Flutter doctor Patient Management surface into a focused patient workspace: assigned-patient search/list remains a narrow left column on desktop/tablet, phone-width layouts use a compact patient-picker sheet, the detail pane has an identity-safe selected-patient summary header, and doctor work is split into Overview, Medical history, Visits and diagnoses, Medications, Prescriptions, Reminders, Recovery plan, Imaging, Doctor notes, and Notifications/activity subsections. Medication, prescription, reminder, recovery-plan, imaging, doctor-note, and activity controls now live in their focused subsections instead of competing in one long mixed page. Backend/API/RBAC/audit behavior, schemas, migrations, real patient data boundaries, clinical-claim boundaries, deployment, push, tag, PR, and external account state were unchanged. The multilingual/localization foundation remains future Phase 6 work and was not implemented in this slice. `./scripts/verify_flutter.sh` passed with analysis clean and all Flutter widget/golden tests passing; `git diff --check` passed. | `apps/dr_ai_app/lib/features/doctor/presentation/patient_management_screen.dart`, `apps/dr_ai_app/test/app_test.dart`, `docs/Dr_AI_v1.0_Implementation_Plan.md` | Keep production multilingual/localization foundation as a separate approved Phase 6 slice. |
@@ -1119,3 +1185,4 @@ Add one row whenever implementation status, scope, architecture, or a major deci
 | 2026-07-08 | Complete - Phase 2 workflow clarification GitHub/staging handoff | Committed the Phase 2 workflow-clarification closure as `33d70e5` and pushed branch `codex/phase-2-patient-doctor-core` to GitHub, then redeployed Tencent same-origin staging for user inspection. The staging API now runs immutable digest `hkccr.ccs.tencentyun.com/dr-ai/dr-ai-backend@sha256:25532802291eae937b06266288047436646a72524d119965714879b2e44e42d7`; Alembic applied `20260708_0010`, `20260708_0011`, and `20260708_0012`; synthetic seed remained idempotent; Flutter web was rebuilt for `https://dr-ai.43.132.169.195.sslip.io`; Caddy was validated/recreated; public health/web checks passed; the credentialed staging smoke passed; and a focused live smoke passed for doctor medical-history review overlays, doctor Clinical Event creation, patient Clinical Event updates, and diagnosis-preserving event timeline readback. No production deployment, tester/account/monitoring change, native store upload, tag, PR, real patient data, Phase 3 AI generation, Phase 4 clinic operations, Phase 5 specialist/admin UI, or Phase 6 localization was performed. | `docs/Phase_2_Patient_Doctor_Core_Progress_Record.md`, staging URL: <https://dr-ai.43.132.169.195.sslip.io> | User inspection can continue on staging before deciding whether any Phase 2 polish is needed. Phase 3 AI systems remains approval-gated and should not start until Phase 2 inspection is accepted. |
 | 2026-07-08 | Complete - Phase 2 manual-testing onboarding cleanup | Completed the pre-Phase-3 cleanup requested after staging inspection: exposed invited sign-up in Flutter, added a doctor patient-code connection flow, added a fresh-patient onboarding state that shows the patient code when no seeded dashboard exists, and added from-zero API/widget tests so manual testing no longer depends on the seeded Riley/Avery demo relationship. Seed data remains available only as optional staging smoke/regression scaffolding; the intended manual path is now register patient, register doctor, connect by patient code, then create care records from zero. Focused backend tests, ruff, Flutter verification, and whitespace checks pass locally. No Phase 3 AI generation, Phase 4 clinic operations, Phase 5 specialist/admin UI, Phase 6 localization, deployment, push, tag, PR, external account action, real patient data, clinical claim, or destructive staging data reset was performed in this local slice. | `services/api/app/dashboard.py`, `services/api/app/schemas.py`, `services/api/tests/helpers.py`, `services/api/tests/test_phase2_patient_doctor_core.py`, `apps/dr_ai_app/lib/features/auth/`, `apps/dr_ai_app/lib/features/patient/`, `apps/dr_ai_app/lib/features/doctor/presentation/patient_management_screen.dart`, `apps/dr_ai_app/test/app_test.dart`, `apps/dr_ai_app/test/fakes.dart`, `docs/Dr_AI_v1.0_API_Contract.md`, `docs/Phase_2_Patient_Doctor_Core_Progress_Record.md`, `docs/README.md` | Decide whether to commit/push/deploy this cleanup. Any wipe/archive of existing synthetic staging records should be a separately confirmed staging-only operation. |
 | 2026-07-08 | Complete - Phase 2 onboarding cleanup GitHub/staging handoff | Committed the manual-testing onboarding cleanup as `b14f10d` and pushed branch `codex/phase-2-patient-doctor-core` to GitHub, then redeployed Tencent same-origin staging for user inspection. The staging API now runs immutable digest `hkccr.ccs.tencentyun.com/dr-ai/dr-ai-backend@sha256:719bbef7331e4e1616e881a20f8b60367d468a02778c64922999da03e12464d9`; Alembic `upgrade head` completed with no new migration; Flutter web was rebuilt for `https://dr-ai.43.132.169.195.sslip.io`; Caddy was validated/recreated; public health/web checks passed; and a focused live onboarding smoke passed for invited patient/doctor registration, fresh patient-code readback, doctor patient-code connection, and Clinical Event creation after connection. Synthetic seed was not rerun, staging data was not wiped, and `main` was not changed. No production deployment, tester/account/monitoring change, native store upload, tag, PR, real patient data, Phase 3 AI generation, Phase 4 clinic operations, Phase 5 specialist/admin UI, or Phase 6 localization was performed. | `docs/Phase_2_Patient_Doctor_Core_Progress_Record.md`, staging URL: <https://dr-ai.43.132.169.195.sslip.io> | User inspection can use invited sign-up and patient-code connection on staging. Any destructive cleanup of old synthetic staging records remains a separate confirmation gate. |
+| 2026-07-09 | Complete - Product quality gate documentation reset | Documented the post-inspection product-quality reset: Phase 2 remains a useful technical workflow foundation, but the visible app is not yet a commercial-quality healthcare product. Added `Dr_AI_v1.0_Product_Quality_Gate.md`, made Phase 2.5 Product Quality and First-Use Readiness the next milestone before Phase 3, updated the docs indexes, downgraded the old design freeze to historical beta evidence, and recorded the need for real-app typography, patient avatar/profile setup, guided onboarding, meaningful empty states, and removal of normal-flow synthetic/demo language. No code behavior, deployment, push, tag, PR, external account action, real patient data, Phase 3 AI generation, Phase 4 clinic operations, Phase 5 specialist/admin UI, or Phase 6 localization was added. | `docs/Dr_AI_v1.0_Product_Quality_Gate.md`, `docs/Dr_AI_v1.0_Implementation_Plan.md`, `docs/README.md`, `README.md`, `docs/Dr_AI_v1.0_Design_Freeze.md`, `docs/Phase_2_Patient_Doctor_Core_Progress_Record.md` | Next implementation should close Phase 2.5 through screenshot-backed product UX work before any AI feature development starts. |

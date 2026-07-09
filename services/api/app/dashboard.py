@@ -26,6 +26,7 @@ from app.models import (
     DemoMedicalAsset,
     Diagnosis,
     DoctorNote,
+    DoctorProfile,
     MedicalHistoryReview,
     MedicalImagingAsset,
     MedicalRecord,
@@ -72,6 +73,8 @@ from app.schemas import (
     DoctorNoteListResponse,
     DoctorNoteResponse,
     DoctorNoteUpdateRequest,
+    DoctorProfileResponse,
+    DoctorProfileUpdateRequest,
     MedicalHistoryReviewListResponse,
     MedicalHistoryReviewRequest,
     MedicalHistoryReviewResponse,
@@ -82,6 +85,7 @@ from app.schemas import (
     MedicalImagingPresignResponse,
     MedicalImagingReviewRequest,
     MedicalRecordListResponse,
+    MedicalRecordRequest,
     MedicalRecordResponse,
     MedicationListResponse,
     MedicationReminderListResponse,
@@ -206,8 +210,8 @@ def _neutral_not_found() -> ApiError:
 
 def _patient_overview(profile: PatientProfile) -> str:
     return (
-        f"{profile.synthetic_identifier} is synthetic demonstration content for "
-        "the Dr. AI v1.0 invited beta. It is not a clinical record."
+        f"Patient code {profile.synthetic_identifier} lets a doctor connect "
+        "with this account after the patient shares it."
     )
 
 
@@ -216,7 +220,7 @@ def _patient_response(profile: PatientProfile) -> PatientProfileResponse:
         patient_id=profile.id,
         display_name=profile.display_name,
         synthetic_identifier=profile.synthetic_identifier,
-        relationship_label="Active synthetic care relationship",
+        relationship_label="Care relationship active",
         overview=_patient_overview(profile),
         demographics=_demographics_response(profile),
     )
@@ -225,10 +229,37 @@ def _patient_response(profile: PatientProfile) -> PatientProfileResponse:
 def _demographics_response(profile: PatientProfile) -> PatientDemographicsResponse:
     return PatientDemographicsResponse(
         display_name=profile.display_name,
+        birth_date=profile.birth_date,
         birth_year=profile.birth_year,
         sex=profile.sex,
+        gender=profile.gender,
+        contact_phone=profile.contact_phone,
+        emergency_contact_name=profile.emergency_contact_name,
+        emergency_contact_phone=profile.emergency_contact_phone,
         preferred_language=profile.preferred_language,
         contact_preference=profile.contact_preference,
+        avatar_url=profile.avatar_url,
+        country=profile.country,
+        province=profile.province,
+        city=profile.city,
+        home_address=profile.home_address,
+        medical_history_setup_completed=profile.medical_history_setup_completed,
+    )
+
+
+def _doctor_profile_response(profile: DoctorProfile) -> DoctorProfileResponse:
+    return DoctorProfileResponse(
+        id=profile.id,
+        display_name=profile.display_name,
+        title=profile.title,
+        birth_date=profile.birth_date,
+        gender=profile.gender,
+        contact_phone=profile.contact_phone,
+        avatar_url=profile.avatar_url,
+        country=profile.country,
+        province=profile.province,
+        city=profile.city,
+        hospital_name=profile.hospital_name,
     )
 
 
@@ -739,7 +770,7 @@ def _record_audit_event(
     db: DbSession,
     *,
     actor_user_id: uuid.UUID,
-    patient_id: uuid.UUID,
+    patient_id: uuid.UUID | None,
     event_type: str,
     resource_type: str,
     resource_id: uuid.UUID | None,
@@ -1166,12 +1197,29 @@ def _apply_demographics_update(
     request: PatientDemographicsUpdateRequest,
 ) -> list[str]:
     updated_fields: list[str] = []
+    if request.birth_date is not None and profile.birth_date != request.birth_date:
+        profile.birth_date = request.birth_date
+        profile.birth_year = request.birth_date.year
+        updated_fields.extend(["birth_date", "birth_year"])
+    if request.gender is not None and profile.gender != request.gender:
+        profile.gender = request.gender
+        profile.sex = request.gender
+        updated_fields.extend(["gender", "sex"])
     for field in (
         "display_name",
         "birth_year",
         "sex",
+        "contact_phone",
+        "emergency_contact_name",
+        "emergency_contact_phone",
         "preferred_language",
         "contact_preference",
+        "avatar_url",
+        "country",
+        "province",
+        "city",
+        "home_address",
+        "medical_history_setup_completed",
     ):
         value = getattr(request, field)
         if value is not None and getattr(profile, field) != value:
@@ -1480,14 +1528,10 @@ def _complete_other_active_recovery_plans(
         RecoveryPlan.id != plan.id,
     )
     if plan.clinical_event_id is not None:
-        active_query = active_query.where(
-            RecoveryPlan.clinical_event_id == plan.clinical_event_id
-        )
+        active_query = active_query.where(RecoveryPlan.clinical_event_id == plan.clinical_event_id)
     else:
         active_query = active_query.where(RecoveryPlan.clinical_event_id.is_(None))
-    active_plans = db.scalars(
-        active_query
-    ).all()
+    active_plans = db.scalars(active_query).all()
     now = datetime.now(UTC)
     for active_plan in active_plans:
         active_plan.status = "completed"
@@ -1948,6 +1992,37 @@ def patient_records(
         .order_by(MedicalRecord.recorded_at.desc())
     ).all()
     return MedicalRecordListResponse(items=[_record_response(item) for item in records])
+
+
+@router.post("/patients/{patient_id}/records", response_model=MedicalRecordResponse)
+def create_patient_record(
+    patient_id: uuid.UUID,
+    request: MedicalRecordRequest,
+    user: CurrentUser,
+    db: DbSession,
+) -> MedicalRecordResponse:
+    profile = _authorized_patient(patient_id, user, db)
+    record = MedicalRecord(
+        patient_id=profile.id,
+        title=request.title,
+        category=request.category,
+        summary=request.summary,
+        recorded_at=datetime.now(UTC),
+    )
+    db.add(record)
+    db.flush()
+    _record_audit_event(
+        db,
+        actor_user_id=user.id,
+        patient_id=profile.id,
+        event_type="medical_record_created",
+        resource_type="medical_record",
+        resource_id=record.id,
+        metadata={"category": request.category, "actor_role": user.role.value},
+    )
+    db.commit()
+    db.refresh(record)
+    return _record_response(record)
 
 
 @router.get("/patients/{patient_id}/medications", response_model=MedicationListResponse)
@@ -3194,6 +3269,66 @@ def update_own_patient_profile(
     db.commit()
     db.refresh(profile)
     return _patient_response(profile)
+
+
+@router.get("/doctor/me/profile", response_model=DoctorProfileResponse)
+def own_doctor_profile(user: CurrentUser) -> DoctorProfileResponse:
+    if user.role != UserRole.doctor or user.doctor_profile is None:
+        raise _neutral_not_found()
+    return _doctor_profile_response(user.doctor_profile)
+
+
+@router.patch("/doctor/me/profile", response_model=DoctorProfileResponse)
+def update_own_doctor_profile(
+    request: DoctorProfileUpdateRequest,
+    user: CurrentUser,
+    db: DbSession,
+) -> DoctorProfileResponse:
+    if user.role != UserRole.doctor or user.doctor_profile is None:
+        raise _neutral_not_found()
+    profile = user.doctor_profile
+    updated_fields: list[str] = []
+    for field in (
+        "display_name",
+        "title",
+        "birth_date",
+        "gender",
+        "contact_phone",
+        "avatar_url",
+        "country",
+        "province",
+        "city",
+        "hospital_name",
+    ):
+        value = getattr(request, field)
+        if value is not None and getattr(profile, field) != value:
+            setattr(profile, field, value)
+            updated_fields.append(field)
+    if not updated_fields:
+        raise ApiError(
+            422,
+            "validation_failed",
+            "The request could not be validated.",
+            [
+                {
+                    "field": "profile",
+                    "code": "no_fields_updated",
+                    "message": "Provide at least one changed profile field.",
+                }
+            ],
+        )
+    _record_audit_event(
+        db,
+        actor_user_id=user.id,
+        patient_id=None,
+        event_type="doctor_profile_updated",
+        resource_type="doctor_profile",
+        resource_id=profile.id,
+        metadata={"fields": updated_fields, "actor_role": user.role.value},
+    )
+    db.commit()
+    db.refresh(profile)
+    return _doctor_profile_response(profile)
 
 
 @router.post("/patients/{patient_id}/assets/presign", response_model=DemoAssetPresignResponse)

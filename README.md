@@ -1,16 +1,12 @@
 # Dr. AI
 
 Dr. AI is moving from a completed invited, non-clinical beta foundation toward
-production/commercial v1.0. Production v1.0 Phase 2 patient/doctor core
-workflows are complete locally: Phase 0 scope reconciliation and Phase 1 data
-foundation are complete, and Phase 2 now includes persisted demographics,
-allergies, chronic diseases, visit history, diagnoses, doctor-note CRUD,
-medication CRUD, prescription CRUD, medication/refill reminders, metadata-only
-in-app queued notification records, Tencent-COS-compatible imaging upload
-metadata/finalization, imaging list/detail/review status, production
-recovery-plan review/approval/completion semantics, patient Today progress
-tracking, expanded care-bundle readback, Flutter read/edit surfaces, and
-focused RBAC/audit tests.
+production/commercial v1.0. Phase 2 patient/doctor workflow foundations are
+implemented, but the visible app is not yet commercial-quality. Before Phase 3
+AI work starts, the project must close the product-quality gate in
+`docs/Dr_AI_v1.0_Product_Quality_Gate.md`: real-app onboarding, patient
+avatar/profile setup, credible typography, calmer patient/doctor workflows,
+useful empty states, and removal of normal-flow synthetic/demo language.
 
 The repository accepts clearly synthetic demonstration data only. Do not enter
 real patient data.
@@ -39,6 +35,7 @@ monitoring/account changes, and clinical workflows remain gated or unstarted.
 Current production docs:
 
 - `docs/Dr_AI_v1.0_Implementation_Plan.md`
+- `docs/Dr_AI_v1.0_Product_Quality_Gate.md`
 - `docs/Phase_0_Production_v1_Surface_Audit.md`
 - `docs/Phase_0_Production_v1_Closure_Record.md`
 - `docs/Phase_1_Production_Data_Foundation_Record.md`
@@ -66,7 +63,7 @@ uv run python -m app.seed
 uv run uvicorn app.main:app --reload
 ```
 
-Populate seed passwords and local invite codes only in the untracked `.env`.
+Populate seed passwords and local secrets only in the untracked `.env`.
 For normal local development, use Flutter web, widget tests, and CI rather than
 loading iOS or Android simulators. From the repository root, verify Flutter
 with:

@@ -1,3 +1,5 @@
+import hashlib
+
 from fastapi.testclient import TestClient
 
 
@@ -17,15 +19,18 @@ def register(
     email: str,
     password: str,
     role: str,
-    invite_code: str,
+    phone_number: str | None = None,
 ) -> dict:
+    digest = hashlib.sha1(email.encode("utf-8")).hexdigest()[:10]
     response = client.post(
         "/api/v1/auth/register",
         json={
             "email": email,
+            "phone_number": phone_number or f"+1555{int(digest, 16) % 10_000_000:07d}",
             "password": password,
             "role": role,
-            "invite_code": invite_code,
+            "verification_code": "123456",
+            "terms_accepted": True,
         },
     )
     assert response.status_code == 201

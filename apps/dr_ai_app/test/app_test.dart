@@ -94,7 +94,10 @@ void main() {
     await tester.tap(find.byKey(const Key('login-button')));
     await tester.pump();
 
-    expect(find.text('Enter a valid email address.'), findsOneWidget);
+    expect(
+      find.text('Enter a valid email address or phone number.'),
+      findsOneWidget,
+    );
     expect(find.text('Enter your password.'), findsOneWidget);
   });
 
@@ -123,7 +126,7 @@ void main() {
     expect(find.text('Dr. Avery Demo'), findsWidgets);
   });
 
-  testWidgets('invited registration routes a new patient to onboarding', (
+  testWidgets('phone registration routes a new patient to onboarding', (
     tester,
   ) async {
     setViewport(tester, const Size(412, 917));
@@ -132,16 +135,21 @@ void main() {
         role: AppRole.patient,
         data: <String, Object>{},
       ),
+      patientCareBundle: incompleteOnboardingPatientCareBundle,
     );
     await pumpApp(tester, repository);
 
     await tester.tap(find.byKey(const Key('auth-mode-toggle')));
     await tester.pumpAndSettle();
-    expect(find.text('Create your Dr. AI account'), findsOneWidget);
+    expect(find.text('Create your account'), findsOneWidget);
     expect(find.byKey(const Key('register-role-selector')), findsOneWidget);
 
     await tester.enterText(
-      find.byKey(const Key('email-field')),
+      find.byKey(const Key('signup-phone-field')),
+      '13800012345',
+    );
+    await tester.enterText(
+      find.byKey(const Key('signup-email-field')),
       'new.patient@example.com',
     );
     await tester.enterText(
@@ -149,15 +157,38 @@ void main() {
       'test-only patient password',
     );
     await tester.enterText(
-      find.byKey(const Key('invite-code-field')),
-      'patient-invite-code',
+      find.byKey(const Key('confirm-password-field')),
+      'test-only patient password',
     );
+    await tester.enterText(
+      find.byKey(const Key('verification-code-field')),
+      '123456',
+    );
+    await tester.enterText(
+      find.byKey(const Key('signup-first-name-field')),
+      'Riley',
+    );
+    await tester.enterText(
+      find.byKey(const Key('signup-last-name-field')),
+      'Patient',
+    );
+    await tester.ensureVisible(
+      find.byKey(const Key('signup-home-address-field')),
+    );
+    await tester.enterText(
+      find.byKey(const Key('signup-home-address-field')),
+      '100 Recovery Road',
+    );
+    await tester.ensureVisible(find.byKey(const Key('terms-checkbox')));
+    await tester.tap(find.byKey(const Key('terms-checkbox')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('login-button')));
     await tester.tap(find.byKey(const Key('login-button')));
     await tester.pumpAndSettle();
 
     expect(repository.registerCalled, isTrue);
     expect(find.byKey(const Key('patient-onboarding-code')), findsOneWidget);
-    expect(find.textContaining('Share this patient code'), findsOneWidget);
+    expect(find.textContaining('Patient ID: SYN-PATIENT-001'), findsWidgets);
   });
 
   testWidgets('login displays the standardized safe API error', (tester) async {
@@ -270,17 +301,23 @@ void main() {
     },
   );
 
-  testWidgets('beta support surface is reachable and local-only', (
+  testWidgets('privacy support surface is reachable and local-only', (
     tester,
   ) async {
     setViewport(tester, const Size(412, 917));
     await pumpApp(tester, FakeDrAiRepository());
 
-    await tester.tap(find.byKey(const Key('login-beta-support-link')));
+    await tester.tap(find.byKey(const Key('login-privacy-support-link')));
     await tester.pumpAndSettle();
 
-    expect(find.text('Beta support'), findsOneWidget);
+    expect(find.text('Privacy and support'), findsOneWidget);
     expect(find.byKey(const Key('beta-privacy-section')), findsOneWidget);
+
+    await tester.dragUntilVisible(
+      find.byKey(const Key('beta-consent-section')),
+      find.byKey(const Key('beta-support-list')),
+      const Offset(0, -360),
+    );
     expect(find.byKey(const Key('beta-consent-section')), findsOneWidget);
 
     Future<void> tapConsentCheckbox(Key rowKey) async {
@@ -307,7 +344,7 @@ void main() {
     expect(find.byKey(const Key('beta-deletion-section')), findsOneWidget);
     await tester.enterText(
       find.byKey(const Key('account-deletion-confirm-field')),
-      'REQUEST DEMO DELETION',
+      'REQUEST ACCOUNT DELETION',
     );
     await tester.pumpAndSettle();
     await tester.ensureVisible(
@@ -331,7 +368,7 @@ void main() {
     );
     await tester.enterText(
       find.byKey(const Key('beta-feedback-field')),
-      'Synthetic beta feedback draft only.',
+      'Account feedback draft only.',
     );
     await tester.pumpAndSettle();
     await tester.ensureVisible(
@@ -353,7 +390,23 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('beta support route is public from a direct web path', (
+  testWidgets('privacy support route is public from a direct web path', (
+    tester,
+  ) async {
+    final router = createRouter(null);
+    addTearDown(router.dispose);
+    await tester.pumpWidget(
+      ProviderScope(child: MaterialApp.router(routerConfig: router)),
+    );
+
+    router.go('/privacy');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Privacy and support'), findsOneWidget);
+    expect(find.byKey(const Key('beta-support-list')), findsOneWidget);
+  });
+
+  testWidgets('legacy beta support route redirects to privacy support', (
     tester,
   ) async {
     final router = createRouter(null);
@@ -365,7 +418,7 @@ void main() {
     router.go('/beta-support');
     await tester.pumpAndSettle();
 
-    expect(find.text('Beta support'), findsOneWidget);
+    expect(find.text('Privacy and support'), findsOneWidget);
     expect(find.byKey(const Key('beta-support-list')), findsOneWidget);
   });
 
@@ -610,7 +663,14 @@ void main() {
       const Offset(0, -220),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('demo-upload-presign-button')));
+    await tester.ensureVisible(
+      find.byKey(const Key('demo-upload-presign-button')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const Key('demo-upload-presign-button')),
+      warnIfMissed: false,
+    );
     await tester.pumpAndSettle();
     expect(find.text('Demo upload prepared'), findsOneWidget);
 
@@ -707,7 +767,14 @@ void main() {
       find.byKey(const Key('demo-upload-size-field')),
       '4096',
     );
-    await tester.tap(find.byKey(const Key('demo-upload-presign-button')));
+    await tester.ensureVisible(
+      find.byKey(const Key('demo-upload-presign-button')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const Key('demo-upload-presign-button')),
+      warnIfMissed: false,
+    );
     await tester.pumpAndSettle();
 
     expect(
@@ -718,7 +785,14 @@ void main() {
     expect(find.text('4096'), findsOneWidget);
 
     repository.presignError = null;
-    await tester.tap(find.byKey(const Key('demo-upload-presign-button')));
+    await tester.ensureVisible(
+      find.byKey(const Key('demo-upload-presign-button')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const Key('demo-upload-presign-button')),
+      warnIfMissed: false,
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('Demo upload prepared'), findsOneWidget);
@@ -911,16 +985,13 @@ void main() {
             role: AppRole.patient,
             data: <String, Object>{},
           ),
+          patientCareBundle: incompleteOnboardingPatientCareBundle,
         ),
       );
 
       expect(find.byKey(const Key('patient-onboarding-list')), findsOneWidget);
       expect(find.byKey(const Key('patient-onboarding-code')), findsOneWidget);
-      expect(
-        find.textContaining('Patient code: SYN-PATIENT-001'),
-        findsWidgets,
-      );
-      expect(find.textContaining('Share this patient code'), findsOneWidget);
+      expect(find.textContaining('Patient ID: SYN-PATIENT-001'), findsWidgets);
       expect(tester.takeException(), isNull);
     },
   );

@@ -11,7 +11,8 @@ class SessionUser {
   factory SessionUser.fromJson(Map<String, dynamic> json) {
     return SessionUser(
       id: json['id'] as String,
-      email: json['email'] as String,
+      email:
+          (json['email'] as String?) ?? (json['phone_number'] as String?) ?? '',
       role: AppRole.fromWire(json['role'] as String),
       displayName: json['display_name'] as String,
     );

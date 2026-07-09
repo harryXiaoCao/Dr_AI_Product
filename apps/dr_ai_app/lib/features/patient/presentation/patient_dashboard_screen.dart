@@ -5,6 +5,7 @@ import 'package:dr_ai_app/features/auth/application/auth_controller.dart';
 import 'package:dr_ai_app/features/dashboard/domain/dashboard_data.dart';
 import 'package:dr_ai_app/features/patient/application/patient_care_providers.dart';
 import 'package:dr_ai_app/features/patient/domain/patient_care_data.dart';
+import 'package:dr_ai_app/shared/avatar/avatar_upload.dart';
 import 'package:dr_ai_app/shared/widgets/dashboard_states.dart';
 import 'package:dr_ai_app/shared/widgets/responsive_app_shell.dart';
 import 'package:flutter/material.dart';
@@ -38,8 +39,16 @@ class _PatientDashboard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final care = ref.watch(ownPatientCareProvider);
-    if (data.data.isEmpty) {
+    final careBundle = care.asData?.value;
+    if (careBundle != null &&
+        !careBundle.patient.medicalHistorySetupCompleted) {
       return _PatientOnboardingDashboard(
+        care: care,
+        onRetry: () => ref.invalidate(ownPatientCareProvider),
+      );
+    }
+    if (data.data.isEmpty) {
+      return _PatientReadyEmptyDashboard(
         care: care,
         onRetry: () => ref.invalidate(ownPatientCareProvider),
       );
@@ -154,7 +163,7 @@ class _PatientDashboard extends ConsumerWidget {
                         title: 'Check Medical Record',
                         icon: Icons.description_outlined,
                         emptyLabel: hasRecords
-                            ? 'Synthetic records available'
+                            ? 'Records available'
                             : 'No Medical Records',
                       ),
                     ),
@@ -164,7 +173,7 @@ class _PatientDashboard extends ConsumerWidget {
                         title: 'Check Imaging Results',
                         icon: Icons.document_scanner_outlined,
                         emptyLabel: hasImages
-                            ? 'Synthetic images available'
+                            ? 'Images available'
                             : 'No Imaging Results',
                       ),
                     ),
@@ -173,7 +182,7 @@ class _PatientDashboard extends ConsumerWidget {
               ),
               const SizedBox(height: 6),
               const SearchBar(
-                hintText: 'Search synthetic dashboard',
+                hintText: 'Search your care dashboard',
                 leading: Icon(Icons.search),
               ),
               const SizedBox(height: 4),
@@ -201,8 +210,8 @@ class _PatientDashboard extends ConsumerWidget {
   }
 }
 
-class _PatientOnboardingDashboard extends StatelessWidget {
-  const _PatientOnboardingDashboard({
+class _PatientReadyEmptyDashboard extends StatelessWidget {
+  const _PatientReadyEmptyDashboard({
     required this.care,
     required this.onRetry,
   });
@@ -217,70 +226,700 @@ class _PatientOnboardingDashboard extends StatelessWidget {
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 640),
+          child: Padding(
+            padding: const EdgeInsets.all(DrAiSpacing.md),
+            child: _PatientOnboardingPanel(
+              title: 'Dashboard',
+              child: care.when(
+                loading: () =>
+                    const DashboardLoadingView(label: 'Loading your profile'),
+                error: (error, stackTrace) => DashboardErrorView(
+                  message: 'Unable to load your profile. Try again.',
+                  onRetry: onRetry,
+                ),
+                data: (bundle) => Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    Row(
+                      children: <Widget>[
+                        CircleAvatar(
+                          radius: 30,
+                          backgroundColor: DrAiColors.brandSoft,
+                          backgroundImage: bundle.patient.avatarUrl == null
+                              ? null
+                              : NetworkImage(bundle.patient.avatarUrl!),
+                          child: bundle.patient.avatarUrl == null
+                              ? const Icon(
+                                  Icons.person_outline,
+                                  color: DrAiColors.brand,
+                                )
+                              : null,
+                        ),
+                        const SizedBox(width: DrAiSpacing.md),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              Text(
+                                bundle.patient.displayName,
+                                style: Theme.of(context).textTheme.titleLarge
+                                    ?.copyWith(fontWeight: FontWeight.w800),
+                              ),
+                              SelectableText(
+                                'Patient ID: ${bundle.patient.syntheticIdentifier}',
+                                style: const TextStyle(
+                                  color: DrAiColors.brand,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: DrAiSpacing.lg),
+                    const Text(
+                      'Your profile and medical intake are saved.',
+                      style: TextStyle(
+                        color: DrAiColors.ink,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: DrAiSpacing.sm),
+                    const Text(
+                      'Share your patient ID with your doctor. Your care plan, medications, imaging, and consultation activity will appear here after a doctor connects to your account.',
+                      style: TextStyle(
+                        color: DrAiColors.inkSecondary,
+                        height: 1.45,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PatientOnboardingDashboard extends ConsumerStatefulWidget {
+  const _PatientOnboardingDashboard({
+    required this.care,
+    required this.onRetry,
+  });
+
+  final AsyncValue<PatientCareBundle> care;
+  final VoidCallback onRetry;
+
+  @override
+  ConsumerState<_PatientOnboardingDashboard> createState() =>
+      _PatientOnboardingDashboardState();
+}
+
+class _PatientOnboardingDashboardState
+    extends ConsumerState<_PatientOnboardingDashboard> {
+  final _formKey = GlobalKey<FormState>();
+  final _displayNameController = TextEditingController();
+  final _birthDateController = TextEditingController();
+  final _contactPhoneController = TextEditingController();
+  final _emergencyNameController = TextEditingController();
+  final _emergencyPhoneController = TextEditingController();
+  final _avatarUrlController = TextEditingController();
+  final _allergyLabelController = TextEditingController();
+  final _allergyReactionController = TextEditingController();
+  final _conditionNameController = TextEditingController();
+  final _conditionNotesController = TextEditingController();
+  final _currentMedicationsController = TextEditingController();
+  final _surgeryHistoryController = TextEditingController();
+  final _familyHistoryController = TextEditingController();
+  final _lifestyleNotesController = TextEditingController();
+  String _gender = 'Unspecified';
+  String _bloodType = 'Unknown';
+  String _pregnancyStatus = 'Prefer not to say';
+  String _preferredLanguage = 'Simplified Chinese';
+  String _contactPreference = 'Phone';
+  bool _hasAllergies = false;
+  bool _hasChronicCondition = false;
+  bool _seededFromBundle = false;
+  String? _avatarFileName;
+  String? _avatarUploadError;
+
+  @override
+  void dispose() {
+    _displayNameController.dispose();
+    _birthDateController.dispose();
+    _contactPhoneController.dispose();
+    _emergencyNameController.dispose();
+    _emergencyPhoneController.dispose();
+    _avatarUrlController.dispose();
+    _allergyLabelController.dispose();
+    _allergyReactionController.dispose();
+    _conditionNameController.dispose();
+    _conditionNotesController.dispose();
+    _currentMedicationsController.dispose();
+    _surgeryHistoryController.dispose();
+    _familyHistoryController.dispose();
+    _lifestyleNotesController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final onboardingState = ref.watch(patientOnboardingControllerProvider);
+    return ColoredBox(
+      color: DrAiColors.brandSoft,
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 640),
           child: ListView(
             key: const Key('patient-onboarding-list'),
             padding: const EdgeInsets.all(DrAiSpacing.md),
             children: <Widget>[
               _PatientOnboardingPanel(
-                title: 'Start your care workspace',
-                child: care.when(
-                  loading: () => const DashboardLoadingView(
-                    label: 'Loading your patient code',
-                  ),
+                title: 'Complete your profile',
+                child: widget.care.when(
+                  loading: () =>
+                      const DashboardLoadingView(label: 'Loading your profile'),
                   error: (error, stackTrace) => DashboardErrorView(
                     message: 'Unable to load your profile. Try again.',
-                    onRetry: onRetry,
+                    onRetry: widget.onRetry,
                   ),
-                  data: (bundle) => Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: <Widget>[
-                      const Text(
-                        'Share this patient code with your doctor so they can connect your account.',
-                        style: TextStyle(color: DrAiColors.mutedInk),
-                      ),
-                      const SizedBox(height: DrAiSpacing.sm),
-                      SelectableText(
-                        bundle.patient.syntheticIdentifier,
-                        key: const Key('patient-onboarding-code'),
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.headlineSmall
-                            ?.copyWith(
-                              color: DrAiColors.brand,
-                              fontWeight: FontWeight.w800,
-                            ),
-                      ),
-                      const SizedBox(height: DrAiSpacing.sm),
-                      Text(
-                        _patientDemographicsLine(bundle.patient),
-                        key: const Key('patient-onboarding-profile-line'),
-                      ),
-                      const SizedBox(height: DrAiSpacing.xs),
-                      Text(
-                        _patientHistorySummary(bundle),
-                        key: const Key('patient-onboarding-history-line'),
-                      ),
-                      const SizedBox(height: DrAiSpacing.sm),
-                      const Text(
-                        'After your doctor connects this code, they can create a Clinical Event and start prescriptions, imaging, recovery plans, and consultation activity from a clean workspace.',
-                        style: TextStyle(
-                          color: DrAiColors.mutedInk,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
+                  data: (bundle) {
+                    _seedFields(bundle.patient);
+                    return _surveyForm(context, bundle, onboardingState);
+                  },
                 ),
               ),
               const SizedBox(height: DrAiSpacing.md),
               SizedBox(
                 height: 340,
-                child: _PatientSelfCareCard(care: care, onRetry: onRetry),
+                child: _PatientSelfCareCard(
+                  care: widget.care,
+                  onRetry: widget.onRetry,
+                ),
               ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  void _seedFields(PatientProfile patient) {
+    if (_seededFromBundle) {
+      return;
+    }
+    _seededFromBundle = true;
+    _displayNameController.text = patient.displayName == 'New Patient'
+        ? ''
+        : patient.displayName;
+    _birthDateController.text = patient.birthDate ?? '';
+    _contactPhoneController.text = patient.contactPhone ?? '';
+    _emergencyNameController.text = patient.emergencyContactName ?? '';
+    _emergencyPhoneController.text = patient.emergencyContactPhone ?? '';
+    _avatarUrlController.text = patient.avatarUrl ?? '';
+    final savedGender = patient.gender ?? patient.sex;
+    _gender =
+        savedGender == null || savedGender.toLowerCase() == 'not specified'
+        ? 'Unspecified'
+        : savedGender;
+    _preferredLanguage = _knownOption(patient.preferredLanguage, <String>[
+      'Simplified Chinese',
+      'English',
+    ], _preferredLanguage);
+    _contactPreference = _knownOption(patient.contactPreference, <String>[
+      'Phone',
+      'In-app',
+      'Email',
+    ], _contactPreference);
+  }
+
+  Widget _surveyForm(
+    BuildContext context,
+    PatientCareBundle bundle,
+    AsyncValue<void> onboardingState,
+  ) {
+    return Form(
+      key: _formKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              CircleAvatar(
+                radius: 30,
+                backgroundColor: DrAiColors.brandSoft,
+                backgroundImage: _avatarUrlController.text.trim().isEmpty
+                    ? null
+                    : NetworkImage(_avatarUrlController.text.trim()),
+                child: _avatarUrlController.text.trim().isEmpty
+                    ? const Icon(Icons.person_outline, color: DrAiColors.brand)
+                    : null,
+              ),
+              const SizedBox(width: DrAiSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    const Text(
+                      'This information helps your doctor recognize your account.',
+                      style: TextStyle(color: DrAiColors.mutedInk),
+                    ),
+                    SelectableText(
+                      'Patient ID: ${bundle.patient.syntheticIdentifier}',
+                      key: const Key('patient-onboarding-code'),
+                      style: const TextStyle(
+                        color: DrAiColors.brand,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: DrAiSpacing.md),
+          _requiredTextField(
+            controller: _displayNameController,
+            label: 'First and last name',
+            keyName: 'onboarding-name-field',
+          ),
+          const SizedBox(height: DrAiSpacing.md),
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: _optionalTextField(
+                  controller: _birthDateController,
+                  label: 'Birth date',
+                  hint: 'YYYY-MM-DD',
+                  keyName: 'onboarding-birth-date-field',
+                  validator: _dateValidator,
+                ),
+              ),
+              const SizedBox(width: DrAiSpacing.sm),
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  key: const Key('onboarding-gender-field'),
+                  initialValue: _gender,
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Gender',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: _optionItems(<String>[
+                    'Unspecified',
+                    'Female',
+                    'Male',
+                    'Other',
+                  ]),
+                  onChanged: (value) =>
+                      setState(() => _gender = value ?? _gender),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: DrAiSpacing.md),
+          _optionalTextField(
+            controller: _contactPhoneController,
+            label: 'Phone number',
+            keyName: 'onboarding-phone-field',
+          ),
+          const SizedBox(height: DrAiSpacing.md),
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: _optionalTextField(
+                  controller: _emergencyNameController,
+                  label: 'Emergency contact',
+                  keyName: 'onboarding-emergency-name-field',
+                ),
+              ),
+              const SizedBox(width: DrAiSpacing.sm),
+              Expanded(
+                child: _optionalTextField(
+                  controller: _emergencyPhoneController,
+                  label: 'Emergency phone',
+                  keyName: 'onboarding-emergency-phone-field',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: DrAiSpacing.md),
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  key: const Key('onboarding-language-field'),
+                  initialValue: _preferredLanguage,
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Preferred language',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: _optionItems(<String>[
+                    'Simplified Chinese',
+                    'English',
+                  ]),
+                  onChanged: (value) => setState(
+                    () => _preferredLanguage = value ?? _preferredLanguage,
+                  ),
+                ),
+              ),
+              const SizedBox(width: DrAiSpacing.sm),
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  key: const Key('onboarding-contact-preference-field'),
+                  initialValue: _contactPreference,
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Contact preference',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: _optionItems(<String>['Phone', 'In-app', 'Email']),
+                  onChanged: (value) => setState(
+                    () => _contactPreference = value ?? _contactPreference,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: DrAiSpacing.md),
+          _avatarUploadControl(),
+          const SizedBox(height: DrAiSpacing.md),
+          DropdownButtonFormField<String>(
+            key: const Key('onboarding-blood-type-field'),
+            initialValue: _bloodType,
+            isExpanded: true,
+            decoration: const InputDecoration(
+              labelText: 'Blood type',
+              border: OutlineInputBorder(),
+            ),
+            items: _optionItems(<String>[
+              'Unknown',
+              'A+',
+              'A-',
+              'B+',
+              'B-',
+              'AB+',
+              'AB-',
+              'O+',
+              'O-',
+            ]),
+            onChanged: (value) =>
+                setState(() => _bloodType = value ?? _bloodType),
+          ),
+          const SizedBox(height: DrAiSpacing.md),
+          Material(
+            color: DrAiColors.white,
+            child: SwitchListTile(
+              key: const Key('onboarding-allergy-switch'),
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Do you have any allergies?'),
+              value: _hasAllergies,
+              onChanged: (value) => setState(() => _hasAllergies = value),
+            ),
+          ),
+          if (_hasAllergies) ...<Widget>[
+            _requiredTextField(
+              controller: _allergyLabelController,
+              label: 'Allergy',
+              keyName: 'onboarding-allergy-field',
+            ),
+            const SizedBox(height: DrAiSpacing.sm),
+            _optionalTextField(
+              controller: _allergyReactionController,
+              label: 'Reaction',
+              keyName: 'onboarding-allergy-reaction-field',
+            ),
+          ],
+          Material(
+            color: DrAiColors.white,
+            child: SwitchListTile(
+              key: const Key('onboarding-chronic-switch'),
+              contentPadding: EdgeInsets.zero,
+              title: const Text(
+                'Do you have hereditary or long-term medical conditions?',
+              ),
+              value: _hasChronicCondition,
+              onChanged: (value) =>
+                  setState(() => _hasChronicCondition = value),
+            ),
+          ),
+          if (_hasChronicCondition) ...<Widget>[
+            _requiredTextField(
+              controller: _conditionNameController,
+              label: 'Condition',
+              keyName: 'onboarding-condition-field',
+            ),
+            const SizedBox(height: DrAiSpacing.sm),
+            _optionalTextField(
+              controller: _conditionNotesController,
+              label: 'Notes',
+              keyName: 'onboarding-condition-notes-field',
+            ),
+          ],
+          const SizedBox(height: DrAiSpacing.md),
+          _optionalTextField(
+            controller: _currentMedicationsController,
+            label: 'Current medications and supplements',
+            keyName: 'onboarding-current-medications-field',
+            maxLines: 3,
+          ),
+          const SizedBox(height: DrAiSpacing.md),
+          _optionalTextField(
+            controller: _surgeryHistoryController,
+            label: 'Past surgeries or hospitalizations',
+            keyName: 'onboarding-surgery-history-field',
+            maxLines: 3,
+          ),
+          const SizedBox(height: DrAiSpacing.md),
+          _optionalTextField(
+            controller: _familyHistoryController,
+            label: 'Family medical history',
+            keyName: 'onboarding-family-history-field',
+            maxLines: 3,
+          ),
+          const SizedBox(height: DrAiSpacing.md),
+          _optionalTextField(
+            controller: _lifestyleNotesController,
+            label: 'Smoking, alcohol, exercise, sleep',
+            keyName: 'onboarding-lifestyle-field',
+            maxLines: 3,
+          ),
+          const SizedBox(height: DrAiSpacing.md),
+          DropdownButtonFormField<String>(
+            key: const Key('onboarding-pregnancy-field'),
+            initialValue: _pregnancyStatus,
+            isExpanded: true,
+            decoration: const InputDecoration(
+              labelText: 'Pregnancy status',
+              border: OutlineInputBorder(),
+            ),
+            items: _optionItems(<String>[
+              'Prefer not to say',
+              'Not applicable',
+              'No',
+              'Yes',
+              'Unsure',
+            ]),
+            onChanged: (value) =>
+                setState(() => _pregnancyStatus = value ?? _pregnancyStatus),
+          ),
+          if (onboardingState.hasError) ...<Widget>[
+            const SizedBox(height: DrAiSpacing.sm),
+            const Text(
+              'Unable to save your profile. Check the form and try again.',
+              key: Key('patient-onboarding-error'),
+              style: TextStyle(color: DrAiColors.danger),
+            ),
+          ],
+          const SizedBox(height: DrAiSpacing.md),
+          FilledButton.icon(
+            key: const Key('patient-onboarding-submit'),
+            onPressed: onboardingState.isLoading
+                ? null
+                : () => _submit(bundle.patient.patientId),
+            icon: onboardingState.isLoading
+                ? const SizedBox.square(
+                    dimension: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: DrAiColors.white,
+                    ),
+                  )
+                : const Icon(Icons.check_circle_outline),
+            label: const Text('Finish setup'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _avatarUploadControl() {
+    final hasAvatar = _avatarUrlController.text.trim().isNotEmpty;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        border: Border.all(color: DrAiColors.outline),
+        borderRadius: BorderRadius.circular(DrAiRadii.md),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(DrAiSpacing.md),
+        child: Row(
+          children: <Widget>[
+            CircleAvatar(
+              radius: 34,
+              backgroundColor: DrAiColors.brandSoft,
+              backgroundImage: hasAvatar
+                  ? NetworkImage(_avatarUrlController.text.trim())
+                  : null,
+              child: hasAvatar
+                  ? null
+                  : const Icon(Icons.person_outline, color: DrAiColors.brand),
+            ),
+            const SizedBox(width: DrAiSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  OutlinedButton.icon(
+                    key: const Key('onboarding-avatar-upload-button'),
+                    onPressed: _pickAvatar,
+                    icon: const Icon(Icons.photo_camera_outlined),
+                    label: const Text('Upload avatar photo'),
+                  ),
+                  Text(
+                    _avatarFileName ?? 'JPG or PNG up to 2 MB',
+                    style: const TextStyle(
+                      color: DrAiColors.mutedInk,
+                      fontSize: 12,
+                    ),
+                  ),
+                  if (_avatarUploadError != null)
+                    Text(
+                      _avatarUploadError!,
+                      style: const TextStyle(
+                        color: DrAiColors.danger,
+                        fontSize: 12,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickAvatar() async {
+    try {
+      final result = await pickAvatarImage();
+      if (result == null) {
+        return;
+      }
+      setState(() {
+        _avatarUrlController.text = result.dataUrl;
+        _avatarFileName = result.fileName;
+        _avatarUploadError = null;
+      });
+    } on AvatarUploadException catch (error) {
+      setState(() => _avatarUploadError = error.message);
+    } on Exception {
+      setState(
+        () => _avatarUploadError = 'Photo upload is not available here.',
+      );
+    }
+  }
+
+  void _submit(String patientId) {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+    ref
+        .read(patientOnboardingControllerProvider.notifier)
+        .complete(
+          patientId: patientId,
+          displayName: _displayNameController.text,
+          birthDate: _birthDateController.text,
+          gender: _gender,
+          contactPhone: _contactPhoneController.text,
+          emergencyContactName: _emergencyNameController.text,
+          emergencyContactPhone: _emergencyPhoneController.text,
+          preferredLanguage: _preferredLanguage,
+          contactPreference: _contactPreference,
+          avatarUrl: _avatarUrlController.text,
+          hasAllergies: _hasAllergies,
+          allergyLabel: _allergyLabelController.text,
+          allergyReaction: _allergyReactionController.text,
+          hasChronicCondition: _hasChronicCondition,
+          chronicConditionName: _conditionNameController.text,
+          chronicConditionNotes: _conditionNotesController.text,
+          bloodType: _bloodType,
+          currentMedications: _currentMedicationsController.text,
+          surgeryHistory: _surgeryHistoryController.text,
+          familyHistory: _familyHistoryController.text,
+          lifestyleNotes: _lifestyleNotesController.text,
+          pregnancyStatus: _pregnancyStatus,
+        );
+  }
+
+  Widget _requiredTextField({
+    required TextEditingController controller,
+    required String label,
+    required String keyName,
+  }) {
+    return _optionalTextField(
+      controller: controller,
+      label: label,
+      keyName: keyName,
+      validator: (value) {
+        if ((value?.trim() ?? '').length < 2) {
+          return 'Required.';
+        }
+        return null;
+      },
+    );
+  }
+
+  Widget _optionalTextField({
+    required TextEditingController controller,
+    required String label,
+    required String keyName,
+    String? hint,
+    String? Function(String?)? validator,
+    ValueChanged<String>? onChanged,
+    int maxLines = 1,
+  }) {
+    return TextFormField(
+      key: Key(keyName),
+      controller: controller,
+      maxLines: maxLines,
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        border: const OutlineInputBorder(),
+      ),
+      validator: validator,
+      onChanged: onChanged,
+    );
+  }
+
+  List<DropdownMenuItem<String>> _optionItems(List<String> values) {
+    return values
+        .map(
+          (value) => DropdownMenuItem<String>(value: value, child: Text(value)),
+        )
+        .toList();
+  }
+
+  String _knownOption(
+    String? savedValue,
+    List<String> values,
+    String fallback,
+  ) {
+    final text = savedValue?.trim();
+    if (text == null || text.isEmpty) {
+      return fallback;
+    }
+    for (final value in values) {
+      if (value.toLowerCase() == text.toLowerCase()) {
+        return value;
+      }
+    }
+    return fallback;
+  }
+
+  String? _dateValidator(String? value) {
+    final text = value?.trim() ?? '';
+    if (text.isEmpty) {
+      return null;
+    }
+    if (!RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(text)) {
+      return 'Use YYYY-MM-DD.';
+    }
+    return null;
   }
 }
 
@@ -352,9 +991,7 @@ class _PatientTodayCard extends ConsumerWidget {
       ),
       data: (data) {
         if (data.tasks.isEmpty) {
-          return const Center(
-            child: Text('No active synthetic tasks for today.'),
-          );
+          return const Center(child: Text('No active tasks for today.'));
         }
         return ListView(
           key: const Key('patient-today-task-list'),
@@ -700,9 +1337,9 @@ class _PatientSelfCareCard extends StatelessWidget {
       title: 'Profile and Medications',
       child: care.when(
         loading: () =>
-            const DashboardLoadingView(label: 'Loading synthetic care profile'),
+            const DashboardLoadingView(label: 'Loading your care profile'),
         error: (error, stackTrace) => DashboardErrorView(
-          message: 'Unable to load synthetic profile. Try again.',
+          message: 'Unable to load your profile. Try again.',
           onRetry: onRetry,
         ),
         data: (bundle) => ListView(
@@ -721,7 +1358,7 @@ class _PatientSelfCareCard extends StatelessWidget {
             Text(
               bundle.records.isEmpty
                   ? 'No Medical Records'
-                  : '${bundle.records.length} synthetic medical record(s)',
+                  : '${bundle.records.length} medical record(s)',
               key: const Key('patient-self-records'),
             ),
             const SizedBox(height: DrAiSpacing.xs),
@@ -742,7 +1379,7 @@ class _PatientSelfCareCard extends StatelessWidget {
             _PatientEventUpdatePanel(bundle: bundle),
             const SizedBox(height: DrAiSpacing.xs),
             if (bundle.medications.isEmpty)
-              const Text('No synthetic medications')
+              const Text('No medications recorded')
             else
               for (final medication in bundle.medications)
                 Padding(

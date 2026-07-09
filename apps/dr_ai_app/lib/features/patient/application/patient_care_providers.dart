@@ -89,6 +89,122 @@ final medicalHistoryReviewControllerProvider =
       return MedicalHistoryReviewController(ref.read(repositoryProvider), ref);
     });
 
+final patientOnboardingControllerProvider =
+    StateNotifierProvider.autoDispose<
+      PatientOnboardingController,
+      AsyncValue<void>
+    >((ref) {
+      return PatientOnboardingController(ref.read(repositoryProvider), ref);
+    });
+
+class PatientOnboardingController extends StateNotifier<AsyncValue<void>> {
+  PatientOnboardingController(this._repository, this._ref)
+    : super(const AsyncData<void>(null));
+
+  final DrAiRepository _repository;
+  final Ref _ref;
+
+  Future<void> complete({
+    required String patientId,
+    required String displayName,
+    required String birthDate,
+    required String gender,
+    required String contactPhone,
+    required String emergencyContactName,
+    required String emergencyContactPhone,
+    required String preferredLanguage,
+    required String contactPreference,
+    required String avatarUrl,
+    required bool hasAllergies,
+    required String allergyLabel,
+    required String allergyReaction,
+    required bool hasChronicCondition,
+    required String chronicConditionName,
+    required String chronicConditionNotes,
+    required String bloodType,
+    required String currentMedications,
+    required String surgeryHistory,
+    required String familyHistory,
+    required String lifestyleNotes,
+    required String pregnancyStatus,
+  }) async {
+    state = const AsyncLoading<void>();
+    try {
+      await _repository.updateOwnPatientProfile(
+        displayName: displayName,
+        birthDate: birthDate,
+        gender: gender,
+        contactPhone: contactPhone,
+        emergencyContactName: emergencyContactName,
+        emergencyContactPhone: emergencyContactPhone,
+        preferredLanguage: preferredLanguage,
+        contactPreference: contactPreference,
+        avatarUrl: avatarUrl,
+        medicalHistorySetupCompleted: true,
+      );
+      if (hasAllergies && allergyLabel.trim().isNotEmpty) {
+        await _repository.createPatientAllergy(
+          patientId: patientId,
+          label: allergyLabel,
+          reaction: allergyReaction,
+          severity: 'unknown',
+        );
+      }
+      if (hasChronicCondition && chronicConditionName.trim().isNotEmpty) {
+        await _repository.createChronicDisease(
+          patientId: patientId,
+          name: chronicConditionName,
+          notes: chronicConditionNotes,
+        );
+      }
+      final intakeSummary = _medicalIntakeSummary(
+        bloodType: bloodType,
+        currentMedications: currentMedications,
+        surgeryHistory: surgeryHistory,
+        familyHistory: familyHistory,
+        lifestyleNotes: lifestyleNotes,
+        pregnancyStatus: pregnancyStatus,
+      );
+      if (intakeSummary.isNotEmpty) {
+        await _repository.createPatientMedicalRecord(
+          patientId: patientId,
+          title: 'Patient intake summary',
+          category: 'intake_summary',
+          summary: intakeSummary,
+        );
+      }
+      _ref.invalidate(ownPatientCareProvider);
+      state = const AsyncData<void>(null);
+    } catch (error, stackTrace) {
+      state = AsyncError<void>(error, stackTrace);
+    }
+  }
+}
+
+String _medicalIntakeSummary({
+  required String bloodType,
+  required String currentMedications,
+  required String surgeryHistory,
+  required String familyHistory,
+  required String lifestyleNotes,
+  required String pregnancyStatus,
+}) {
+  final lines = <String>[
+    if (bloodType.trim().isNotEmpty) 'Blood type: ${bloodType.trim()}',
+    if (currentMedications.trim().isNotEmpty)
+      'Current medications: ${currentMedications.trim()}',
+    if (surgeryHistory.trim().isNotEmpty)
+      'Surgery or hospitalization history: ${surgeryHistory.trim()}',
+    if (familyHistory.trim().isNotEmpty)
+      'Family medical history: ${familyHistory.trim()}',
+    if (lifestyleNotes.trim().isNotEmpty)
+      'Smoking, alcohol, exercise, and sleep notes: ${lifestyleNotes.trim()}',
+    if (pregnancyStatus.trim().isNotEmpty)
+      'Pregnancy status: ${pregnancyStatus.trim()}',
+  ];
+  return lines.join('\n');
+}
+
 final assessmentListProvider = FutureProvider.autoDispose
     .family<AssessmentListData, String>((ref, patientId) async {
       ref.watch(authControllerProvider);

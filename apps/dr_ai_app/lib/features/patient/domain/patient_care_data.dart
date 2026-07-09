@@ -30,9 +30,16 @@ class PatientProfile extends PatientSummary {
     required this.relationshipLabel,
     required this.overview,
     required this.birthYear,
+    required this.birthDate,
     required this.sex,
+    required this.gender,
+    required this.contactPhone,
+    required this.emergencyContactName,
+    required this.emergencyContactPhone,
     required this.preferredLanguage,
     required this.contactPreference,
+    required this.avatarUrl,
+    required this.medicalHistorySetupCompleted,
   });
 
   factory PatientProfile.fromJson(Map<String, dynamic> json) {
@@ -45,19 +52,34 @@ class PatientProfile extends PatientSummary {
       safetyLabel: json['safety_label'] as String,
       relationshipLabel: json['relationship_label'] as String,
       overview: json['overview'] as String,
+      birthDate: demographics['birth_date'] as String?,
       birthYear: demographics['birth_year'] as int?,
       sex: demographics['sex'] as String?,
+      gender: demographics['gender'] as String?,
+      contactPhone: demographics['contact_phone'] as String?,
+      emergencyContactName: demographics['emergency_contact_name'] as String?,
+      emergencyContactPhone: demographics['emergency_contact_phone'] as String?,
       preferredLanguage: demographics['preferred_language'] as String?,
       contactPreference: demographics['contact_preference'] as String?,
+      avatarUrl: demographics['avatar_url'] as String?,
+      medicalHistorySetupCompleted:
+          demographics['medical_history_setup_completed'] as bool? ?? false,
     );
   }
 
   final String relationshipLabel;
   final String overview;
+  final String? birthDate;
   final int? birthYear;
   final String? sex;
+  final String? gender;
+  final String? contactPhone;
+  final String? emergencyContactName;
+  final String? emergencyContactPhone;
   final String? preferredLanguage;
   final String? contactPreference;
+  final String? avatarUrl;
+  final bool medicalHistorySetupCompleted;
 }
 
 class PatientListData {

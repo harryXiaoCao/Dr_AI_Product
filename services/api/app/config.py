@@ -17,8 +17,6 @@ class Settings(BaseSettings):
     jwt_audience: str = "dr-ai-app"
     access_token_minutes: int = 10
     refresh_token_days: int = 14
-    doctor_invite_code: SecretStr | None = None
-    patient_invite_code: SecretStr | None = None
     seed_doctor_password: SecretStr | None = None
     seed_patient_password: SecretStr | None = None
     seed_unrelated_patient_password: SecretStr | None = None

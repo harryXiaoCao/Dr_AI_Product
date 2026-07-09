@@ -123,23 +123,20 @@ def test_phase2_tables_are_present_and_seed_keeps_them_empty(settings) -> None:
             assert "clinical_event_id" in columns, table_name
 
 
-def test_invited_accounts_can_connect_and_create_care_from_zero(
+def test_registered_accounts_can_connect_and_create_care_from_zero(
     client: TestClient,
-    settings,
 ) -> None:
     patient = register(
         client,
         email="zero.patient@example.com",
         password="generated patient passphrase",
         role="patient",
-        invite_code=settings.patient_invite_code.get_secret_value(),
     )
     doctor = register(
         client,
         email="zero.doctor@example.com",
         password="generated doctor passphrase",
         role="doctor",
-        invite_code=settings.doctor_invite_code.get_secret_value(),
     )
     patient_headers = auth_header(patient["access_token"])
     doctor_headers = auth_header(doctor["access_token"])
@@ -148,7 +145,7 @@ def test_invited_accounts_can_connect_and_create_care_from_zero(
     assert own_care.status_code == 200
     patient_id = own_care.json()["patient"]["patient_id"]
     patient_code = own_care.json()["patient"]["synthetic_identifier"]
-    assert patient_code.startswith("SYN-")
+    assert patient_code.startswith("PAT-")
     assert own_care.json()["clinical_events"] == []
     assert own_care.json()["allergies"] == []
 
@@ -699,8 +696,7 @@ def test_clinical_event_links_phase2_resources_with_safe_boundaries(
     )
     assert care_payload["imaging_assets"][0]["clinical_event_id"] == event_id
     assert (
-        care_payload["imaging_assets"][0]["finding_summary"]
-        == "Manual demo-only imaging finding."
+        care_payload["imaging_assets"][0]["finding_summary"] == "Manual demo-only imaging finding."
     )
     assert care_payload["recovery_plans"][0]["clinical_event_id"] == event_id
     assert care_payload["clinical_event_updates"][0]["id"] == patient_update_payload["id"]

@@ -1,31 +1,20 @@
 # Dr. AI Documentation Index
 
-Current stage: production/commercial v1.0 Phase 2 patient/doctor core
-workflows are complete locally. Phase 1 data foundation is complete, and Phase
-2 now includes demographics, allergies, chronic diseases, visit history,
-diagnoses, doctor notes, medication CRUD, prescription CRUD, medication/refill
-reminders, metadata-only in-app queued notification records,
-Tencent-COS-compatible upload metadata/finalization, imaging list/detail,
-doctor-only imaging review status, recovery-plan review/approval/completion,
-patient Today progress tracking, expanded care-bundle readback,
-doctor/patient Flutter surfaces, focused RBAC/audit tests, and the first
-frontend-only Clinical Event/Care Episode workflow clarification in doctor
-Patient Management. The deeper additive backend/API Clinical Event/Care
-Episode slice is now implemented locally with persisted events, nullable event
-links across core Phase 2 resources, patient-own reads, and focused
-RBAC/audit coverage. The latest local Phase 2 workflow polish adds derived
-Clinical Event timeline readback, manual doctor-entered imaging
-findings/results, event-scoped active Recovery Plan replacement, audited
-doctor Medical History review overlays, and patient-submitted Clinical Event
-updates that preserve doctor-owned diagnosis controls. The latest local
-cleanup adds invited sign-up, fresh-patient onboarding with a patient code, and
-doctor-side patient-code connection so manual testing can start from empty
-accounts rather than relying on seeded demo relationships.
+Current stage: Phase 2 patient/doctor workflow foundations are implemented,
+but the product is not yet commercial-quality. The next source-of-truth gate is
+`Dr_AI_v1.0_Product_Quality_Gate.md`: Phase 3 AI systems must not begin until
+the app feels like a real healthcare product with credible typography,
+patient avatar/profile setup, guided first-use onboarding, useful empty
+states, and normal user flows that are not dominated by synthetic/demo
+language.
 
 ## Current Production Docs
 
 - `Dr_AI_v1.0_Implementation_Plan.md` - source of truth for production v1.0
   scope, phase tracker, gates, and historical progress log.
+- `Dr_AI_v1.0_Product_Quality_Gate.md` - blocking product-quality gate before
+  Phase 3; defines real-app UX, aesthetic, onboarding, profile, and demo-copy
+  cleanup requirements.
 - `Phase_0_Production_v1_Surface_Audit.md` - current surface inventory,
   classifications, product-scope decisions, and production support/admin/
   specialist judgments.
@@ -37,9 +26,9 @@ accounts rather than relying on seeded demo relationships.
   core workflow closure, RBAC/audit boundary, and deferred gates.
 - `Dr_AI_v1.0_API_Contract.md` - implemented beta API boundary plus reserved
   production v1.0 contract gaps.
-- `Dr_AI_v1.0_Design_Freeze.md` - doctor/patient visual baseline from the
-  historical beta foundation; not evidence for specialist/admin/support
-  production surfaces.
+- `Dr_AI_v1.0_Design_Freeze.md` - historical doctor/patient beta visual
+  baseline only. It is not sufficient evidence that the current product is
+  production-quality.
 
 ## Historical Beta Records
 
@@ -48,6 +37,9 @@ evidence, and beta web-staging architecture notes live in `beta/`.
 
 Use these records for provenance and regression context. Do not treat beta
 completion as production v1.0 completion.
+
+Phase closure records are evidence logs. They should not override the current
+source of truth in the implementation plan and product-quality gate.
 
 ## Evidence Folders
 
@@ -63,8 +55,11 @@ context for event create/update/select and event-linked medication,
 prescription, imaging, recovery-plan, medical-history review, and consultation
 writes. The eight-functionality Phase 2 workflow-clarification list is closed
 locally, and manual inspection should use invited sign-up plus patient-code
-connection to create data from zero. Phase 3 AI systems must not start without
-explicit approval.
+connection to create data from zero.
+
+The next phase is **Phase 2.5 Product Quality and First-Use Readiness**, not
+Phase 3 AI. Phase 3 AI systems must not start until the product-quality gate is
+closed.
 External push, SMS, email, and native notification delivery remain gated
 beyond the Phase 2 metadata-only in-app queue path. Phase 5 still owns
 specialist/admin UI, audit search, system status, and admin-managed

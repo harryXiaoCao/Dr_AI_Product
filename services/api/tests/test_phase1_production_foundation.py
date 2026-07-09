@@ -46,8 +46,7 @@ def test_phase1_tables_are_present_after_migration() -> None:
         names = set(
             connection.execute(
                 text(
-                    "SELECT table_name FROM information_schema.tables "
-                    "WHERE table_schema = 'public'"
+                    "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'"
                 )
             ).scalars()
         )
@@ -72,9 +71,11 @@ def test_specialist_and_admin_registration_fail_closed(
             "/api/v1/auth/register",
             json={
                 "email": f"{role}.future@example.com",
+                "phone_number": f"+1555000{1 if role == 'specialist' else 2}",
                 "password": "generated test passphrase",
                 "role": role,
-                "invite_code": settings.patient_invite_code.get_secret_value(),
+                "verification_code": "123456",
+                "terms_accepted": True,
             },
         )
 

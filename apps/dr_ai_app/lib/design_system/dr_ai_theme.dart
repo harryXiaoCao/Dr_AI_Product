@@ -15,6 +15,14 @@ abstract final class DrAiTheme {
       colorScheme: scheme,
       scaffoldBackgroundColor: DrAiColors.surface,
       useMaterial3: true,
+      fontFamily: 'Inter',
+      fontFamilyFallback: const <String>[
+        'SF Pro Display',
+        'SF Pro Text',
+        'PingFang SC',
+        'Noto Sans CJK SC',
+        'Arial',
+      ],
       textTheme: const TextTheme(
         headlineLarge: TextStyle(fontSize: 32, fontWeight: FontWeight.w700),
         headlineMedium: TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
@@ -44,6 +52,51 @@ abstract final class DrAiTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.all(Radius.circular(DrAiRadii.md)),
           side: BorderSide(color: DrAiColors.outline),
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: DrAiColors.white,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 14,
+        ),
+        labelStyle: const TextStyle(
+          color: DrAiColors.inkSecondary,
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+        ),
+        hintStyle: const TextStyle(color: Color(0xFF9BA7B8), fontSize: 13),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(DrAiRadii.md),
+          borderSide: const BorderSide(color: Color(0xFFD8E1EF)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(DrAiRadii.md),
+          borderSide: const BorderSide(color: Color(0xFFD8E1EF)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(DrAiRadii.md),
+          borderSide: const BorderSide(color: DrAiColors.brand, width: 1.5),
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          minimumSize: const Size(0, 48),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(DrAiRadii.md),
+          ),
+          textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size(0, 42),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(DrAiRadii.md),
+          ),
+          side: const BorderSide(color: DrAiColors.brand),
+          textStyle: const TextStyle(fontWeight: FontWeight.w700),
         ),
       ),
     );

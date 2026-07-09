@@ -133,6 +133,16 @@ class ResponsiveAppShell extends ConsumerWidget {
       title: const Text('Dr. AI'),
       actions: <Widget>[
         IconButton(
+          key: const Key('account-profile-button'),
+          tooltip: 'Profile',
+          onPressed: () => _goToProfile(context),
+          icon: _UserAvatar(
+            label:
+                ref.watch(authControllerProvider).value?.user?.displayName ??
+                '',
+          ),
+        ),
+        IconButton(
           key: const Key('logout-button'),
           tooltip: 'Sign out',
           onPressed: () => ref.read(authControllerProvider.notifier).logout(),
@@ -162,7 +172,7 @@ class ResponsiveAppShell extends ConsumerWidget {
                   const SizedBox(width: DrAiSpacing.xl),
                   const Expanded(
                     child: SearchBar(
-                      hintText: 'Search synthetic patients and resources',
+                      hintText: 'Search patients and resources',
                       leading: Icon(Icons.search),
                     ),
                   ),
@@ -170,6 +180,8 @@ class ResponsiveAppShell extends ConsumerWidget {
                   const Spacer(),
                 if (!compact) ...<Widget>[
                   const SizedBox(width: DrAiSpacing.md),
+                  _UserAvatar(label: user?.displayName ?? ''),
+                  const SizedBox(width: DrAiSpacing.xs),
                   Flexible(
                     child: Text(
                       user?.displayName ?? '',
@@ -177,6 +189,13 @@ class ResponsiveAppShell extends ConsumerWidget {
                     ),
                   ),
                 ],
+                if (compact)
+                  IconButton(
+                    key: const Key('account-profile-button'),
+                    tooltip: 'Profile',
+                    onPressed: () => _goToProfile(context),
+                    icon: _UserAvatar(label: user?.displayName ?? ''),
+                  ),
                 IconButton(
                   key: const Key('logout-button'),
                   tooltip: 'Sign out',
@@ -206,8 +225,7 @@ class ResponsiveAppShell extends ConsumerWidget {
               width: 280,
               height: 48,
               child: SearchBar(
-                hintText:
-                    'Search synthetic patients, cases, diagnoses, resources',
+                hintText: 'Search patients, cases, diagnoses, resources',
                 leading: Icon(Icons.search),
               ),
             ),
@@ -223,6 +241,12 @@ class ResponsiveAppShell extends ConsumerWidget {
               ),
             ),
             const SizedBox(width: DrAiSpacing.md),
+            IconButton(
+              key: const Key('account-profile-button'),
+              tooltip: 'Profile',
+              onPressed: () => _goToProfile(context),
+              icon: _UserAvatar(label: user?.displayName ?? ''),
+            ),
             Flexible(
               child: Text(
                 user?.displayName ?? '',
@@ -252,5 +276,31 @@ class ResponsiveAppShell extends ConsumerWidget {
       return;
     }
     context.go('/patient');
+  }
+
+  void _goToProfile(BuildContext context) {
+    context.go(role == AppRole.doctor ? '/doctor' : '/patient');
+  }
+}
+
+class _UserAvatar extends StatelessWidget {
+  const _UserAvatar({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final initial = label.trim().isEmpty ? 'D' : label.trim()[0].toUpperCase();
+    return CircleAvatar(
+      radius: 16,
+      backgroundColor: DrAiColors.brandSoft,
+      child: Text(
+        initial,
+        style: const TextStyle(
+          color: DrAiColors.brand,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
   }
 }

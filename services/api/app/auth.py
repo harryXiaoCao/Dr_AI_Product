@@ -1,4 +1,3 @@
-import secrets
 import uuid
 from datetime import UTC, datetime, timedelta
 
@@ -12,6 +11,7 @@ from app.dependencies import AppSettings, CurrentUser, DbSession
 from app.errors import ApiError
 from app.models import (
     DoctorProfile,
+    Hospital,
     PatientProfile,
     RefreshSession,
     User,
@@ -42,21 +42,40 @@ def _normalize_email(email: str) -> str:
     return email.strip().lower()
 
 
+def _normalize_phone(phone_number: str | None) -> str | None:
+    if phone_number is None:
+        return None
+    normalized = "".join(char for char in phone_number.strip() if char.isdigit() or char == "+")
+    return normalized or None
+
+
 def _display_name(user: User) -> str:
     if user.role == UserRole.doctor and user.doctor_profile:
         return user.doctor_profile.display_name
     if user.role == UserRole.patient and user.patient_profile:
         return user.patient_profile.display_name
-    return "Invited beta user"
+    return "Dr. AI user"
 
 
 def _user_response(user: User) -> UserResponse:
     return UserResponse(
         id=user.id,
         email=user.email,
+        phone_number=user.phone_number,
         role=user.role,
         display_name=_display_name(user),
     )
+
+
+def _patient_code(user_id: uuid.UUID) -> str:
+    return f"PAT-{str(user_id)[:8].upper()}"
+
+
+def _doctor_hospital_name(body: RegisterRequest) -> str:
+    profile = body.doctor_profile
+    if profile and profile.hospital_name:
+        return profile.hospital_name
+    return "Hospital not specified"
 
 
 def _create_session(
@@ -85,16 +104,6 @@ def _create_session(
     )
 
 
-def _expected_invite(settings: Settings, role: UserRole) -> str | None:
-    if role == UserRole.doctor:
-        configured = settings.doctor_invite_code
-    elif role == UserRole.patient:
-        configured = settings.patient_invite_code
-    else:
-        return None
-    return configured.get_secret_value() if configured else None
-
-
 @router.post(
     "/auth/register",
     response_model=AuthTokenResponse,
@@ -105,39 +114,90 @@ def register(
     db: DbSession,
     settings: AppSettings,
 ) -> AuthTokenResponse:
-    expected_invite = _expected_invite(settings, body.role)
-    if expected_invite is None or not secrets.compare_digest(expected_invite, body.invite_code):
-        raise ApiError(403, "forbidden", "Registration is not available for this invitation.")
+    if body.role not in (UserRole.doctor, UserRole.patient):
+        raise ApiError(403, "forbidden", "Registration is not available for this role.")
 
+    email = _normalize_email(str(body.email)) if body.email is not None else None
+    phone_number = _normalize_phone(body.phone_number)
     user = User(
-        email=_normalize_email(str(body.email)),
+        email=email,
+        phone_number=phone_number,
         password_hash=hash_password(body.password),
         role=body.role,
     )
     db.add(user)
     db.flush()
     if body.role == UserRole.doctor:
+        doctor_profile = body.doctor_profile
+        hospital_name = _doctor_hospital_name(body)
         db.add(
             DoctorProfile(
                 user_id=user.id,
-                display_name="Invited Demo Doctor",
-                title="Invited beta clinician",
-                hospital_name="Synthetic Community Hospital",
+                display_name=doctor_profile.display_name
+                if doctor_profile and doctor_profile.display_name
+                else "Doctor profile",
+                title="Clinician",
+                hospital_name=hospital_name,
+                birth_date=doctor_profile.birth_date if doctor_profile else None,
+                gender=doctor_profile.gender if doctor_profile else None,
+                contact_phone=doctor_profile.contact_phone or phone_number
+                if doctor_profile
+                else phone_number,
+                avatar_url=doctor_profile.avatar_url if doctor_profile else None,
+                country=doctor_profile.country if doctor_profile else None,
+                province=doctor_profile.province if doctor_profile else None,
+                city=doctor_profile.city if doctor_profile else None,
+            )
+        )
+        db.add(
+            Hospital(
+                name=hospital_name,
+                legal_name=None,
+                status=(
+                    "pending_review"
+                    if doctor_profile and doctor_profile.custom_hospital
+                    else "active"
+                ),
+                metadata_json={
+                    "source": "doctor_signup",
+                    "country": doctor_profile.country if doctor_profile else None,
+                    "province": doctor_profile.province if doctor_profile else None,
+                    "city": doctor_profile.city if doctor_profile else None,
+                    "custom_hospital": doctor_profile.custom_hospital if doctor_profile else False,
+                },
             )
         )
     else:
+        patient_profile = body.patient_profile
+        birth_date = patient_profile.birth_date if patient_profile else None
+        gender = patient_profile.gender if patient_profile else None
         db.add(
             PatientProfile(
                 user_id=user.id,
-                display_name="Invited Demo Patient",
-                synthetic_identifier=f"SYN-{str(user.id)[:8].upper()}",
+                display_name=patient_profile.display_name
+                if patient_profile and patient_profile.display_name
+                else "New Patient",
+                synthetic_identifier=_patient_code(user.id),
+                birth_date=birth_date,
+                birth_year=birth_date.year if birth_date else None,
+                sex=gender,
+                gender=gender,
+                contact_phone=patient_profile.contact_phone or phone_number
+                if patient_profile
+                else phone_number,
+                avatar_url=patient_profile.avatar_url if patient_profile else None,
+                country=patient_profile.country if patient_profile else None,
+                province=patient_profile.province if patient_profile else None,
+                city=patient_profile.city if patient_profile else None,
+                home_address=patient_profile.home_address if patient_profile else None,
+                medical_history_setup_completed=False,
             )
         )
     try:
         db.commit()
     except IntegrityError:
         db.rollback()
-        raise ApiError(409, "conflict", "An account already exists for this email.") from None
+        raise ApiError(409, "conflict", "An account already exists for this contact.") from None
     db.refresh(user)
     return _create_session(db, user, settings)
 
@@ -148,7 +208,12 @@ def login(
     db: DbSession,
     settings: AppSettings,
 ) -> AuthTokenResponse:
-    user = db.scalar(select(User).where(User.email == _normalize_email(str(body.email))))
+    if body.email is not None:
+        user = db.scalar(select(User).where(User.email == _normalize_email(str(body.email))))
+    else:
+        user = db.scalar(
+            select(User).where(User.phone_number == _normalize_phone(body.phone_number))
+        )
     encoded_hash = user.password_hash if user else _DUMMY_PASSWORD_HASH
     password_is_valid = verify_password(body.password, encoded_hash)
     if user is None or not user.is_active or not password_is_valid:

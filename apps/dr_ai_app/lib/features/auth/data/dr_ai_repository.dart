@@ -10,10 +10,14 @@ abstract interface class DrAiRepository {
   Future<AuthSession?> restore();
   Future<AuthSession> login(String email, String password);
   Future<AuthSession> register({
+    required String phoneNumber,
     required String email,
     required String password,
     required AppRole role,
-    required String inviteCode,
+    required String verificationCode,
+    required bool termsAccepted,
+    PatientSignupProfile? patientProfile,
+    DoctorSignupProfile? doctorProfile,
   });
   Future<void> logout();
   Future<DashboardData> loadDashboard(AppRole role);
@@ -21,6 +25,35 @@ abstract interface class DrAiRepository {
   Future<PatientSummary> connectPatientByCode(String patientCode);
   Future<PatientCareBundle> loadPatientCareBundle(String patientId);
   Future<PatientCareBundle> loadOwnPatientCare();
+  Future<PatientProfile> updateOwnPatientProfile({
+    required String displayName,
+    required String birthDate,
+    required String gender,
+    required String contactPhone,
+    required String emergencyContactName,
+    required String emergencyContactPhone,
+    required String preferredLanguage,
+    required String contactPreference,
+    required String avatarUrl,
+    required bool medicalHistorySetupCompleted,
+  });
+  Future<PatientAllergyItem> createPatientAllergy({
+    required String patientId,
+    required String label,
+    required String reaction,
+    required String severity,
+  });
+  Future<MedicalRecordItem> createPatientMedicalRecord({
+    required String patientId,
+    required String title,
+    required String category,
+    required String summary,
+  });
+  Future<ChronicDiseaseItem> createChronicDisease({
+    required String patientId,
+    required String name,
+    required String notes,
+  });
   Future<ClinicalEventItem> saveClinicalEvent({
     required String patientId,
     required String? clinicalEventId,
@@ -159,6 +192,81 @@ abstract interface class DrAiRepository {
   });
 }
 
+class PatientSignupProfile {
+  const PatientSignupProfile({
+    required this.displayName,
+    required this.birthDate,
+    required this.gender,
+    required this.contactPhone,
+    required this.country,
+    required this.province,
+    required this.city,
+    required this.homeAddress,
+    required this.avatarUrl,
+  });
+
+  final String displayName;
+  final String birthDate;
+  final String gender;
+  final String contactPhone;
+  final String country;
+  final String province;
+  final String city;
+  final String homeAddress;
+  final String avatarUrl;
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    if (displayName.trim().isNotEmpty) 'display_name': displayName.trim(),
+    if (birthDate.trim().isNotEmpty) 'birth_date': birthDate.trim(),
+    if (gender.trim().isNotEmpty) 'gender': gender.trim(),
+    if (contactPhone.trim().isNotEmpty) 'contact_phone': contactPhone.trim(),
+    if (country.trim().isNotEmpty) 'country': country.trim(),
+    if (province.trim().isNotEmpty) 'province': province.trim(),
+    if (city.trim().isNotEmpty) 'city': city.trim(),
+    if (homeAddress.trim().isNotEmpty) 'home_address': homeAddress.trim(),
+    if (avatarUrl.trim().isNotEmpty) 'avatar_url': avatarUrl.trim(),
+  };
+}
+
+class DoctorSignupProfile {
+  const DoctorSignupProfile({
+    required this.displayName,
+    required this.birthDate,
+    required this.gender,
+    required this.contactPhone,
+    required this.country,
+    required this.province,
+    required this.city,
+    required this.hospitalName,
+    required this.customHospital,
+    required this.avatarUrl,
+  });
+
+  final String displayName;
+  final String birthDate;
+  final String gender;
+  final String contactPhone;
+  final String country;
+  final String province;
+  final String city;
+  final String hospitalName;
+  final bool customHospital;
+  final String avatarUrl;
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    if (displayName.trim().isNotEmpty) 'display_name': displayName.trim(),
+    if (birthDate.trim().isNotEmpty) 'birth_date': birthDate.trim(),
+    if (gender.trim().isNotEmpty) 'gender': gender.trim(),
+    if (contactPhone.trim().isNotEmpty) 'contact_phone': contactPhone.trim(),
+    if (country.trim().isNotEmpty) 'country': country.trim(),
+    if (province.trim().isNotEmpty) 'province': province.trim(),
+    if (city.trim().isNotEmpty) 'city': city.trim(),
+    if (hospitalName.trim().isNotEmpty) 'hospital_name': hospitalName.trim(),
+    'custom_hospital': customHospital,
+    if (avatarUrl.trim().isNotEmpty) 'avatar_url': avatarUrl.trim(),
+  };
+}
+
 class DioDrAiRepository implements DrAiRepository {
   DioDrAiRepository({required this.client, required this.secureStorage});
 
@@ -183,10 +291,17 @@ class DioDrAiRepository implements DrAiRepository {
 
   @override
   Future<AuthSession> login(String email, String password) async {
+    final account = email.trim();
+    final data = <String, String>{'password': password};
+    if (account.contains('@')) {
+      data['email'] = account;
+    } else {
+      data['phone_number'] = account;
+    }
     try {
       final response = await client.post<Map<String, dynamic>>(
         '/api/v1/auth/login',
-        data: <String, String>{'email': email.trim(), 'password': password},
+        data: data,
       );
       return await _saveSession(AuthSession.fromJson(response.data!));
     } on DioException catch (error) {
@@ -196,20 +311,36 @@ class DioDrAiRepository implements DrAiRepository {
 
   @override
   Future<AuthSession> register({
+    required String phoneNumber,
     required String email,
     required String password,
     required AppRole role,
-    required String inviteCode,
+    required String verificationCode,
+    required bool termsAccepted,
+    PatientSignupProfile? patientProfile,
+    DoctorSignupProfile? doctorProfile,
   }) async {
+    final trimmedEmail = email.trim();
+    final data = <String, dynamic>{
+      'password': password,
+      'role': role.wireValue,
+      'phone_number': phoneNumber.trim(),
+      'verification_code': verificationCode.trim(),
+      'terms_accepted': termsAccepted,
+    };
+    if (trimmedEmail.isNotEmpty) {
+      data['email'] = trimmedEmail;
+    }
+    if (patientProfile != null) {
+      data['patient_profile'] = patientProfile.toJson();
+    }
+    if (doctorProfile != null) {
+      data['doctor_profile'] = doctorProfile.toJson();
+    }
     try {
       final response = await client.post<Map<String, dynamic>>(
         '/api/v1/auth/register',
-        data: <String, String>{
-          'email': email.trim(),
-          'password': password,
-          'role': role.wireValue,
-          'invite_code': inviteCode.trim(),
-        },
+        data: data,
       );
       return await _saveSession(AuthSession.fromJson(response.data!));
     } on DioException catch (error) {
@@ -313,6 +444,96 @@ class DioDrAiRepository implements DrAiRepository {
   Future<PatientCareBundle> loadOwnPatientCare() async {
     final response = await _authorizedGet('/api/v1/patient/me/care');
     return PatientCareBundle.fromJson(response);
+  }
+
+  @override
+  Future<PatientProfile> updateOwnPatientProfile({
+    required String displayName,
+    required String birthDate,
+    required String gender,
+    required String contactPhone,
+    required String emergencyContactName,
+    required String emergencyContactPhone,
+    required String preferredLanguage,
+    required String contactPreference,
+    required String avatarUrl,
+    required bool medicalHistorySetupCompleted,
+  }) async {
+    final response = await _authorizedPatch(
+      '/api/v1/patient/me/profile',
+      data: <String, dynamic>{
+        'display_name': displayName.trim(),
+        if (birthDate.trim().isNotEmpty) 'birth_date': birthDate.trim(),
+        if (gender.trim().isNotEmpty) 'gender': gender.trim(),
+        if (contactPhone.trim().isNotEmpty)
+          'contact_phone': contactPhone.trim(),
+        if (emergencyContactName.trim().isNotEmpty)
+          'emergency_contact_name': emergencyContactName.trim(),
+        if (emergencyContactPhone.trim().isNotEmpty)
+          'emergency_contact_phone': emergencyContactPhone.trim(),
+        if (preferredLanguage.trim().isNotEmpty)
+          'preferred_language': preferredLanguage.trim(),
+        if (contactPreference.trim().isNotEmpty)
+          'contact_preference': contactPreference.trim(),
+        if (avatarUrl.trim().isNotEmpty) 'avatar_url': avatarUrl.trim(),
+        'medical_history_setup_completed': medicalHistorySetupCompleted,
+      },
+    );
+    return PatientProfile.fromJson(response);
+  }
+
+  @override
+  Future<PatientAllergyItem> createPatientAllergy({
+    required String patientId,
+    required String label,
+    required String reaction,
+    required String severity,
+  }) async {
+    final response = await _authorizedPost(
+      '/api/v1/patients/$patientId/allergies',
+      data: <String, dynamic>{
+        'label': label.trim(),
+        if (reaction.trim().isNotEmpty) 'reaction': reaction.trim(),
+        'severity': severity,
+        'status': 'active',
+      },
+    );
+    return PatientAllergyItem.fromJson(response);
+  }
+
+  @override
+  Future<MedicalRecordItem> createPatientMedicalRecord({
+    required String patientId,
+    required String title,
+    required String category,
+    required String summary,
+  }) async {
+    final response = await _authorizedPost(
+      '/api/v1/patients/$patientId/records',
+      data: <String, String>{
+        'title': title.trim(),
+        'category': category.trim(),
+        'summary': summary.trim(),
+      },
+    );
+    return MedicalRecordItem.fromJson(response);
+  }
+
+  @override
+  Future<ChronicDiseaseItem> createChronicDisease({
+    required String patientId,
+    required String name,
+    required String notes,
+  }) async {
+    final response = await _authorizedPost(
+      '/api/v1/patients/$patientId/chronic-diseases',
+      data: <String, dynamic>{
+        'name': name.trim(),
+        'status': 'active',
+        if (notes.trim().isNotEmpty) 'notes': notes.trim(),
+      },
+    );
+    return ChronicDiseaseItem.fromJson(response);
   }
 
   @override
@@ -886,6 +1107,40 @@ class DioDrAiRepository implements DrAiRepository {
       if (apiError.statusCode == 401 && allowRefresh && _session != null) {
         await _refresh(_session!.refreshToken);
         return _authorizedPut(path, data: data, allowRefresh: false);
+      }
+      throw apiError;
+    }
+  }
+
+  Future<Map<String, dynamic>> _authorizedPatch(
+    String path, {
+    required Map<String, dynamic> data,
+    bool allowRefresh = true,
+  }) async {
+    final session = _session;
+    if (session == null) {
+      throw const ApiError(
+        code: 'unauthenticated',
+        message: 'Your session has ended. Please sign in again.',
+        statusCode: 401,
+      );
+    }
+    try {
+      final response = await client.patch<Map<String, dynamic>>(
+        path,
+        data: data,
+        options: Options(
+          headers: <String, String>{
+            'Authorization': 'Bearer ${session.accessToken}',
+          },
+        ),
+      );
+      return response.data!;
+    } on DioException catch (error) {
+      final apiError = _toApiError(error);
+      if (apiError.statusCode == 401 && allowRefresh && _session != null) {
+        await _refresh(_session!.refreshToken);
+        return _authorizedPatch(path, data: data, allowRefresh: false);
       }
       throw apiError;
     }

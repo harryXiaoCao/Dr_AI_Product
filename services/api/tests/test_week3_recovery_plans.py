@@ -58,9 +58,7 @@ def _plan_payload(title: str = "Synthetic recovery draft") -> dict[str, object]:
     }
 
 
-def test_doctor_can_create_edit_and_activate_recovery_plan(
-    client: TestClient, settings
-) -> None:
+def test_doctor_can_create_edit_and_activate_recovery_plan(client: TestClient, settings) -> None:
     assigned_id, _ = _seed_patient_ids(settings)
     doctor = login(
         client,
@@ -114,9 +112,7 @@ def test_doctor_can_create_edit_and_activate_recovery_plan(
             "recovery_plan_activated",
         }.issubset(audit_types)
         metadata = db.scalars(
-            select(AuditEvent.metadata_json).where(
-                AuditEvent.event_type == "recovery_plan_created"
-            )
+            select(AuditEvent.metadata_json).where(AuditEvent.event_type == "recovery_plan_created")
         ).first()
         assert metadata is not None
         assert "Synthetic recovery instructions" not in str(metadata)

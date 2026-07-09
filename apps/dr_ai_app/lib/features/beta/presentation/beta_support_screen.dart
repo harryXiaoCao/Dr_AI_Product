@@ -15,7 +15,7 @@ class BetaSupportScreen extends ConsumerStatefulWidget {
 class _BetaSupportScreenState extends ConsumerState<BetaSupportScreen> {
   final _feedbackController = TextEditingController();
   final _deletionController = TextEditingController();
-  bool _understandsSyntheticOnly = false;
+  bool _understandsDataBoundary = false;
   bool _understandsNoEmergencyUse = false;
   bool _understandsNoRealData = false;
   bool _deletionPrepared = false;
@@ -45,15 +45,16 @@ class _BetaSupportScreenState extends ConsumerState<BetaSupportScreen> {
               _BetaSection(
                 key: const Key('beta-privacy-section'),
                 icon: Icons.privacy_tip_outlined,
-                title: 'Beta privacy notice',
+                title: 'Privacy and data notice',
                 children: const <Widget>[
                   _BetaText(
-                    'Dr. AI v1.0 is an invited, non-clinical beta using '
-                    'synthetic demonstration content only.',
+                    'Dr. AI is preparing its production account, consent, and '
+                    'support policies. This placeholder keeps the current '
+                    'staging surface clear while those policies are finalized.',
                   ),
                   _BetaBullet(
                     'Do not enter names, contact information, raw records, '
-                    'images, or patient-owned clinical content.',
+                    'images, or patient-owned clinical content in staging.',
                   ),
                   _BetaBullet(
                     'DeepSeek is reached only through the FastAPI backend; '
@@ -73,12 +74,12 @@ class _BetaSupportScreenState extends ConsumerState<BetaSupportScreen> {
                 children: <Widget>[
                   _ConsentCheckbox(
                     key: const Key('consent-synthetic-only-checkbox'),
-                    value: _understandsSyntheticOnly,
+                    value: _understandsDataBoundary,
                     onChanged: (value) => setState(
-                      () => _understandsSyntheticOnly = value ?? false,
+                      () => _understandsDataBoundary = value ?? false,
                     ),
                     label:
-                        'I understand this beta uses synthetic demonstration data.',
+                        'I understand staging is not ready for real patient data.',
                   ),
                   _ConsentCheckbox(
                     key: const Key('consent-no-emergency-checkbox'),
@@ -100,7 +101,7 @@ class _BetaSupportScreenState extends ConsumerState<BetaSupportScreen> {
                   _PreparedStatus(
                     label: _consentReady
                         ? 'Consent readiness prepared locally.'
-                        : 'Complete all items before a tester uses the beta.',
+                        : 'Complete all items before using this staging surface.',
                     isReady: _consentReady,
                   ),
                 ],
@@ -119,7 +120,7 @@ class _BetaSupportScreenState extends ConsumerState<BetaSupportScreen> {
                     key: const Key('account-deletion-confirm-field'),
                     controller: _deletionController,
                     decoration: const InputDecoration(
-                      labelText: 'Type REQUEST DEMO DELETION',
+                      labelText: 'Type REQUEST ACCOUNT DELETION',
                       border: OutlineInputBorder(),
                     ),
                     onChanged: (_) => setState(() {}),
@@ -149,9 +150,8 @@ class _BetaSupportScreenState extends ConsumerState<BetaSupportScreen> {
                 title: 'Feedback form',
                 children: <Widget>[
                   const _BetaText(
-                    'Use synthetic-only feedback. Do not include real patient '
-                    'details, screenshots containing private data, or account '
-                    'secrets.',
+                    'Do not include patient details, screenshots containing '
+                    'private data, or account secrets.',
                   ),
                   TextField(
                     key: const Key('beta-feedback-field'),
@@ -161,7 +161,7 @@ class _BetaSupportScreenState extends ConsumerState<BetaSupportScreen> {
                     decoration: const InputDecoration(
                       labelText: 'Feedback draft',
                       hintText:
-                          'Describe the beta issue, device, browser, and synthetic step.',
+                          'Describe the issue, device, browser, and account step.',
                       border: OutlineInputBorder(),
                     ),
                   ),
@@ -190,21 +190,20 @@ class _BetaSupportScreenState extends ConsumerState<BetaSupportScreen> {
                 title: 'Known limitations',
                 children: const <Widget>[
                   _BetaBullet(
-                    'Simulated lung-risk assessment only; no clinical model '
-                    'or real inference is enabled.',
+                    'Clinical model inference, billing, appointments, and '
+                    'video or voice consultation are not enabled yet.',
                   ),
                   _BetaBullet(
-                    'Demo upload is metadata preparation only unless release '
-                    'operators explicitly approve real COS completion.',
+                    'Image upload completion and storage policy require a '
+                    'separate production approval path.',
                   ),
                   _BetaBullet(
-                    'No billing, appointments, video, voice consultation, '
-                    'analytics expansion, or clinical claims are enabled.',
+                    'Password reset, account recovery, and verified SMS/email '
+                    'delivery remain deferred.',
                   ),
                   _BetaBullet(
-                    'TestFlight, Android closed testing, web deployment, '
-                    'tagging, tester invites, and monitoring changes require '
-                    'explicit release approval.',
+                    'Any production deployment, store distribution, or account '
+                    'policy change requires explicit release approval.',
                   ),
                 ],
               ),
@@ -216,7 +215,7 @@ class _BetaSupportScreenState extends ConsumerState<BetaSupportScreen> {
     if (user == null) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('Dr. AI beta support'),
+          title: const Text('Dr. AI privacy and support'),
           actions: <Widget>[
             TextButton(
               onPressed: () => context.go('/login'),
@@ -231,12 +230,12 @@ class _BetaSupportScreenState extends ConsumerState<BetaSupportScreen> {
   }
 
   bool get _consentReady =>
-      _understandsSyntheticOnly &&
+      _understandsDataBoundary &&
       _understandsNoEmergencyUse &&
       _understandsNoRealData;
 
   bool get _deletionReady =>
-      _deletionController.text.trim() == 'REQUEST DEMO DELETION';
+      _deletionController.text.trim() == 'REQUEST ACCOUNT DELETION';
 
   void _showDeletionPrepared() {
     setState(() => _deletionPrepared = true);
@@ -305,7 +304,7 @@ class _BetaHero extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             Text(
-              'Beta support',
+              'Privacy and support',
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                 color: DrAiColors.white,
                 fontWeight: FontWeight.w800,
@@ -314,12 +313,12 @@ class _BetaHero extends StatelessWidget {
             const SizedBox(height: DrAiSpacing.xs),
             Text(
               displayName == null
-                  ? 'Release-prep surfaces for the Dr. AI invited beta.'
-                  : 'Release-prep surfaces for $displayName.',
+                  ? 'Account policy placeholders for Dr. AI staging.'
+                  : 'Account policy placeholders for $displayName.',
               style: const TextStyle(color: DrAiColors.outlineMuted),
             ),
             const SizedBox(height: DrAiSpacing.sm),
-            const _BetaChip(label: 'Synthetic data only - non-clinical beta'),
+            const _BetaChip(label: 'Staging policy placeholder'),
           ],
         ),
       ),
