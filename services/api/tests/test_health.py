@@ -25,10 +25,17 @@ def test_openapi_describes_non_clinical_foundation(client: TestClient) -> None:
     assert "Not intended for clinical use" in response.json()["info"]["description"]
 
 
-def test_cors_defaults_to_same_origin_only(settings) -> None:
+def test_cors_defaults_to_same_origin_only() -> None:
+    settings = Settings(
+        _env_file=None,
+        environment="test",
+        jwt_secret="test-secret-value-with-enough-entropy-123",
+    )
+
     assert settings.cors_allowed_origins == []
 
     response = Settings(
+        _env_file=None,
         environment="staging",
         jwt_secret="staging-secret-value-with-enough-entropy-123",
         cors_allowed_origins=["https://beta.example.test"],

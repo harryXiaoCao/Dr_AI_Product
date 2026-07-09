@@ -697,8 +697,6 @@ Current implementation status:
     and Simplified Chinese.
   - [ ] Replace default-looking/generic typography, weak spacing, and crowded
     hierarchy in the patient and doctor surfaces.
-  - [ ] Add a real patient avatar/profile entry point that opens profile
-    editing.
   - [ ] Make patient profile setup a guided first-use flow: avatar, display
     name, birth date or age, sex/gender, contact number, emergency contact,
     preferred language, and contact preference.

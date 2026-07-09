@@ -260,6 +260,9 @@ def _doctor_profile_response(profile: DoctorProfile) -> DoctorProfileResponse:
         province=profile.province,
         city=profile.city,
         hospital_name=profile.hospital_name,
+        specialty=profile.specialty,
+        department=profile.department,
+        preferred_language=profile.preferred_language,
     )
 
 
@@ -3299,6 +3302,9 @@ def update_own_doctor_profile(
         "province",
         "city",
         "hospital_name",
+        "specialty",
+        "department",
+        "preferred_language",
     ):
         value = getattr(request, field)
         if value is not None and getattr(profile, field) != value:
@@ -4219,6 +4225,52 @@ def complete_recovery_task(
         db.commit()
         db.refresh(task)
     return TaskCompletionResponse(task=_recovery_task_response(task, {task.id: completion}))
+
+
+@router.delete(
+    "/patient/me/tasks/{task_id}/completion",
+    response_model=TaskCompletionResponse,
+)
+def uncomplete_recovery_task(
+    task_id: uuid.UUID,
+    user: CurrentUser,
+    db: DbSession,
+) -> TaskCompletionResponse:
+    if user.role != UserRole.patient or user.patient_profile is None:
+        raise _neutral_not_found()
+    task = db.scalar(
+        select(RecoveryTask)
+        .join(RecoveryPlan)
+        .options(selectinload(RecoveryTask.completions))
+        .where(
+            RecoveryTask.id == task_id,
+            RecoveryTask.patient_id == user.patient_profile.id,
+            RecoveryPlan.status == "active",
+        )
+    )
+    if task is None:
+        raise _neutral_not_found()
+    completion = db.scalar(
+        select(RecoveryTaskCompletion).where(
+            RecoveryTaskCompletion.task_id == task.id,
+            RecoveryTaskCompletion.patient_id == user.patient_profile.id,
+        )
+    )
+    if completion is not None:
+        db.delete(completion)
+        db.flush()
+        _record_audit_event(
+            db,
+            actor_user_id=user.id,
+            patient_id=user.patient_profile.id,
+            event_type="recovery_task_uncompleted",
+            resource_type="recovery_task",
+            resource_id=task.id,
+            metadata={"category": task.category, "plan_id": str(task.plan_id)},
+        )
+        db.commit()
+        db.refresh(task)
+    return TaskCompletionResponse(task=_recovery_task_response(task, {}))
 
 
 @router.get("/patient/me/care", response_model=PatientCareBundleResponse)

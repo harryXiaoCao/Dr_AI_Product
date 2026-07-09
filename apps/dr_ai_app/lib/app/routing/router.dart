@@ -57,11 +57,39 @@ GoRouter createRouter(AppRole? role, {String? initialLocation}) {
             path: 'patients',
             builder: (context, state) => const PatientManagementScreen(),
           ),
+          GoRoute(
+            path: 'account',
+            builder: (context, state) => const DoctorAccountScreen(),
+          ),
         ],
       ),
       GoRoute(
         path: '/patient',
         builder: (context, state) => const PatientDashboardScreen(),
+        routes: <RouteBase>[
+          GoRoute(
+            path: 'contact',
+            builder: (context, state) => const PatientPlaceholderScreen(
+              selectedIndex: 1,
+              title: 'Contact',
+            ),
+          ),
+          GoRoute(
+            path: 'medical-service',
+            builder: (context, state) => const PatientPlaceholderScreen(
+              selectedIndex: 2,
+              title: 'Medical Service',
+            ),
+          ),
+          GoRoute(
+            path: 'recovery-plan',
+            builder: (context, state) => const PatientRecoveryPlanScreen(),
+          ),
+          GoRoute(
+            path: 'account',
+            builder: (context, state) => const PatientAccountScreen(),
+          ),
+        ],
       ),
       GoRoute(
         path: '/privacy',

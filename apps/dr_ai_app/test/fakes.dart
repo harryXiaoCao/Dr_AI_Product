@@ -5,6 +5,7 @@ import 'package:dr_ai_app/core/api/api_error.dart';
 import 'package:dr_ai_app/features/auth/data/dr_ai_repository.dart';
 import 'package:dr_ai_app/features/auth/domain/auth_models.dart';
 import 'package:dr_ai_app/features/dashboard/domain/dashboard_data.dart';
+import 'package:dr_ai_app/features/doctor/domain/doctor_profile.dart';
 import 'package:dr_ai_app/features/patient/domain/patient_care_data.dart';
 
 const doctorUser = SessionUser(
@@ -32,6 +33,20 @@ const doctorSession = AuthSession(
   accessToken: 'test-access',
   refreshToken: 'test-refresh',
   user: doctorUser,
+);
+
+const doctorProfile = DoctorProfile(
+  id: 'doctor-profile-test-id',
+  displayName: 'Dr. Avery Demo',
+  title: 'Attending physician',
+  hospitalName: 'Nanshan Care Center',
+  contactPhone: '+86 138 0000 1234',
+  country: 'China',
+  province: 'Guangdong',
+  city: 'Shenzhen',
+  specialty: 'Pulmonology',
+  department: 'Respiratory Medicine',
+  preferredLanguage: 'English',
 );
 
 const patientSession = AuthSession(
@@ -704,7 +719,10 @@ class FakeDrAiRepository implements DrAiRepository {
   bool imagingPrepared = false;
   bool imagingCompleted = false;
   bool imagingReviewed = false;
+  bool doctorProfileUpdated = false;
   String? lastClinicalEventId;
+  String? lastLoginEmail;
+  String? lastLoginPassword;
   int chatMessagesSent = 0;
   String? lastChatMessage;
 
@@ -713,6 +731,8 @@ class FakeDrAiRepository implements DrAiRepository {
 
   @override
   Future<AuthSession> login(String email, String password) async {
+    lastLoginEmail = email;
+    lastLoginPassword = password;
     if (loginCompleter != null) {
       return loginCompleter!.future;
     }
@@ -763,6 +783,44 @@ class FakeDrAiRepository implements DrAiRepository {
       throw dashboardError!;
     }
     return dashboard;
+  }
+
+  @override
+  Future<DoctorProfile> loadOwnDoctorProfile() async => _doctorProfile;
+
+  DoctorProfile _doctorProfile = doctorProfile;
+
+  @override
+  Future<DoctorProfile> updateOwnDoctorProfile({
+    required String displayName,
+    required String specialty,
+    required String title,
+    required String hospitalName,
+    required String department,
+    required String contactPhone,
+    required String country,
+    required String province,
+    required String city,
+    required String preferredLanguage,
+  }) async {
+    doctorProfileUpdated = true;
+    _doctorProfile = DoctorProfile(
+      id: _doctorProfile.id,
+      displayName: displayName,
+      title: title,
+      birthDate: _doctorProfile.birthDate,
+      gender: _doctorProfile.gender,
+      contactPhone: contactPhone,
+      avatarUrl: _doctorProfile.avatarUrl,
+      country: country,
+      province: province,
+      city: city,
+      hospitalName: hospitalName,
+      specialty: specialty,
+      department: department,
+      preferredLanguage: preferredLanguage,
+    );
+    return _doctorProfile;
   }
 
   @override
@@ -822,7 +880,6 @@ class FakeDrAiRepository implements DrAiRepository {
     required String emergencyContactPhone,
     required String preferredLanguage,
     required String contactPreference,
-    required String avatarUrl,
     required bool medicalHistorySetupCompleted,
   }) async {
     patientProfileUpdated = true;
@@ -848,7 +905,7 @@ class FakeDrAiRepository implements DrAiRepository {
           : emergencyContactPhone,
       preferredLanguage: preferredLanguage,
       contactPreference: contactPreference,
-      avatarUrl: avatarUrl.isEmpty ? null : avatarUrl,
+      avatarUrl: patientCareBundle.patient.avatarUrl,
       medicalHistorySetupCompleted: medicalHistorySetupCompleted,
     );
     patientCareBundle = _copyCareBundle(patientCareBundle, patient: updated);
@@ -1415,6 +1472,38 @@ class FakeDrAiRepository implements DrAiRepository {
         medicationId: task.medicationId,
         isCompleted: true,
         completedAt: DateTime(2026, 7, 5, 12),
+        notificationStatus: task.notificationStatus,
+      );
+    }).toList();
+    patientToday = PatientTodayData(
+      safetyLabel: patientToday.safetyLabel,
+      activePlan: patientToday.activePlan,
+      progressSummary: _progressForTasks(updatedTasks),
+      tasks: updatedTasks,
+    );
+    return updatedTasks.firstWhere((task) => task.taskId == taskId);
+  }
+
+  @override
+  Future<RecoveryTaskItem> uncompleteRecoveryTask(String taskId) async {
+    if (completionError != null) {
+      throw completionError!;
+    }
+    final updatedTasks = patientToday.tasks.map((task) {
+      if (task.taskId != taskId) {
+        return task;
+      }
+      return RecoveryTaskItem(
+        taskId: task.taskId,
+        planId: task.planId,
+        category: task.category,
+        title: task.title,
+        detail: task.detail,
+        dueLabel: task.dueLabel,
+        notificationTime: task.notificationTime,
+        medicationId: task.medicationId,
+        isCompleted: false,
+        completedAt: null,
         notificationStatus: task.notificationStatus,
       );
     }).toList();

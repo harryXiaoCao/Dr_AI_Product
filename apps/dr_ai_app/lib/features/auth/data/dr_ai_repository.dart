@@ -3,6 +3,7 @@ import 'package:dr_ai_app/app/routing/app_role.dart';
 import 'package:dr_ai_app/core/api/api_error.dart';
 import 'package:dr_ai_app/features/auth/domain/auth_models.dart';
 import 'package:dr_ai_app/features/dashboard/domain/dashboard_data.dart';
+import 'package:dr_ai_app/features/doctor/domain/doctor_profile.dart';
 import 'package:dr_ai_app/features/patient/domain/patient_care_data.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
@@ -21,6 +22,19 @@ abstract interface class DrAiRepository {
   });
   Future<void> logout();
   Future<DashboardData> loadDashboard(AppRole role);
+  Future<DoctorProfile> loadOwnDoctorProfile();
+  Future<DoctorProfile> updateOwnDoctorProfile({
+    required String displayName,
+    required String specialty,
+    required String title,
+    required String hospitalName,
+    required String department,
+    required String contactPhone,
+    required String country,
+    required String province,
+    required String city,
+    required String preferredLanguage,
+  });
   Future<PatientListData> loadPatients({String? query});
   Future<PatientSummary> connectPatientByCode(String patientCode);
   Future<PatientCareBundle> loadPatientCareBundle(String patientId);
@@ -34,7 +48,6 @@ abstract interface class DrAiRepository {
     required String emergencyContactPhone,
     required String preferredLanguage,
     required String contactPreference,
-    required String avatarUrl,
     required bool medicalHistorySetupCompleted,
   });
   Future<PatientAllergyItem> createPatientAllergy({
@@ -175,6 +188,7 @@ abstract interface class DrAiRepository {
   });
   Future<PatientTodayData> loadPatientToday();
   Future<RecoveryTaskItem> completeRecoveryTask(String taskId);
+  Future<RecoveryTaskItem> uncompleteRecoveryTask(String taskId);
   Future<MedicationNotificationScheduleResult> scheduleMedicationNotifications(
     List<RecoveryTaskItem> tasks,
   );
@@ -202,7 +216,6 @@ class PatientSignupProfile {
     required this.province,
     required this.city,
     required this.homeAddress,
-    required this.avatarUrl,
   });
 
   final String displayName;
@@ -213,7 +226,6 @@ class PatientSignupProfile {
   final String province;
   final String city;
   final String homeAddress;
-  final String avatarUrl;
 
   Map<String, dynamic> toJson() => <String, dynamic>{
     if (displayName.trim().isNotEmpty) 'display_name': displayName.trim(),
@@ -224,7 +236,6 @@ class PatientSignupProfile {
     if (province.trim().isNotEmpty) 'province': province.trim(),
     if (city.trim().isNotEmpty) 'city': city.trim(),
     if (homeAddress.trim().isNotEmpty) 'home_address': homeAddress.trim(),
-    if (avatarUrl.trim().isNotEmpty) 'avatar_url': avatarUrl.trim(),
   };
 }
 
@@ -239,7 +250,6 @@ class DoctorSignupProfile {
     required this.city,
     required this.hospitalName,
     required this.customHospital,
-    required this.avatarUrl,
   });
 
   final String displayName;
@@ -251,7 +261,6 @@ class DoctorSignupProfile {
   final String city;
   final String hospitalName;
   final bool customHospital;
-  final String avatarUrl;
 
   Map<String, dynamic> toJson() => <String, dynamic>{
     if (displayName.trim().isNotEmpty) 'display_name': displayName.trim(),
@@ -263,7 +272,6 @@ class DoctorSignupProfile {
     if (city.trim().isNotEmpty) 'city': city.trim(),
     if (hospitalName.trim().isNotEmpty) 'hospital_name': hospitalName.trim(),
     'custom_hospital': customHospital,
-    if (avatarUrl.trim().isNotEmpty) 'avatar_url': avatarUrl.trim(),
   };
 }
 
@@ -414,6 +422,45 @@ class DioDrAiRepository implements DrAiRepository {
   }
 
   @override
+  Future<DoctorProfile> loadOwnDoctorProfile() async {
+    final response = await _authorizedGet('/api/v1/doctor/me/profile');
+    return DoctorProfile.fromJson(response);
+  }
+
+  @override
+  Future<DoctorProfile> updateOwnDoctorProfile({
+    required String displayName,
+    required String specialty,
+    required String title,
+    required String hospitalName,
+    required String department,
+    required String contactPhone,
+    required String country,
+    required String province,
+    required String city,
+    required String preferredLanguage,
+  }) async {
+    final response = await _authorizedPatch(
+      '/api/v1/doctor/me/profile',
+      data: <String, dynamic>{
+        'display_name': displayName.trim(),
+        if (specialty.trim().isNotEmpty) 'specialty': specialty.trim(),
+        'title': title.trim(),
+        'hospital_name': hospitalName.trim(),
+        if (department.trim().isNotEmpty) 'department': department.trim(),
+        if (contactPhone.trim().isNotEmpty)
+          'contact_phone': contactPhone.trim(),
+        if (country.trim().isNotEmpty) 'country': country.trim(),
+        if (province.trim().isNotEmpty) 'province': province.trim(),
+        if (city.trim().isNotEmpty) 'city': city.trim(),
+        if (preferredLanguage.trim().isNotEmpty)
+          'preferred_language': preferredLanguage.trim(),
+      },
+    );
+    return DoctorProfile.fromJson(response);
+  }
+
+  @override
   Future<PatientListData> loadPatients({String? query}) async {
     final trimmed = query?.trim();
     final response = await _authorizedGet(
@@ -456,7 +503,6 @@ class DioDrAiRepository implements DrAiRepository {
     required String emergencyContactPhone,
     required String preferredLanguage,
     required String contactPreference,
-    required String avatarUrl,
     required bool medicalHistorySetupCompleted,
   }) async {
     final response = await _authorizedPatch(
@@ -475,7 +521,6 @@ class DioDrAiRepository implements DrAiRepository {
           'preferred_language': preferredLanguage.trim(),
         if (contactPreference.trim().isNotEmpty)
           'contact_preference': contactPreference.trim(),
-        if (avatarUrl.trim().isNotEmpty) 'avatar_url': avatarUrl.trim(),
         'medical_history_setup_completed': medicalHistorySetupCompleted,
       },
     );
@@ -937,6 +982,14 @@ class DioDrAiRepository implements DrAiRepository {
   }
 
   @override
+  Future<RecoveryTaskItem> uncompleteRecoveryTask(String taskId) async {
+    final response = await _authorizedDelete(
+      '/api/v1/patient/me/tasks/$taskId/completion',
+    );
+    return RecoveryTaskItem.fromJson(response['task'] as Map<String, dynamic>);
+  }
+
+  @override
   Future<MedicationNotificationScheduleResult> scheduleMedicationNotifications(
     List<RecoveryTaskItem> tasks,
   ) async {
@@ -1141,6 +1194,38 @@ class DioDrAiRepository implements DrAiRepository {
       if (apiError.statusCode == 401 && allowRefresh && _session != null) {
         await _refresh(_session!.refreshToken);
         return _authorizedPatch(path, data: data, allowRefresh: false);
+      }
+      throw apiError;
+    }
+  }
+
+  Future<Map<String, dynamic>> _authorizedDelete(
+    String path, {
+    bool allowRefresh = true,
+  }) async {
+    final session = _session;
+    if (session == null) {
+      throw const ApiError(
+        code: 'unauthenticated',
+        message: 'Your session has ended. Please sign in again.',
+        statusCode: 401,
+      );
+    }
+    try {
+      final response = await client.delete<Map<String, dynamic>>(
+        path,
+        options: Options(
+          headers: <String, String>{
+            'Authorization': 'Bearer ${session.accessToken}',
+          },
+        ),
+      );
+      return response.data!;
+    } on DioException catch (error) {
+      final apiError = _toApiError(error);
+      if (apiError.statusCode == 401 && allowRefresh && _session != null) {
+        await _refresh(_session!.refreshToken);
+        return _authorizedDelete(path, allowRefresh: false);
       }
       throw apiError;
     }

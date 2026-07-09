@@ -36,6 +36,7 @@ dependencies:
   flutter_web_plugins:
     sdk: flutter
   go_router: ^17.3.0
+  image_picker: ^1.2.3
 
 dev_dependencies:
   flutter_test:

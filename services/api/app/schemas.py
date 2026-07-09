@@ -34,6 +34,9 @@ class DoctorSignupProfileRequest(BaseModel):
     hospital_name: str | None = Field(default=None, min_length=2, max_length=160)
     custom_hospital: bool = False
     avatar_url: str | None = Field(default=None, max_length=3_000_000)
+    specialty: str | None = Field(default=None, min_length=2, max_length=120)
+    department: str | None = Field(default=None, min_length=2, max_length=120)
+    preferred_language: str | None = Field(default=None, min_length=2, max_length=80)
 
 
 class RegisterRequest(BaseModel):
@@ -41,7 +44,7 @@ class RegisterRequest(BaseModel):
 
     email: EmailStr | None = None
     phone_number: str | None = Field(default=None, min_length=5, max_length=40)
-    password: str = Field(min_length=12, max_length=128)
+    password: str = Field(min_length=8, max_length=20)
     role: UserRole
     verification_code: str = Field(min_length=6, max_length=12)
     terms_accepted: bool
@@ -189,6 +192,9 @@ class DoctorProfileUpdateRequest(BaseModel):
     province: str | None = Field(default=None, min_length=2, max_length=80)
     city: str | None = Field(default=None, min_length=2, max_length=80)
     hospital_name: str | None = Field(default=None, min_length=2, max_length=160)
+    specialty: str | None = Field(default=None, min_length=2, max_length=120)
+    department: str | None = Field(default=None, min_length=2, max_length=120)
+    preferred_language: str | None = Field(default=None, min_length=2, max_length=80)
 
 
 class DoctorProfileResponse(BaseModel):
@@ -203,6 +209,9 @@ class DoctorProfileResponse(BaseModel):
     province: str | None
     city: str | None
     hospital_name: str
+    specialty: str | None
+    department: str | None
+    preferred_language: str | None
 
 
 class MedicalRecordResponse(BaseModel):

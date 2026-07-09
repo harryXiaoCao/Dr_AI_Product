@@ -120,13 +120,13 @@ Request:
 ```json
 {
   "email": "new.patient@example.com",
-  "password": "user-supplied minimum 12 characters",
+  "password": "user-supplied 8-20 characters",
   "role": "patient",
   "invite_code": "server-issued opaque invitation"
 }
 ```
 
-The password is limited to 128 characters. An invalid invitation returns
+The password must be 8-20 characters. An invalid invitation returns
 `403 forbidden`; an existing normalized email returns `409 conflict`.
 
 ### `POST /api/v1/auth/login`
@@ -279,8 +279,9 @@ Response:
 | `POST` | `/api/v1/patients/{patient_id}/recovery-plans/{plan_id}/approve` | Assigned patient | No | Approve and activate a submitted recovery plan |
 | `POST` | `/api/v1/patients/{patient_id}/recovery-plans/{plan_id}/activate` | Assigned patient | No | Activate a recovery plan |
 | `POST` | `/api/v1/patients/{patient_id}/recovery-plans/{plan_id}/complete` | Assigned patient | No | Complete an active recovery plan after all tasks are complete |
-| `GET` | `/api/v1/patient/me/today` | No | Own data | Read the patient's current synthetic tasks |
+| `GET` | `/api/v1/patient/me/today` | No | Own data | Read the patient's current active tasks |
 | `POST` | `/api/v1/patient/me/tasks/{task_id}/completion` | No | Own active task only | Complete a Today task |
+| `DELETE` | `/api/v1/patient/me/tasks/{task_id}/completion` | No | Own active task only | Uncomplete a Today task after an accidental check |
 | `GET` | `/api/v1/patient/me/care` | No | Own records, medications, prescriptions, and reminders only | Read own profile, history, medications, prescriptions, and reminders |
 | `GET` | `/api/v1/patient/me/clinical-events` | No | Own events only | List own Clinical Events/Care Episodes |
 | `GET` | `/api/v1/patient/me/clinical-events/{event_id}` | No | Own event only | Read one own Clinical Event/Care Episode |
@@ -987,6 +988,18 @@ previous active synthetic plan for the same patient.
 Only the signed-in patient can complete their own active tasks. Duplicate
 completion calls return the already completed task instead of creating a
 second completion row.
+
+`DELETE /api/v1/patient/me/tasks/{task_id}/completion`
+
+```json
+{
+  "completed": false
+}
+```
+
+Only the signed-in patient can uncomplete their own active tasks. Missing
+completion rows return the already-uncompleted task state so accidental
+repeated taps remain harmless.
 
 ## Educational chat and consultation contract
 

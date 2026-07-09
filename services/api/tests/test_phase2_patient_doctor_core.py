@@ -129,13 +129,13 @@ def test_registered_accounts_can_connect_and_create_care_from_zero(
     patient = register(
         client,
         email="zero.patient@example.com",
-        password="generated patient passphrase",
+        password="Patient9!",
         role="patient",
     )
     doctor = register(
         client,
         email="zero.doctor@example.com",
-        password="generated doctor passphrase",
+        password="Doctor9!",
         role="doctor",
     )
     patient_headers = auth_header(patient["access_token"])
@@ -1399,6 +1399,25 @@ def test_recovery_plan_review_today_progress_completion_and_safe_boundaries(
     assert today_payload["today_progress"]["completion_percent"] == 0
     task_ids = [task["task_id"] for task in today_payload["today_tasks"]]
 
+    first_complete = client.post(
+        f"/api/v1/patient/me/tasks/{task_ids[0]}/completion",
+        headers=patient_headers,
+        json={"completed": True},
+    )
+    assert first_complete.status_code == 200
+    assert first_complete.json()["task"]["is_completed"] is True
+
+    first_uncomplete = client.delete(
+        f"/api/v1/patient/me/tasks/{task_ids[0]}/completion",
+        headers=patient_headers,
+    )
+    assert first_uncomplete.status_code == 200
+    assert first_uncomplete.json()["task"]["is_completed"] is False
+
+    after_uncomplete = client.get("/api/v1/patient/me/today", headers=patient_headers)
+    assert after_uncomplete.status_code == 200
+    assert after_uncomplete.json()["data"]["today_progress"]["completed_task_count"] == 0
+
     incomplete_close = client.post(
         f"/api/v1/patients/{assigned_id}/recovery-plans/{plan_id}/complete",
         headers=doctor_headers,
@@ -1445,6 +1464,7 @@ def test_recovery_plan_review_today_progress_completion_and_safe_boundaries(
             "recovery_plan_updated",
             "recovery_plan_approved",
             "recovery_task_completed",
+            "recovery_task_uncompleted",
             "recovery_plan_completed",
         }.issubset(event_types)
         serialized_metadata = " ".join(str(audit.metadata_json) for audit in audits)

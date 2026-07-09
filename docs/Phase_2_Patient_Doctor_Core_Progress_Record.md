@@ -62,6 +62,8 @@ external account actions remain outside this Phase 2 closure.
 - Added patient Today production tracking depth with active-plan progress
   summary, completed/remaining task counts, completion percent, and task
   completion timestamps.
+- Added patient-owned Today task uncompletion so accidental recovery-plan
+  checklist taps can be reversed without changing doctor-authored plans.
 - Added a persisted Clinical Event/Care Episode table as the central Phase 2
   workflow-clarification object.
 - Added doctor-only Clinical Event create/update endpoints and doctor/patient
@@ -152,8 +154,8 @@ external account actions remain outside this Phase 2 closure.
   backend does not generate or infer those findings.
 - Recovery-plan create/edit/review/approve/complete mutations are doctor-only
   and scoped to an active care relationship.
-- Patients can read only their own active Today tasks and complete only their
-  own active tasks.
+- Patients can read only their own active Today tasks and complete or
+  uncomplete only their own active tasks.
 - Clinical Event create/update remains doctor-only and scoped to an active
   care relationship. Patients can read their own events but cannot mutate
   event diagnosis summaries or doctor diagnosis records.
@@ -353,6 +355,55 @@ Deployment evidence:
 Inspection URL:
 
 - `https://dr-ai.43.132.169.195.sslip.io`
+
+## Avatar Upload and Dashboard Restoration Tencent Staging Redeploy
+
+Recorded: 2026-07-09T17:13:00+08:00
+
+After the avatar upload, registration password-rule, date-picker/menu polish,
+font, and dashboard-routing fixes were completed locally on `main`, Tencent
+same-origin staging was redeployed for iPhone and Android manual testing. This
+redeploy did not change production, native store uploads, tester/account
+settings, tags, pull requests, real patient data policy, or Phase 3 AI scope.
+No staging database wipe was performed in this pass; the credentialed smoke
+still uses the existing host-only synthetic staging accounts.
+
+Deployment evidence:
+
+- Local pre-deploy verification passed: backend Ruff, focused backend tests
+  with `27 passed`, `./scripts/verify_flutter.sh` with analyzer clean and all
+  Flutter tests passed, `git diff --check`, and Flutter web release build for
+  `https://dr-ai.43.132.169.195.sslip.io`.
+- Built a fresh Android debug APK for the staging origin at
+  `apps/dr_ai_app/build/app/outputs/flutter-apk/app-debug.apk`; SHA-256:
+  `e4184015b338154c105b4b6f9149bd7832616724b8205fd9aed230ebf76ca0d5`.
+- Built and pushed a sanitized API image on the Tencent CVM and deployed
+  immutable digest
+  `hkccr.ccs.tencentyun.com/dr-ai/dr-ai-backend@sha256:7fc9908069092afb438e7bf9421a5f44f3c079ac315247c43c43d8f5c72a6185`.
+- Backed up the host-side `.env`, `compose.yaml`, `Caddyfile`, and `web/`
+  directory before switching the API digest and replacing the mounted web
+  bundle in place.
+- Ran Alembic `upgrade head` on staging; no new migration was needed for this
+  redeploy.
+- Validated the Caddy configuration and force-recreated Caddy so the refreshed
+  mounted web bundle was served.
+- Public HTTPS checks passed for `/health`, `/`, `/terms`, `/privacy-policy`,
+  and unauthenticated `/api/v1/me` returning `401`.
+- Credentialed staging smoke passed from the CVM without printing passwords,
+  access tokens, refresh tokens, database URLs, or `.env` contents: health,
+  doctor/patient login, refresh/logout, assigned-patient search, neutral
+  cross-patient denial, demo upload presign, simulated assessment,
+  recovery-plan save/activation, patient Today/task completion, Ask Dr. AI,
+  consultation readback, and Beta support web surface.
+
+Known warnings:
+
+- Remote tar extraction still reported non-fatal macOS extended-header metadata
+  warnings, but the rebuilt API context excluded AppleDouble `._*` files before
+  the successful image build.
+- Staging was not reset to an empty database during this redeploy. If manual
+  testing must begin from the first staging account, a separate staging-only
+  reset should be explicitly approved before testing.
 
 ## Post-Inspection Product Quality Reset
 

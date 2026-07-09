@@ -114,14 +114,20 @@ class PatientOnboardingController extends StateNotifier<AsyncValue<void>> {
     required String emergencyContactPhone,
     required String preferredLanguage,
     required String contactPreference,
-    required String avatarUrl,
     required bool hasAllergies,
     required String allergyLabel,
     required String allergyReaction,
     required bool hasChronicCondition,
     required String chronicConditionName,
     required String chronicConditionNotes,
+    required String heightCm,
+    required String weightKg,
     required String bloodType,
+    required String systolicBloodPressure,
+    required String diastolicBloodPressure,
+    required String smokingStatus,
+    required String alcoholConsumption,
+    required Map<String, String> conditionDetails,
     required String currentMedications,
     required String surgeryHistory,
     required String familyHistory,
@@ -139,7 +145,6 @@ class PatientOnboardingController extends StateNotifier<AsyncValue<void>> {
         emergencyContactPhone: emergencyContactPhone,
         preferredLanguage: preferredLanguage,
         contactPreference: contactPreference,
-        avatarUrl: avatarUrl,
         medicalHistorySetupCompleted: true,
       );
       if (hasAllergies && allergyLabel.trim().isNotEmpty) {
@@ -158,7 +163,14 @@ class PatientOnboardingController extends StateNotifier<AsyncValue<void>> {
         );
       }
       final intakeSummary = _medicalIntakeSummary(
+        heightCm: heightCm,
+        weightKg: weightKg,
         bloodType: bloodType,
+        systolicBloodPressure: systolicBloodPressure,
+        diastolicBloodPressure: diastolicBloodPressure,
+        smokingStatus: smokingStatus,
+        alcoholConsumption: alcoholConsumption,
+        conditionDetails: conditionDetails,
         currentMedications: currentMedications,
         surgeryHistory: surgeryHistory,
         familyHistory: familyHistory,
@@ -182,15 +194,36 @@ class PatientOnboardingController extends StateNotifier<AsyncValue<void>> {
 }
 
 String _medicalIntakeSummary({
+  required String heightCm,
+  required String weightKg,
   required String bloodType,
+  required String systolicBloodPressure,
+  required String diastolicBloodPressure,
+  required String smokingStatus,
+  required String alcoholConsumption,
+  required Map<String, String> conditionDetails,
   required String currentMedications,
   required String surgeryHistory,
   required String familyHistory,
   required String lifestyleNotes,
   required String pregnancyStatus,
 }) {
+  final bloodPressure =
+      systolicBloodPressure.trim().isEmpty ||
+          diastolicBloodPressure.trim().isEmpty
+      ? ''
+      : '${systolicBloodPressure.trim()}/${diastolicBloodPressure.trim()} mmHg';
   final lines = <String>[
+    if (heightCm.trim().isNotEmpty) 'Height: ${heightCm.trim()} cm',
+    if (weightKg.trim().isNotEmpty) 'Weight: ${weightKg.trim()} kg',
     if (bloodType.trim().isNotEmpty) 'Blood type: ${bloodType.trim()}',
+    if (bloodPressure.isNotEmpty) 'Blood pressure: $bloodPressure',
+    if (smokingStatus.trim().isNotEmpty)
+      'Smoking status: ${smokingStatus.trim()}',
+    if (alcoholConsumption.trim().isNotEmpty)
+      'Alcohol consumption: ${alcoholConsumption.trim()}',
+    for (final entry in conditionDetails.entries)
+      if (entry.value.trim().isNotEmpty) '${entry.key}: ${entry.value.trim()}',
     if (currentMedications.trim().isNotEmpty)
       'Current medications: ${currentMedications.trim()}',
     if (surgeryHistory.trim().isNotEmpty)
@@ -771,17 +804,31 @@ class RecoveryTaskCompletionController
   final DrAiRepository _repository;
   final Ref _ref;
 
-  Future<void> complete(String taskId) async {
+  Future<void> setCompleted(String taskId, {required bool completed}) async {
     final current = state.hasValue
         ? state.value ?? const <String>{}
         : const <String>{};
-    state = AsyncData<Set<String>>(<String>{...current, taskId});
+    final next = <String>{...current};
+    if (completed) {
+      next.add(taskId);
+    } else {
+      next.remove(taskId);
+    }
+    state = AsyncData<Set<String>>(next);
     try {
-      await _repository.completeRecoveryTask(taskId);
+      if (completed) {
+        await _repository.completeRecoveryTask(taskId);
+      } else {
+        await _repository.uncompleteRecoveryTask(taskId);
+      }
       _ref.invalidate(patientTodayProvider);
     } catch (error, stackTrace) {
       state = AsyncError<Set<String>>(error, stackTrace);
     }
+  }
+
+  Future<void> complete(String taskId) async {
+    await setCompleted(taskId, completed: true);
   }
 }
 

@@ -48,7 +48,7 @@ def test_doctor_can_search_and_open_assigned_patient_care_bundle(
     assert bundle.status_code == 200
     payload = bundle.json()
     assert payload["patient"]["display_name"] == "Riley Demo Patient"
-    assert payload["patient"]["relationship_label"] == ("Active synthetic care relationship")
+    assert payload["patient"]["relationship_label"] == "Care relationship active"
     assert len(payload["records"]) == 2
     assert len(payload["medications"]) == 2
     assert len(payload["doctor_notes"]) == 1

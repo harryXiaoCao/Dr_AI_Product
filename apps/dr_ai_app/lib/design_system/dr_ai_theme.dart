@@ -15,12 +15,15 @@ abstract final class DrAiTheme {
       colorScheme: scheme,
       scaffoldBackgroundColor: DrAiColors.surface,
       useMaterial3: true,
-      fontFamily: 'Inter',
+      fontFamily: 'SF Pro Text',
       fontFamilyFallback: const <String>[
         'SF Pro Display',
-        'SF Pro Text',
+        'Roboto',
+        'Inter',
         'PingFang SC',
+        'Noto Sans SC',
         'Noto Sans CJK SC',
+        'Helvetica Neue',
         'Arial',
       ],
       textTheme: const TextTheme(

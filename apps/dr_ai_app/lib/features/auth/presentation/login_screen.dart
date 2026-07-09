@@ -4,7 +4,6 @@ import 'package:dr_ai_app/features/auth/application/auth_controller.dart';
 import 'package:dr_ai_app/features/auth/data/dr_ai_repository.dart';
 import 'package:dr_ai_app/features/auth/domain/auth_models.dart';
 import 'package:dr_ai_app/features/auth/presentation/signup_reference_data.dart';
-import 'package:dr_ai_app/shared/avatar/avatar_upload.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -31,7 +30,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _birthDateController = TextEditingController();
   final _homeAddressController = TextEditingController();
   final _hospitalController = TextEditingController();
-  final _avatarUrlController = TextEditingController();
   bool _obscurePassword = true;
   bool _isRegistering = false;
   bool _termsAccepted = false;
@@ -44,8 +42,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   String _country = 'China';
   String _province = 'Guangdong';
   String _city = 'Shenzhen';
-  String? _avatarFileName;
-  String? _avatarError;
 
   @override
   void dispose() {
@@ -61,7 +57,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     _birthDateController.dispose();
     _homeAddressController.dispose();
     _hospitalController.dispose();
-    _avatarUrlController.dispose();
     super.dispose();
   }
 
@@ -90,7 +85,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 province: _province,
                 city: _city,
                 homeAddress: _homeAddressController.text,
-                avatarUrl: _avatarUrlController.text,
               )
             : null,
         doctorProfile: _selectedRole == AppRole.doctor
@@ -104,12 +98,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 city: _city,
                 hospitalName: _hospitalController.text,
                 customHospital: _customHospital,
-                avatarUrl: _avatarUrlController.text,
               )
             : null,
       );
     } else {
-      await controller.login(_accountController.text, _passwordController.text);
+      await controller.login(_loginAccount(), _passwordController.text);
     }
   }
 
@@ -317,7 +310,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ],
               ),
             ),
-            if (isDoctor && desktop) _avatarUploader(compact: false),
           ],
         ),
         const SizedBox(height: DrAiSpacing.lg),
@@ -335,13 +327,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             const SizedBox(height: DrAiSpacing.md),
             _responsivePair(desktop, _verificationField(), _passwordField()),
             const SizedBox(height: DrAiSpacing.md),
-            _responsivePair(
-              desktop,
-              _confirmPasswordField(),
-              isDoctor && !desktop
-                  ? _avatarUploader(compact: true)
-                  : const SizedBox.shrink(),
-            ),
+            _confirmPasswordField(),
           ],
         ),
         const SizedBox(height: DrAiSpacing.lg),
@@ -402,25 +388,70 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Widget _loginAccountField() {
-    return TextFormField(
-      key: const Key('email-field'),
-      controller: _accountController,
-      autofillHints: const <String>[
-        AutofillHints.email,
-        AutofillHints.telephoneNumber,
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        SizedBox(
+          width: 130,
+          child: DropdownButtonFormField<DialingCodeOption>(
+            key: const Key('login-country-code-field'),
+            initialValue: _dialingCode,
+            isExpanded: true,
+            menuMaxHeight: 360,
+            borderRadius: _menuBorderRadius,
+            dropdownColor: DrAiColors.white,
+            icon: const Icon(Icons.keyboard_arrow_down_rounded),
+            style: _menuTextStyle,
+            decoration: const InputDecoration(
+              labelText: 'Code',
+              border: OutlineInputBorder(),
+            ),
+            selectedItemBuilder: (context) => dialingCodeOptions
+                .map(
+                  (item) =>
+                      Text(item.dialCode, overflow: TextOverflow.ellipsis),
+                )
+                .toList(),
+            items: dialingCodeOptions
+                .map(
+                  (item) => DropdownMenuItem<DialingCodeOption>(
+                    value: item,
+                    child: Text(item.label, overflow: TextOverflow.ellipsis),
+                  ),
+                )
+                .toList(),
+            onChanged: (value) {
+              if (value != null) {
+                setState(() => _dialingCode = value);
+              }
+            },
+          ),
+        ),
+        const SizedBox(width: DrAiSpacing.sm),
+        Expanded(
+          child: TextFormField(
+            key: const Key('email-field'),
+            controller: _accountController,
+            autofillHints: const <String>[
+              AutofillHints.email,
+              AutofillHints.telephoneNumber,
+            ],
+            keyboardType: TextInputType.emailAddress,
+            decoration: const InputDecoration(
+              labelText: 'Email or phone number',
+              border: OutlineInputBorder(),
+            ),
+            validator: (value) {
+              final account = value?.trim() ?? '';
+              if (!_isEmail(account) &&
+                  !_isPhone(_phoneWithDialCode(account))) {
+                return 'Enter a valid email address or phone number.';
+              }
+              return null;
+            },
+          ),
+        ),
       ],
-      keyboardType: TextInputType.emailAddress,
-      decoration: const InputDecoration(
-        labelText: 'Email or phone number',
-        border: OutlineInputBorder(),
-      ),
-      validator: (value) {
-        final account = value?.trim() ?? '';
-        if (!_isEmail(account) && !_isPhone(account)) {
-          return 'Enter a valid email address or phone number.';
-        }
-        return null;
-      },
     );
   }
 
@@ -435,6 +466,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             initialValue: _dialingCode,
             isExpanded: true,
             menuMaxHeight: 360,
+            borderRadius: _menuBorderRadius,
+            dropdownColor: DrAiColors.white,
+            icon: const Icon(Icons.keyboard_arrow_down_rounded),
+            style: _menuTextStyle,
             decoration: const InputDecoration(
               labelText: 'Code',
               border: OutlineInputBorder(),
@@ -514,6 +549,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       obscureText: _obscurePassword,
       decoration: InputDecoration(
         labelText: 'Password',
+        helperText: _isRegistering
+            ? '8-20 characters. Letters, numbers, and symbols are okay.'
+            : null,
+        helperMaxLines: 2,
+        helperStyle: const TextStyle(
+          color: DrAiColors.mutedInk,
+          fontSize: 11,
+          height: 1.25,
+        ),
         border: const OutlineInputBorder(),
         suffixIcon: IconButton(
           tooltip: _obscurePassword ? 'Show password' : 'Hide password',
@@ -530,8 +574,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         if (password.isEmpty) {
           return 'Enter your password.';
         }
-        if (_isRegistering && password.length < 12) {
-          return 'Use at least 12 characters.';
+        if (_isRegistering && (password.length < 8 || password.length > 20)) {
+          return 'Use 8-20 characters.';
         }
         return null;
       },
@@ -679,6 +723,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       key: const Key('signup-gender-field'),
       initialValue: _gender,
       isExpanded: true,
+      menuMaxHeight: _menuMaxHeight,
+      borderRadius: _menuBorderRadius,
+      dropdownColor: DrAiColors.white,
+      icon: const Icon(Icons.keyboard_arrow_down_rounded),
+      style: _menuTextStyle,
       decoration: const InputDecoration(
         labelText: 'Gender',
         border: OutlineInputBorder(),
@@ -694,6 +743,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         key: const Key('signup-country-field'),
         initialValue: _country,
         isExpanded: true,
+        menuMaxHeight: _menuMaxHeight,
+        borderRadius: _menuBorderRadius,
+        dropdownColor: DrAiColors.white,
+        icon: const Icon(Icons.keyboard_arrow_down_rounded),
+        style: _menuTextStyle,
         decoration: const InputDecoration(
           labelText: 'Country/Region',
           border: OutlineInputBorder(),
@@ -720,6 +774,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         key: const Key('signup-province-field'),
         initialValue: _province,
         isExpanded: true,
+        menuMaxHeight: _menuMaxHeight,
+        borderRadius: _menuBorderRadius,
+        dropdownColor: DrAiColors.white,
+        icon: const Icon(Icons.keyboard_arrow_down_rounded),
+        style: _menuTextStyle,
         decoration: const InputDecoration(
           labelText: 'Province',
           border: OutlineInputBorder(),
@@ -744,6 +803,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         key: const Key('signup-city-field'),
         initialValue: _city,
         isExpanded: true,
+        menuMaxHeight: _menuMaxHeight,
+        borderRadius: _menuBorderRadius,
+        dropdownColor: DrAiColors.white,
+        icon: const Icon(Icons.keyboard_arrow_down_rounded),
+        style: _menuTextStyle,
         decoration: const InputDecoration(
           labelText: 'City',
           border: OutlineInputBorder(),
@@ -781,6 +845,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final selector = DropdownButtonFormField<String>(
       key: const Key('signup-hospital-field'),
       isExpanded: true,
+      menuMaxHeight: _menuMaxHeight,
+      borderRadius: _menuBorderRadius,
+      dropdownColor: DrAiColors.white,
+      icon: const Icon(Icons.keyboard_arrow_down_rounded),
+      style: _menuTextStyle,
       decoration: const InputDecoration(
         labelText: 'Hospital',
         border: OutlineInputBorder(),
@@ -844,42 +913,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ),
         const SizedBox(height: DrAiSpacing.md),
         customField,
-      ],
-    );
-  }
-
-  Widget _avatarUploader({required bool compact}) {
-    final hasAvatar = _avatarUrlController.text.trim().isNotEmpty;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: <Widget>[
-        CircleAvatar(
-          radius: compact ? 34 : 46,
-          backgroundColor: const Color(0xFFF0F2F6),
-          backgroundImage: hasAvatar
-              ? NetworkImage(_avatarUrlController.text.trim())
-              : null,
-          child: hasAvatar
-              ? null
-              : const Icon(Icons.photo_camera, color: DrAiColors.brand),
-        ),
-        const SizedBox(height: DrAiSpacing.sm),
-        OutlinedButton(
-          key: const Key('signup-avatar-upload-button'),
-          onPressed: _pickAvatar,
-          child: const Text('Upload Photo'),
-        ),
-        Text(
-          _avatarFileName ?? 'JPG, PNG up to 2MB',
-          textAlign: TextAlign.center,
-          style: const TextStyle(color: DrAiColors.mutedInk, fontSize: 12),
-        ),
-        if (_avatarError != null)
-          Text(
-            _avatarError!,
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: DrAiColors.danger, fontSize: 12),
-          ),
       ],
     );
   }
@@ -1123,11 +1156,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   String _fullPhoneNumber() {
-    final local = _phoneController.text.replaceAll(RegExp(r'[\s()-]'), '');
+    return _phoneWithDialCode(_phoneController.text);
+  }
+
+  String _loginAccount() {
+    final account = _accountController.text.trim();
+    if (_isEmail(account)) {
+      return account;
+    }
+    return _phoneWithDialCode(account);
+  }
+
+  String _phoneWithDialCode(String value) {
+    final local = value.replaceAll(RegExp(r'[\s()-]'), '');
     if (local.startsWith('+')) {
       return local;
     }
-    return '${_dialingCode.dialCode}$local';
+    return '${_dialingCode.dialCode.replaceAll('-', '')}$local';
   }
 
   void _toggleMode() {
@@ -1139,51 +1184,98 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     });
   }
 
-  Future<void> _pickAvatar() async {
-    try {
-      final result = await pickAvatarImage();
-      if (result == null) {
-        return;
-      }
-      setState(() {
-        _avatarUrlController.text = result.dataUrl;
-        _avatarFileName = result.fileName;
-        _avatarError = null;
-      });
-    } on AvatarUploadException catch (error) {
-      setState(() => _avatarError = error.message);
-    } on Exception {
-      setState(() => _avatarError = 'Photo upload is not available here.');
-    }
-  }
-
   Future<void> _showBirthDatePicker(TextEditingController controller) async {
     var selected =
         _parseDate(controller.text) ?? DateTime(DateTime.now().year - 25, 1, 1);
     await showModalBottomSheet<void>(
       context: context,
+      backgroundColor: Colors.transparent,
+      barrierColor: DrAiColors.black.withValues(alpha: 0.18),
       builder: (context) => SafeArea(
-        child: SizedBox(
-          height: 320,
+        top: false,
+        child: DecoratedBox(
+          decoration: const BoxDecoration(
+            color: DrAiColors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            boxShadow: <BoxShadow>[
+              BoxShadow(
+                color: Color(0x240A0076),
+                blurRadius: 30,
+                offset: Offset(0, -10),
+              ),
+            ],
+          ),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: <Widget>[
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
-                  onPressed: () {
-                    controller.text = _formatDate(selected);
-                    Navigator.of(context).pop();
-                  },
-                  child: const Text('Done'),
+              const SizedBox(height: DrAiSpacing.sm),
+              Container(
+                width: 42,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFD8E1EF),
+                  borderRadius: BorderRadius.circular(DrAiRadii.pill),
                 ),
               ),
-              Expanded(
-                child: CupertinoDatePicker(
-                  mode: CupertinoDatePickerMode.date,
-                  initialDateTime: selected,
-                  minimumYear: 1900,
-                  maximumDate: DateTime.now(),
-                  onDateTimeChanged: (value) => selected = value,
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  DrAiSpacing.md,
+                  DrAiSpacing.sm,
+                  DrAiSpacing.md,
+                  DrAiSpacing.xs,
+                ),
+                child: Row(
+                  children: <Widget>[
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('Cancel'),
+                    ),
+                    const Spacer(),
+                    Text(
+                      'Date of birth',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: DrAiColors.brandDark,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const Spacer(),
+                    FilledButton(
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size(76, 38),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                      onPressed: () {
+                        controller.text = _formatDate(selected);
+                        Navigator.of(context).pop();
+                      },
+                      child: const Text('Done'),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1, color: Color(0xFFE3E8F2)),
+              SizedBox(
+                height: 244,
+                child: CupertinoTheme(
+                  data: const CupertinoThemeData(
+                    brightness: Brightness.light,
+                    textTheme: CupertinoTextThemeData(
+                      dateTimePickerTextStyle: TextStyle(
+                        color: DrAiColors.ink,
+                        fontSize: 21,
+                        height: 1.25,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  child: CupertinoDatePicker(
+                    mode: CupertinoDatePickerMode.date,
+                    initialDateTime: selected,
+                    minimumYear: 1900,
+                    maximumDate: DateTime.now(),
+                    backgroundColor: DrAiColors.white,
+                    onDateTimeChanged: (value) => selected = value,
+                  ),
                 ),
               ),
             ],
@@ -1357,6 +1449,17 @@ class _StatusText extends StatelessWidget {
     );
   }
 }
+
+const double _menuMaxHeight = 320;
+const BorderRadius _menuBorderRadius = BorderRadius.all(
+  Radius.circular(DrAiRadii.md),
+);
+const TextStyle _menuTextStyle = TextStyle(
+  color: DrAiColors.ink,
+  fontSize: 14,
+  height: 20 / 14,
+  fontWeight: FontWeight.w500,
+);
 
 String? _dateValidator(String? value) {
   final text = value?.trim() ?? '';

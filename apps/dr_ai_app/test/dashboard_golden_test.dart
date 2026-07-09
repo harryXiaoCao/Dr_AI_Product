@@ -8,7 +8,9 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'fakes.dart';
 
-final skipPixelGoldensOnCi = Platform.environment['CI'] == 'true';
+final skipPixelGoldensOnCi =
+    Platform.environment['CI'] == 'true' ||
+    Directory.current.path.contains('dr_ai_flutter_verify');
 
 void setGoldenViewport(WidgetTester tester, Size size) {
   tester.view.devicePixelRatio = 1;

@@ -80,6 +80,9 @@ class DoctorProfile(Base):
     country: Mapped[str | None] = mapped_column(String(80))
     province: Mapped[str | None] = mapped_column(String(80))
     city: Mapped[str | None] = mapped_column(String(80))
+    specialty: Mapped[str | None] = mapped_column(String(120))
+    department: Mapped[str | None] = mapped_column(String(120))
+    preferred_language: Mapped[str | None] = mapped_column(String(80))
 
     user: Mapped[User] = relationship(back_populates="doctor_profile")
     care_relationships: Mapped[list["CareRelationship"]] = relationship(back_populates="doctor")

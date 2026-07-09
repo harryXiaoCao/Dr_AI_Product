@@ -125,75 +125,82 @@ def register(
         password_hash=hash_password(body.password),
         role=body.role,
     )
-    db.add(user)
-    db.flush()
-    if body.role == UserRole.doctor:
-        doctor_profile = body.doctor_profile
-        hospital_name = _doctor_hospital_name(body)
-        db.add(
-            DoctorProfile(
-                user_id=user.id,
-                display_name=doctor_profile.display_name
-                if doctor_profile and doctor_profile.display_name
-                else "Doctor profile",
-                title="Clinician",
-                hospital_name=hospital_name,
-                birth_date=doctor_profile.birth_date if doctor_profile else None,
-                gender=doctor_profile.gender if doctor_profile else None,
-                contact_phone=doctor_profile.contact_phone or phone_number
-                if doctor_profile
-                else phone_number,
-                avatar_url=doctor_profile.avatar_url if doctor_profile else None,
-                country=doctor_profile.country if doctor_profile else None,
-                province=doctor_profile.province if doctor_profile else None,
-                city=doctor_profile.city if doctor_profile else None,
-            )
-        )
-        db.add(
-            Hospital(
-                name=hospital_name,
-                legal_name=None,
-                status=(
-                    "pending_review"
-                    if doctor_profile and doctor_profile.custom_hospital
-                    else "active"
-                ),
-                metadata_json={
-                    "source": "doctor_signup",
-                    "country": doctor_profile.country if doctor_profile else None,
-                    "province": doctor_profile.province if doctor_profile else None,
-                    "city": doctor_profile.city if doctor_profile else None,
-                    "custom_hospital": doctor_profile.custom_hospital if doctor_profile else False,
-                },
-            )
-        )
-    else:
-        patient_profile = body.patient_profile
-        birth_date = patient_profile.birth_date if patient_profile else None
-        gender = patient_profile.gender if patient_profile else None
-        db.add(
-            PatientProfile(
-                user_id=user.id,
-                display_name=patient_profile.display_name
-                if patient_profile and patient_profile.display_name
-                else "New Patient",
-                synthetic_identifier=_patient_code(user.id),
-                birth_date=birth_date,
-                birth_year=birth_date.year if birth_date else None,
-                sex=gender,
-                gender=gender,
-                contact_phone=patient_profile.contact_phone or phone_number
-                if patient_profile
-                else phone_number,
-                avatar_url=patient_profile.avatar_url if patient_profile else None,
-                country=patient_profile.country if patient_profile else None,
-                province=patient_profile.province if patient_profile else None,
-                city=patient_profile.city if patient_profile else None,
-                home_address=patient_profile.home_address if patient_profile else None,
-                medical_history_setup_completed=False,
-            )
-        )
     try:
+        db.add(user)
+        db.flush()
+        if body.role == UserRole.doctor:
+            doctor_profile = body.doctor_profile
+            hospital_name = _doctor_hospital_name(body)
+            db.add(
+                DoctorProfile(
+                    user_id=user.id,
+                    display_name=doctor_profile.display_name
+                    if doctor_profile and doctor_profile.display_name
+                    else "Doctor profile",
+                    title="Clinician",
+                    hospital_name=hospital_name,
+                    birth_date=doctor_profile.birth_date if doctor_profile else None,
+                    gender=doctor_profile.gender if doctor_profile else None,
+                    contact_phone=doctor_profile.contact_phone or phone_number
+                    if doctor_profile
+                    else phone_number,
+                    avatar_url=doctor_profile.avatar_url if doctor_profile else None,
+                    country=doctor_profile.country if doctor_profile else None,
+                    province=doctor_profile.province if doctor_profile else None,
+                    city=doctor_profile.city if doctor_profile else None,
+                    specialty=doctor_profile.specialty if doctor_profile else None,
+                    department=doctor_profile.department if doctor_profile else None,
+                    preferred_language=doctor_profile.preferred_language
+                    if doctor_profile
+                    else None,
+                )
+            )
+            db.add(
+                Hospital(
+                    name=hospital_name,
+                    legal_name=None,
+                    status=(
+                        "pending_review"
+                        if doctor_profile and doctor_profile.custom_hospital
+                        else "active"
+                    ),
+                    metadata_json={
+                        "source": "doctor_signup",
+                        "country": doctor_profile.country if doctor_profile else None,
+                        "province": doctor_profile.province if doctor_profile else None,
+                        "city": doctor_profile.city if doctor_profile else None,
+                        "custom_hospital": doctor_profile.custom_hospital
+                        if doctor_profile
+                        else False,
+                    },
+                )
+            )
+        else:
+            patient_profile = body.patient_profile
+            birth_date = patient_profile.birth_date if patient_profile else None
+            gender = patient_profile.gender if patient_profile else None
+            db.add(
+                PatientProfile(
+                    user_id=user.id,
+                    display_name=patient_profile.display_name
+                    if patient_profile and patient_profile.display_name
+                    else "New Patient",
+                    synthetic_identifier=_patient_code(user.id),
+                    birth_date=birth_date,
+                    birth_year=birth_date.year if birth_date else None,
+                    sex=gender,
+                    gender=gender,
+                    contact_phone=patient_profile.contact_phone or phone_number
+                    if patient_profile
+                    else phone_number,
+                    avatar_url=patient_profile.avatar_url if patient_profile else None,
+                    country=patient_profile.country if patient_profile else None,
+                    province=patient_profile.province if patient_profile else None,
+                    city=patient_profile.city if patient_profile else None,
+                    home_address=patient_profile.home_address if patient_profile else None,
+                    medical_history_setup_completed=False,
+                )
+            )
         db.commit()
     except IntegrityError:
         db.rollback()

@@ -36,6 +36,10 @@ class ResponsiveAppShell extends ConsumerWidget {
       icon: Icon(Icons.people_outline),
       label: 'Patient Management',
     ),
+    NavigationDestination(
+      icon: Icon(Icons.manage_accounts_outlined),
+      label: 'Account',
+    ),
   ];
 
   static const patientDestinations = <NavigationDestination>[
@@ -48,6 +52,10 @@ class ResponsiveAppShell extends ConsumerWidget {
     NavigationDestination(
       icon: Icon(Icons.assignment_outlined),
       label: 'Recovery Plan',
+    ),
+    NavigationDestination(
+      icon: Icon(Icons.manage_accounts_outlined),
+      label: 'My Account',
     ),
   ];
 
@@ -134,13 +142,9 @@ class ResponsiveAppShell extends ConsumerWidget {
       actions: <Widget>[
         IconButton(
           key: const Key('account-profile-button'),
-          tooltip: 'Profile',
+          tooltip: 'Account',
           onPressed: () => _goToProfile(context),
-          icon: _UserAvatar(
-            label:
-                ref.watch(authControllerProvider).value?.user?.displayName ??
-                '',
-          ),
+          icon: const Icon(Icons.manage_accounts_outlined),
         ),
         IconButton(
           key: const Key('logout-button'),
@@ -180,7 +184,12 @@ class ResponsiveAppShell extends ConsumerWidget {
                   const Spacer(),
                 if (!compact) ...<Widget>[
                   const SizedBox(width: DrAiSpacing.md),
-                  _UserAvatar(label: user?.displayName ?? ''),
+                  IconButton(
+                    key: const Key('account-profile-button'),
+                    tooltip: 'Account',
+                    onPressed: () => _goToProfile(context),
+                    icon: const Icon(Icons.manage_accounts_outlined),
+                  ),
                   const SizedBox(width: DrAiSpacing.xs),
                   Flexible(
                     child: Text(
@@ -192,9 +201,9 @@ class ResponsiveAppShell extends ConsumerWidget {
                 if (compact)
                   IconButton(
                     key: const Key('account-profile-button'),
-                    tooltip: 'Profile',
+                    tooltip: 'Account',
                     onPressed: () => _goToProfile(context),
-                    icon: _UserAvatar(label: user?.displayName ?? ''),
+                    icon: const Icon(Icons.manage_accounts_outlined),
                   ),
                 IconButton(
                   key: const Key('logout-button'),
@@ -243,9 +252,9 @@ class ResponsiveAppShell extends ConsumerWidget {
             const SizedBox(width: DrAiSpacing.md),
             IconButton(
               key: const Key('account-profile-button'),
-              tooltip: 'Profile',
+              tooltip: 'Account',
               onPressed: () => _goToProfile(context),
-              icon: _UserAvatar(label: user?.displayName ?? ''),
+              icon: const Icon(Icons.manage_accounts_outlined),
             ),
             Flexible(
               child: Text(
@@ -272,35 +281,28 @@ class ResponsiveAppShell extends ConsumerWidget {
         context.go('/doctor/patients');
         return;
       }
+      if (index == 5) {
+        context.go('/doctor/account');
+        return;
+      }
       context.go('/doctor');
       return;
     }
-    context.go('/patient');
+    switch (index) {
+      case 1:
+        context.go('/patient/contact');
+      case 2:
+        context.go('/patient/medical-service');
+      case 3:
+        context.go('/patient/recovery-plan');
+      case 4:
+        context.go('/patient/account');
+      default:
+        context.go('/patient');
+    }
   }
 
   void _goToProfile(BuildContext context) {
-    context.go(role == AppRole.doctor ? '/doctor' : '/patient');
-  }
-}
-
-class _UserAvatar extends StatelessWidget {
-  const _UserAvatar({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final initial = label.trim().isEmpty ? 'D' : label.trim()[0].toUpperCase();
-    return CircleAvatar(
-      radius: 16,
-      backgroundColor: DrAiColors.brandSoft,
-      child: Text(
-        initial,
-        style: const TextStyle(
-          color: DrAiColors.brand,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
-    );
+    context.go(role == AppRole.doctor ? '/doctor/account' : '/patient/account');
   }
 }

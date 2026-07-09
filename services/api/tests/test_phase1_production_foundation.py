@@ -72,7 +72,7 @@ def test_specialist_and_admin_registration_fail_closed(
             json={
                 "email": f"{role}.future@example.com",
                 "phone_number": f"+1555000{1 if role == 'specialist' else 2}",
-                "password": "generated test passphrase",
+                "password": "Future9!",
                 "role": role,
                 "verification_code": "123456",
                 "terms_accepted": True,

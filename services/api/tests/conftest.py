@@ -20,6 +20,7 @@ os.environ["DR_AI_PATIENT_INVITE_CODE"] = secrets.token_urlsafe(18)
 os.environ["DR_AI_SEED_DOCTOR_PASSWORD"] = TEST_DOCTOR_PASSWORD
 os.environ["DR_AI_SEED_PATIENT_PASSWORD"] = TEST_PATIENT_PASSWORD
 os.environ["DR_AI_SEED_UNRELATED_PATIENT_PASSWORD"] = TEST_UNRELATED_PASSWORD
+os.environ.pop("DR_AI_CORS_ALLOWED_ORIGINS", None)
 
 from app.config import get_settings  # noqa: E402
 from app.database import engine  # noqa: E402

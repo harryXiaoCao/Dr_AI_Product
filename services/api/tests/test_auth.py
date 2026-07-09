@@ -28,7 +28,7 @@ def test_registration_accepts_phone_required_and_optional_email(client: TestClie
         "/api/v1/auth/register",
         json={
             "email": "new.patient@example.com",
-            "password": "generated test passphrase",
+            "password": "Patient9!",
             "role": "patient",
             "verification_code": "123456",
             "terms_accepted": True,
@@ -41,7 +41,7 @@ def test_registration_accepts_phone_required_and_optional_email(client: TestClie
         json={
             "email": "new.patient@example.com",
             "phone_number": "+8613800099999",
-            "password": "generated test passphrase",
+            "password": "Patient9!",
             "role": "patient",
             "verification_code": "123456",
             "terms_accepted": True,
@@ -74,7 +74,7 @@ def test_phone_registration_login_and_doctor_hospital_intake(client: TestClient)
         "/api/v1/auth/register",
         json={
             "phone_number": "+8613800012345",
-            "password": "generated test passphrase",
+            "password": "Doctor9!",
             "role": "doctor",
             "verification_code": "123456",
             "terms_accepted": True,
@@ -105,11 +105,74 @@ def test_phone_registration_login_and_doctor_hospital_intake(client: TestClient)
         "/api/v1/auth/login",
         json={
             "phone_number": "+8613800012345",
-            "password": "generated test passphrase",
+            "password": "Doctor9!",
         },
     )
     assert login_response.status_code == 200
     assert login_response.json()["user"]["role"] == "doctor"
+
+
+def test_duplicate_registration_contact_returns_conflict(client: TestClient) -> None:
+    created = client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": "duplicate.patient@example.com",
+            "phone_number": "+8613800090001",
+            "password": "Patient9!",
+            "role": "patient",
+            "verification_code": "123456",
+            "terms_accepted": True,
+            "patient_profile": {
+                "display_name": "Duplicate Patient",
+                "contact_phone": "+8613800090001",
+            },
+        },
+    )
+    assert created.status_code == 201
+
+    duplicate_phone = client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": "duplicate.phone@example.com",
+            "phone_number": "+8613800090001",
+            "password": "Patient9!",
+            "role": "patient",
+            "verification_code": "123456",
+            "terms_accepted": True,
+            "patient_profile": {
+                "display_name": "Duplicate Phone",
+                "contact_phone": "+8613800090001",
+            },
+        },
+    )
+    assert duplicate_phone.status_code == 409
+    assert duplicate_phone.json()["error"]["code"] == "conflict"
+    assert (
+        duplicate_phone.json()["error"]["message"]
+        == "An account already exists for this contact."
+    )
+
+    duplicate_email = client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": "duplicate.patient@example.com",
+            "phone_number": "+8613800090002",
+            "password": "Patient9!",
+            "role": "patient",
+            "verification_code": "123456",
+            "terms_accepted": True,
+            "patient_profile": {
+                "display_name": "Duplicate Email",
+                "contact_phone": "+8613800090002",
+            },
+        },
+    )
+    assert duplicate_email.status_code == 409
+    assert duplicate_email.json()["error"]["code"] == "conflict"
+    assert (
+        duplicate_email.json()["error"]["message"]
+        == "An account already exists for this contact."
+    )
 
 
 def test_login_success_failure_and_me(client: TestClient, settings) -> None:
