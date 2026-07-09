@@ -422,3 +422,59 @@ Deployment evidence:
 Inspection URL:
 
 - `https://dr-ai.43.132.169.195.sslip.io`
+
+## Registration and Onboarding Polish Tencent Staging Redeploy
+
+Recorded: 2026-07-09T14:47:53+08:00
+
+After the registration/onboarding product-quality polish was committed locally
+on `main` as `362085e`, Tencent same-origin staging was redeployed so the live
+web/API environment reflects the patient and doctor sign-up UX, avatar upload,
+profile intake, location, legal-link, and post-registration routing updates.
+This redeploy did not change production, tester/account settings, native store
+uploads, tags, pull requests, real patient data, or Phase 3 AI scope.
+
+Deployment evidence:
+
+- `main` was fast-forwarded from `a7e296a` to `362085e`, bringing the full
+  Phase 2 patient/doctor stack plus the registration/onboarding polish onto the
+  local main branch.
+- Local pre-deploy verification passed: backend Ruff, focused backend tests
+  with `27 passed`, `./scripts/verify_flutter.sh` with analyzer clean and all
+  Flutter tests passed, `git diff --check`, and Flutter web release build for
+  `https://dr-ai.43.132.169.195.sslip.io`.
+- The local Flutter web build produced `apps/dr_ai_app/build/web` at about
+  `41M`; the secret scan found no database URL, JWT secret, private key, SSH
+  key, or API-key marker. The only DeepSeek match was expected explanatory
+  product copy stating that backend keys never enter Flutter.
+- Built and pushed a sanitized API image on the Tencent CVM and deployed
+  immutable digest
+  `hkccr.ccs.tencentyun.com/dr-ai/dr-ai-backend@sha256:815ae0ab741b774fdf0034c15dd5ddc38a0a1088fde42600b2ea792b10fb3e29`.
+- Backed up the host-side `.env` before updating `DR_AI_IMAGE`.
+- Ran Alembic `upgrade head` on staging; migration `20260709_0013` applied.
+- Ran the synthetic seed twice on staging; both runs were idempotent with all
+  created counts at `0`.
+- Backed up the previous host-side `Caddyfile`, `compose.yaml`, and `web/`
+  directory, installed the new Flutter web bundle, validated Caddy, and
+  force-recreated the Caddy container. The remote `web/` directory contained
+  `40` files and was about `42M`.
+- Public HTTPS checks passed for `/health`, `/`, `/terms`, `/privacy-policy`,
+  and unauthenticated `/api/v1/me` returning `401`.
+- Credentialed staging smoke passed from the CVM without printing passwords,
+  access tokens, refresh tokens, database URLs, or `.env` contents: health,
+  doctor/patient login, refresh/logout, assigned-patient search, neutral
+  cross-patient denial, demo upload presign, simulated assessment,
+  recovery-plan save/activation, patient Today/task completion, Ask Dr. AI,
+  consultation readback, and Beta support web surface.
+
+Known warnings:
+
+- Remote tar extraction ignored macOS extended-header metadata such as
+  `LIBARCHIVE.xattr.com.apple.provenance`; no AppleDouble `._*` files were
+  included in the uploaded API context.
+- Staging still reports the existing non-fatal PostgreSQL timezone warning:
+  `unknown PostgreSQL timezone: 'PRC'; will use UTC`.
+
+Inspection URL:
+
+- `https://dr-ai.43.132.169.195.sslip.io`
