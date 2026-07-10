@@ -145,9 +145,16 @@ def test_registered_accounts_can_connect_and_create_care_from_zero(
     assert own_care.status_code == 200
     patient_id = own_care.json()["patient"]["patient_id"]
     patient_code = own_care.json()["patient"]["synthetic_identifier"]
+    patient_display_name = own_care.json()["patient"]["display_name"]
     assert patient_code.startswith("PAT-")
     assert own_care.json()["clinical_events"] == []
     assert own_care.json()["allergies"] == []
+    contacts_before = client.get(
+        "/api/v1/patient/me/contacts",
+        headers=patient_headers,
+    )
+    assert contacts_before.status_code == 200
+    assert contacts_before.json()["items"] == []
 
     patients_before = client.get("/api/v1/patients", headers=doctor_headers)
     assert patients_before.status_code == 200
@@ -159,6 +166,16 @@ def test_registered_accounts_can_connect_and_create_care_from_zero(
     )
     assert patient_probe_before.status_code == 404
     assert patient_probe_before.json()["error"]["code"] == "not_found"
+
+    preview = client.post(
+        "/api/v1/patients/connect/preview",
+        headers=doctor_headers,
+        json={"patient_code": patient_code.lower()},
+    )
+    assert preview.status_code == 200
+    assert preview.json()["display_name"] == patient_display_name
+    assert preview.json()["masked_patient_code"].endswith(patient_code[-4:])
+    assert client.get("/api/v1/patients", headers=doctor_headers).json()["items"] == []
 
     connected = client.post(
         "/api/v1/patients/connect",
@@ -179,6 +196,36 @@ def test_registered_accounts_can_connect_and_create_care_from_zero(
     assert patients_after.status_code == 200
     assert [item["patient_id"] for item in patients_after.json()["items"]] == [patient_id]
 
+    second_doctor = register(
+        client,
+        email="zero.doctor.two@example.com",
+        password="Doctor9!",
+        role="doctor",
+    )
+    second_doctor_headers = auth_header(second_doctor["access_token"])
+    second_connection = client.post(
+        "/api/v1/patients/connect",
+        headers=second_doctor_headers,
+        json={"patient_code": patient_code},
+    )
+    assert second_connection.status_code == 200
+
+    contacts_after = client.get(
+        "/api/v1/patient/me/contacts",
+        headers=patient_headers,
+    )
+    assert contacts_after.status_code == 200
+    contact_items = contacts_after.json()["items"]
+    assert len(contact_items) == 2
+    assert len({contact["doctor_id"] for contact in contact_items}) == 2
+    assert all(contact["display_name"] == "Doctor profile" for contact in contact_items)
+
+    doctor_contact_probe = client.get(
+        "/api/v1/patient/me/contacts",
+        headers=doctor_headers,
+    )
+    assert doctor_contact_probe.status_code == 404
+
     created_event = client.post(
         f"/api/v1/patients/{patient_id}/clinical-events",
         headers=doctor_headers,
@@ -197,7 +244,7 @@ def test_registered_accounts_can_connect_and_create_care_from_zero(
         relationship_audits = db.scalars(
             select(AuditEvent).where(AuditEvent.event_type == "care_relationship_connected")
         ).all()
-        assert len(relationship_audits) == 2
+        assert len(relationship_audits) == 3
         assert relationship_audits[0].metadata_json["patient_code_supplied"] is True
         assert patient_code not in str(relationship_audits[0].metadata_json)
 
@@ -217,10 +264,14 @@ def test_patient_can_update_allowed_profile_and_allergy_surfaces(
             "sex": "not specified",
             "preferred_language": "English",
             "contact_preference": "in-app",
+            "height_cm": 168,
+            "weight_kg": 62.5,
         },
     )
     assert profile_response.status_code == 200
     assert profile_response.json()["demographics"]["birth_year"] == 1988
+    assert profile_response.json()["demographics"]["height_cm"] == 168
+    assert profile_response.json()["demographics"]["weight_kg"] == 62.5
 
     allergy_response = client.post(
         f"/api/v1/patients/{assigned_id}/allergies",

@@ -110,8 +110,17 @@ The following issues are blockers, not polish:
 
 - Choose and document a production font strategy for English and Simplified
   Chinese.
+  - Approved 2026-07-10: Inter for Latin text and Noto Sans SC for Simplified
+    Chinese. Both variable fonts and their OFL license text are bundled in the
+    Flutter application; platform fonts remain fallbacks only.
 - Define type scale, line height, color roles, spacing, surfaces, avatar
   treatment, status chips, form fields, and button hierarchy.
+- Review the proposed English/Simplified Chinese font pairing with the product
+  owner before changing the production theme.
+  - Complete: the product owner selected Inter + Noto Sans SC after reviewing
+    matched bilingual Dr. AI interface specimens.
+- Use one restrained page-transition language across role routes and honor the
+  platform reduced-motion preference.
 - Replace generic/default-looking typography and inconsistent card density.
 - Avoid decorative clutter. The visual tone should be clinical, warm, calm,
   and premium enough for a commercial healthcare product.
@@ -132,6 +141,12 @@ The following issues are blockers, not polish:
   - contact preference;
   - medical-history setup entry point.
 - The patient avatar/profile entry point should open profile editing.
+- Patient and doctor account editing must accept Unicode profile text and an
+  optional email that can be added, changed, or removed.
+- A one-character Chinese family name must not be rejected by a two-character
+  Western-name assumption.
+- Doctor Account must show the recorded phone and available email. Its active
+  status is true only when authenticated activity occurred within 14 days.
 - The patient dashboard should show a clear next step if profile/history is
   incomplete.
 - The patient code should be easy to share with a doctor, but it should not be
@@ -195,13 +210,53 @@ Before Phase 3 starts, the app should pass a simple human review:
 - Screenshots look credible enough to show to an advisor, early tester, or
   competition judge without explaining away the UI.
 
+### 9. Account, Identity, And Connection Safety
+
+- Doctors and patients can change passwords from Account after confirming the
+  current password; successful changes revoke existing refresh sessions.
+- Registration and forgot-password use the verified phone number, an expiring hashed
+  verification challenge, an attempt limit, and audited reset. The external SMS
+  provider remains the Phase 6 delivery integration; local/test environments
+  may expose a development code, while staging/production responses do not.
+- Doctor Account supports a real editable email and local-file avatar upload.
+- Hospital information is read-only for doctors after registration and belongs
+  to the administrator workflow.
+- Patient-ID connection shows the doctor a minimal match preview and requires
+  explicit confirmation before access is created.
+- Patient medical intake uses named sections, required/optional language,
+  examples, and conditional follow-up fields so empty text boxes have clear
+  meaning.
+- Unfinished patient navigation and the historical demo upload/assessment
+  controls are hidden until production workflows, permissions, and validation
+  are ready.
+
+### 10. Localization Quality
+
+- Chinese and English must use the same routes, controls, permissions, and
+  product behavior; localization must not create a second app or forked flow.
+- First use follows Chinese or English device language and falls back to
+  English for every other locale. Both roles can change the interface language
+  from Account, and the visible change is immediate.
+- A Chinese localization release is not complete while production routes still
+  contain hardcoded English labels, validation, empty states, notifications,
+  status text, semantics, tooltips, or dialogs.
+- Patient IDs and other stable identifiers remain unchanged. Patient-entered
+  and clinician-entered clinical content is displayed exactly as entered and
+  is never silently machine-translated.
+- Verify Chinese and English screenshots at patient phone width and doctor
+  desktop width, including long labels, form errors, dialogs, navigation, and
+  enlarged text. No clipped or overlapping Chinese copy is acceptable.
+- Localization smoke fixtures must remain test-only and must not create or
+  leave synthetic records in production-facing data stores.
+
 ## Out Of Scope For This Gate
 
 - Phase 3 AI generation, model inference, diagnosis automation, and AI recovery
   plan drafting.
 - Phase 4 clinic operations.
 - Phase 5 specialist/admin UI.
-- Phase 6 full localization implementation.
+- Phase 6 operations beyond the localization work tracked in the implementation
+  plan, including notification delivery and production release operations.
 - Production deployment, store upload, real patient data, or clinical claims.
 
 This gate is about making the existing patient/doctor product feel real before

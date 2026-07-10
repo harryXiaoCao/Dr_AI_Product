@@ -1,16 +1,22 @@
+import 'dart:async';
+
 import 'package:dr_ai_app/app/routing/app_role.dart';
+import 'package:dr_ai_app/core/api/api_error.dart';
 import 'package:dr_ai_app/design_system/dr_ai_tokens.dart';
 import 'package:dr_ai_app/features/auth/application/auth_controller.dart';
 import 'package:dr_ai_app/features/auth/data/dr_ai_repository.dart';
 import 'package:dr_ai_app/features/auth/domain/auth_models.dart';
 import 'package:dr_ai_app/features/auth/presentation/signup_reference_data.dart';
+import 'package:dr_ai_app/l10n/l10n.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
-  const LoginScreen({super.key});
+  const LoginScreen({this.initiallyRegistering = false, super.key});
+
+  final bool initiallyRegistering;
 
   @override
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
@@ -34,6 +40,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _isRegistering = false;
   bool _termsAccepted = false;
   bool _customHospital = false;
+  bool _registrationCodeRequesting = false;
+  String? _registrationCodeStatus;
   AppRole _selectedRole = AppRole.patient;
   String _gender = 'Unspecified';
   DialingCodeOption _dialingCode = dialingCodeOptions.firstWhere(
@@ -42,9 +50,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   String _country = 'China';
   String _province = 'Guangdong';
   String _city = 'Shenzhen';
+  Timer? _feedbackTimer;
+  String? _scheduledFeedback;
+
+  @override
+  void initState() {
+    super.initState();
+    _isRegistering = widget.initiallyRegistering;
+  }
 
   @override
   void dispose() {
+    _feedbackTimer?.cancel();
     _accountController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
@@ -111,6 +128,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final auth = ref.watch(authControllerProvider);
     final errorMessage = auth.value?.errorMessage;
     final noticeMessage = auth.value?.noticeMessage;
+    _ensureFeedbackTimer(errorMessage ?? noticeMessage);
     final desktop = MediaQuery.sizeOf(context).width >= 980;
     return Scaffold(
       backgroundColor: DrAiColors.white,
@@ -158,7 +176,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             const Center(child: _AuthWordmark()),
             const SizedBox(height: DrAiSpacing.md),
             Text(
-              'Welcome to Dr. AI',
+              context.l10n.welcome,
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                 color: DrAiColors.ink,
@@ -166,8 +184,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
             ),
             const SizedBox(height: DrAiSpacing.xs),
-            const Text(
-              'Sign in with the phone number or email on your account.',
+            Text(
+              context.l10n.signInDescription,
               textAlign: TextAlign.center,
               style: TextStyle(color: DrAiColors.mutedInk),
             ),
@@ -175,25 +193,36 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             _loginAccountField(),
             const SizedBox(height: DrAiSpacing.md),
             _passwordField(),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                key: const Key('forgot-password-button'),
+                onPressed: _showForgotPassword,
+                child: Text(context.l10n.forgotPassword),
+              ),
+            ),
             ..._statusMessages(errorMessage, noticeMessage),
             const SizedBox(height: DrAiSpacing.lg),
             _primaryButton(
               key: const Key('login-button'),
               auth: auth,
-              text: 'Sign in',
+              text: context.l10n.signIn,
               icon: Icons.arrow_forward,
             ),
             const SizedBox(height: DrAiSpacing.sm),
             _authModeButton(),
             TextButton.icon(
               key: const Key('login-privacy-support-link'),
-              onPressed: () => context.go('/privacy'),
+              onPressed: () {
+                ref.read(authControllerProvider.notifier).clearFeedback();
+                context.go('/privacy');
+              },
               icon: const Icon(Icons.privacy_tip_outlined),
-              label: const Text('Privacy, consent, and support'),
+              label: Text(context.l10n.privacySupport),
             ),
             const SizedBox(height: DrAiSpacing.sm),
-            const Text(
-              'Staging environment: do not enter real patient data.',
+            Text(
+              context.l10n.stagingNotice,
               textAlign: TextAlign.center,
               style: TextStyle(color: DrAiColors.mutedInk, fontSize: 12),
             ),
@@ -243,11 +272,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               children: <Widget>[
                 const _AuthWordmark(size: 30),
                 const Spacer(),
-                const Text(
-                  'Already have an account?',
+                Text(
+                  context.l10n.alreadyHaveAccount,
                   style: TextStyle(color: DrAiColors.inkSecondary),
                 ),
-                TextButton(onPressed: _toggleMode, child: const Text('Log in')),
+                TextButton(
+                  onPressed: _toggleMode,
+                  child: Text(context.l10n.logIn),
+                ),
               ],
             ),
           ),
@@ -292,7 +324,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     : CrossAxisAlignment.center,
                 children: <Widget>[
                   Text(
-                    isDoctor ? 'Doctor Registration' : 'Create your account',
+                    isDoctor
+                        ? context.l10n.doctorRegistration
+                        : context.l10n.createAccount,
                     textAlign: desktop ? TextAlign.start : TextAlign.center,
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                       fontWeight: FontWeight.w800,
@@ -302,8 +336,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   const SizedBox(height: DrAiSpacing.xs),
                   Text(
                     isDoctor
-                        ? 'Create your account to join Dr. AI'
-                        : 'Set up your account and continue to medical intake.',
+                        ? context.l10n.createAccountDoctorDescription
+                        : context.l10n.createAccountPatientDescription,
                     textAlign: desktop ? TextAlign.start : TextAlign.center,
                     style: const TextStyle(color: DrAiColors.inkSecondary),
                   ),
@@ -316,7 +350,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         _roleSelector(),
         const SizedBox(height: DrAiSpacing.lg),
         _formSection(
-          title: 'Account Information',
+          title: context.l10n.accountInformation,
           icon: Icons.person,
           children: <Widget>[
             _responsivePair(
@@ -332,7 +366,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ),
         const SizedBox(height: DrAiSpacing.lg),
         _formSection(
-          title: 'Personal Information',
+          title: context.l10n.personalInformation,
           icon: Icons.badge_outlined,
           children: <Widget>[
             _nameFields(desktop),
@@ -342,7 +376,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ),
         const SizedBox(height: DrAiSpacing.lg),
         _formSection(
-          title: isDoctor ? 'Hospital Information' : 'Home Address',
+          title: isDoctor
+              ? context.l10n.hospitalInformation
+              : context.l10n.homeAddress,
           icon: isDoctor ? Icons.local_hospital_outlined : Icons.home_outlined,
           children: <Widget>[
             _locationFields(desktop),
@@ -350,7 +386,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               const SizedBox(height: DrAiSpacing.md),
               _textField(
                 controller: _homeAddressController,
-                label: 'Specific home address',
+                label: context.l10n.specificHomeAddress,
                 keyName: 'signup-home-address-field',
                 minLines: 1,
                 maxLines: 2,
@@ -374,7 +410,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             child: _primaryButton(
               key: const Key('login-button'),
               auth: auth,
-              text: 'Next',
+              text: context.l10n.next,
               icon: Icons.arrow_forward,
             ),
           ),
@@ -402,8 +438,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             dropdownColor: DrAiColors.white,
             icon: const Icon(Icons.keyboard_arrow_down_rounded),
             style: _menuTextStyle,
-            decoration: const InputDecoration(
-              labelText: 'Code',
+            decoration: InputDecoration(
+              labelText: context.l10n.code,
               border: OutlineInputBorder(),
             ),
             selectedItemBuilder: (context) => dialingCodeOptions
@@ -416,7 +452,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 .map(
                   (item) => DropdownMenuItem<DialingCodeOption>(
                     value: item,
-                    child: Text(item.label, overflow: TextOverflow.ellipsis),
+                    child: Text('${item.isoCode} ${item.dialCode}'),
                   ),
                 )
                 .toList(),
@@ -437,15 +473,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               AutofillHints.telephoneNumber,
             ],
             keyboardType: TextInputType.emailAddress,
-            decoration: const InputDecoration(
-              labelText: 'Email or phone number',
+            decoration: InputDecoration(
+              labelText: context.l10n.emailOrPhone,
               border: OutlineInputBorder(),
             ),
             validator: (value) {
               final account = value?.trim() ?? '';
               if (!_isEmail(account) &&
                   !_isPhone(_phoneWithDialCode(account))) {
-                return 'Enter a valid email address or phone number.';
+                return context.l10n.invalidAccount;
               }
               return null;
             },
@@ -470,8 +506,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             dropdownColor: DrAiColors.white,
             icon: const Icon(Icons.keyboard_arrow_down_rounded),
             style: _menuTextStyle,
-            decoration: const InputDecoration(
-              labelText: 'Code',
+            decoration: InputDecoration(
+              labelText: context.l10n.code,
               border: OutlineInputBorder(),
             ),
             selectedItemBuilder: (context) => dialingCodeOptions
@@ -484,7 +520,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 .map(
                   (item) => DropdownMenuItem<DialingCodeOption>(
                     value: item,
-                    child: Text(item.label, overflow: TextOverflow.ellipsis),
+                    child: Text('${item.isoCode} ${item.dialCode}'),
                   ),
                 )
                 .toList(),
@@ -501,18 +537,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             key: const Key('signup-phone-field'),
             controller: _phoneController,
             keyboardType: TextInputType.phone,
-            decoration: const InputDecoration(
-              labelText: 'Phone number',
-              hintText: 'Enter phone number',
+            decoration: InputDecoration(
+              labelText: context.l10n.phoneNumber,
+              hintText: context.l10n.enterPhoneNumber,
               border: OutlineInputBorder(),
             ),
             validator: (value) {
               final phone = value?.trim() ?? '';
               if (required && phone.isEmpty) {
-                return 'Phone number is required.';
+                return context.l10n.phoneRequired;
               }
               if (phone.isNotEmpty && !_isPhone(_fullPhoneNumber())) {
-                return 'Enter a valid phone number.';
+                return context.l10n.invalidPhone;
               }
               return null;
             },
@@ -527,14 +563,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       key: const Key('signup-email-field'),
       controller: _emailController,
       keyboardType: TextInputType.emailAddress,
-      decoration: const InputDecoration(
-        labelText: 'Email (optional)',
+      decoration: InputDecoration(
+        labelText: context.l10n.emailOptional,
         border: OutlineInputBorder(),
       ),
       validator: (value) {
         final email = value?.trim() ?? '';
         if (email.isNotEmpty && !_isEmail(email)) {
-          return 'Enter a valid email address.';
+          return context.l10n.invalidEmail;
         }
         return null;
       },
@@ -548,10 +584,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       autofillHints: const <String>[AutofillHints.password],
       obscureText: _obscurePassword,
       decoration: InputDecoration(
-        labelText: 'Password',
-        helperText: _isRegistering
-            ? '8-20 characters. Letters, numbers, and symbols are okay.'
-            : null,
+        labelText: context.l10n.password,
+        helperText: _isRegistering ? context.l10n.passwordGuidance : null,
         helperMaxLines: 2,
         helperStyle: const TextStyle(
           color: DrAiColors.mutedInk,
@@ -560,7 +594,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ),
         border: const OutlineInputBorder(),
         suffixIcon: IconButton(
-          tooltip: _obscurePassword ? 'Show password' : 'Hide password',
+          tooltip: _obscurePassword
+              ? context.l10n.showPassword
+              : context.l10n.hidePassword,
           onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
           icon: Icon(
             _obscurePassword
@@ -572,10 +608,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       validator: (value) {
         final password = value ?? '';
         if (password.isEmpty) {
-          return 'Enter your password.';
+          return context.l10n.enterPassword;
         }
         if (_isRegistering && (password.length < 8 || password.length > 20)) {
-          return 'Use 8-20 characters.';
+          return context.l10n.passwordLength;
         }
         return null;
       },
@@ -588,13 +624,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       key: const Key('confirm-password-field'),
       controller: _confirmPasswordController,
       obscureText: _obscurePassword,
-      decoration: const InputDecoration(
-        labelText: 'Confirm password',
+      decoration: InputDecoration(
+        labelText: context.l10n.confirmPassword,
         border: OutlineInputBorder(),
       ),
       validator: (value) {
         if (value != _passwordController.text) {
-          return 'Passwords do not match.';
+          return context.l10n.passwordMismatch;
         }
         return null;
       },
@@ -602,50 +638,107 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Widget _verificationField() {
-    return TextFormField(
-      key: const Key('verification-code-field'),
-      controller: _verificationCodeController,
-      keyboardType: TextInputType.number,
-      decoration: const InputDecoration(
-        labelText: 'Verification code',
-        hintText: 'Enter code',
-        suffixIcon: Padding(
-          padding: EdgeInsets.only(right: DrAiSpacing.sm),
-          child: Center(
-            widthFactor: 1,
-            child: Text(
-              'Send code',
-              style: TextStyle(
-                color: DrAiColors.brand,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        TextFormField(
+          key: const Key('verification-code-field'),
+          controller: _verificationCodeController,
+          keyboardType: TextInputType.number,
+          maxLength: 6,
+          decoration: InputDecoration(
+            labelText: context.l10n.verificationCode,
+            hintText: context.l10n.enterVerificationCode,
+            counterText: '',
+            border: OutlineInputBorder(),
           ),
+          validator: (value) => RegExp(r'^\d{6}$').hasMatch(value?.trim() ?? '')
+              ? null
+              : context.l10n.enterSixDigitCode,
         ),
-        border: OutlineInputBorder(),
-      ),
-      validator: (value) {
-        if ((value?.trim() ?? '') != '123456') {
-          return 'Use verification code 123456 for now.';
-        }
-        return null;
-      },
+        const SizedBox(height: DrAiSpacing.xs),
+        OutlinedButton.icon(
+          key: const Key('registration-send-code-button'),
+          onPressed: _registrationCodeRequesting
+              ? null
+              : _requestRegistrationCode,
+          icon: _registrationCodeRequesting
+              ? const SizedBox.square(
+                  dimension: 14,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.sms_outlined, size: 18),
+          label: Text(context.l10n.sendCode),
+        ),
+        if (_registrationCodeStatus != null) ...<Widget>[
+          const SizedBox(height: DrAiSpacing.xs),
+          Text(
+            _registrationCodeStatus!,
+            key: const Key('registration-code-status'),
+            style: const TextStyle(color: DrAiColors.mutedInk, fontSize: 12),
+          ),
+        ],
+      ],
     );
+  }
+
+  Future<void> _requestRegistrationCode() async {
+    if (_phoneController.text.trim().length < 5) {
+      setState(() {
+        _registrationCodeStatus = context.l10n.enterPhoneFirst;
+      });
+      return;
+    }
+    setState(() {
+      _registrationCodeRequesting = true;
+      _registrationCodeStatus = null;
+    });
+    try {
+      final result = await ref
+          .read(repositoryProvider)
+          .requestRegistrationCode(_fullPhoneNumber());
+      if (!mounted) {
+        return;
+      }
+      if (result.debugCode != null) {
+        _verificationCodeController.text = result.debugCode!;
+      }
+      setState(() {
+        _registrationCodeRequesting = false;
+        _registrationCodeStatus = result.debugCode == null
+            ? result.message
+            : context.l10n.localDevelopmentCodeFilled(result.message);
+      });
+    } on ApiError catch (error) {
+      if (mounted) {
+        setState(() {
+          _registrationCodeRequesting = false;
+          _registrationCodeStatus = error.message;
+        });
+      }
+    } on Exception {
+      if (mounted) {
+        setState(() {
+          _registrationCodeRequesting = false;
+          _registrationCodeStatus = context.l10n.unableToRequestCode;
+        });
+      }
+    }
   }
 
   Widget _roleSelector() {
     return SegmentedButton<AppRole>(
       key: const Key('register-role-selector'),
-      segments: const <ButtonSegment<AppRole>>[
+      segments: <ButtonSegment<AppRole>>[
         ButtonSegment<AppRole>(
           value: AppRole.patient,
-          icon: Icon(Icons.person_outline),
-          label: Text('Patient'),
+          icon: const Icon(Icons.person_outline),
+          label: Text(context.l10n.patient),
         ),
         ButtonSegment<AppRole>(
           value: AppRole.doctor,
-          icon: Icon(Icons.medical_services_outlined),
-          label: Text('Doctor'),
+          icon: const Icon(Icons.medical_services_outlined),
+          label: Text(context.l10n.doctor),
         ),
       ],
       selected: <AppRole>{_selectedRole},
@@ -660,18 +753,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final fields = <Widget>[
       _textField(
         controller: _firstNameController,
-        label: 'First name',
+        label: context.l10n.firstName,
         keyName: 'signup-first-name-field',
         required: true,
       ),
       _textField(
         controller: _middleNameController,
-        label: 'Middle name (optional)',
+        label: context.l10n.middleNameOptional,
         keyName: 'signup-middle-name-field',
       ),
       _textField(
         controller: _lastNameController,
-        label: 'Last name',
+        label: context.l10n.lastName,
         keyName: 'signup-last-name-field',
         required: true,
       ),
@@ -705,16 +798,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       controller: _birthDateController,
       keyboardType: TextInputType.datetime,
       decoration: InputDecoration(
-        labelText: 'Date of birth',
+        labelText: context.l10n.dateOfBirth,
         hintText: 'YYYY-MM-DD',
         border: const OutlineInputBorder(),
         suffixIcon: IconButton(
-          tooltip: 'Select date',
+          tooltip: context.l10n.selectDate,
           onPressed: () => _showBirthDatePicker(_birthDateController),
           icon: const Icon(Icons.calendar_today_outlined),
         ),
       ),
-      validator: _dateValidator,
+      validator: (value) => _dateValidator(context, value),
     );
   }
 
@@ -728,8 +821,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       dropdownColor: DrAiColors.white,
       icon: const Icon(Icons.keyboard_arrow_down_rounded),
       style: _menuTextStyle,
-      decoration: const InputDecoration(
-        labelText: 'Gender',
+      decoration: InputDecoration(
+        labelText: context.l10n.gender,
         border: OutlineInputBorder(),
       ),
       items: _optionItems(<String>['Unspecified', 'Female', 'Male', 'Other']),
@@ -748,14 +841,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         dropdownColor: DrAiColors.white,
         icon: const Icon(Icons.keyboard_arrow_down_rounded),
         style: _menuTextStyle,
-        decoration: const InputDecoration(
-          labelText: 'Country/Region',
+        decoration: InputDecoration(
+          labelText: context.l10n.countryRegion,
           border: OutlineInputBorder(),
         ),
         items: locationCountries
             .map(
-              (item) =>
-                  DropdownMenuItem(value: item.name, child: Text(item.name)),
+              (item) => DropdownMenuItem(
+                value: item.name,
+                child: Text(context.l10n.stableValue(item.name)),
+              ),
             )
             .toList(),
         onChanged: (value) {
@@ -779,14 +874,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         dropdownColor: DrAiColors.white,
         icon: const Icon(Icons.keyboard_arrow_down_rounded),
         style: _menuTextStyle,
-        decoration: const InputDecoration(
-          labelText: 'Province',
+        decoration: InputDecoration(
+          labelText: context.l10n.province,
           border: OutlineInputBorder(),
         ),
         items: _regions(_country)
             .map(
-              (item) =>
-                  DropdownMenuItem(value: item.name, child: Text(item.name)),
+              (item) => DropdownMenuItem(
+                value: item.name,
+                child: Text(context.l10n.stableValue(item.name)),
+              ),
             )
             .toList(),
         onChanged: (value) {
@@ -808,12 +905,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         dropdownColor: DrAiColors.white,
         icon: const Icon(Icons.keyboard_arrow_down_rounded),
         style: _menuTextStyle,
-        decoration: const InputDecoration(
-          labelText: 'City',
+        decoration: InputDecoration(
+          labelText: context.l10n.city,
           border: OutlineInputBorder(),
         ),
         items: _cities(_province)
-            .map((item) => DropdownMenuItem(value: item, child: Text(item)))
+            .map(
+              (item) => DropdownMenuItem(
+                value: item,
+                child: Text(context.l10n.stableValue(item)),
+              ),
+            )
             .toList(),
         onChanged: (value) => setState(() => _city = value ?? _city),
       ),
@@ -850,11 +952,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       dropdownColor: DrAiColors.white,
       icon: const Icon(Icons.keyboard_arrow_down_rounded),
       style: _menuTextStyle,
-      decoration: const InputDecoration(
-        labelText: 'Hospital',
+      decoration: InputDecoration(
+        labelText: context.l10n.hospital,
         border: OutlineInputBorder(),
       ),
-      hint: const Text('No hospitals listed yet'),
+      hint: Text(context.l10n.hospitalEmpty),
       items: const <DropdownMenuItem<String>>[],
       onChanged: null,
     );
@@ -868,15 +970,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            const Text(
-              'Can’t find your hospital?',
+            Text(
+              context.l10n.hospitalMissing,
               style: TextStyle(color: DrAiColors.inkSecondary),
             ),
             TextButton.icon(
               key: const Key('signup-add-hospital-button'),
               onPressed: () => setState(() => _customHospital = true),
               icon: const Icon(Icons.add),
-              label: const Text('Add my hospital'),
+              label: Text(context.l10n.addHospital),
             ),
           ],
         ),
@@ -885,7 +987,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final customField = _customHospital
         ? _textField(
             controller: _hospitalController,
-            label: 'Hospital name',
+            label: context.l10n.hospitalName,
             keyName: 'signup-custom-hospital-field',
             required: true,
           )
@@ -919,7 +1021,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Widget _termsRow() {
     return FormField<bool>(
-      validator: (_) => _termsAccepted ? null : 'Accept the terms and policy.',
+      validator: (_) =>
+          _termsAccepted ? null : context.l10n.acceptTermsValidation,
       builder: (field) {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -939,10 +1042,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   child: Wrap(
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: <Widget>[
-                      const Text('I have read and agree to the '),
-                      _inlineLink('Terms of Service', '/terms'),
-                      const Text(' and '),
-                      _inlineLink('Privacy Policy', '/privacy-policy'),
+                      Text(context.l10n.termsConsentPrefix),
+                      _inlineLink(context.l10n.termsOfService, '/terms'),
+                      Text(context.l10n.termsConsentJoiner),
+                      _inlineLink(
+                        context.l10n.privacyPolicy,
+                        '/privacy-policy',
+                      ),
                     ],
                   ),
                 ),
@@ -967,7 +1073,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Widget _inlineLink(String label, String path) {
     return InkWell(
-      onTap: () => context.go(path),
+      onTap: () {
+        ref.read(authControllerProvider.notifier).clearFeedback();
+        context.go(path);
+      },
       child: Text(
         label,
         style: const TextStyle(
@@ -1054,8 +1163,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       ),
       validator: required
           ? (value) {
-              if ((value?.trim() ?? '').length < 2) {
-                return 'Required.';
+              if ((value?.trim() ?? '').isEmpty) {
+                return context.l10n.required;
               }
               return null;
             }
@@ -1091,8 +1200,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       onPressed: _toggleMode,
       child: Text(
         _isRegistering
-            ? 'Already have an account? Log in'
-            : 'Create an account',
+            ? context.l10n.alreadyHaveAccountLogIn
+            : context.l10n.createAnAccount,
       ),
     );
   }
@@ -1101,12 +1210,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     return <Widget>[
       if (noticeMessage != null) ...<Widget>[
         const SizedBox(height: DrAiSpacing.md),
-        _StatusText(message: noticeMessage, keyName: 'login-notice'),
+        _StatusText(
+          message: context.l10n.stableValue(noticeMessage),
+          keyName: 'login-notice',
+        ),
       ],
       if (errorMessage != null) ...<Widget>[
         const SizedBox(height: DrAiSpacing.md),
         _StatusText(
-          message: errorMessage,
+          message: context.l10n.stableValue(errorMessage),
           keyName: 'login-error',
           color: DrAiColors.danger,
         ),
@@ -1117,7 +1229,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   List<DropdownMenuItem<String>> _optionItems(List<String> values) {
     return values
         .map(
-          (value) => DropdownMenuItem<String>(value: value, child: Text(value)),
+          (value) => DropdownMenuItem<String>(
+            value: value,
+            child: Text(context.l10n.stableValue(value)),
+          ),
         )
         .toList();
   }
@@ -1176,12 +1291,32 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   void _toggleMode() {
-    setState(() {
-      _isRegistering = !_isRegistering;
-      _termsAccepted = false;
-      _formKey.currentState?.reset();
-      _verificationCodeController.clear();
+    ref.read(authControllerProvider.notifier).clearFeedback();
+    context.go(_isRegistering ? '/login' : '/register');
+  }
+
+  void _ensureFeedbackTimer(String? message) {
+    if (_scheduledFeedback == message) {
+      return;
+    }
+    _feedbackTimer?.cancel();
+    _scheduledFeedback = message;
+    if (message == null) {
+      return;
+    }
+    _feedbackTimer = Timer(const Duration(seconds: 2), () {
+      if (!mounted) {
+        return;
+      }
+      ref.read(authControllerProvider.notifier).clearFeedback();
     });
+  }
+
+  Future<void> _showForgotPassword() {
+    return showDialog<void>(
+      context: context,
+      builder: (context) => const _ForgotPasswordDialog(),
+    );
   }
 
   Future<void> _showBirthDatePicker(TextEditingController controller) async {
@@ -1228,11 +1363,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   children: <Widget>[
                     TextButton(
                       onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('Cancel'),
+                      child: Text(context.l10n.cancel),
                     ),
                     const Spacer(),
                     Text(
-                      'Date of birth',
+                      context.l10n.dateOfBirth,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         color: DrAiColors.brandDark,
                         fontWeight: FontWeight.w800,
@@ -1248,7 +1383,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         controller.text = _formatDate(selected);
                         Navigator.of(context).pop();
                       },
-                      child: const Text('Done'),
+                      child: Text(context.l10n.done),
                     ),
                   ],
                 ),
@@ -1286,31 +1421,364 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 }
 
+class _ForgotPasswordDialog extends ConsumerStatefulWidget {
+  const _ForgotPasswordDialog();
+
+  @override
+  ConsumerState<_ForgotPasswordDialog> createState() =>
+      _ForgotPasswordDialogState();
+}
+
+class _ForgotPasswordDialogState extends ConsumerState<_ForgotPasswordDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _phoneController = TextEditingController();
+  final _codeController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmController = TextEditingController();
+  DialingCodeOption _dialingCode = dialingCodeOptions.firstWhere(
+    (item) => item.isoCode == 'CN',
+  );
+  bool _requesting = false;
+  bool _resetting = false;
+  bool _complete = false;
+  bool _obscure = true;
+  String? _statusMessage;
+  String? _errorMessage;
+
+  @override
+  void dispose() {
+    _phoneController.dispose();
+    _codeController.dispose();
+    _passwordController.dispose();
+    _confirmController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(
+        _complete ? context.l10n.passwordUpdated : context.l10n.resetPassword,
+      ),
+      content: SizedBox(
+        width: 460,
+        child: _complete
+            ? Text(context.l10n.passwordChangedSignIn)
+            : Form(
+                key: _formKey,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      Text(
+                        context.l10n.verifyPhoneReset,
+                        style: TextStyle(color: DrAiColors.inkSecondary),
+                      ),
+                      const SizedBox(height: DrAiSpacing.md),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          SizedBox(
+                            width: 126,
+                            child: DropdownButtonFormField<DialingCodeOption>(
+                              key: const Key('forgot-password-country-code'),
+                              initialValue: _dialingCode,
+                              isExpanded: true,
+                              decoration: InputDecoration(
+                                labelText: context.l10n.code,
+                                border: const OutlineInputBorder(),
+                              ),
+                              selectedItemBuilder: (context) =>
+                                  dialingCodeOptions
+                                      .map((item) => Text(item.dialCode))
+                                      .toList(),
+                              items: dialingCodeOptions
+                                  .map(
+                                    (item) => DropdownMenuItem(
+                                      value: item,
+                                      child: Text(
+                                        '${item.isoCode} ${item.dialCode}',
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: (value) {
+                                if (value != null) {
+                                  setState(() => _dialingCode = value);
+                                }
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: DrAiSpacing.sm),
+                          Expanded(
+                            child: TextFormField(
+                              key: const Key('forgot-password-phone-field'),
+                              controller: _phoneController,
+                              keyboardType: TextInputType.phone,
+                              decoration: InputDecoration(
+                                labelText: context.l10n.phoneNumber,
+                                border: const OutlineInputBorder(),
+                              ),
+                              validator: (value) =>
+                                  (value?.trim().length ?? 0) < 5
+                                  ? context.l10n.enterYourPhone
+                                  : null,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: DrAiSpacing.sm),
+                      OutlinedButton.icon(
+                        key: const Key('forgot-password-send-code'),
+                        onPressed: _requesting ? null : _requestCode,
+                        icon: _requesting
+                            ? const SizedBox.square(
+                                dimension: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.sms_outlined),
+                        label: Text(context.l10n.sendVerificationCode),
+                      ),
+                      const SizedBox(height: DrAiSpacing.md),
+                      TextFormField(
+                        key: const Key('forgot-password-code-field'),
+                        controller: _codeController,
+                        keyboardType: TextInputType.number,
+                        maxLength: 6,
+                        decoration: InputDecoration(
+                          labelText: context.l10n.sixDigitVerificationCode,
+                          counterText: '',
+                          border: const OutlineInputBorder(),
+                        ),
+                        validator: (value) =>
+                            RegExp(r'^\d{6}$').hasMatch(value?.trim() ?? '')
+                            ? null
+                            : context.l10n.enterSixDigitCode,
+                      ),
+                      const SizedBox(height: DrAiSpacing.sm),
+                      _passwordField(
+                        controller: _passwordController,
+                        label: context.l10n.newPassword,
+                        keyName: 'forgot-password-new-field',
+                      ),
+                      const SizedBox(height: DrAiSpacing.sm),
+                      _passwordField(
+                        controller: _confirmController,
+                        label: context.l10n.confirmNewPassword,
+                        keyName: 'forgot-password-confirm-field',
+                        confirmation: true,
+                      ),
+                      if (_statusMessage != null) ...<Widget>[
+                        const SizedBox(height: DrAiSpacing.sm),
+                        Text(
+                          context.l10n.stableValue(_statusMessage!),
+                          key: const Key('forgot-password-status'),
+                          style: const TextStyle(color: DrAiColors.brand),
+                        ),
+                      ],
+                      if (_errorMessage != null) ...<Widget>[
+                        const SizedBox(height: DrAiSpacing.sm),
+                        Text(
+                          context.l10n.stableValue(_errorMessage!),
+                          key: const Key('forgot-password-error'),
+                          style: const TextStyle(color: DrAiColors.danger),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+      ),
+      actions: <Widget>[
+        if (_complete)
+          FilledButton(
+            key: const Key('forgot-password-done'),
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(context.l10n.backToSignIn),
+          )
+        else ...<Widget>[
+          TextButton(
+            onPressed: _resetting ? null : () => Navigator.of(context).pop(),
+            child: Text(context.l10n.cancel),
+          ),
+          FilledButton(
+            key: const Key('forgot-password-reset'),
+            onPressed: _resetting ? null : _resetPassword,
+            child: _resetting
+                ? const SizedBox.square(
+                    dimension: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: DrAiColors.white,
+                    ),
+                  )
+                : Text(context.l10n.resetPassword),
+          ),
+        ],
+      ],
+    );
+  }
+
+  TextFormField _passwordField({
+    required TextEditingController controller,
+    required String label,
+    required String keyName,
+    bool confirmation = false,
+  }) {
+    return TextFormField(
+      key: Key(keyName),
+      controller: controller,
+      obscureText: _obscure,
+      autofillHints: const <String>[AutofillHints.newPassword],
+      decoration: InputDecoration(
+        labelText: label,
+        helperText: confirmation ? null : context.l10n.passwordLength,
+        border: const OutlineInputBorder(),
+        suffixIcon: IconButton(
+          tooltip: _obscure
+              ? context.l10n.showPasswords
+              : context.l10n.hidePasswords,
+          onPressed: () => setState(() => _obscure = !_obscure),
+          icon: Icon(
+            _obscure
+                ? Icons.visibility_outlined
+                : Icons.visibility_off_outlined,
+          ),
+        ),
+      ),
+      validator: (value) {
+        if (confirmation) {
+          return value != _passwordController.text
+              ? context.l10n.passwordMismatch
+              : null;
+        }
+        final password = value ?? '';
+        return password.length < 8 || password.length > 20
+            ? context.l10n.passwordLength
+            : null;
+      },
+    );
+  }
+
+  String _phoneNumber() {
+    final local = _phoneController.text.replaceAll(RegExp(r'[\s()-]'), '');
+    if (local.startsWith('+')) {
+      return local;
+    }
+    return '${_dialingCode.dialCode.replaceAll('-', '')}$local';
+  }
+
+  Future<void> _requestCode() async {
+    if ((_phoneController.text.trim()).length < 5) {
+      setState(() => _errorMessage = context.l10n.enterPhoneFirst);
+      return;
+    }
+    setState(() {
+      _requesting = true;
+      _errorMessage = null;
+      _statusMessage = null;
+    });
+    try {
+      final result = await ref
+          .read(repositoryProvider)
+          .requestPasswordReset(_phoneNumber());
+      if (!mounted) {
+        return;
+      }
+      if (result.debugCode != null) {
+        _codeController.text = result.debugCode!;
+      }
+      setState(() {
+        _requesting = false;
+        _statusMessage = result.debugCode == null
+            ? result.message
+            : context.l10n.localDevelopmentCodeFilled(result.message);
+      });
+    } on ApiError catch (error) {
+      if (mounted) {
+        setState(() {
+          _requesting = false;
+          _errorMessage = error.message;
+        });
+      }
+    } on Exception {
+      if (mounted) {
+        setState(() {
+          _requesting = false;
+          _errorMessage = context.l10n.unableToRequestCode;
+        });
+      }
+    }
+  }
+
+  Future<void> _resetPassword() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+    setState(() {
+      _resetting = true;
+      _errorMessage = null;
+    });
+    try {
+      await ref
+          .read(repositoryProvider)
+          .resetPassword(
+            phoneNumber: _phoneNumber(),
+            verificationCode: _codeController.text,
+            newPassword: _passwordController.text,
+          );
+      if (mounted) {
+        setState(() {
+          _resetting = false;
+          _complete = true;
+        });
+      }
+    } on ApiError catch (error) {
+      if (mounted) {
+        setState(() {
+          _resetting = false;
+          _errorMessage = error.message;
+        });
+      }
+    } on Exception {
+      if (mounted) {
+        setState(() {
+          _resetting = false;
+          _errorMessage = context.l10n.resetPasswordFailed;
+        });
+      }
+    }
+  }
+}
+
 class _RegistrationStepRail extends StatelessWidget {
   const _RegistrationStepRail();
 
   @override
   Widget build(BuildContext context) {
-    const steps = <({IconData icon, String title, String subtitle})>[
+    final steps = <({IconData icon, String title, String subtitle})>[
       (
         icon: Icons.person,
-        title: '1  Account',
-        subtitle: 'Create your account',
+        title: context.l10n.stepAccount,
+        subtitle: context.l10n.createAccount,
       ),
       (
         icon: Icons.badge_outlined,
-        title: '2  Profile',
-        subtitle: 'Personal information',
+        title: context.l10n.stepProfile,
+        subtitle: context.l10n.personalInformation,
       ),
       (
         icon: Icons.local_hospital_outlined,
-        title: '3  Location',
-        subtitle: 'Care and hospital details',
+        title: context.l10n.stepLocation,
+        subtitle: context.l10n.careHospitalDetails,
       ),
       (
         icon: Icons.check_circle_outline,
-        title: '4  Complete',
-        subtitle: 'Finish setup',
+        title: context.l10n.stepComplete,
+        subtitle: context.l10n.finishSetup,
       ),
     ];
     return ColoredBox(
@@ -1336,16 +1804,16 @@ class _RegistrationStepRail extends StatelessWidget {
                 color: const Color(0xFFEAF4FF),
                 borderRadius: BorderRadius.circular(DrAiRadii.md),
               ),
-              child: const Padding(
-                padding: EdgeInsets.all(DrAiSpacing.md),
+              child: Padding(
+                padding: const EdgeInsets.all(DrAiSpacing.md),
                 child: Row(
                   children: <Widget>[
-                    Icon(Icons.shield_outlined, color: DrAiColors.brand),
-                    SizedBox(width: DrAiSpacing.sm),
+                    const Icon(Icons.shield_outlined, color: DrAiColors.brand),
+                    const SizedBox(width: DrAiSpacing.sm),
                     Expanded(
                       child: Text(
-                        'Your information is secure\nWe protect your data and comply with healthcare privacy regulations.',
-                        style: TextStyle(
+                        '${context.l10n.secureInformationTitle}\n${context.l10n.secureInformationBody}',
+                        style: const TextStyle(
                           color: DrAiColors.inkSecondary,
                           height: 1.55,
                           fontSize: 12,
@@ -1461,13 +1929,13 @@ const TextStyle _menuTextStyle = TextStyle(
   fontWeight: FontWeight.w500,
 );
 
-String? _dateValidator(String? value) {
+String? _dateValidator(BuildContext context, String? value) {
   final text = value?.trim() ?? '';
   if (text.isEmpty) {
     return null;
   }
   if (_parseDate(text) == null) {
-    return 'Use YYYY-MM-DD.';
+    return context.l10n.useDateFormat;
   }
   return null;
 }

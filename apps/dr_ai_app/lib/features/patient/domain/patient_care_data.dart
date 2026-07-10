@@ -21,6 +21,23 @@ class PatientSummary {
   final String safetyLabel;
 }
 
+class PatientMatchPreview {
+  const PatientMatchPreview({
+    required this.displayName,
+    required this.maskedPatientCode,
+  });
+
+  factory PatientMatchPreview.fromJson(Map<String, dynamic> json) {
+    return PatientMatchPreview(
+      displayName: json['display_name'] as String,
+      maskedPatientCode: json['masked_patient_code'] as String,
+    );
+  }
+
+  final String displayName;
+  final String maskedPatientCode;
+}
+
 class PatientProfile extends PatientSummary {
   const PatientProfile({
     required super.patientId,
@@ -39,6 +56,12 @@ class PatientProfile extends PatientSummary {
     required this.preferredLanguage,
     required this.contactPreference,
     required this.avatarUrl,
+    required this.country,
+    required this.province,
+    required this.city,
+    required this.homeAddress,
+    required this.heightCm,
+    required this.weightKg,
     required this.medicalHistorySetupCompleted,
   });
 
@@ -62,6 +85,12 @@ class PatientProfile extends PatientSummary {
       preferredLanguage: demographics['preferred_language'] as String?,
       contactPreference: demographics['contact_preference'] as String?,
       avatarUrl: demographics['avatar_url'] as String?,
+      country: demographics['country'] as String?,
+      province: demographics['province'] as String?,
+      city: demographics['city'] as String?,
+      homeAddress: demographics['home_address'] as String?,
+      heightCm: (demographics['height_cm'] as num?)?.toDouble(),
+      weightKg: (demographics['weight_kg'] as num?)?.toDouble(),
       medicalHistorySetupCompleted:
           demographics['medical_history_setup_completed'] as bool? ?? false,
     );
@@ -79,6 +108,12 @@ class PatientProfile extends PatientSummary {
   final String? preferredLanguage;
   final String? contactPreference;
   final String? avatarUrl;
+  final String? country;
+  final String? province;
+  final String? city;
+  final String? homeAddress;
+  final double? heightCm;
+  final double? weightKg;
   final bool medicalHistorySetupCompleted;
 }
 
@@ -1244,4 +1279,53 @@ class ConsultationListData {
   }
 
   final List<ConsultationRequestItem> items;
+}
+
+class PatientDoctorContact {
+  const PatientDoctorContact({
+    required this.doctorId,
+    required this.displayName,
+    required this.title,
+    required this.hospitalName,
+    required this.specialty,
+    required this.department,
+    required this.avatarUrl,
+  });
+
+  factory PatientDoctorContact.fromJson(Map<String, dynamic> json) {
+    return PatientDoctorContact(
+      doctorId: json['doctor_id'] as String,
+      displayName: json['display_name'] as String,
+      title: json['title'] as String,
+      hospitalName: json['hospital_name'] as String,
+      specialty: json['specialty'] as String?,
+      department: json['department'] as String?,
+      avatarUrl: json['avatar_url'] as String?,
+    );
+  }
+
+  final String doctorId;
+  final String displayName;
+  final String title;
+  final String hospitalName;
+  final String? specialty;
+  final String? department;
+  final String? avatarUrl;
+}
+
+class PatientDoctorContactList {
+  const PatientDoctorContactList({required this.items});
+
+  factory PatientDoctorContactList.fromJson(Map<String, dynamic> json) {
+    return PatientDoctorContactList(
+      items: (json['items'] as List)
+          .map(
+            (item) =>
+                PatientDoctorContact.fromJson(item as Map<String, dynamic>),
+          )
+          .toList(),
+    );
+  }
+
+  final List<PatientDoctorContact> items;
 }

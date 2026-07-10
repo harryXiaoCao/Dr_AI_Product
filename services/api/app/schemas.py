@@ -2,7 +2,7 @@ from datetime import date, datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
 from app.models import UserRole
 
@@ -19,6 +19,8 @@ class PatientSignupProfileRequest(BaseModel):
     province: str | None = Field(default=None, min_length=2, max_length=80)
     city: str | None = Field(default=None, min_length=2, max_length=80)
     home_address: str | None = Field(default=None, min_length=2, max_length=240)
+    height_cm: float | None = Field(default=None, ge=30, le=260)
+    weight_kg: float | None = Field(default=None, ge=1, le=400)
 
 
 class DoctorSignupProfileRequest(BaseModel):
@@ -55,8 +57,6 @@ class RegisterRequest(BaseModel):
     def validate_registration(self) -> "RegisterRequest":
         if self.phone_number is None:
             raise ValueError("Provide a phone number.")
-        if self.verification_code != "123456":
-            raise ValueError("The verification code is not valid.")
         if not self.terms_accepted:
             raise ValueError("Privacy and terms must be accepted.")
         return self
@@ -82,6 +82,44 @@ class RefreshRequest(BaseModel):
 
 class LogoutRequest(BaseModel):
     refresh_token: str = Field(min_length=32, max_length=512)
+
+
+class PasswordChangeRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    current_password: str = Field(min_length=1, max_length=128)
+    new_password: str = Field(min_length=8, max_length=20)
+
+
+class PhoneVerificationRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    phone_number: str = Field(min_length=5, max_length=40)
+
+
+class PhoneVerificationResponse(BaseModel):
+    message: str
+    expires_in: int
+    debug_code: str | None = None
+
+
+class PasswordResetRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    phone_number: str = Field(min_length=5, max_length=40)
+    verification_code: str = Field(pattern=r"^\d{6}$")
+    new_password: str = Field(min_length=8, max_length=20)
+
+
+class AccountEmailUpdateRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    email: EmailStr | None = None
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def empty_email_is_none(cls, value: object) -> object:
+        return None if isinstance(value, str) and not value.strip() else value
 
 
 class UserResponse(BaseModel):
@@ -127,10 +165,29 @@ class PatientListResponse(BaseModel):
     next_cursor: None = None
 
 
+class PatientDoctorContactResponse(BaseModel):
+    doctor_id: UUID
+    display_name: str
+    title: str
+    hospital_name: str
+    specialty: str | None
+    department: str | None
+    avatar_url: str | None
+
+
+class PatientDoctorContactListResponse(BaseModel):
+    items: list[PatientDoctorContactResponse]
+
+
 class PatientConnectRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
     patient_code: str = Field(min_length=6, max_length=80)
+
+
+class PatientMatchPreviewResponse(BaseModel):
+    display_name: str
+    masked_patient_code: str
 
 
 class PatientProfileResponse(PatientSummaryResponse):
@@ -157,6 +214,8 @@ class PatientDemographicsUpdateRequest(BaseModel):
     province: str | None = Field(default=None, min_length=2, max_length=80)
     city: str | None = Field(default=None, min_length=2, max_length=80)
     home_address: str | None = Field(default=None, min_length=2, max_length=240)
+    height_cm: float | None = Field(default=None, ge=30, le=260)
+    weight_kg: float | None = Field(default=None, ge=1, le=400)
     medical_history_setup_completed: bool | None = None
 
 
@@ -176,6 +235,8 @@ class PatientDemographicsResponse(BaseModel):
     province: str | None
     city: str | None
     home_address: str | None
+    height_cm: float | None
+    weight_kg: float | None
     medical_history_setup_completed: bool
 
 
@@ -191,7 +252,6 @@ class DoctorProfileUpdateRequest(BaseModel):
     country: str | None = Field(default=None, min_length=2, max_length=80)
     province: str | None = Field(default=None, min_length=2, max_length=80)
     city: str | None = Field(default=None, min_length=2, max_length=80)
-    hospital_name: str | None = Field(default=None, min_length=2, max_length=160)
     specialty: str | None = Field(default=None, min_length=2, max_length=120)
     department: str | None = Field(default=None, min_length=2, max_length=120)
     preferred_language: str | None = Field(default=None, min_length=2, max_length=80)
@@ -212,6 +272,8 @@ class DoctorProfileResponse(BaseModel):
     specialty: str | None
     department: str | None
     preferred_language: str | None
+    last_active_at: datetime | None
+    is_recently_active: bool
 
 
 class MedicalRecordResponse(BaseModel):

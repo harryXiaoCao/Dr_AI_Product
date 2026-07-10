@@ -207,35 +207,6 @@ Closure evidence:
 - `docs/Phase_0_Production_v1_Surface_Audit.md`
 - `docs/Phase_0_Production_v1_Closure_Record.md`
 
-### Production Product-Quality Gate Before Phase 3
-
-Phase 2 is complete only in the narrow sense that the patient/doctor workflow
-foundation exists. It is not proof that the product is commercially convincing.
-The next required work is documented in
-`docs/Dr_AI_v1.0_Product_Quality_Gate.md`.
-
-This gate is intentionally placed before Phase 3 because AI will not rescue a
-weak product surface. A real commercial healthcare app must first make the
-ordinary user journey feel credible: sign up, set up identity, complete profile
-and medical history, connect doctor and patient, start a Clinical Event, and
-understand what happens next.
-
-Blocking standards:
-
-- The patient avatar/profile entry point must exist and open profile editing.
-- Patient profile setup must include display name, birth date or age,
-  sex/gender, contact number, emergency contact, preferred language, and
-  contact preference.
-- The patient dashboard must guide a new patient through profile/history setup
-  and doctor connection instead of feeling like an empty test shell.
-- Doctor Patient Management must feel like a calm clinical workspace, not a
-  stack of exposed CRUD panels.
-- User-facing normal flows must not be dominated by "synthetic", "demo",
-  "fixture", or "seed" language. Staging/no-real-data warnings should be clear
-  but should not make every screen feel fake.
-- Typography, spacing, color, avatar treatment, and visual hierarchy must be
-  deliberately designed and screenshot-reviewed on mobile and desktop.
-
 ### Post-Phase-2 Product UX and Localization Hardening Decisions
 
 Phase 2 closed the patient/doctor core workflow locally and on staging. Before
@@ -291,6 +262,36 @@ Localization target:
   schedules, and status text.
 - Keep SMS notification copy clinically neutral when the Phase 6
   China-market SMS delivery gate is later closed.
+
+Localization implementation decisions (2026-07-10):
+
+- `app_en.arb` is the source language catalog and `app_zh.arb` is the
+  Simplified Chinese catalog. Flutter-generated accessors are the only new
+  path for localized production copy; do not add a second parallel app or
+  duplicate screen tree.
+- On first use, Flutter follows the device language when it is Chinese or
+  English. All other device languages resolve to English. A user selection is
+  stored locally in secure storage and takes effect immediately without an API
+  round trip.
+- The persisted doctor/patient `preferred_language` profile field remains the
+  cross-device account preference. Account editing aligns that field with the
+  immediate interface locale; the local interface setting remains available
+  when the API is offline.
+- Localize product-owned copy and stable status/error codes. Never translate
+  patient-entered or clinician-entered clinical content automatically.
+- Language names retain stable English storage values (`English` and
+  `Simplified Chinese`) so the existing API contract does not change; only
+  their displayed labels are localized.
+- All current production UI surfaces now use the shared English/Simplified
+  Chinese catalogs: authentication and registration, patient and doctor
+  dashboards and Account pages, Patient Management, care details, Contacts,
+  Recovery Plans, legal/support content, dialogs, validation, empty states,
+  notifications, semantics, and stable status/error labels. Structured
+  geographic reference data keeps stable English storage values while its
+  Chinese display labels are resolved centrally.
+- Production forms do not prefill synthetic clinical values. Test fixtures
+  remain confined to automated test code and no validation run writes to a
+  production-facing data store.
 
 ### Production v1.0 Milestone Tracker
 
@@ -693,8 +694,13 @@ Current implementation status:
       user-created records.
 - [ ] Phase 2.5: Product quality and first-use readiness gate
   - [ ] Audit staging as a real patient and doctor with screenshots.
-  - [ ] Define a production typography and visual-system direction for English
+  - [x] Define a production typography and visual-system direction for English
     and Simplified Chinese.
+    - [x] Obtain user approval before applying the final English/Chinese font
+      family pairing.
+    - [x] Bundle Inter for Latin text and Noto Sans SC for Simplified Chinese
+      locally in Flutter, with variable-weight support and bundled OFL license
+      text so typography remains consistent without a runtime font CDN.
   - [ ] Replace default-looking/generic typography, weak spacing, and crowded
     hierarchy in the patient and doctor surfaces.
   - [ ] Make patient profile setup a guided first-use flow: avatar, display
@@ -714,6 +720,34 @@ Current implementation status:
   - [ ] Verify the app by screenshots and first-use walkthroughs, not only by
     endpoint coverage and widget tests.
   - [ ] Update docs with product-quality evidence before opening Phase 3.
+  - [x] Add production account-security foundations for both roles.
+    - [x] Enable authenticated password changes with current-password
+      verification, refresh-session revocation, and metadata-only audit events.
+    - [x] Add phone-number password recovery with expiring, hashed,
+      attempt-limited verification challenges; external SMS delivery remains a
+      Phase 6 integration.
+    - [x] Replace the fixed registration code with the same expiring,
+      hashed phone-challenge foundation; only local/test responses may expose a
+      development code before the Phase 6 SMS provider is connected.
+    - [x] Allow doctors and patients to add, update, or remove optional account
+      email from Account.
+    - [x] Accept one-character Chinese family names and Unicode free text
+      without ASCII-only input filtering.
+    - [x] Show doctor phone and available email in Account, and derive the
+      active label from authenticated activity within the previous 14 days.
+    - [x] Replace default page navigation motion with one restrained,
+      reduced-motion-aware fade/slide/depth transition system.
+  - [x] Enable doctor local-file avatar upload through the shared validated
+    avatar pipeline.
+  - [x] Add patient-match preview and explicit confirmation before a doctor
+    creates a care relationship from a patient ID.
+  - [x] Clarify the patient intake survey with visible sections, required and
+    optional labels, examples, and conditional follow-up guidance.
+  - [x] Remove duplicate doctor-dashboard profile/hospital edit actions; keep
+    doctor profile editing in Account and hospital data administrator-owned.
+  - [x] Hide unfinished navigation destinations and the historical demo upload
+    and assessment UI from production-facing patient/doctor workflows until
+    their real workflows and gates are implemented.
 - [ ] Phase 3: AI systems
   - [ ] Do not start until Phase 2.5 is complete and the product-quality gate
     is explicitly closed.
@@ -744,8 +778,6 @@ Current implementation status:
   - [ ] Implement appointment booking flow.
   - [ ] Implement appointment scheduling and rescheduling.
   - [ ] Implement appointment reminders.
-  - [ ] Implement hospital information editing.
-  - [ ] Implement doctor profile/info editing.
   - [ ] Implement doctor team invite/add/remove flow.
   - [ ] Add clinic-operations tests and audit assertions.
 - [ ] Phase 5: Specialist, admin, and commercial modules
@@ -757,7 +789,7 @@ Current implementation status:
   - [ ] Define voice/video stretch-gate acceptance.
   - [ ] Implement admin dashboard shell.
   - [ ] Implement user management.
-  - [ ] Implement hospital/clinic management.
+  - [ ] Implement administrator-owned hospital/clinic management.
   - [ ] Implement audit-event read/search.
   - [ ] Implement system-status view.
   - [ ] Implement invoice and payment-status surfaces.
@@ -786,16 +818,20 @@ Current implementation status:
         phone-width compact patient selection; dashboard golden baselines were
         not updated because this slice did not intentionally change the frozen
         dashboard golden surfaces.
-  - [ ] Add production multilingual foundation.
-    - [ ] Add Flutter localization generation with ARB files for English and
+  - [x] Add production multilingual foundation.
+    - [x] Add Flutter localization generation with ARB files for English and
       Simplified Chinese.
-    - [ ] Treat Simplified Chinese as the primary production copy path and
+    - [x] Add system-locale resolution for Chinese/English with English
+      fallback, plus a securely persisted in-app override.
+    - [x] Add patient and doctor Account controls that apply language changes
+      immediately in the same application.
+    - [x] Treat Simplified Chinese as the primary production copy path and
       English as the secondary supported locale.
-    - [ ] Localize UI copy, actions, validation, empty states, status labels,
+    - [x] Localize UI copy, actions, validation, empty states, status labels,
       and user-facing errors through generated localization accessors.
-    - [ ] Keep API responses machine-readable and translate stable codes/enums
+    - [x] Keep API responses machine-readable and translate stable codes/enums
       in Flutter.
-    - [ ] Do not automatically translate user-entered clinical content.
+    - [x] Do not automatically translate user-entered clinical content.
     - [ ] Add locale-aware date, time, phone-number, and reminder formatting.
   - [ ] Add API 5xx monitoring.
   - [ ] Add auth/chat/assessment/upload monitoring.
@@ -1184,3 +1220,5 @@ Add one row whenever implementation status, scope, architecture, or a major deci
 | 2026-07-08 | Complete - Phase 2 manual-testing onboarding cleanup | Completed the pre-Phase-3 cleanup requested after staging inspection: exposed invited sign-up in Flutter, added a doctor patient-code connection flow, added a fresh-patient onboarding state that shows the patient code when no seeded dashboard exists, and added from-zero API/widget tests so manual testing no longer depends on the seeded Riley/Avery demo relationship. Seed data remains available only as optional staging smoke/regression scaffolding; the intended manual path is now register patient, register doctor, connect by patient code, then create care records from zero. Focused backend tests, ruff, Flutter verification, and whitespace checks pass locally. No Phase 3 AI generation, Phase 4 clinic operations, Phase 5 specialist/admin UI, Phase 6 localization, deployment, push, tag, PR, external account action, real patient data, clinical claim, or destructive staging data reset was performed in this local slice. | `services/api/app/dashboard.py`, `services/api/app/schemas.py`, `services/api/tests/helpers.py`, `services/api/tests/test_phase2_patient_doctor_core.py`, `apps/dr_ai_app/lib/features/auth/`, `apps/dr_ai_app/lib/features/patient/`, `apps/dr_ai_app/lib/features/doctor/presentation/patient_management_screen.dart`, `apps/dr_ai_app/test/app_test.dart`, `apps/dr_ai_app/test/fakes.dart`, `docs/Dr_AI_v1.0_API_Contract.md`, `docs/Phase_2_Patient_Doctor_Core_Progress_Record.md`, `docs/README.md` | Decide whether to commit/push/deploy this cleanup. Any wipe/archive of existing synthetic staging records should be a separately confirmed staging-only operation. |
 | 2026-07-08 | Complete - Phase 2 onboarding cleanup GitHub/staging handoff | Committed the manual-testing onboarding cleanup as `b14f10d` and pushed branch `codex/phase-2-patient-doctor-core` to GitHub, then redeployed Tencent same-origin staging for user inspection. The staging API now runs immutable digest `hkccr.ccs.tencentyun.com/dr-ai/dr-ai-backend@sha256:719bbef7331e4e1616e881a20f8b60367d468a02778c64922999da03e12464d9`; Alembic `upgrade head` completed with no new migration; Flutter web was rebuilt for `https://dr-ai.43.132.169.195.sslip.io`; Caddy was validated/recreated; public health/web checks passed; and a focused live onboarding smoke passed for invited patient/doctor registration, fresh patient-code readback, doctor patient-code connection, and Clinical Event creation after connection. Synthetic seed was not rerun, staging data was not wiped, and `main` was not changed. No production deployment, tester/account/monitoring change, native store upload, tag, PR, real patient data, Phase 3 AI generation, Phase 4 clinic operations, Phase 5 specialist/admin UI, or Phase 6 localization was performed. | `docs/Phase_2_Patient_Doctor_Core_Progress_Record.md`, staging URL: <https://dr-ai.43.132.169.195.sslip.io> | User inspection can use invited sign-up and patient-code connection on staging. Any destructive cleanup of old synthetic staging records remains a separate confirmation gate. |
 | 2026-07-09 | Complete - Product quality gate documentation reset | Documented the post-inspection product-quality reset: Phase 2 remains a useful technical workflow foundation, but the visible app is not yet a commercial-quality healthcare product. Added `Dr_AI_v1.0_Product_Quality_Gate.md`, made Phase 2.5 Product Quality and First-Use Readiness the next milestone before Phase 3, updated the docs indexes, downgraded the old design freeze to historical beta evidence, and recorded the need for real-app typography, patient avatar/profile setup, guided onboarding, meaningful empty states, and removal of normal-flow synthetic/demo language. No code behavior, deployment, push, tag, PR, external account action, real patient data, Phase 3 AI generation, Phase 4 clinic operations, Phase 5 specialist/admin UI, or Phase 6 localization was added. | `docs/Dr_AI_v1.0_Product_Quality_Gate.md`, `docs/Dr_AI_v1.0_Implementation_Plan.md`, `docs/README.md`, `README.md`, `docs/Dr_AI_v1.0_Design_Freeze.md`, `docs/Phase_2_Patient_Doctor_Core_Progress_Record.md` | Next implementation should close Phase 2.5 through screenshot-backed product UX work before any AI feature development starts. |
+| 2026-07-10 | Complete - Phase 2.5 patient contact and authentication refinement slice | Added a read-only patient contact API backed by active care relationships so multiple connected doctors appear automatically; added a mobile-first Contacts destination with System, deferred Dr. AI, individual doctors, and deferred group-chat states; rebuilt the medical-fee placeholder into a spacious, accessible, non-clickable summary; separated sign-in and registration into `/login` and `/register`; limited authentication feedback to about two seconds and cleared it when changing auth pages; and changed Terms/Privacy return navigation to registration. Messaging, group creation, payment processing, and Phase 3 AI remain deferred. Focused multi-doctor API coverage, backend Ruff, the complete Flutter verification gate, mobile/enlarged-text layout checks, and local browser QA at `412x917` and `1280x832` passed. No deployment, push, tag, PR, production data, external account action, Phase 3/4/5/6 work, or real clinical behavior was performed. | `services/api/app/dashboard.py`, `services/api/app/schemas.py`, `services/api/tests/test_phase2_patient_doctor_core.py`, `apps/dr_ai_app/lib/features/patient/presentation/patient_contacts_screen.dart`, `apps/dr_ai_app/lib/features/patient/presentation/patient_dashboard_screen.dart`, `apps/dr_ai_app/lib/features/auth/`, `apps/dr_ai_app/lib/app/routing/router.dart`, `apps/dr_ai_app/lib/shared/widgets/responsive_app_shell.dart`, `apps/dr_ai_app/test/app_test.dart` | Continue the remaining Phase 2.5 screenshot-backed product-quality gate only; keep real messaging, payment processing, and Phase 3 AI approval-gated. |
+| 2026-07-10 | Complete - Simplified Chinese full-surface UI localization | Completed the shared English/Simplified Chinese UI path across authentication, patient and doctor dashboards and Account pages, Patient Management, care details, Contacts, Recovery Plans, public support/legal content, dialogs, validation, empty states, notifications, semantics, and stable status/error display. Chinese/English device-locale selection uses English fallback, both roles can switch language immediately, and the preference is securely persisted. Stable API/profile values and user-entered clinical content remain unchanged; structured geographic labels are localized only for display. Production clinical forms no longer prefill synthetic workflow values, and validation used isolated widget-test fixtures without writing production-facing records. Flutter localization generation and static UI-string review were completed; `./scripts/verify_flutter.sh` and `git diff --check` are the completion gates. No deployment, push, tag, PR, external account action, API/schema change, or real patient data change was performed. | `apps/dr_ai_app/lib/l10n/`, `apps/dr_ai_app/l10n.yaml`, `apps/dr_ai_app/lib/app/app.dart`, `apps/dr_ai_app/lib/features/auth/presentation/login_screen.dart`, `apps/dr_ai_app/lib/features/patient/presentation/`, `apps/dr_ai_app/lib/features/doctor/presentation/`, `apps/dr_ai_app/lib/shared/widgets/`, `apps/dr_ai_app/test/app_test.dart` | User performs the planned Chinese copy review and reports wording preferences; future UI copy must be added to both ARB catalogs in the same change. |

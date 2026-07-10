@@ -1,4 +1,5 @@
 import hashlib
+import hmac
 import secrets
 import uuid
 from datetime import UTC, datetime, timedelta
@@ -72,3 +73,18 @@ def new_refresh_token() -> str:
 
 def hash_refresh_token(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def new_phone_verification_code() -> str:
+    return f"{secrets.randbelow(1_000_000):06d}"
+
+
+def hash_phone_verification_code(
+    phone_number: str,
+    purpose: str,
+    code: str,
+    settings: Settings,
+) -> str:
+    message = f"{phone_number}:{purpose}:{code}".encode()
+    secret = settings.jwt_secret.get_secret_value().encode()
+    return hmac.new(secret, message, hashlib.sha256).hexdigest()

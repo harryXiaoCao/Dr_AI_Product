@@ -1,4 +1,5 @@
 import 'package:dr_ai_app/design_system/dr_ai_tokens.dart';
+import 'package:dr_ai_app/l10n/l10n.dart';
 import 'package:dr_ai_app/shared/widgets/brand_mark.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -38,8 +39,8 @@ class LegalPlaceholderScreen extends StatelessWidget {
                             ?.copyWith(fontWeight: FontWeight.w800),
                       ),
                       const SizedBox(height: DrAiSpacing.md),
-                      const Text(
-                        'PLACEHOLDER',
+                      Text(
+                        context.l10n.placeholder,
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: DrAiColors.inkSecondary,
@@ -48,9 +49,9 @@ class LegalPlaceholderScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: DrAiSpacing.lg),
                       OutlinedButton.icon(
-                        onPressed: () => context.go('/login'),
+                        onPressed: () => context.go('/register'),
                         icon: const Icon(Icons.arrow_back),
-                        label: const Text('Back to registration'),
+                        label: Text(context.l10n.backToRegistration),
                       ),
                     ],
                   ),

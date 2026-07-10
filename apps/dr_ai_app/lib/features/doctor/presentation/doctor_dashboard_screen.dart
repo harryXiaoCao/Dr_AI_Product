@@ -2,11 +2,16 @@ import 'package:dr_ai_app/app/routing/app_role.dart';
 import 'package:dr_ai_app/core/api/api_error.dart';
 import 'package:dr_ai_app/design_system/dr_ai_tokens.dart';
 import 'package:dr_ai_app/features/auth/application/auth_controller.dart';
+import 'package:dr_ai_app/features/auth/presentation/signup_reference_data.dart';
 import 'package:dr_ai_app/features/dashboard/domain/dashboard_data.dart';
 import 'package:dr_ai_app/features/doctor/domain/doctor_profile.dart';
+import 'package:dr_ai_app/l10n/l10n.dart';
+import 'package:dr_ai_app/l10n/locale_controller.dart';
 import 'package:dr_ai_app/shared/avatar/avatar_upload.dart';
+import 'package:dr_ai_app/shared/widgets/account_security.dart';
 import 'package:dr_ai_app/shared/widgets/dashboard_states.dart';
 import 'package:dr_ai_app/shared/widgets/responsive_app_shell.dart';
+import 'package:dr_ai_app/shared/widgets/sign_out_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -44,10 +49,10 @@ class DoctorAccountScreen extends ConsumerWidget {
     final email = auth.value?.user?.email ?? '';
     return ResponsiveAppShell(
       role: AppRole.doctor,
-      selectedIndex: 5,
+      selectedIndex: 2,
       child: profile.when(
         loading: () =>
-            const DashboardLoadingView(label: 'Loading doctor account'),
+            DashboardLoadingView(label: context.l10n.loadingDoctorAccount),
         error: (error, stackTrace) => DashboardErrorView(
           message: error.toString(),
           onRetry: () => ref.invalidate(doctorProfileProvider),
@@ -72,13 +77,14 @@ class _DoctorAccountViewState extends ConsumerState<_DoctorAccountView> {
   late final TextEditingController _displayNameController;
   late final TextEditingController _specialtyController;
   late final TextEditingController _titleController;
-  late final TextEditingController _hospitalController;
   late final TextEditingController _departmentController;
   late final TextEditingController _phoneController;
-  late final TextEditingController _countryController;
-  late final TextEditingController _provinceController;
-  late final TextEditingController _cityController;
+  late final TextEditingController _emailController;
+  late String _country;
+  late String _province;
+  late String _city;
   late String _preferredLanguage;
+  late String _avatarUrl;
   bool _saving = false;
   String? _statusMessage;
 
@@ -88,19 +94,17 @@ class _DoctorAccountViewState extends ConsumerState<_DoctorAccountView> {
     _displayNameController = TextEditingController();
     _specialtyController = TextEditingController();
     _titleController = TextEditingController();
-    _hospitalController = TextEditingController();
     _departmentController = TextEditingController();
     _phoneController = TextEditingController();
-    _countryController = TextEditingController();
-    _provinceController = TextEditingController();
-    _cityController = TextEditingController();
+    _emailController = TextEditingController();
     _seedFields(widget.profile);
   }
 
   @override
   void didUpdateWidget(covariant _DoctorAccountView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.profile != widget.profile) {
+    if (oldWidget.profile != widget.profile ||
+        oldWidget.email != widget.email) {
       _seedFields(widget.profile);
     }
   }
@@ -110,12 +114,9 @@ class _DoctorAccountViewState extends ConsumerState<_DoctorAccountView> {
     _displayNameController.dispose();
     _specialtyController.dispose();
     _titleController.dispose();
-    _hospitalController.dispose();
     _departmentController.dispose();
     _phoneController.dispose();
-    _countryController.dispose();
-    _provinceController.dispose();
-    _cityController.dispose();
+    _emailController.dispose();
     super.dispose();
   }
 
@@ -123,40 +124,43 @@ class _DoctorAccountViewState extends ConsumerState<_DoctorAccountView> {
     _displayNameController.text = profile.displayName;
     _specialtyController.text = profile.specialty ?? '';
     _titleController.text = profile.title;
-    _hospitalController.text = profile.hospitalName;
     _departmentController.text = profile.department ?? '';
     _phoneController.text = profile.contactPhone ?? '';
-    _countryController.text = profile.country ?? '';
-    _provinceController.text = profile.province ?? '';
-    _cityController.text = profile.city ?? '';
+    _emailController.text = widget.email;
+    _country = _knownCountry(profile.country);
+    _province = _knownProvince(_country, profile.province);
+    _city = _knownCity(_country, _province, profile.city);
     _preferredLanguage = profile.preferredLanguage ?? 'English';
+    _avatarUrl = profile.avatarUrl ?? '';
   }
 
   Future<void> _saveProfile() async {
     final profile = widget.profile;
     final payload = _currentPayload();
-    final hasChanges =
+    final profileChanged =
         payload.displayName != profile.displayName ||
         payload.specialty != (profile.specialty ?? '') ||
         payload.title != profile.title ||
-        payload.hospitalName != profile.hospitalName ||
         payload.department != (profile.department ?? '') ||
         payload.contactPhone != (profile.contactPhone ?? '') ||
         payload.country != (profile.country ?? '') ||
         payload.province != (profile.province ?? '') ||
         payload.city != (profile.city ?? '') ||
-        payload.preferredLanguage != (profile.preferredLanguage ?? 'English');
-    if (!hasChanges) {
-      setState(() => _statusMessage = 'No account changes to save.');
+        payload.preferredLanguage != (profile.preferredLanguage ?? 'English') ||
+        payload.avatarUrl != (profile.avatarUrl ?? '');
+    final emailChanged = payload.email != widget.email;
+    if (!profileChanged && !emailChanged) {
+      setState(() => _statusMessage = context.l10n.noAccountChanges);
       return;
     }
-    if (payload.displayName.isEmpty ||
-        payload.title.isEmpty ||
-        payload.hospitalName.isEmpty) {
+    if (payload.displayName.isEmpty || payload.title.isEmpty) {
       setState(() {
-        _statusMessage =
-            'Display name, title, and hospital are required before saving.';
+        _statusMessage = context.l10n.doctorIdentityRequired;
       });
+      return;
+    }
+    if (payload.email.isNotEmpty && !_looksLikeEmail(payload.email)) {
+      setState(() => _statusMessage = context.l10n.invalidEmail);
       return;
     }
     setState(() {
@@ -164,25 +168,37 @@ class _DoctorAccountViewState extends ConsumerState<_DoctorAccountView> {
       _statusMessage = null;
     });
     try {
-      await ref
-          .read(repositoryProvider)
-          .updateOwnDoctorProfile(
-            displayName: payload.displayName,
-            specialty: payload.specialty,
-            title: payload.title,
-            hospitalName: payload.hospitalName,
-            department: payload.department,
-            contactPhone: payload.contactPhone,
-            country: payload.country,
-            province: payload.province,
-            city: payload.city,
-            preferredLanguage: payload.preferredLanguage,
-          );
-      ref.invalidate(doctorProfileProvider);
+      if (emailChanged) {
+        await ref
+            .read(authControllerProvider.notifier)
+            .updateAccountEmail(payload.email);
+      }
+      if (profileChanged) {
+        await ref
+            .read(repositoryProvider)
+            .updateOwnDoctorProfile(
+              displayName: payload.displayName,
+              specialty: payload.specialty,
+              title: payload.title,
+              department: payload.department,
+              contactPhone: payload.contactPhone,
+              country: payload.country,
+              province: payload.province,
+              city: payload.city,
+              preferredLanguage: payload.preferredLanguage,
+              avatarUrl: payload.avatarUrl,
+            );
+        ref.invalidate(doctorProfileProvider);
+      }
+      if (mounted) {
+        await ref
+            .read(localeControllerProvider.notifier)
+            .applyProfilePreference(payload.preferredLanguage);
+      }
       if (mounted) {
         setState(() {
           _saving = false;
-          _statusMessage = 'Account changes saved.';
+          _statusMessage = context.l10n.accountSaved;
         });
       }
     } on ApiError catch (error) {
@@ -196,8 +212,7 @@ class _DoctorAccountViewState extends ConsumerState<_DoctorAccountView> {
       if (mounted) {
         setState(() {
           _saving = false;
-          _statusMessage =
-              'Unable to save account changes. Check your connection and try again.';
+          _statusMessage = context.l10n.accountSaveFailed;
         });
       }
     }
@@ -215,14 +230,30 @@ class _DoctorAccountViewState extends ConsumerState<_DoctorAccountView> {
       displayName: _displayNameController.text.trim(),
       specialty: _specialtyController.text.trim(),
       title: _titleController.text.trim(),
-      hospitalName: _hospitalController.text.trim(),
       department: _departmentController.text.trim(),
       contactPhone: _phoneController.text.trim(),
-      country: _countryController.text.trim(),
-      province: _provinceController.text.trim(),
-      city: _cityController.text.trim(),
+      email: _emailController.text.trim().toLowerCase(),
+      country: _country.trim(),
+      province: _province.trim(),
+      city: _city.trim(),
       preferredLanguage: _preferredLanguage.trim(),
+      avatarUrl: _avatarUrl.trim(),
     );
+  }
+
+  Future<void> _pickAvatar() async {
+    try {
+      final result = await pickAvatarImage();
+      if (result == null || !mounted) {
+        return;
+      }
+      setState(() => _avatarUrl = result.dataUrl);
+      await _saveProfile();
+    } on AvatarUploadException catch (error) {
+      if (mounted) {
+        setState(() => _statusMessage = error.message);
+      }
+    }
   }
 
   @override
@@ -246,15 +277,15 @@ class _DoctorAccountViewState extends ConsumerState<_DoctorAccountView> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 Text(
-                  'Doctor Account',
+                  context.l10n.doctorAccount,
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                     color: DrAiColors.brandDark,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
                 const SizedBox(height: DrAiSpacing.xs),
-                const Text(
-                  'Manage your profile, language preferences, and account settings.',
+                Text(
+                  context.l10n.doctorAccountDescription,
                   style: TextStyle(color: DrAiColors.inkSecondary),
                 ),
                 const SizedBox(height: DrAiSpacing.lg),
@@ -267,6 +298,8 @@ class _DoctorAccountViewState extends ConsumerState<_DoctorAccountView> {
                         child: _DoctorAccountProfileCard(
                           profile: profile,
                           email: widget.email,
+                          avatarUrl: _avatarUrl,
+                          onAvatarPressed: _pickAvatar,
                         ),
                       ),
                       const SizedBox(width: DrAiSpacing.lg),
@@ -279,6 +312,8 @@ class _DoctorAccountViewState extends ConsumerState<_DoctorAccountView> {
                       _DoctorAccountProfileCard(
                         profile: profile,
                         email: widget.email,
+                        avatarUrl: _avatarUrl,
+                        onAvatarPressed: _pickAvatar,
                       ),
                       const SizedBox(height: DrAiSpacing.md),
                       _formPanel(),
@@ -302,20 +337,54 @@ class _DoctorAccountViewState extends ConsumerState<_DoctorAccountView> {
           return;
         }
         setState(() => _preferredLanguage = value);
+        ref
+            .read(localeControllerProvider.notifier)
+            .applyProfilePreference(value);
       },
       onCancel: _saving ? null : _cancelChanges,
       onSave: _saving ? null : _saveProfile,
       displayNameController: _displayNameController,
       specialtyController: _specialtyController,
       titleController: _titleController,
-      hospitalController: _hospitalController,
+      hospitalName: widget.profile.hospitalName,
       departmentController: _departmentController,
       phoneController: _phoneController,
-      email: widget.email,
-      countryController: _countryController,
-      provinceController: _provinceController,
-      cityController: _cityController,
+      emailController: _emailController,
+      country: _country,
+      province: _province,
+      city: _city,
+      onCountryChanged: _saving ? null : _setCountry,
+      onProvinceChanged: _saving ? null : _setProvince,
+      onCityChanged: _saving ? null : _setCity,
     );
+  }
+
+  void _setCountry(String? value) {
+    if (value == null) {
+      return;
+    }
+    final province = _knownProvince(value, null);
+    setState(() {
+      _country = value;
+      _province = province;
+      _city = _knownCity(value, province, null);
+    });
+  }
+
+  void _setProvince(String? value) {
+    if (value == null) {
+      return;
+    }
+    setState(() {
+      _province = value;
+      _city = _knownCity(_country, value, null);
+    });
+  }
+
+  void _setCity(String? value) {
+    if (value != null) {
+      setState(() => _city = value);
+    }
   }
 }
 
@@ -324,41 +393,50 @@ class _DoctorAccountPayload {
     required this.displayName,
     required this.specialty,
     required this.title,
-    required this.hospitalName,
     required this.department,
     required this.contactPhone,
+    required this.email,
     required this.country,
     required this.province,
     required this.city,
     required this.preferredLanguage,
+    required this.avatarUrl,
   });
 
   final String displayName;
   final String specialty;
   final String title;
-  final String hospitalName;
   final String department;
   final String contactPhone;
+  final String email;
   final String country;
   final String province;
   final String city;
   final String preferredLanguage;
+  final String avatarUrl;
 }
 
 class _DoctorAccountProfileCard extends StatelessWidget {
-  const _DoctorAccountProfileCard({required this.profile, required this.email});
+  const _DoctorAccountProfileCard({
+    required this.profile,
+    required this.email,
+    required this.avatarUrl,
+    required this.onAvatarPressed,
+  });
 
   final DoctorProfile profile;
   final String email;
+  final String avatarUrl;
+  final VoidCallback onAvatarPressed;
 
   @override
   Widget build(BuildContext context) {
-    final location = _joinRecorded(<String?>[
+    final location = _joinRecorded(context, <String?>[
       profile.city,
       profile.province,
       profile.country,
     ]);
-    final avatar = avatarImageProvider(profile.avatarUrl);
+    final avatar = avatarImageProvider(avatarUrl);
     return _DoctorAccountCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -382,19 +460,15 @@ class _DoctorAccountProfileCard extends StatelessWidget {
                 Positioned(
                   right: 2,
                   bottom: 8,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: DrAiColors.accentIndigo,
-                      border: Border.all(color: DrAiColors.white, width: 2),
-                      borderRadius: BorderRadius.circular(DrAiRadii.pill),
-                    ),
-                    child: const Padding(
-                      padding: EdgeInsets.all(7),
-                      child: Icon(
-                        Icons.photo_camera_outlined,
-                        size: 16,
-                        color: DrAiColors.white,
-                      ),
+                  child: IconButton.filled(
+                    key: const Key('doctor-account-avatar-upload-button'),
+                    tooltip: context.l10n.uploadAvatar,
+                    onPressed: onAvatarPressed,
+                    icon: const Icon(Icons.photo_camera_outlined, size: 16),
+                    style: IconButton.styleFrom(
+                      backgroundColor: DrAiColors.accentIndigo,
+                      foregroundColor: DrAiColors.white,
+                      side: const BorderSide(color: DrAiColors.white, width: 2),
                     ),
                   ),
                 ),
@@ -425,7 +499,7 @@ class _DoctorAccountProfileCard extends StatelessWidget {
           ),
           const SizedBox(height: DrAiSpacing.xs),
           Text(
-            _recorded(profile.title),
+            _recorded(context, profile.title),
             textAlign: TextAlign.center,
             style: const TextStyle(
               color: DrAiColors.inkSecondary,
@@ -437,7 +511,7 @@ class _DoctorAccountProfileCard extends StatelessWidget {
           const SizedBox(height: DrAiSpacing.md),
           _ProfileSummaryRow(
             icon: Icons.local_hospital_outlined,
-            title: _recorded(profile.hospitalName),
+            title: _recorded(context, profile.hospitalName),
             subtitle: location,
             tag: _emptyToNull(profile.department),
           ),
@@ -446,18 +520,28 @@ class _DoctorAccountProfileCard extends StatelessWidget {
           const SizedBox(height: DrAiSpacing.md),
           _ProfileSummaryRow(
             icon: Icons.verified_user_outlined,
-            title: 'Verification status',
-            subtitle: 'Active doctor account',
-            accent: DrAiColors.accentMint,
+            title: context.l10n.verificationStatus,
+            subtitle: profile.isRecentlyActive
+                ? context.l10n.activeDoctorAccount
+                : _doctorActivityLabel(context, profile.lastActiveAt),
+            accent: profile.isRecentlyActive
+                ? DrAiColors.accentMint
+                : DrAiColors.mutedInk,
           ),
           const SizedBox(height: DrAiSpacing.lg),
           const Divider(color: DrAiColors.outline),
           const SizedBox(height: DrAiSpacing.md),
           _ProfileSummaryRow(
             icon: Icons.alternate_email_outlined,
-            title: 'Account contact',
-            subtitle: _accountEmail(email),
+            title: context.l10n.contact,
+            subtitle: _doctorContact(
+              context,
+              phone: profile.contactPhone,
+              email: email,
+            ),
           ),
+          const SizedBox(height: DrAiSpacing.lg),
+          const SignOutButton(),
         ],
       ),
     );
@@ -475,13 +559,16 @@ class _DoctorAccountFormPanel extends StatelessWidget {
     required this.displayNameController,
     required this.specialtyController,
     required this.titleController,
-    required this.hospitalController,
+    required this.hospitalName,
     required this.departmentController,
     required this.phoneController,
-    required this.email,
-    required this.countryController,
-    required this.provinceController,
-    required this.cityController,
+    required this.emailController,
+    required this.country,
+    required this.province,
+    required this.city,
+    required this.onCountryChanged,
+    required this.onProvinceChanged,
+    required this.onCityChanged,
   });
 
   final bool saving;
@@ -493,13 +580,16 @@ class _DoctorAccountFormPanel extends StatelessWidget {
   final TextEditingController displayNameController;
   final TextEditingController specialtyController;
   final TextEditingController titleController;
-  final TextEditingController hospitalController;
+  final String hospitalName;
   final TextEditingController departmentController;
   final TextEditingController phoneController;
-  final String email;
-  final TextEditingController countryController;
-  final TextEditingController provinceController;
-  final TextEditingController cityController;
+  final TextEditingController emailController;
+  final String country;
+  final String province;
+  final String city;
+  final ValueChanged<String?>? onCountryChanged;
+  final ValueChanged<String?>? onProvinceChanged;
+  final ValueChanged<String?>? onCityChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -509,22 +599,22 @@ class _DoctorAccountFormPanel extends StatelessWidget {
         children: <Widget>[
           _DoctorAccountSection(
             icon: Icons.person_outline,
-            title: 'Clinical identity',
+            title: context.l10n.clinicalIdentity,
             child: _ResponsiveFieldGrid(
               children: <Widget>[
                 _DoctorAccountTextField(
                   controller: displayNameController,
-                  label: 'Display name',
+                  label: context.l10n.displayName,
                   keyName: 'doctor-account-display-name-field',
                 ),
                 _DoctorAccountTextField(
                   controller: specialtyController,
-                  label: 'Specialty',
+                  label: context.l10n.specialty,
                   keyName: 'doctor-account-specialty-field',
                 ),
                 _DoctorAccountTextField(
                   controller: titleController,
-                  label: 'Title',
+                  label: context.l10n.title,
                   keyName: 'doctor-account-title-field',
                 ),
               ],
@@ -533,19 +623,19 @@ class _DoctorAccountFormPanel extends StatelessWidget {
           const _AccountDivider(),
           _DoctorAccountSection(
             icon: Icons.apartment_outlined,
-            title: 'Hospital & location',
+            title: context.l10n.hospitalLocation,
             child: Column(
               children: <Widget>[
                 _ResponsiveFieldGrid(
                   children: <Widget>[
-                    _DoctorAccountTextField(
-                      controller: hospitalController,
-                      label: 'Hospital',
-                      keyName: 'doctor-account-hospital-field',
+                    _ReadOnlyAccountField(
+                      label: context.l10n.hospitalManaged,
+                      value: _recorded(context, hospitalName),
+                      keyName: 'doctor-account-hospital-read-only',
                     ),
                     _DoctorAccountTextField(
                       controller: departmentController,
-                      label: 'Department',
+                      label: context.l10n.department,
                       keyName: 'doctor-account-department-field',
                     ),
                   ],
@@ -553,20 +643,26 @@ class _DoctorAccountFormPanel extends StatelessWidget {
                 const SizedBox(height: DrAiSpacing.md),
                 _ResponsiveFieldGrid(
                   children: <Widget>[
-                    _DoctorAccountTextField(
-                      controller: countryController,
-                      label: 'Country / Region',
+                    _DoctorAccountDropdown(
+                      value: country,
+                      items: _countryOptions(country),
+                      label: context.l10n.countryRegion,
                       keyName: 'doctor-account-country-field',
+                      onChanged: onCountryChanged,
                     ),
-                    _DoctorAccountTextField(
-                      controller: provinceController,
-                      label: 'Province',
+                    _DoctorAccountDropdown(
+                      value: province,
+                      items: _provinceOptions(country, province),
+                      label: context.l10n.province,
                       keyName: 'doctor-account-province-field',
+                      onChanged: onProvinceChanged,
                     ),
-                    _DoctorAccountTextField(
-                      controller: cityController,
-                      label: 'City',
+                    _DoctorAccountDropdown(
+                      value: city,
+                      items: _cityOptions(country, province, city),
+                      label: context.l10n.city,
                       keyName: 'doctor-account-city-field',
+                      onChanged: onCityChanged,
                     ),
                   ],
                 ),
@@ -576,17 +672,18 @@ class _DoctorAccountFormPanel extends StatelessWidget {
           const _AccountDivider(),
           _DoctorAccountSection(
             icon: Icons.phone_outlined,
-            title: 'Contact',
+            title: context.l10n.contact,
             child: _ResponsiveFieldGrid(
               children: <Widget>[
                 _DoctorAccountTextField(
                   controller: phoneController,
-                  label: 'Phone',
+                  label: context.l10n.phone,
                   keyName: 'doctor-account-phone-field',
                 ),
-                _ReadOnlyAccountField(
-                  label: 'Email',
-                  value: _accountEmail(email),
+                _DoctorAccountTextField(
+                  controller: emailController,
+                  label: context.l10n.emailOptional,
+                  keyName: 'doctor-account-email-field',
                 ),
               ],
             ),
@@ -594,38 +691,31 @@ class _DoctorAccountFormPanel extends StatelessWidget {
           const _AccountDivider(),
           _DoctorAccountSection(
             icon: Icons.lock_outline,
-            title: 'Security',
-            child: _ResponsiveFieldGrid(
-              children: <Widget>[
-                _ReadOnlyAccountField(label: 'Password', value: '••••••••••••'),
-                Align(
-                  alignment: Alignment.bottomLeft,
-                  child: OutlinedButton(
-                    onPressed: null,
-                    child: const Text('Change password'),
-                  ),
-                ),
-              ],
-            ),
+            title: context.l10n.security,
+            child: const AccountSecuritySection(keyPrefix: 'doctor-account'),
           ),
           const _AccountDivider(),
           _DoctorAccountSection(
             icon: Icons.settings_outlined,
-            title: 'Language preferences',
+            title: context.l10n.languagePreferences,
             child: _ResponsiveFieldGrid(
               children: <Widget>[
                 DropdownButtonFormField<String>(
                   key: const Key('doctor-account-language-field'),
                   initialValue: preferredLanguage,
                   isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Preferred language',
+                  decoration: InputDecoration(
+                    labelText: context.l10n.interfaceLanguage,
                   ),
                   items: _languageOptions(preferredLanguage)
                       .map(
                         (language) => DropdownMenuItem<String>(
                           value: language,
-                          child: Text(language),
+                          child: Text(
+                            language == 'Simplified Chinese'
+                                ? context.l10n.simplifiedChinese
+                                : context.l10n.english,
+                          ),
                         ),
                       )
                       .toList(),
@@ -641,7 +731,7 @@ class _DoctorAccountFormPanel extends StatelessWidget {
               key: const Key('doctor-account-save-status'),
               textAlign: TextAlign.right,
               style: TextStyle(
-                color: statusMessage == 'Account changes saved.'
+                color: statusMessage == context.l10n.accountSaved
                     ? DrAiColors.accentMint
                     : DrAiColors.inkSecondary,
                 fontWeight: FontWeight.w700,
@@ -657,7 +747,7 @@ class _DoctorAccountFormPanel extends StatelessWidget {
               OutlinedButton(
                 key: const Key('doctor-account-cancel-button'),
                 onPressed: onCancel,
-                child: const Text('Cancel'),
+                child: Text(context.l10n.cancel),
               ),
               FilledButton(
                 key: const Key('doctor-account-save-button'),
@@ -671,7 +761,7 @@ class _DoctorAccountFormPanel extends StatelessWidget {
                           color: DrAiColors.white,
                         ),
                       )
-                    : const Text('Save changes'),
+                    : Text(context.l10n.saveChanges),
               ),
             ],
           ),
@@ -828,15 +918,60 @@ class _DoctorAccountTextField extends StatelessWidget {
   }
 }
 
+class _DoctorAccountDropdown extends StatelessWidget {
+  const _DoctorAccountDropdown({
+    required this.value,
+    required this.items,
+    required this.label,
+    required this.keyName,
+    required this.onChanged,
+  });
+
+  final String value;
+  final List<String> items;
+  final String label;
+  final String keyName;
+  final ValueChanged<String?>? onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return DropdownButtonFormField<String>(
+      key: Key(keyName),
+      initialValue: value,
+      isExpanded: true,
+      decoration: InputDecoration(labelText: label),
+      items: items
+          .map(
+            (item) => DropdownMenuItem<String>(
+              value: item,
+              child: Text(
+                item.isEmpty
+                    ? context.l10n.notRecorded
+                    : context.l10n.stableValue(item),
+              ),
+            ),
+          )
+          .toList(),
+      onChanged: onChanged,
+    );
+  }
+}
+
 class _ReadOnlyAccountField extends StatelessWidget {
-  const _ReadOnlyAccountField({required this.label, required this.value});
+  const _ReadOnlyAccountField({
+    required this.label,
+    required this.value,
+    this.keyName,
+  });
 
   final String label;
   final String value;
+  final String? keyName;
 
   @override
   Widget build(BuildContext context) {
     return TextFormField(
+      key: keyName == null ? null : Key(keyName!),
       initialValue: value,
       readOnly: true,
       decoration: InputDecoration(labelText: label),
@@ -936,10 +1071,10 @@ class _AccountDivider extends StatelessWidget {
   }
 }
 
-String _recorded(String? value) {
+String _recorded(BuildContext context, String? value) {
   final trimmed = value?.trim();
   if (trimmed == null || trimmed.isEmpty) {
-    return 'Not recorded';
+    return context.l10n.notRecorded;
   }
   return trimmed;
 }
@@ -952,30 +1087,114 @@ String? _emptyToNull(String? value) {
   return trimmed;
 }
 
-String _joinRecorded(List<String?> values) {
+String _joinRecorded(BuildContext context, List<String?> values) {
   final recorded = values
       .map((value) => value?.trim())
       .whereType<String>()
       .where((value) => value.isNotEmpty)
       .toList();
   if (recorded.isEmpty) {
-    return 'Not recorded';
+    return context.l10n.notRecorded;
   }
   return recorded.join(', ');
 }
 
-String _accountEmail(String value) {
-  final trimmed = value.trim();
-  if (trimmed.isEmpty || !trimmed.contains('@')) {
-    return 'Not recorded';
+String _doctorContact(
+  BuildContext context, {
+  required String? phone,
+  required String email,
+}) {
+  final rows = <String>[
+    if (_emptyToNull(phone) case final value?) '${context.l10n.phone}: $value',
+    if (_emptyToNull(email) case final value?) '${context.l10n.email}: $value',
+  ];
+  return rows.isEmpty ? context.l10n.notRecorded : rows.join('\n');
+}
+
+String _doctorActivityLabel(BuildContext context, DateTime? lastActiveAt) {
+  if (lastActiveAt == null) {
+    return context.l10n.inactiveDoctorAccount;
   }
-  return trimmed;
+  final local = lastActiveAt.toLocal();
+  final date =
+      '${local.year.toString().padLeft(4, '0')}-'
+      '${local.month.toString().padLeft(2, '0')}-'
+      '${local.day.toString().padLeft(2, '0')}';
+  return context.l10n.doctorLastOnline(date);
+}
+
+bool _looksLikeEmail(String value) {
+  return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(value);
 }
 
 List<String> _languageOptions(String selected) {
   final options = <String>['English', 'Simplified Chinese'];
   if (selected.trim().isNotEmpty && !options.contains(selected)) {
     options.add(selected);
+  }
+  return options;
+}
+
+String _knownCountry(String? saved) {
+  final value = _emptyToNull(saved);
+  return value ?? locationCountries.first.name;
+}
+
+String _knownProvince(String country, String? saved) {
+  final value = _emptyToNull(saved);
+  final regions = _regions(country);
+  return value ?? (regions.isEmpty ? '' : regions.first.name);
+}
+
+String _knownCity(String country, String province, String? saved) {
+  final value = _emptyToNull(saved);
+  final cities = _cities(country, province);
+  return value ?? (cities.isEmpty ? '' : cities.first);
+}
+
+List<String> _countryOptions(String selected) {
+  return _withSelected(
+    locationCountries.map((country) => country.name),
+    selected,
+  );
+}
+
+List<String> _provinceOptions(String country, String selected) {
+  return _withSelected(
+    _regions(country).map((region) => region.name),
+    selected,
+  );
+}
+
+List<String> _cityOptions(String country, String province, String selected) {
+  return _withSelected(_cities(country, province), selected);
+}
+
+List<LocationRegion> _regions(String country) {
+  for (final item in locationCountries) {
+    if (item.name == country) {
+      return item.regions;
+    }
+  }
+  return const <LocationRegion>[];
+}
+
+List<String> _cities(String country, String province) {
+  for (final region in _regions(country)) {
+    if (region.name == province) {
+      return region.cities;
+    }
+  }
+  return const <String>[];
+}
+
+List<String> _withSelected(Iterable<String> values, String selected) {
+  final options = values.toList();
+  if (selected.trim().isNotEmpty && !options.contains(selected)) {
+    options.add(selected);
+  }
+  if (options.isEmpty) {
+    options.add('');
   }
   return options;
 }
@@ -987,7 +1206,7 @@ class _DoctorDashboard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dashboardData = _doctorDashboardData(data.data);
+    final dashboardData = _doctorDashboardData(context, data.data);
     return ColoredBox(
       color: DrAiColors.brandSoft,
       child: LayoutBuilder(
@@ -1028,45 +1247,56 @@ class _DoctorDashboard extends StatelessWidget {
   }
 }
 
-Map<String, dynamic> _doctorDashboardData(Map<String, dynamic> source) {
+Map<String, dynamic> _doctorDashboardData(
+  BuildContext context,
+  Map<String, dynamic> source,
+) {
   if (source.containsKey('hospital') &&
       source.containsKey('doctor') &&
       source.containsKey('quick_access')) {
     return source;
   }
   return <String, dynamic>{
-    'safety_label': 'Staging environment: do not enter real patient data.',
+    'safety_label': context.l10n.stagingNotice,
     'hospital': <String, dynamic>{
-      'name': 'Hospital profile pending',
-      'location': 'Complete hospital details',
-      'summary': 'Your care workspace is ready for patient-code connection.',
+      'name': context.l10n.hospitalProfilePending,
+      'location': context.l10n.completeHospitalDetails,
+      'summary': context.l10n.careWorkspaceReady,
     },
     'doctor': <String, dynamic>{
-      'name': 'Doctor profile',
-      'title': 'Clinician',
-      'expertise': 'Connect patients by code to start care episodes',
+      'name': context.l10n.doctorProfile,
+      'title': context.l10n.clinician,
+      'expertise': context.l10n.connectPatientsEpisodes,
       'rating': 4,
     },
     'quick_access': <String>[
-      'AI Supported CT Image Diagnose',
-      'AI Supported X-ray Image Diagnose',
-      'AI Supported MRI Image Diagnose',
-      'Check Patient Medical Records',
-      'Check Patient Recovery Plans',
-      'Check Imaging Results',
-      'Book Medical Equipment',
+      context.l10n.ctImageReview,
+      context.l10n.xrayImageReview,
+      context.l10n.mriImageReview,
+      context.l10n.checkMedicalRecords,
+      context.l10n.checkRecoveryPlans,
+      context.l10n.checkImagingResults,
+      context.l10n.bookEquipment,
     ],
     'recent_activity': <String, dynamic>{
-      'title': 'No patient activity yet',
+      'title': context.l10n.noPatientActivity,
       'time': '--:--',
     },
     'resources': <Map<String, dynamic>>[
       <String, dynamic>{'name': 'CT', 'available': 0, 'total': 0},
       <String, dynamic>{'name': 'MRI', 'available': 0, 'total': 0},
-      <String, dynamic>{'name': 'X-ray', 'available': 0, 'total': 0},
-      <String, dynamic>{'name': 'Ultrasound', 'available': 0, 'total': 0},
+      <String, dynamic>{'name': context.l10n.xray, 'available': 0, 'total': 0},
+      <String, dynamic>{
+        'name': context.l10n.ultrasound,
+        'available': 0,
+        'total': 0,
+      },
     ],
-    'team': <String>['Invite team member', 'Connect patient', 'Create event'],
+    'team': <String>[
+      context.l10n.inviteTeamMember,
+      context.l10n.connectPatient,
+      context.l10n.createEvent,
+    ],
     ...source,
   };
 }
@@ -1150,8 +1380,6 @@ class _DoctorIdentityColumn extends StatelessWidget {
           ),
         ),
         const SizedBox(height: DrAiSpacing.sm),
-        const _MutedAction(label: 'Edit Hospital Info'),
-        const SizedBox(height: DrAiSpacing.sm),
         Container(
           padding: const EdgeInsets.all(DrAiSpacing.md),
           decoration: BoxDecoration(
@@ -1205,8 +1433,6 @@ class _DoctorIdentityColumn extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: DrAiSpacing.sm),
-        const _MutedAction(label: 'Edit Doctor Info'),
       ],
     );
   }
@@ -1224,7 +1450,7 @@ class _DoctorMainColumn extends StatelessWidget {
     return Column(
       children: <Widget>[
         _DoctorPanel(
-          title: 'Quick Access',
+          title: context.l10n.quickAccess,
           icon: Icons.adjust,
           child: GridView.builder(
             shrinkWrap: true,
@@ -1270,7 +1496,7 @@ class _DoctorMainColumn extends StatelessWidget {
                       child: Align(
                         alignment: Alignment.centerLeft,
                         child: Text(
-                          quickAccess[index],
+                          context.l10n.stableValue(quickAccess[index]),
                           style: const TextStyle(
                             color: DrAiColors.brandDark,
                             fontWeight: FontWeight.w600,
@@ -1286,7 +1512,7 @@ class _DoctorMainColumn extends StatelessWidget {
         ),
         const SizedBox(height: DrAiSpacing.xs),
         _DoctorPanel(
-          title: 'Team Management',
+          title: context.l10n.teamManagement,
           icon: Icons.groups_outlined,
           child: Row(
             children: <Widget>[
@@ -1310,7 +1536,7 @@ class _DoctorMainColumn extends StatelessWidget {
                           ),
                           const SizedBox(height: DrAiSpacing.md),
                           Text(
-                            member,
+                            context.l10n.stableValue(member),
                             textAlign: TextAlign.center,
                             style: const TextStyle(
                               color: DrAiColors.white,
@@ -1360,7 +1586,7 @@ class _DoctorSideColumn extends StatelessWidget {
     return Column(
       children: <Widget>[
         _DoctorPanel(
-          title: 'Recent Activities',
+          title: context.l10n.recentActivities,
           icon: Icons.calendar_month_outlined,
           child: Container(
             padding: const EdgeInsets.all(DrAiSpacing.md),
@@ -1372,7 +1598,7 @@ class _DoctorSideColumn extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
                 Text(
-                  activity['title'] as String,
+                  context.l10n.stableValue(activity['title'] as String),
                   style: const TextStyle(color: DrAiColors.outlineMuted),
                 ),
                 const SizedBox(height: DrAiSpacing.lg),
@@ -1386,17 +1612,17 @@ class _DoctorSideColumn extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: DrAiSpacing.md),
-                const Row(
+                Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: <Widget>[
                     Text(
-                      'Cancel',
-                      style: TextStyle(color: DrAiColors.patientAccent),
+                      context.l10n.cancel,
+                      style: const TextStyle(color: DrAiColors.patientAccent),
                     ),
-                    SizedBox(width: DrAiSpacing.lg),
+                    const SizedBox(width: DrAiSpacing.lg),
                     Text(
-                      'OK',
-                      style: TextStyle(color: DrAiColors.patientAccent),
+                      context.l10n.ok,
+                      style: const TextStyle(color: DrAiColors.patientAccent),
                     ),
                   ],
                 ),
@@ -1406,7 +1632,7 @@ class _DoctorSideColumn extends StatelessWidget {
         ),
         const SizedBox(height: DrAiSpacing.xs),
         _DoctorPanel(
-          title: 'Resource Overview',
+          title: context.l10n.resourceOverview,
           icon: Icons.medical_services_outlined,
           child: Column(
             children: <Widget>[
@@ -1418,11 +1644,11 @@ class _DoctorSideColumn extends StatelessWidget {
                 ),
                 child: Column(
                   children: <Widget>[
-                    const Align(
+                    Align(
                       alignment: Alignment.centerLeft,
                       child: Text(
-                        'Medical Equipment',
-                        style: TextStyle(fontWeight: FontWeight.w700),
+                        context.l10n.medicalEquipment,
+                        style: const TextStyle(fontWeight: FontWeight.w700),
                       ),
                     ),
                     const SizedBox(height: DrAiSpacing.xs),
@@ -1431,9 +1657,18 @@ class _DoctorSideColumn extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(vertical: 2),
                         child: Row(
                           children: <Widget>[
-                            Expanded(child: Text(resource['name'] as String)),
+                            Expanded(
+                              child: Text(
+                                context.l10n.stableValue(
+                                  resource['name'] as String,
+                                ),
+                              ),
+                            ),
                             Text(
-                              '${resource['available']}/${resource['total']} Available',
+                              context.l10n.resourceAvailable(
+                                resource['available'] as int,
+                                resource['total'] as int,
+                              ),
                               style: const TextStyle(fontSize: 12),
                             ),
                           ],
@@ -1444,9 +1679,9 @@ class _DoctorSideColumn extends StatelessWidget {
               ),
               const SizedBox(height: DrAiSpacing.xs),
               for (final label in <String>[
-                'Medication Stocks',
-                'Staffing Levels',
-                'Bed Availability',
+                context.l10n.medicationStocks,
+                context.l10n.staffingLevels,
+                context.l10n.bedAvailability,
               ])
                 Container(
                   margin: const EdgeInsets.only(bottom: DrAiSpacing.xs),
@@ -1468,11 +1703,14 @@ class _DoctorSideColumn extends StatelessWidget {
                     ],
                   ),
                 ),
-              const Align(
+              Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  'Operational summaries update as clinic data becomes available.',
-                  style: TextStyle(fontSize: 11, color: DrAiColors.mutedInk),
+                  context.l10n.operationalSummary,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: DrAiColors.mutedInk,
+                  ),
                 ),
               ),
             ],
@@ -1531,38 +1769,6 @@ class _DoctorPanel extends StatelessWidget {
           ),
           Padding(padding: const EdgeInsets.all(DrAiSpacing.xs), child: child),
         ],
-      ),
-    );
-  }
-}
-
-class _MutedAction extends StatelessWidget {
-  const _MutedAction({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 32,
-      child: Semantics(
-        button: true,
-        enabled: false,
-        label: '$label unavailable',
-        child: ExcludeSemantics(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: DrAiColors.inkStrong,
-              borderRadius: BorderRadius.circular(DrAiRadii.md),
-            ),
-            child: Center(
-              child: Text(
-                label,
-                style: const TextStyle(color: DrAiColors.outlineMuted),
-              ),
-            ),
-          ),
-        ),
       ),
     );
   }

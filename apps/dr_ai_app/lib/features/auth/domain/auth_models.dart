@@ -6,13 +6,14 @@ class SessionUser {
     required this.email,
     required this.role,
     required this.displayName,
+    this.phoneNumber = '',
   });
 
   factory SessionUser.fromJson(Map<String, dynamic> json) {
     return SessionUser(
       id: json['id'] as String,
-      email:
-          (json['email'] as String?) ?? (json['phone_number'] as String?) ?? '',
+      email: (json['email'] as String?) ?? '',
+      phoneNumber: (json['phone_number'] as String?) ?? '',
       role: AppRole.fromWire(json['role'] as String),
       displayName: json['display_name'] as String,
     );
@@ -20,8 +21,29 @@ class SessionUser {
 
   final String id;
   final String email;
+  final String phoneNumber;
   final AppRole role;
   final String displayName;
+}
+
+class PhoneVerificationResult {
+  const PhoneVerificationResult({
+    required this.message,
+    required this.expiresIn,
+    this.debugCode,
+  });
+
+  factory PhoneVerificationResult.fromJson(Map<String, dynamic> json) {
+    return PhoneVerificationResult(
+      message: json['message'] as String,
+      expiresIn: json['expires_in'] as int,
+      debugCode: json['debug_code'] as String?,
+    );
+  }
+
+  final String message;
+  final int expiresIn;
+  final String? debugCode;
 }
 
 class AuthSession {

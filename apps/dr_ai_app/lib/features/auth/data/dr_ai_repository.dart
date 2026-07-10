@@ -10,6 +10,18 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 abstract interface class DrAiRepository {
   Future<AuthSession?> restore();
   Future<AuthSession> login(String email, String password);
+  Future<PhoneVerificationResult> requestRegistrationCode(String phoneNumber);
+  Future<PhoneVerificationResult> requestPasswordReset(String phoneNumber);
+  Future<void> resetPassword({
+    required String phoneNumber,
+    required String verificationCode,
+    required String newPassword,
+  });
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  });
+  Future<SessionUser> updateAccountEmail(String email);
   Future<AuthSession> register({
     required String phoneNumber,
     required String email,
@@ -27,18 +39,20 @@ abstract interface class DrAiRepository {
     required String displayName,
     required String specialty,
     required String title,
-    required String hospitalName,
     required String department,
     required String contactPhone,
     required String country,
     required String province,
     required String city,
     required String preferredLanguage,
+    required String avatarUrl,
   });
   Future<PatientListData> loadPatients({String? query});
   Future<PatientSummary> connectPatientByCode(String patientCode);
+  Future<PatientMatchPreview> previewPatientByCode(String patientCode);
   Future<PatientCareBundle> loadPatientCareBundle(String patientId);
   Future<PatientCareBundle> loadOwnPatientCare();
+  Future<PatientDoctorContactList> loadOwnPatientContacts();
   Future<PatientProfile> updateOwnPatientProfile({
     required String displayName,
     required String birthDate,
@@ -48,6 +62,13 @@ abstract interface class DrAiRepository {
     required String emergencyContactPhone,
     required String preferredLanguage,
     required String contactPreference,
+    required String avatarUrl,
+    required String country,
+    required String province,
+    required String city,
+    required String homeAddress,
+    required String heightCm,
+    required String weightKg,
     required bool medicalHistorySetupCompleted,
   });
   Future<PatientAllergyItem> createPatientAllergy({
@@ -318,6 +339,56 @@ class DioDrAiRepository implements DrAiRepository {
   }
 
   @override
+  Future<PhoneVerificationResult> requestPasswordReset(
+    String phoneNumber,
+  ) async {
+    try {
+      final response = await client.post<Map<String, dynamic>>(
+        '/api/v1/auth/password-reset/request',
+        data: <String, String>{'phone_number': phoneNumber.trim()},
+      );
+      return PhoneVerificationResult.fromJson(response.data!);
+    } on DioException catch (error) {
+      throw _toApiError(error);
+    }
+  }
+
+  @override
+  Future<PhoneVerificationResult> requestRegistrationCode(
+    String phoneNumber,
+  ) async {
+    try {
+      final response = await client.post<Map<String, dynamic>>(
+        '/api/v1/auth/registration-code/request',
+        data: <String, String>{'phone_number': phoneNumber.trim()},
+      );
+      return PhoneVerificationResult.fromJson(response.data!);
+    } on DioException catch (error) {
+      throw _toApiError(error);
+    }
+  }
+
+  @override
+  Future<void> resetPassword({
+    required String phoneNumber,
+    required String verificationCode,
+    required String newPassword,
+  }) async {
+    try {
+      await client.post<void>(
+        '/api/v1/auth/password-reset',
+        data: <String, String>{
+          'phone_number': phoneNumber.trim(),
+          'verification_code': verificationCode.trim(),
+          'new_password': newPassword,
+        },
+      );
+    } on DioException catch (error) {
+      throw _toApiError(error);
+    }
+  }
+
+  @override
   Future<AuthSession> register({
     required String phoneNumber,
     required String email,
@@ -401,6 +472,41 @@ class DioDrAiRepository implements DrAiRepository {
   }
 
   @override
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    await _authorizedPutVoid(
+      '/api/v1/auth/password',
+      data: <String, String>{
+        'current_password': currentPassword,
+        'new_password': newPassword,
+      },
+    );
+  }
+
+  @override
+  Future<SessionUser> updateAccountEmail(String email) async {
+    final trimmedEmail = email.trim();
+    final response = await _authorizedPatch(
+      '/api/v1/auth/account/email',
+      data: <String, dynamic>{
+        'email': trimmedEmail.isEmpty ? null : trimmedEmail,
+      },
+    );
+    final user = SessionUser.fromJson(response);
+    final session = _session;
+    if (session != null) {
+      _session = AuthSession(
+        accessToken: session.accessToken,
+        refreshToken: session.refreshToken,
+        user: user,
+      );
+    }
+    return user;
+  }
+
+  @override
   Future<DashboardData> loadDashboard(AppRole role) async {
     final path = role == AppRole.patient
         ? '/api/v1/patient/me/today'
@@ -432,13 +538,13 @@ class DioDrAiRepository implements DrAiRepository {
     required String displayName,
     required String specialty,
     required String title,
-    required String hospitalName,
     required String department,
     required String contactPhone,
     required String country,
     required String province,
     required String city,
     required String preferredLanguage,
+    required String avatarUrl,
   }) async {
     final response = await _authorizedPatch(
       '/api/v1/doctor/me/profile',
@@ -446,7 +552,6 @@ class DioDrAiRepository implements DrAiRepository {
         'display_name': displayName.trim(),
         if (specialty.trim().isNotEmpty) 'specialty': specialty.trim(),
         'title': title.trim(),
-        'hospital_name': hospitalName.trim(),
         if (department.trim().isNotEmpty) 'department': department.trim(),
         if (contactPhone.trim().isNotEmpty)
           'contact_phone': contactPhone.trim(),
@@ -455,6 +560,7 @@ class DioDrAiRepository implements DrAiRepository {
         if (city.trim().isNotEmpty) 'city': city.trim(),
         if (preferredLanguage.trim().isNotEmpty)
           'preferred_language': preferredLanguage.trim(),
+        if (avatarUrl.trim().isNotEmpty) 'avatar_url': avatarUrl.trim(),
       },
     );
     return DoctorProfile.fromJson(response);
@@ -482,6 +588,15 @@ class DioDrAiRepository implements DrAiRepository {
   }
 
   @override
+  Future<PatientMatchPreview> previewPatientByCode(String patientCode) async {
+    final response = await _authorizedPost(
+      '/api/v1/patients/connect/preview',
+      data: <String, String>{'patient_code': patientCode.trim()},
+    );
+    return PatientMatchPreview.fromJson(response);
+  }
+
+  @override
   Future<PatientCareBundle> loadPatientCareBundle(String patientId) async {
     final response = await _authorizedGet('/api/v1/patients/$patientId/care');
     return PatientCareBundle.fromJson(response);
@@ -494,6 +609,12 @@ class DioDrAiRepository implements DrAiRepository {
   }
 
   @override
+  Future<PatientDoctorContactList> loadOwnPatientContacts() async {
+    final response = await _authorizedGet('/api/v1/patient/me/contacts');
+    return PatientDoctorContactList.fromJson(response);
+  }
+
+  @override
   Future<PatientProfile> updateOwnPatientProfile({
     required String displayName,
     required String birthDate,
@@ -503,6 +624,13 @@ class DioDrAiRepository implements DrAiRepository {
     required String emergencyContactPhone,
     required String preferredLanguage,
     required String contactPreference,
+    required String avatarUrl,
+    required String country,
+    required String province,
+    required String city,
+    required String homeAddress,
+    required String heightCm,
+    required String weightKg,
     required bool medicalHistorySetupCompleted,
   }) async {
     final response = await _authorizedPatch(
@@ -521,6 +649,15 @@ class DioDrAiRepository implements DrAiRepository {
           'preferred_language': preferredLanguage.trim(),
         if (contactPreference.trim().isNotEmpty)
           'contact_preference': contactPreference.trim(),
+        if (avatarUrl.trim().isNotEmpty) 'avatar_url': avatarUrl.trim(),
+        if (country.trim().isNotEmpty) 'country': country.trim(),
+        if (province.trim().isNotEmpty) 'province': province.trim(),
+        if (city.trim().isNotEmpty) 'city': city.trim(),
+        if (homeAddress.trim().isNotEmpty) 'home_address': homeAddress.trim(),
+        if (heightCm.trim().isNotEmpty)
+          'height_cm': double.parse(heightCm.trim()),
+        if (weightKg.trim().isNotEmpty)
+          'weight_kg': double.parse(weightKg.trim()),
         'medical_history_setup_completed': medicalHistorySetupCompleted,
       },
     );
@@ -1160,6 +1297,39 @@ class DioDrAiRepository implements DrAiRepository {
       if (apiError.statusCode == 401 && allowRefresh && _session != null) {
         await _refresh(_session!.refreshToken);
         return _authorizedPut(path, data: data, allowRefresh: false);
+      }
+      throw apiError;
+    }
+  }
+
+  Future<void> _authorizedPutVoid(
+    String path, {
+    required Map<String, dynamic> data,
+    bool allowRefresh = true,
+  }) async {
+    final session = _session;
+    if (session == null) {
+      throw const ApiError(
+        code: 'unauthenticated',
+        message: 'Your session has ended. Please sign in again.',
+        statusCode: 401,
+      );
+    }
+    try {
+      await client.put<void>(
+        path,
+        data: data,
+        options: Options(
+          headers: <String, String>{
+            'Authorization': 'Bearer ${session.accessToken}',
+          },
+        ),
+      );
+    } on DioException catch (error) {
+      final apiError = _toApiError(error);
+      if (apiError.statusCode == 401 && allowRefresh && _session != null) {
+        await _refresh(_session!.refreshToken);
+        return _authorizedPutVoid(path, data: data, allowRefresh: false);
       }
       throw apiError;
     }

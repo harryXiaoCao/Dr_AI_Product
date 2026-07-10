@@ -93,6 +93,11 @@ class AuthController extends AsyncNotifier<AuthState> {
     }
   }
 
+  Future<void> updateAccountEmail(String email) async {
+    final user = await ref.read(repositoryProvider).updateAccountEmail(email);
+    state = AsyncData(AuthState.signedIn(user));
+  }
+
   Future<void> logout() async {
     state = const AsyncLoading();
     try {
@@ -108,6 +113,15 @@ class AuthController extends AsyncNotifier<AuthState> {
         ),
       );
     }
+  }
+
+  void clearFeedback() {
+    final current = state.value;
+    if (current == null ||
+        (current.errorMessage == null && current.noticeMessage == null)) {
+      return;
+    }
+    state = const AsyncData(AuthState.signedOut());
   }
 }
 

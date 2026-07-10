@@ -1,4 +1,5 @@
 import uuid
+from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 from fastapi import Depends, Header
@@ -40,6 +41,10 @@ def get_current_user(
     user = db.scalar(select(User).where(User.id == user_id, User.is_active.is_(True)))
     if refresh_session is None or user is None or user.role.value != claims.get("role"):
         raise ApiError(401, "unauthenticated", "The access token is invalid or expired.")
+    now = datetime.now(UTC)
+    if user.last_active_at is None or user.last_active_at < now - timedelta(minutes=15):
+        user.last_active_at = now
+        db.commit()
     return user
 
 

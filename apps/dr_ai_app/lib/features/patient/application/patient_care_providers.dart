@@ -45,6 +45,12 @@ final ownPatientCareProvider = FutureProvider.autoDispose<PatientCareBundle>((
   return ref.read(repositoryProvider).loadOwnPatientCare();
 });
 
+final patientDoctorContactsProvider =
+    FutureProvider.autoDispose<PatientDoctorContactList>((ref) async {
+      ref.watch(authControllerProvider);
+      return ref.read(repositoryProvider).loadOwnPatientContacts();
+    });
+
 class PatientConnectionController
     extends StateNotifier<AsyncValue<PatientSummary?>> {
   PatientConnectionController(this._repository, this._ref)
@@ -52,6 +58,10 @@ class PatientConnectionController
 
   final DrAiRepository _repository;
   final Ref _ref;
+
+  Future<PatientMatchPreview> preview(String patientCode) {
+    return _repository.previewPatientByCode(patientCode);
+  }
 
   Future<void> connect(String patientCode) async {
     state = const AsyncLoading<PatientSummary?>();
@@ -114,6 +124,10 @@ class PatientOnboardingController extends StateNotifier<AsyncValue<void>> {
     required String emergencyContactPhone,
     required String preferredLanguage,
     required String contactPreference,
+    required String country,
+    required String province,
+    required String city,
+    required String homeAddress,
     required bool hasAllergies,
     required String allergyLabel,
     required String allergyReaction,
@@ -145,6 +159,13 @@ class PatientOnboardingController extends StateNotifier<AsyncValue<void>> {
         emergencyContactPhone: emergencyContactPhone,
         preferredLanguage: preferredLanguage,
         contactPreference: contactPreference,
+        avatarUrl: '',
+        country: country,
+        province: province,
+        city: city,
+        homeAddress: homeAddress,
+        heightCm: heightCm,
+        weightKg: weightKg,
         medicalHistorySetupCompleted: true,
       );
       if (hasAllergies && allergyLabel.trim().isNotEmpty) {
@@ -186,6 +207,7 @@ class PatientOnboardingController extends StateNotifier<AsyncValue<void>> {
         );
       }
       _ref.invalidate(ownPatientCareProvider);
+      _ref.invalidate(dashboardProvider);
       state = const AsyncData<void>(null);
     } catch (error, stackTrace) {
       state = AsyncError<void>(error, stackTrace);

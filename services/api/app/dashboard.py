@@ -102,7 +102,10 @@ from app.schemas import (
     PatientConnectRequest,
     PatientDemographicsResponse,
     PatientDemographicsUpdateRequest,
+    PatientDoctorContactListResponse,
+    PatientDoctorContactResponse,
     PatientListResponse,
+    PatientMatchPreviewResponse,
     PatientProfileResponse,
     PatientSummaryResponse,
     PrescriptionListResponse,
@@ -243,11 +246,14 @@ def _demographics_response(profile: PatientProfile) -> PatientDemographicsRespon
         province=profile.province,
         city=profile.city,
         home_address=profile.home_address,
+        height_cm=profile.height_cm,
+        weight_kg=profile.weight_kg,
         medical_history_setup_completed=profile.medical_history_setup_completed,
     )
 
 
 def _doctor_profile_response(profile: DoctorProfile) -> DoctorProfileResponse:
+    last_active_at = profile.user.last_active_at
     return DoctorProfileResponse(
         id=profile.id,
         display_name=profile.display_name,
@@ -263,7 +269,18 @@ def _doctor_profile_response(profile: DoctorProfile) -> DoctorProfileResponse:
         specialty=profile.specialty,
         department=profile.department,
         preferred_language=profile.preferred_language,
+        last_active_at=last_active_at,
+        is_recently_active=_is_recently_active(last_active_at),
     )
+
+
+def _is_recently_active(
+    last_active_at: datetime | None,
+    *,
+    now: datetime | None = None,
+) -> bool:
+    reference = now or datetime.now(UTC)
+    return last_active_at is not None and last_active_at >= reference - timedelta(days=14)
 
 
 def _clinical_event_linked_counts(
@@ -1222,6 +1239,8 @@ def _apply_demographics_update(
         "province",
         "city",
         "home_address",
+        "height_cm",
+        "weight_kg",
         "medical_history_setup_completed",
     ):
         value = getattr(request, field)
@@ -1710,6 +1729,38 @@ def own_dashboard(user: CurrentUser, db: DbSession) -> DashboardResponse:
     return DashboardResponse(role=user.role, data=snapshot.payload)
 
 
+@router.get("/patient/me/contacts", response_model=PatientDoctorContactListResponse)
+def own_patient_contacts(
+    user: CurrentUser,
+    db: DbSession,
+) -> PatientDoctorContactListResponse:
+    if user.role != UserRole.patient or user.patient_profile is None:
+        raise _neutral_not_found()
+    doctors = db.scalars(
+        select(DoctorProfile)
+        .join(CareRelationship)
+        .where(
+            CareRelationship.patient_id == user.patient_profile.id,
+            CareRelationship.is_active.is_(True),
+        )
+        .order_by(DoctorProfile.display_name, DoctorProfile.id)
+    ).all()
+    return PatientDoctorContactListResponse(
+        items=[
+            PatientDoctorContactResponse(
+                doctor_id=doctor.id,
+                display_name=doctor.display_name,
+                title=doctor.title,
+                hospital_name=doctor.hospital_name,
+                specialty=doctor.specialty,
+                department=doctor.department,
+                avatar_url=doctor.avatar_url,
+            )
+            for doctor in doctors
+        ]
+    )
+
+
 @router.get("/patients", response_model=PatientListResponse)
 def assigned_patients(
     user: CurrentUser,
@@ -1802,6 +1853,39 @@ def connect_patient_by_code(
     db.commit()
     db.refresh(profile)
     return _patient_response(profile)
+
+
+@router.post("/patients/connect/preview", response_model=PatientMatchPreviewResponse)
+def preview_patient_by_code(
+    request: PatientConnectRequest,
+    user: CurrentUser,
+    db: DbSession,
+) -> PatientMatchPreviewResponse:
+    if user.role != UserRole.doctor or user.doctor_profile is None:
+        raise _neutral_not_found()
+    patient_code = request.patient_code.strip()
+    profile = db.scalar(
+        select(PatientProfile).where(
+            func.lower(PatientProfile.synthetic_identifier) == patient_code.lower()
+        )
+    )
+    if profile is None:
+        raise _neutral_not_found()
+    _record_audit_event(
+        db,
+        actor_user_id=user.id,
+        patient_id=profile.id,
+        event_type="patient_match_previewed",
+        resource_type="patient_profile",
+        resource_id=profile.id,
+        metadata={"actor_role": user.role.value, "patient_code_supplied": True},
+    )
+    db.commit()
+    suffix = profile.synthetic_identifier[-4:]
+    return PatientMatchPreviewResponse(
+        display_name=profile.display_name,
+        masked_patient_code=f"Patient ID ending in {suffix}",
+    )
 
 
 @router.get("/patients/{patient_id}", response_model=PatientProfileResponse)
@@ -3301,7 +3385,6 @@ def update_own_doctor_profile(
         "country",
         "province",
         "city",
-        "hospital_name",
         "specialty",
         "department",
         "preferred_language",

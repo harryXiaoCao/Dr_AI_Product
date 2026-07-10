@@ -1,18 +1,19 @@
 import 'package:dr_ai_app/design_system/dr_ai_tokens.dart';
+import 'package:dr_ai_app/l10n/l10n.dart';
 import 'package:flutter/material.dart';
 
 class DashboardLoadingView extends StatelessWidget {
-  const DashboardLoadingView({
-    this.label = 'Loading synthetic dashboard',
-    super.key,
-  });
+  const DashboardLoadingView({this.label, super.key});
 
-  final String label;
+  final String? label;
 
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Semantics(label: label, child: const CircularProgressIndicator()),
+      child: Semantics(
+        label: label ?? context.l10n.loading,
+        child: const CircularProgressIndicator(),
+      ),
     );
   }
 }
@@ -47,7 +48,10 @@ class DashboardErrorView extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: DrAiSpacing.md),
-            OutlinedButton(onPressed: onRetry, child: const Text('Try again')),
+            OutlinedButton(
+              onPressed: onRetry,
+              child: Text(context.l10n.tryAgain),
+            ),
           ],
         ),
       ),

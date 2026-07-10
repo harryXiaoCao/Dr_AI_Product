@@ -14,6 +14,8 @@ class DoctorProfile {
     this.specialty,
     this.department,
     this.preferredLanguage,
+    this.lastActiveAt,
+    this.isRecentlyActive = false,
   });
 
   factory DoctorProfile.fromJson(Map<String, dynamic> json) {
@@ -32,6 +34,10 @@ class DoctorProfile {
       specialty: json['specialty'] as String?,
       department: json['department'] as String?,
       preferredLanguage: json['preferred_language'] as String?,
+      lastActiveAt: json['last_active_at'] == null
+          ? null
+          : DateTime.parse(json['last_active_at'] as String),
+      isRecentlyActive: (json['is_recently_active'] as bool?) ?? false,
     );
   }
 
@@ -49,4 +55,6 @@ class DoctorProfile {
   final String? specialty;
   final String? department;
   final String? preferredLanguage;
+  final DateTime? lastActiveAt;
+  final bool isRecentlyActive;
 }

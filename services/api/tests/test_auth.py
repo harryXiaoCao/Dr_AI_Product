@@ -1,11 +1,20 @@
+import uuid
 from datetime import UTC, datetime, timedelta
 
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.dashboard import _is_recently_active
 from app.database import engine
-from app.models import DoctorProfile, PatientProfile, RefreshSession, User
+from app.models import (
+    AuditEvent,
+    DoctorProfile,
+    PatientProfile,
+    PhoneVerificationChallenge,
+    RefreshSession,
+    User,
+)
 from app.security import (
     create_access_token,
     hash_password,
@@ -52,6 +61,8 @@ def test_registration_accepts_phone_required_and_optional_email(client: TestClie
                 "province": "Guangdong",
                 "city": "Shenzhen",
                 "home_address": "100 Recovery Road",
+                "height_cm": 168,
+                "weight_kg": 62.5,
             },
         },
     )
@@ -67,6 +78,8 @@ def test_registration_accepts_phone_required_and_optional_email(client: TestClie
         assert profile is not None
         assert profile.country == "China"
         assert profile.home_address == "100 Recovery Road"
+        assert profile.height_cm == 168
+        assert profile.weight_kg == 62.5
 
 
 def test_phone_registration_login_and_doctor_hospital_intake(client: TestClient) -> None:
@@ -148,8 +161,7 @@ def test_duplicate_registration_contact_returns_conflict(client: TestClient) -> 
     assert duplicate_phone.status_code == 409
     assert duplicate_phone.json()["error"]["code"] == "conflict"
     assert (
-        duplicate_phone.json()["error"]["message"]
-        == "An account already exists for this contact."
+        duplicate_phone.json()["error"]["message"] == "An account already exists for this contact."
     )
 
     duplicate_email = client.post(
@@ -170,9 +182,43 @@ def test_duplicate_registration_contact_returns_conflict(client: TestClient) -> 
     assert duplicate_email.status_code == 409
     assert duplicate_email.json()["error"]["code"] == "conflict"
     assert (
-        duplicate_email.json()["error"]["message"]
-        == "An account already exists for this contact."
+        duplicate_email.json()["error"]["message"] == "An account already exists for this contact."
     )
+
+
+def test_registration_code_request_creates_and_consumes_phone_challenge(
+    client: TestClient,
+) -> None:
+    phone_number = "+8613800090999"
+    requested = client.post(
+        "/api/v1/auth/registration-code/request",
+        json={"phone_number": phone_number},
+    )
+    assert requested.status_code == 200
+    code = requested.json()["debug_code"]
+    assert code is not None
+
+    registered = client.post(
+        "/api/v1/auth/register",
+        json={
+            "phone_number": phone_number,
+            "password": "Patient9!",
+            "role": "patient",
+            "verification_code": code,
+            "terms_accepted": True,
+        },
+    )
+    assert registered.status_code == 201
+    with Session(engine) as db:
+        challenge = db.scalar(
+            select(PhoneVerificationChallenge).where(
+                PhoneVerificationChallenge.phone_number == phone_number,
+                PhoneVerificationChallenge.purpose == "registration",
+            )
+        )
+        assert challenge is not None
+        assert challenge.user_id is not None
+        assert challenge.consumed_at is not None
 
 
 def test_login_success_failure_and_me(client: TestClient, settings) -> None:
@@ -205,6 +251,164 @@ def test_login_success_failure_and_me(client: TestClient, settings) -> None:
     assert failed.status_code == 401
     assert failed.json()["error"]["code"] == "unauthenticated"
     assert failed.json()["error"]["request_id"].startswith("req_")
+
+
+def test_password_reset_uses_phone_challenge_and_revokes_sessions(
+    client: TestClient,
+    settings,
+) -> None:
+    with Session(engine) as db:
+        seed_database(db, settings)
+        patient = db.scalar(select(User).where(User.email == "patient.demo@example.com"))
+        assert patient is not None
+        patient.phone_number = "+8613800010002"
+        db.commit()
+
+    unknown = client.post(
+        "/api/v1/auth/password-reset/request",
+        json={"phone_number": "+8613999999999"},
+    )
+    assert unknown.status_code == 200
+    assert unknown.json()["debug_code"] is None
+
+    requested = client.post(
+        "/api/v1/auth/password-reset/request",
+        json={"phone_number": "+8613800010002"},
+    )
+    assert requested.status_code == 200
+    verification_code = requested.json()["debug_code"]
+    assert verification_code is not None
+    assert len(verification_code) == 6
+
+    reset = client.post(
+        "/api/v1/auth/password-reset",
+        json={
+            "phone_number": "+8613800010002",
+            "verification_code": verification_code,
+            "new_password": "UpdatedPatient9!",
+        },
+    )
+    assert reset.status_code == 204
+    assert (
+        client.post(
+            "/api/v1/auth/login",
+            json={
+                "phone_number": "+8613800010002",
+                "password": settings.seed_patient_password.get_secret_value(),
+            },
+        ).status_code
+        == 401
+    )
+    assert (
+        client.post(
+            "/api/v1/auth/login",
+            json={
+                "phone_number": "+8613800010002",
+                "password": "UpdatedPatient9!",
+            },
+        ).status_code
+        == 200
+    )
+    with Session(engine) as db:
+        event = db.scalar(
+            select(AuditEvent).where(AuditEvent.event_type == "account_password_reset")
+        )
+        assert event is not None
+        assert event.metadata_json == {"verification_channel": "phone"}
+
+
+def test_authenticated_password_change_and_doctor_email_update(
+    client: TestClient,
+    settings,
+) -> None:
+    with Session(engine) as db:
+        seed_database(db, settings)
+    tokens = login(
+        client,
+        "doctor.demo@example.com",
+        settings.seed_doctor_password.get_secret_value(),
+    )
+    headers = auth_header(tokens["access_token"])
+
+    email = client.patch(
+        "/api/v1/auth/account/email",
+        headers=headers,
+        json={"email": "doctor.updated@example.com"},
+    )
+    assert email.status_code == 200
+    assert email.json()["email"] == "doctor.updated@example.com"
+
+    changed = client.put(
+        "/api/v1/auth/password",
+        headers=headers,
+        json={
+            "current_password": settings.seed_doctor_password.get_secret_value(),
+            "new_password": "UpdatedDoctor9!",
+        },
+    )
+    assert changed.status_code == 204
+    assert (
+        client.post(
+            "/api/v1/auth/refresh",
+            json={"refresh_token": tokens["refresh_token"]},
+        ).status_code
+        == 401
+    )
+    assert (
+        client.post(
+            "/api/v1/auth/login",
+            json={
+                "email": "doctor.updated@example.com",
+                "password": "UpdatedDoctor9!",
+            },
+        ).status_code
+        == 200
+    )
+    with Session(engine) as db:
+        event_types = set(
+            db.scalars(
+                select(AuditEvent.event_type).where(
+                    AuditEvent.event_type.in_({"account_email_updated", "account_password_changed"})
+                )
+            ).all()
+        )
+        assert event_types == {"account_email_updated", "account_password_changed"}
+
+
+def test_account_email_can_be_removed(client: TestClient, settings) -> None:
+    with Session(engine) as db:
+        seed_database(db, settings)
+    tokens = login(
+        client,
+        "patient.demo@example.com",
+        settings.seed_patient_password.get_secret_value(),
+    )
+
+    response = client.patch(
+        "/api/v1/auth/account/email",
+        headers=auth_header(tokens["access_token"]),
+        json={"email": ""},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["email"] is None
+    with Session(engine) as db:
+        user = db.scalar(select(User).where(User.id == uuid.UUID(response.json()["id"])))
+        event = db.scalar(
+            select(AuditEvent)
+            .where(AuditEvent.event_type == "account_email_updated")
+            .order_by(AuditEvent.created_at.desc())
+        )
+        assert user is not None and user.email is None
+        assert event is not None and event.metadata_json["email_removed"] is True
+
+
+def test_recent_doctor_activity_uses_a_fourteen_day_boundary() -> None:
+    now = datetime(2026, 7, 10, 12, 0, tzinfo=UTC)
+
+    assert _is_recently_active(now - timedelta(days=14), now=now) is True
+    assert _is_recently_active(now - timedelta(days=14, seconds=1), now=now) is False
+    assert _is_recently_active(None, now=now) is False
 
 
 def test_expired_access_token_is_rejected(client: TestClient, settings) -> None:

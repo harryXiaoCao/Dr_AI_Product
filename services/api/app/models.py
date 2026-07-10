@@ -7,6 +7,7 @@ from sqlalchemy import (
     Date,
     DateTime,
     Enum,
+    Float,
     ForeignKey,
     Index,
     Integer,
@@ -39,6 +40,7 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(String(255))
     role: Mapped[UserRole] = mapped_column(Enum(UserRole, name="user_role", native_enum=True))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    last_active_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
@@ -51,6 +53,9 @@ class User(Base):
         back_populates="user", cascade="all, delete-orphan"
     )
     refresh_sessions: Mapped[list["RefreshSession"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+    phone_verification_challenges: Mapped[list["PhoneVerificationChallenge"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
     dashboard: Mapped["DashboardSnapshot | None"] = relationship(
@@ -89,6 +94,30 @@ class DoctorProfile(Base):
     clinical_events: Mapped[list["ClinicalEvent"]] = relationship(back_populates="doctor")
 
 
+class PhoneVerificationChallenge(Base):
+    __tablename__ = "phone_verification_challenges"
+    __table_args__ = (
+        Index(
+            "ix_phone_verification_lookup",
+            "phone_number",
+            "purpose",
+            "created_at",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    phone_number: Mapped[str] = mapped_column(String(40))
+    purpose: Mapped[str] = mapped_column(String(40))
+    code_hash: Mapped[str] = mapped_column(String(64))
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    user: Mapped[User | None] = relationship(back_populates="phone_verification_challenges")
+
+
 class PatientProfile(Base):
     __tablename__ = "patient_profiles"
 
@@ -112,6 +141,8 @@ class PatientProfile(Base):
     province: Mapped[str | None] = mapped_column(String(80))
     city: Mapped[str | None] = mapped_column(String(80))
     home_address: Mapped[str | None] = mapped_column(String(240))
+    height_cm: Mapped[float | None] = mapped_column(Float)
+    weight_kg: Mapped[float | None] = mapped_column(Float)
     medical_history_setup_completed: Mapped[bool] = mapped_column(Boolean, default=False)
 
     user: Mapped[User] = relationship(back_populates="patient_profile")

@@ -1,5 +1,6 @@
 import 'package:dr_ai_app/design_system/dr_ai_tokens.dart';
 import 'package:dr_ai_app/features/auth/application/auth_controller.dart';
+import 'package:dr_ai_app/l10n/l10n.dart';
 import 'package:dr_ai_app/shared/widgets/responsive_app_shell.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -45,32 +46,19 @@ class _BetaSupportScreenState extends ConsumerState<BetaSupportScreen> {
               _BetaSection(
                 key: const Key('beta-privacy-section'),
                 icon: Icons.privacy_tip_outlined,
-                title: 'Privacy and data notice',
-                children: const <Widget>[
-                  _BetaText(
-                    'Dr. AI is preparing its production account, consent, and '
-                    'support policies. This placeholder keeps the current '
-                    'staging surface clear while those policies are finalized.',
-                  ),
-                  _BetaBullet(
-                    'Do not enter names, contact information, raw records, '
-                    'images, or patient-owned clinical content in staging.',
-                  ),
-                  _BetaBullet(
-                    'DeepSeek is reached only through the FastAPI backend; '
-                    'keys never enter the Flutter app.',
-                  ),
-                  _BetaBullet(
-                    'Chat is educational question preparation only and is '
-                    'blocked by red-flag safety checks before any LLM call.',
-                  ),
+                title: context.l10n.privacyAndDataNotice,
+                children: <Widget>[
+                  _BetaText(context.l10n.privacyNoticeBody),
+                  _BetaBullet(context.l10n.privacyNoData),
+                  _BetaBullet(context.l10n.privacyBackendKeys),
+                  _BetaBullet(context.l10n.privacyChatBoundary),
                 ],
               ),
               const SizedBox(height: DrAiSpacing.sm),
               _BetaSection(
                 key: const Key('beta-consent-section'),
                 icon: Icons.fact_check_outlined,
-                title: 'Consent checklist',
+                title: context.l10n.consentChecklist,
                 children: <Widget>[
                   _ConsentCheckbox(
                     key: const Key('consent-synthetic-only-checkbox'),
@@ -78,8 +66,7 @@ class _BetaSupportScreenState extends ConsumerState<BetaSupportScreen> {
                     onChanged: (value) => setState(
                       () => _understandsDataBoundary = value ?? false,
                     ),
-                    label:
-                        'I understand staging is not ready for real patient data.',
+                    label: context.l10n.consentStagingData,
                   ),
                   _ConsentCheckbox(
                     key: const Key('consent-no-emergency-checkbox'),
@@ -87,21 +74,19 @@ class _BetaSupportScreenState extends ConsumerState<BetaSupportScreen> {
                     onChanged: (value) => setState(
                       () => _understandsNoEmergencyUse = value ?? false,
                     ),
-                    label:
-                        'I understand Dr. AI is not for emergencies, diagnosis, '
-                        'or treatment decisions.',
+                    label: context.l10n.consentNoEmergency,
                   ),
                   _ConsentCheckbox(
                     key: const Key('consent-no-real-data-checkbox'),
                     value: _understandsNoRealData,
                     onChanged: (value) =>
                         setState(() => _understandsNoRealData = value ?? false),
-                    label: 'I understand I must not submit real patient data.',
+                    label: context.l10n.consentNoRealData,
                   ),
                   _PreparedStatus(
                     label: _consentReady
-                        ? 'Consent readiness prepared locally.'
-                        : 'Complete all items before using this staging surface.',
+                        ? context.l10n.consentReady
+                        : context.l10n.consentIncomplete,
                     isReady: _consentReady,
                   ),
                 ],
@@ -110,18 +95,15 @@ class _BetaSupportScreenState extends ConsumerState<BetaSupportScreen> {
               _BetaSection(
                 key: const Key('beta-deletion-section'),
                 icon: Icons.manage_accounts_outlined,
-                title: 'Account deletion request',
+                title: context.l10n.accountDeletionRequest,
                 children: <Widget>[
-                  const _BetaText(
-                    'This local surface prepares a deletion request only. It '
-                    'does not delete data, alter accounts, or contact testers.',
-                  ),
+                  _BetaText(context.l10n.deletionLocalOnly),
                   TextField(
                     key: const Key('account-deletion-confirm-field'),
                     controller: _deletionController,
-                    decoration: const InputDecoration(
-                      labelText: 'Type REQUEST ACCOUNT DELETION',
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      labelText: context.l10n.deletionPrompt,
+                      border: const OutlineInputBorder(),
                     ),
                     onChanged: (_) => setState(() {}),
                   ),
@@ -130,13 +112,12 @@ class _BetaSupportScreenState extends ConsumerState<BetaSupportScreen> {
                     key: const Key('account-deletion-prepare-button'),
                     onPressed: _deletionReady ? _showDeletionPrepared : null,
                     icon: const Icon(Icons.description_outlined),
-                    label: const Text('Prepare request'),
+                    label: Text(context.l10n.prepareRequest),
                   ),
                   if (_deletionPrepared) ...<Widget>[
                     const SizedBox(height: DrAiSpacing.xs),
-                    const _PreparedStatus(
-                      label:
-                          'Deletion request prepared locally. No account data was changed.',
+                    _PreparedStatus(
+                      label: context.l10n.deletionPrepared,
                       isReady: true,
                       statusKey: Key('account-deletion-prepared-status'),
                     ),
@@ -147,22 +128,18 @@ class _BetaSupportScreenState extends ConsumerState<BetaSupportScreen> {
               _BetaSection(
                 key: const Key('beta-feedback-section'),
                 icon: Icons.feedback_outlined,
-                title: 'Feedback form',
+                title: context.l10n.feedbackForm,
                 children: <Widget>[
-                  const _BetaText(
-                    'Do not include patient details, screenshots containing '
-                    'private data, or account secrets.',
-                  ),
+                  _BetaText(context.l10n.feedbackPrivacy),
                   TextField(
                     key: const Key('beta-feedback-field'),
                     controller: _feedbackController,
                     minLines: 3,
                     maxLines: 5,
-                    decoration: const InputDecoration(
-                      labelText: 'Feedback draft',
-                      hintText:
-                          'Describe the issue, device, browser, and account step.',
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      labelText: context.l10n.feedbackDraft,
+                      hintText: context.l10n.feedbackHint,
+                      border: const OutlineInputBorder(),
                     ),
                   ),
                   const SizedBox(height: DrAiSpacing.sm),
@@ -170,13 +147,12 @@ class _BetaSupportScreenState extends ConsumerState<BetaSupportScreen> {
                     key: const Key('beta-feedback-prepare-button'),
                     onPressed: _showFeedbackPrepared,
                     icon: const Icon(Icons.assignment_turned_in_outlined),
-                    label: const Text('Prepare feedback draft'),
+                    label: Text(context.l10n.prepareFeedback),
                   ),
                   if (_feedbackPrepared) ...<Widget>[
                     const SizedBox(height: DrAiSpacing.xs),
-                    const _PreparedStatus(
-                      label:
-                          'Feedback draft prepared locally. No external message was sent.',
+                    _PreparedStatus(
+                      label: context.l10n.feedbackPrepared,
                       isReady: true,
                       statusKey: Key('beta-feedback-prepared-status'),
                     ),
@@ -187,24 +163,12 @@ class _BetaSupportScreenState extends ConsumerState<BetaSupportScreen> {
               _BetaSection(
                 key: const Key('beta-limitations-section'),
                 icon: Icons.report_gmailerrorred_outlined,
-                title: 'Known limitations',
-                children: const <Widget>[
-                  _BetaBullet(
-                    'Clinical model inference, billing, appointments, and '
-                    'video or voice consultation are not enabled yet.',
-                  ),
-                  _BetaBullet(
-                    'Image upload completion and storage policy require a '
-                    'separate production approval path.',
-                  ),
-                  _BetaBullet(
-                    'Password reset, account recovery, and verified SMS/email '
-                    'delivery remain deferred.',
-                  ),
-                  _BetaBullet(
-                    'Any production deployment, store distribution, or account '
-                    'policy change requires explicit release approval.',
-                  ),
+                title: context.l10n.knownLimitations,
+                children: <Widget>[
+                  _BetaBullet(context.l10n.limitationClinical),
+                  _BetaBullet(context.l10n.limitationUpload),
+                  _BetaBullet(context.l10n.limitationRecovery),
+                  _BetaBullet(context.l10n.limitationRelease),
                 ],
               ),
             ],
@@ -215,11 +179,11 @@ class _BetaSupportScreenState extends ConsumerState<BetaSupportScreen> {
     if (user == null) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('Dr. AI privacy and support'),
+          title: Text(context.l10n.privacySupportTitle),
           actions: <Widget>[
             TextButton(
               onPressed: () => context.go('/login'),
-              child: const Text('Sign in'),
+              child: Text(context.l10n.signIn),
             ),
           ],
         ),
@@ -239,24 +203,16 @@ class _BetaSupportScreenState extends ConsumerState<BetaSupportScreen> {
 
   void _showDeletionPrepared() {
     setState(() => _deletionPrepared = true);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Deletion request prepared locally. No account data was changed.',
-        ),
-      ),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(context.l10n.deletionPrepared)));
   }
 
   void _showFeedbackPrepared() {
     setState(() => _feedbackPrepared = true);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Feedback draft prepared locally. No external message was sent.',
-        ),
-      ),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(context.l10n.feedbackPrepared)));
   }
 }
 
@@ -304,7 +260,7 @@ class _BetaHero extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             Text(
-              'Privacy and support',
+              context.l10n.privacySupportHero,
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                 color: DrAiColors.white,
                 fontWeight: FontWeight.w800,
@@ -313,12 +269,12 @@ class _BetaHero extends StatelessWidget {
             const SizedBox(height: DrAiSpacing.xs),
             Text(
               displayName == null
-                  ? 'Account policy placeholders for Dr. AI staging.'
-                  : 'Account policy placeholders for $displayName.',
+                  ? context.l10n.accountPolicyStaging
+                  : context.l10n.accountPolicyUser(displayName!),
               style: const TextStyle(color: DrAiColors.outlineMuted),
             ),
             const SizedBox(height: DrAiSpacing.sm),
-            const _BetaChip(label: 'Staging policy placeholder'),
+            _BetaChip(label: context.l10n.stagingPolicyPlaceholder),
           ],
         ),
       ),

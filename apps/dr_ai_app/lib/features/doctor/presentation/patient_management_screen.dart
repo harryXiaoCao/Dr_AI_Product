@@ -3,10 +3,12 @@ import 'package:dr_ai_app/core/api/api_error.dart';
 import 'package:dr_ai_app/design_system/dr_ai_tokens.dart';
 import 'package:dr_ai_app/features/patient/application/patient_care_providers.dart';
 import 'package:dr_ai_app/features/patient/domain/patient_care_data.dart';
+import 'package:dr_ai_app/l10n/l10n.dart';
 import 'package:dr_ai_app/shared/widgets/dashboard_states.dart';
 import 'package:dr_ai_app/shared/widgets/responsive_app_shell.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 class PatientManagementScreen extends ConsumerStatefulWidget {
   const PatientManagementScreen({super.key});
@@ -34,7 +36,7 @@ class _PatientManagementScreenState
     final patients = ref.watch(patientListProvider);
     return ResponsiveAppShell(
       role: AppRole.doctor,
-      selectedIndex: 4,
+      selectedIndex: 1,
       child: ColoredBox(
         color: DrAiColors.brandSoft,
         child: Padding(
@@ -121,56 +123,46 @@ class _PatientManagementScreenState
 }
 
 enum _DoctorPatientSection {
-  overview(
-    label: 'Overview',
-    icon: Icons.space_dashboard_outlined,
-    summary: 'Patient snapshot and active event context',
-  ),
-  profile(
-    label: 'Profile',
-    icon: Icons.badge_outlined,
-    summary: 'Patient-controlled information for doctor review',
-  ),
-  medicalHistory(
-    label: 'Medical history',
-    icon: Icons.description_outlined,
-    summary: 'Patient-entered history with clinician review context',
-  ),
-  clinicalEvents(
-    label: 'Clinical Events',
-    icon: Icons.fact_check_outlined,
-    summary: 'Problems over time with visits, diagnosis, and linked care',
-  ),
-  medicationPrescriptions(
-    label: 'Medications & Prescriptions',
-    icon: Icons.medication_outlined,
-    summary: 'Event-linked orders, schedules, and generated reminders',
-  ),
-  recoveryPlans(
-    label: 'Recovery Plans',
-    icon: Icons.assignment_turned_in_outlined,
-    summary: 'Event-linked timeline creation, review, and completion',
-  ),
-  imaging(
-    label: 'Imaging',
-    icon: Icons.image_search_outlined,
-    summary: 'Event-linked upload metadata and manual review status',
-  ),
-  consultationActivity(
-    label: 'Consultation & Activity',
-    icon: Icons.edit_note_outlined,
-    summary: 'Notes, specialist review, and supporting timeline',
-  );
+  overview(icon: Icons.space_dashboard_outlined),
+  profile(icon: Icons.badge_outlined),
+  medicalHistory(icon: Icons.description_outlined),
+  clinicalEvents(icon: Icons.fact_check_outlined),
+  medicationPrescriptions(icon: Icons.medication_outlined),
+  recoveryPlans(icon: Icons.assignment_turned_in_outlined),
+  imaging(icon: Icons.image_search_outlined),
+  consultationActivity(icon: Icons.edit_note_outlined);
 
-  const _DoctorPatientSection({
-    required this.label,
-    required this.icon,
-    required this.summary,
-  });
+  const _DoctorPatientSection({required this.icon});
 
-  final String label;
   final IconData icon;
-  final String summary;
+}
+
+extension _LocalizedDoctorPatientSection on _DoctorPatientSection {
+  String localizedLabel(BuildContext context) => switch (this) {
+    _DoctorPatientSection.overview => context.l10n.overview,
+    _DoctorPatientSection.profile => context.l10n.profile,
+    _DoctorPatientSection.medicalHistory => context.l10n.medicalHistoryLower,
+    _DoctorPatientSection.clinicalEvents => context.l10n.clinicalEvents,
+    _DoctorPatientSection.medicationPrescriptions =>
+      context.l10n.medicationsPrescriptions,
+    _DoctorPatientSection.recoveryPlans => context.l10n.recoveryPlans,
+    _DoctorPatientSection.imaging => context.l10n.imaging,
+    _DoctorPatientSection.consultationActivity =>
+      context.l10n.consultationActivity,
+  };
+
+  String localizedSummary(BuildContext context) => switch (this) {
+    _DoctorPatientSection.overview => context.l10n.overviewSummary,
+    _DoctorPatientSection.profile => context.l10n.profileSummary,
+    _DoctorPatientSection.medicalHistory => context.l10n.medicalHistorySummary,
+    _DoctorPatientSection.clinicalEvents => context.l10n.clinicalEventsSummary,
+    _DoctorPatientSection.medicationPrescriptions =>
+      context.l10n.medicationsSummary,
+    _DoctorPatientSection.recoveryPlans => context.l10n.recoveryPlansSummary,
+    _DoctorPatientSection.imaging => context.l10n.imagingSummary,
+    _DoctorPatientSection.consultationActivity =>
+      context.l10n.consultationActivitySummary,
+  };
 }
 
 class _PatientSearchPane extends StatelessWidget {
@@ -193,7 +185,7 @@ class _PatientSearchPane extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _CarePanel(
-      title: 'Patient Management',
+      title: context.l10n.patientManagement,
       icon: Icons.people_outline,
       child: Column(
         children: <Widget>[
@@ -204,31 +196,29 @@ class _PatientSearchPane extends StatelessWidget {
             controller: controller,
             onChanged: onSearchChanged,
             maxLength: 80,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               counterText: '',
               prefixIcon: Icon(Icons.search),
-              labelText: 'Search synthetic patients',
-              helperText: 'Name or synthetic identifier',
+              labelText: context.l10n.searchPatients,
+              helperText: context.l10n.namePatientId,
             ),
           ),
           const SizedBox(height: DrAiSpacing.sm),
           Expanded(
             child: patients.when(
-              loading: () => const DashboardLoadingView(
-                label: 'Loading synthetic patients',
-              ),
+              loading: () =>
+                  DashboardLoadingView(label: context.l10n.loadingPatients),
               error: (error, stackTrace) => DashboardErrorView(
-                message: _safeErrorMessage(error),
+                message: _safeErrorMessage(context, error),
                 onRetry: onRetry,
               ),
               data: (data) {
                 if (data.items.isEmpty) {
-                  return const _EmptyState(
+                  return _EmptyState(
                     key: Key('patient-list-empty'),
                     icon: Icons.person_add_alt_1_outlined,
-                    title: 'No connected patients yet',
-                    body:
-                        'Ask the patient for their code, connect them here, then build the care workspace from zero.',
+                    title: context.l10n.noConnectedPatients,
+                    body: context.l10n.connectPatientEmpty,
                   );
                 }
                 return ListView.separated(
@@ -279,6 +269,7 @@ class _PatientConnectPanel extends ConsumerStatefulWidget {
 class _PatientConnectPanelState extends ConsumerState<_PatientConnectPanel> {
   final _patientCodeController = TextEditingController();
   String? _validationError;
+  bool _previewing = false;
 
   @override
   void dispose() {
@@ -301,8 +292,8 @@ class _PatientConnectPanelState extends ConsumerState<_PatientConnectPanel> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            const Text(
-              'Connect patient by code',
+            Text(
+              context.l10n.connectPatientByCode,
               style: TextStyle(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: DrAiSpacing.xs),
@@ -313,8 +304,8 @@ class _PatientConnectPanelState extends ConsumerState<_PatientConnectPanel> {
               textCapitalization: TextCapitalization.characters,
               decoration: InputDecoration(
                 counterText: '',
-                labelText: 'Patient code',
-                helperText: 'Shown on the patient dashboard after sign-up',
+                labelText: context.l10n.patientCode,
+                helperText: context.l10n.patientCodeHelper,
                 errorText: _validationError,
                 prefixIcon: const Icon(Icons.badge_outlined),
               ),
@@ -323,14 +314,14 @@ class _PatientConnectPanelState extends ConsumerState<_PatientConnectPanel> {
             const SizedBox(height: DrAiSpacing.xs),
             FilledButton.icon(
               key: const Key('patient-connect-button'),
-              onPressed: state.isLoading ? null : _connect,
-              icon: state.isLoading
+              onPressed: state.isLoading || _previewing ? null : _connect,
+              icon: state.isLoading || _previewing
                   ? const SizedBox.square(
                       dimension: 16,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.person_add_alt_1_outlined),
-              label: const Text('Connect'),
+              label: Text(context.l10n.reviewPatientMatch),
             ),
             state.when(
               data: (_) => connected == null
@@ -338,7 +329,7 @@ class _PatientConnectPanelState extends ConsumerState<_PatientConnectPanel> {
                   : Padding(
                       padding: const EdgeInsets.only(top: DrAiSpacing.xs),
                       child: Text(
-                        'Connected ${connected.displayName}.',
+                        context.l10n.connectedPatient(connected.displayName),
                         key: const Key('patient-connect-success'),
                         style: const TextStyle(
                           color: DrAiColors.brand,
@@ -351,7 +342,7 @@ class _PatientConnectPanelState extends ConsumerState<_PatientConnectPanel> {
               error: (error, stackTrace) => Padding(
                 padding: const EdgeInsets.only(top: DrAiSpacing.xs),
                 child: Text(
-                  _safeErrorMessage(error),
+                  _safeErrorMessage(context, error),
                   key: const Key('patient-connect-error'),
                   style: const TextStyle(
                     color: DrAiColors.danger,
@@ -369,11 +360,75 @@ class _PatientConnectPanelState extends ConsumerState<_PatientConnectPanel> {
   Future<void> _connect() async {
     final code = _patientCodeController.text.trim();
     if (code.length < 6) {
-      setState(() => _validationError = 'Enter the patient code.');
+      setState(() => _validationError = context.l10n.enterPatientCode);
       return;
     }
-    setState(() => _validationError = null);
-    await ref.read(patientConnectionControllerProvider.notifier).connect(code);
+    setState(() {
+      _validationError = null;
+      _previewing = true;
+    });
+    try {
+      final controller = ref.read(patientConnectionControllerProvider.notifier);
+      final preview = await controller.preview(code);
+      if (!mounted) {
+        return;
+      }
+      setState(() => _previewing = false);
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text(context.l10n.confirmPatientConnection),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(context.l10n.confirmPatientDescription),
+              const SizedBox(height: DrAiSpacing.md),
+              Text(
+                preview.displayName,
+                key: const Key('patient-match-preview-name'),
+                style: const TextStyle(
+                  color: DrAiColors.brandDark,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: DrAiSpacing.xs),
+              Text(preview.maskedPatientCode),
+            ],
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(context.l10n.cancel),
+            ),
+            FilledButton(
+              key: const Key('patient-match-confirm-button'),
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text(context.l10n.confirmConnect),
+            ),
+          ],
+        ),
+      );
+      if (confirmed == true) {
+        await controller.connect(code);
+      }
+    } on ApiError catch (error) {
+      if (mounted) {
+        setState(() {
+          _previewing = false;
+          _validationError = error.statusCode == 404
+              ? context.l10n.patientNotFound
+              : error.message;
+        });
+      }
+    } on Exception {
+      if (mounted) {
+        setState(() {
+          _previewing = false;
+          _validationError = context.l10n.reviewPatientFailed;
+        });
+      }
+    }
   }
 }
 
@@ -401,7 +456,7 @@ class _PatientDetailPane extends ConsumerWidget {
     final id = patientId;
     if (id == null) {
       return _CarePanel(
-        title: 'Patient Profile',
+        title: context.l10n.patientProfile,
         icon: Icons.badge_outlined,
         child: Column(
           children: <Widget>[
@@ -412,15 +467,15 @@ class _PatientDetailPane extends ConsumerWidget {
                   key: const Key('open-patient-picker-button'),
                   onPressed: onOpenPatientPicker,
                   icon: const Icon(Icons.people_outline),
-                  label: const Text('Choose patient'),
+                  label: Text(context.l10n.choosePatient),
                 ),
               ),
-            const Expanded(
+            Expanded(
               child: _EmptyState(
                 key: Key('patient-detail-empty'),
                 icon: Icons.touch_app_outlined,
-                title: 'Select a synthetic patient',
-                body: 'Open an assigned patient to review core records.',
+                title: context.l10n.selectPatient,
+                body: context.l10n.selectPatientDescription,
               ),
             ),
           ],
@@ -429,13 +484,13 @@ class _PatientDetailPane extends ConsumerWidget {
     }
     final bundle = ref.watch(patientCareBundleProvider(id));
     return _CarePanel(
-      title: 'Patient Workspace',
+      title: context.l10n.patientWorkspaceTitle,
       icon: Icons.badge_outlined,
       child: bundle.when(
         loading: () =>
-            const DashboardLoadingView(label: 'Loading patient profile'),
+            DashboardLoadingView(label: context.l10n.loadingPatientProfile),
         error: (error, stackTrace) => DashboardErrorView(
-          message: _safeErrorMessage(error),
+          message: _safeErrorMessage(context, error),
           onRetry: () => ref.invalidate(patientCareBundleProvider(id)),
         ),
         data: (data) => _PatientCareBundleView(
@@ -498,7 +553,7 @@ class _PatientCareBundleView extends StatelessWidget {
         children: <Widget>[
           _ProfileHeader(bundle: bundle),
           const SizedBox(height: DrAiSpacing.sm),
-          _medicalRecordsSection(bundle),
+          _medicalRecordsSection(context, bundle),
         ],
       );
     }
@@ -522,7 +577,7 @@ class _PatientCareBundleView extends StatelessWidget {
               key: const Key('open-patient-picker-button'),
               onPressed: onOpenPatientPicker,
               icon: const Icon(Icons.people_outline),
-              label: const Text('Change patient'),
+              label: Text(context.l10n.changePatient),
             ),
           ),
         if (compact) const SizedBox(height: DrAiSpacing.xs),
@@ -575,8 +630,8 @@ class _SelectedPatientSummaryHeader extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final patient = bundle.patient;
     final plans = ref.watch(recoveryPlanListProvider(patient.patientId));
-    final lastVisit = _lastVisitLabel(bundle.visitHistory);
-    final workflowStatus = _workflowStatus(bundle);
+    final lastVisit = _lastVisitLabel(context, bundle.visitHistory);
+    final workflowStatus = _workflowStatus(context, bundle);
     return DecoratedBox(
       key: const Key('selected-patient-summary-header'),
       decoration: BoxDecoration(
@@ -601,7 +656,7 @@ class _SelectedPatientSummaryHeader extends ConsumerWidget {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                _DarkStatusChip(label: _ageSexLabel(patient)),
+                _DarkStatusChip(label: _ageSexLabel(context, patient)),
               ],
             ),
             const SizedBox(height: DrAiSpacing.sm),
@@ -611,12 +666,13 @@ class _SelectedPatientSummaryHeader extends ConsumerWidget {
               children: <Widget>[
                 _DarkStatusChip(
                   label: plans.when(
-                    loading: () => 'Recovery plan loading',
-                    error: (error, stackTrace) => 'Recovery plan unavailable',
-                    data: _activePlanLabel,
+                    loading: () => context.l10n.recoveryPlanLoading,
+                    error: (error, stackTrace) =>
+                        context.l10n.recoveryPlanUnavailable,
+                    data: (data) => _activePlanLabel(context, data),
                   ),
                 ),
-                _DarkStatusChip(label: 'Last visit: $lastVisit'),
+                _DarkStatusChip(label: context.l10n.lastVisit(lastVisit)),
                 _DarkStatusChip(label: workflowStatus),
               ],
             ),
@@ -665,12 +721,14 @@ class _ActiveClinicalEventBar extends StatelessWidget {
                 const SizedBox(width: DrAiSpacing.xs),
                 Expanded(
                   child: Text(
-                    'Active Clinical Event',
+                    context.l10n.activeClinicalEvent,
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                 ),
                 _LightMetricChip(
-                  label: event == null ? 'setup needed' : event.status,
+                  label: event == null
+                      ? context.l10n.setupNeeded
+                      : context.l10n.stableValue(event.status),
                 ),
               ],
             ),
@@ -678,7 +736,7 @@ class _ActiveClinicalEventBar extends StatelessWidget {
             if (compact)
               Text(
                 event == null
-                    ? 'Create a Clinical Event before event-linked care work.'
+                    ? context.l10n.createEventFirst
                     : '${event.title} - ${event.chiefComplaint}',
                 style: const TextStyle(
                   color: DrAiColors.mutedInk,
@@ -686,25 +744,28 @@ class _ActiveClinicalEventBar extends StatelessWidget {
                 ),
               )
             else if (events.isEmpty)
-              const Text(
-                'Create a Clinical Event before authoring event-linked prescriptions, recovery plans, imaging, notes, or consultation.',
-                style: TextStyle(color: DrAiColors.mutedInk, fontSize: 12),
+              Text(
+                context.l10n.createEventBeforeCare,
+                style: const TextStyle(
+                  color: DrAiColors.mutedInk,
+                  fontSize: 12,
+                ),
               )
             else
               DropdownButtonFormField<String>(
                 key: const Key('clinical-event-selector'),
                 initialValue: event?.id,
                 isExpanded: true,
-                decoration: const InputDecoration(
-                  labelText: 'Selected care episode',
-                  prefixIcon: Icon(Icons.fact_check_outlined),
+                decoration: InputDecoration(
+                  labelText: context.l10n.selectedCareEpisode,
+                  prefixIcon: const Icon(Icons.fact_check_outlined),
                 ),
                 items: <DropdownMenuItem<String>>[
                   for (final event in events)
                     DropdownMenuItem<String>(
                       value: event.id,
                       child: Text(
-                        '${event.title} - ${event.status}',
+                        '${event.title} - ${context.l10n.stableValue(event.status)}',
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -715,8 +776,8 @@ class _ActiveClinicalEventBar extends StatelessWidget {
               const SizedBox(height: DrAiSpacing.xs),
               Text(
                 event == null
-                    ? 'Linked sections will show legacy patient-wide records until an event is selected.'
-                    : '${event.chiefComplaint} | ${_eventLinkSummary(event)}',
+                    ? context.l10n.legacyRecordsNotice
+                    : '${event.chiefComplaint} | ${_eventLinkSummary(context, event)}',
                 style: const TextStyle(
                   color: DrAiColors.mutedInk,
                   fontSize: 12,
@@ -791,7 +852,7 @@ class _SectionNavigation extends StatelessWidget {
                   dense: true,
                   selected: section == selectedSection,
                   leading: Icon(section.icon, color: DrAiColors.brand),
-                  title: Text(section.label, maxLines: 2),
+                  title: Text(section.localizedLabel(context), maxLines: 2),
                   onTap: onChanged == null ? null : () => onChanged!(section),
                 ),
               ),
@@ -817,15 +878,18 @@ class _CompactSectionPicker extends StatelessWidget {
       key: const Key('doctor-compact-section-picker'),
       initialValue: selectedSection,
       isExpanded: true,
-      decoration: const InputDecoration(
-        labelText: 'Workspace section',
+      decoration: InputDecoration(
+        labelText: context.l10n.workspaceSection,
         prefixIcon: Icon(Icons.view_list_outlined),
       ),
       items: <DropdownMenuItem<_DoctorPatientSection>>[
         for (final section in _DoctorPatientSection.values)
           DropdownMenuItem<_DoctorPatientSection>(
             value: section,
-            child: Text(section.label, overflow: TextOverflow.ellipsis),
+            child: Text(
+              section.localizedLabel(context),
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
       ],
       onChanged: onChanged == null
@@ -928,11 +992,11 @@ class _SectionScaffold extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
                       Text(
-                        section.label,
+                        section.localizedLabel(context),
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                       Text(
-                        section.summary,
+                        section.localizedSummary(context),
                         style: const TextStyle(
                           color: DrAiColors.mutedInk,
                           fontSize: 12,
@@ -966,13 +1030,15 @@ class _OverviewSection extends StatelessWidget {
         _ProfileHeader(bundle: bundle),
         const SizedBox(height: DrAiSpacing.sm),
         _InfoTile(
-          title: 'Clinical event readiness',
+          title: context.l10n.clinicalEventReadiness,
           subtitle: selectedEvent == null
-              ? _workflowStatus(bundle)
-              : 'Active event: ${selectedEvent!.status}',
+              ? _workflowStatus(context, bundle)
+              : context.l10n.activeEventStatus(
+                  context.l10n.stableValue(selectedEvent!.status),
+                ),
           body: selectedEvent == null
-              ? 'Create or select a Clinical Event to organize prescriptions, medication schedules, recovery plans, imaging, notes, and consultation around one care episode.'
-              : '${selectedEvent!.title} links ${_eventLinkSummary(selectedEvent!)}.',
+              ? context.l10n.createSelectEventDescription
+              : '${selectedEvent!.title} · ${_eventLinkSummary(context, selectedEvent!)}',
         ),
         const SizedBox(height: DrAiSpacing.sm),
         _ClinicalEventContextCard(bundle: bundle, selectedEvent: selectedEvent),
@@ -996,14 +1062,13 @@ class _ProfileReviewSection extends StatelessWidget {
           subtitle: patient.syntheticIdentifier,
           body:
               '${patient.relationshipLabel}\n'
-              '${_demographicsLine(patient)}\n'
-              'Doctor review only: patient-controlled profile fields are not edited from this workspace.',
+              '${_demographicsLine(context, patient)}\n'
+              '${context.l10n.doctorReviewOnly}',
         ),
         const SizedBox(height: DrAiSpacing.sm),
-        const _InlineMessage(
+        _InlineMessage(
           key: Key('doctor-profile-read-only-notice'),
-          message:
-              'Profile corrections should be requested from the patient; direct doctor editing is intentionally out of this Phase 2 slice.',
+          message: context.l10n.profileCorrectionNotice,
           icon: Icons.lock_outline,
         ),
       ],
@@ -1020,44 +1085,45 @@ class _MedicalHistorySection extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: <Widget>[
-        const _InlineMessage(
+        _InlineMessage(
           key: Key('medical-history-patient-entered-notice'),
-          message:
-              'Medical history is patient-entered. Doctor verification, correction requests, and amendments are stored as visible audited overlays.',
+          message: context.l10n.historyAuditNotice,
           icon: Icons.verified_user_outlined,
         ),
         const SizedBox(height: DrAiSpacing.sm),
         _MedicalHistoryReviewPanel(bundle: bundle),
         const SizedBox(height: DrAiSpacing.sm),
-        _medicalHistoryReviewsSection(bundle),
+        _medicalHistoryReviewsSection(context, bundle),
         const SizedBox(height: DrAiSpacing.sm),
         _ItemSection<PatientAllergyItem>(
           key: const Key('allergies-section'),
-          title: 'Allergies',
+          title: context.l10n.allergies,
           icon: Icons.warning_amber_outlined,
           items: bundle.allergies,
-          emptyTitle: 'No allergies recorded',
+          emptyTitle: context.l10n.noAllergies,
           itemBuilder: (item) => _InfoTile(
             title: item.label,
-            subtitle: '${item.severity} - ${item.status}',
-            body: item.reaction ?? 'No reaction detail recorded.',
+            subtitle:
+                '${context.l10n.stableValue(item.severity)} - ${context.l10n.stableValue(item.status)}',
+            body: item.reaction ?? context.l10n.noReaction,
           ),
         ),
         const SizedBox(height: DrAiSpacing.sm),
         _ItemSection<ChronicDiseaseItem>(
           key: const Key('chronic-diseases-section'),
-          title: 'Chronic diseases',
+          title: context.l10n.chronicDiseases,
           icon: Icons.monitor_heart_outlined,
           items: bundle.chronicDiseases,
-          emptyTitle: 'No chronic diseases recorded',
+          emptyTitle: context.l10n.noChronicDiseases,
           itemBuilder: (item) => _InfoTile(
             title: item.name,
-            subtitle: '${item.status} - ${item.diagnosedOn ?? 'date unknown'}',
-            body: item.notes ?? 'No condition note recorded.',
+            subtitle:
+                '${context.l10n.stableValue(item.status)} - ${item.diagnosedOn ?? context.l10n.dateUnknown}',
+            body: item.notes ?? context.l10n.noConditionNote,
           ),
         ),
         const SizedBox(height: DrAiSpacing.sm),
-        _medicalRecordsSection(bundle),
+        _medicalRecordsSection(context, bundle),
       ],
     );
   }
@@ -1077,12 +1143,8 @@ class _MedicalHistoryReviewPanelState
     extends ConsumerState<_MedicalHistoryReviewPanel> {
   String _action = 'verified';
   String? _targetKey;
-  final _amendmentController = TextEditingController(
-    text: 'Doctor amendment: synthetic reviewed history context.',
-  );
-  final _correctionController = TextEditingController(
-    text: 'Please confirm this synthetic history item in your profile.',
-  );
+  final _amendmentController = TextEditingController();
+  final _correctionController = TextEditingController();
   String? _validationError;
 
   @override
@@ -1094,7 +1156,7 @@ class _MedicalHistoryReviewPanelState
 
   @override
   Widget build(BuildContext context) {
-    final targets = _historyReviewTargets(widget.bundle);
+    final targets = _historyReviewTargets(context, widget.bundle);
     _targetKey ??= targets.isEmpty ? null : targets.first.key;
     final state = ref.watch(medicalHistoryReviewControllerProvider);
     return DecoratedBox(
@@ -1109,14 +1171,13 @@ class _MedicalHistoryReviewPanelState
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
             Text(
-              'Medical History Review',
+              context.l10n.medicalHistoryReview,
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: DrAiSpacing.xs),
             if (targets.isEmpty)
-              const _InlineMessage(
-                message:
-                    'No patient-entered allergy, chronic disease, or record is available for doctor review yet.',
+              _InlineMessage(
+                message: context.l10n.noPatientHistoryItem,
                 icon: Icons.info_outline,
               )
             else ...<Widget>[
@@ -1124,8 +1185,8 @@ class _MedicalHistoryReviewPanelState
                 key: const Key('medical-history-review-target-field'),
                 initialValue: _targetKey,
                 isExpanded: true,
-                decoration: const InputDecoration(
-                  labelText: 'Patient-entered item',
+                decoration: InputDecoration(
+                  labelText: context.l10n.patientEnteredItem,
                   prefixIcon: Icon(Icons.history_edu_outlined),
                 ),
                 items: <DropdownMenuItem<String>>[
@@ -1141,22 +1202,22 @@ class _MedicalHistoryReviewPanelState
               DropdownButtonFormField<String>(
                 key: const Key('medical-history-review-action-field'),
                 initialValue: _action,
-                decoration: const InputDecoration(
-                  labelText: 'Review action',
+                decoration: InputDecoration(
+                  labelText: context.l10n.reviewAction,
                   prefixIcon: Icon(Icons.verified_outlined),
                 ),
-                items: const <DropdownMenuItem<String>>[
+                items: <DropdownMenuItem<String>>[
                   DropdownMenuItem(
                     value: 'verified',
-                    child: Text('Mark verified'),
+                    child: Text(context.l10n.markVerified),
                   ),
                   DropdownMenuItem(
                     value: 'amendment',
-                    child: Text('Add doctor amendment'),
+                    child: Text(context.l10n.addDoctorAmendment),
                   ),
                   DropdownMenuItem(
                     value: 'correction_requested',
-                    child: Text('Request patient correction'),
+                    child: Text(context.l10n.requestPatientCorrection),
                   ),
                 ],
                 onChanged: (value) =>
@@ -1167,9 +1228,9 @@ class _MedicalHistoryReviewPanelState
                 key: const Key('medical-history-amendment-field'),
                 controller: _amendmentController,
                 maxLength: 1200,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   counterText: '',
-                  labelText: 'Doctor amendment',
+                  labelText: context.l10n.doctorAmendment,
                   prefixIcon: Icon(Icons.edit_note_outlined),
                 ),
               ),
@@ -1178,9 +1239,9 @@ class _MedicalHistoryReviewPanelState
                 key: const Key('medical-history-correction-field'),
                 controller: _correctionController,
                 maxLength: 1200,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   counterText: '',
-                  labelText: 'Patient correction request',
+                  labelText: context.l10n.patientCorrectionRequest,
                   prefixIcon: Icon(Icons.outgoing_mail),
                 ),
               ),
@@ -1194,7 +1255,7 @@ class _MedicalHistoryReviewPanelState
                 key: const Key('medical-history-review-save-button'),
                 onPressed: state.isLoading ? null : _save,
                 icon: const Icon(Icons.save_outlined),
-                label: const Text('Save audited review'),
+                label: Text(context.l10n.saveAuditedReview),
               ),
             ],
             state.when(
@@ -1203,13 +1264,15 @@ class _MedicalHistoryReviewPanelState
                 child: LinearProgressIndicator(),
               ),
               error: (error, stackTrace) =>
-                  _InlineMessage(message: _safeErrorMessage(error)),
+                  _InlineMessage(message: _safeErrorMessage(context, error)),
               data: (review) {
                 if (review == null) {
                   return const SizedBox.shrink();
                 }
                 return _InlineMessage(
-                  message: 'Medical history review saved: ${review.action}.',
+                  message: context.l10n.historyReviewSaved(
+                    context.l10n.stableValue(review.action),
+                  ),
                   icon: Icons.check_circle_outline,
                 );
               },
@@ -1221,21 +1284,21 @@ class _MedicalHistoryReviewPanelState
   }
 
   void _save() {
-    final targets = _historyReviewTargets(widget.bundle);
+    final targets = _historyReviewTargets(context, widget.bundle);
     final selected = targets
         .where((target) => target.key == _targetKey)
         .firstOrNull;
     if (selected == null) {
-      setState(() => _validationError = 'Select a patient-entered item first.');
+      setState(() => _validationError = context.l10n.selectHistoryItem);
       return;
     }
     if (_action == 'amendment' && _amendmentController.text.trim().length < 3) {
-      setState(() => _validationError = 'Enter a doctor amendment.');
+      setState(() => _validationError = context.l10n.enterDoctorAmendment);
       return;
     }
     if (_action == 'correction_requested' &&
         _correctionController.text.trim().length < 3) {
-      setState(() => _validationError = 'Enter a patient correction request.');
+      setState(() => _validationError = context.l10n.enterPatientCorrection);
       return;
     }
     setState(() => _validationError = null);
@@ -1295,31 +1358,33 @@ class _ClinicalEventsSection extends StatelessWidget {
         const SizedBox(height: DrAiSpacing.sm),
         _ItemSection<VisitHistoryItem>(
           key: const Key('visit-history-section'),
-          title: 'Encounter updates',
+          title: context.l10n.encounterUpdates,
           icon: Icons.event_note_outlined,
           items: _eventVisitHistory(bundle, selectedEvent),
-          emptyTitle: 'No encounter updates recorded',
+          emptyTitle: context.l10n.noEncounterUpdates,
           itemBuilder: (item) => _InfoTile(
             title: item.title,
-            subtitle: '${item.visitType} - ${_dateLabel(item.occurredAt)}',
+            subtitle:
+                '${item.visitType} - ${_dateLabel(context, item.occurredAt)}',
             body:
-                '${item.summary}\nClinician: ${item.clinicianLabel}\n'
-                'Clinical Event link: ${_eventTitle(bundle, selectedEvent)}',
+                '${item.summary}\n${context.l10n.clinicianNamed(item.clinicianLabel ?? context.l10n.notRecorded)}\n'
+                '${context.l10n.clinicalEventLink(_eventTitle(context, bundle, selectedEvent))}',
           ),
         ),
         const SizedBox(height: DrAiSpacing.sm),
         _ItemSection<DiagnosisItem>(
           key: const Key('diagnoses-section'),
-          title: 'Doctor diagnosis record',
+          title: context.l10n.doctorDiagnosisRecord,
           icon: Icons.fact_check_outlined,
           items: _eventDiagnoses(bundle, selectedEvent),
-          emptyTitle: 'No diagnoses recorded',
+          emptyTitle: context.l10n.noDiagnoses,
           itemBuilder: (item) => _InfoTile(
             title: item.label,
-            subtitle: '${item.status} - ${item.diagnosedOn ?? 'date unknown'}',
+            subtitle:
+                '${context.l10n.stableValue(item.status)} - ${item.diagnosedOn ?? context.l10n.dateUnknown}',
             body:
-                '${item.notes ?? 'No diagnosis note recorded.'}\n'
-                'Patient can read this record but cannot edit doctor diagnosis.',
+                '${item.notes ?? context.l10n.noDiagnosisNote}\n'
+                '${context.l10n.diagnosisReadOnly}',
           ),
         ),
       ],
@@ -1341,16 +1406,16 @@ class _MedicationPrescriptionsSection extends StatelessWidget {
     return Column(
       children: <Widget>[
         _EventLinkNotice(
-          text:
-              'Prescription orders and active medication schedules are shown under ${_eventTitle(bundle, selectedEvent)}. '
-              'Reminder rows below are generated schedule outputs, not a standalone doctor workspace.',
+          text: context.l10n.prescriptionContextNotice(
+            _eventTitle(context, bundle, selectedEvent),
+          ),
         ),
         const SizedBox(height: DrAiSpacing.sm),
-        _medicationsListSection(bundle, selectedEvent),
+        _medicationsListSection(context, bundle, selectedEvent),
         const SizedBox(height: DrAiSpacing.sm),
-        _prescriptionsListSection(bundle, selectedEvent),
+        _prescriptionsListSection(context, bundle, selectedEvent),
         const SizedBox(height: DrAiSpacing.sm),
-        _remindersListSection(bundle, selectedEvent),
+        _remindersListSection(context, bundle, selectedEvent),
         const SizedBox(height: DrAiSpacing.sm),
         _MedicationWorkflowPanel(
           bundle: bundle,
@@ -1379,16 +1444,12 @@ class _ImagingSection extends StatelessWidget {
     return Column(
       children: <Widget>[
         _EventLinkNotice(
-          text:
-              'Imaging is reviewed as supporting evidence for ${_eventTitle(bundle, selectedEvent)}. Findings remain doctor-entered; the app does not make automated clinical claims.',
+          text: context.l10n.imagingEvidenceNotice(
+            _eventTitle(context, bundle, selectedEvent),
+          ),
         ),
         const SizedBox(height: DrAiSpacing.sm),
-        _imagingListSection(bundle, selectedEvent),
-        const SizedBox(height: DrAiSpacing.sm),
-        _DemoAssessmentWorkflow(
-          patientId: bundle.patient.patientId,
-          clinicalEventId: selectedEvent?.id,
-        ),
+        _imagingListSection(context, bundle, selectedEvent),
       ],
     );
   }
@@ -1409,13 +1470,15 @@ class _ConsultationActivitySection extends StatelessWidget {
       children: <Widget>[
         _ItemSection<DoctorNoteItem>(
           key: const Key('doctor-notes-section'),
-          title: 'Doctor notes',
+          title: context.l10n.doctorNotes,
           icon: Icons.edit_note_outlined,
           items: _eventDoctorNotes(bundle, selectedEvent),
-          emptyTitle: 'No doctor notes',
+          emptyTitle: context.l10n.noDoctorNotes,
           itemBuilder: (item) => _InfoTile(
             title: item.title,
-            subtitle: 'Linked to ${_eventTitle(bundle, selectedEvent)}',
+            subtitle: context.l10n.linkedToEvent(
+              _eventTitle(context, bundle, selectedEvent),
+            ),
             body:
                 '${item.body}\nPrivate doctor-facing note; hidden from the patient care bundle.',
           ),
@@ -1443,7 +1506,7 @@ class _ClinicalEventContextCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final eventTitle = _eventTitle(bundle, selectedEvent);
+    final eventTitle = _eventTitle(context, bundle, selectedEvent);
     final visits = _eventVisitHistory(bundle, selectedEvent);
     final diagnoses = _eventDiagnoses(bundle, selectedEvent);
     final prescriptions = _eventPrescriptions(bundle, selectedEvent);
@@ -1451,14 +1514,15 @@ class _ClinicalEventContextCard extends StatelessWidget {
     final imagingAssets = _eventImagingAssets(bundle, selectedEvent);
     final doctorNotes = _eventDoctorNotes(bundle, selectedEvent);
     final latestUpdate = visits.isEmpty
-        ? 'No encounter update recorded'
+        ? context.l10n.noEncounterUpdate
         : _dateLabel(
+            context,
             ([...visits]..sort((a, b) => b.occurredAt.compareTo(a.occurredAt)))
                 .first
                 .occurredAt,
           );
     final diagnosisStatus = diagnoses.isEmpty
-        ? 'Diagnosis not recorded'
+        ? context.l10n.diagnosisNotRecorded
         : '${diagnoses.first.status} diagnosis';
     return DecoratedBox(
       key: const Key('clinical-event-context-card'),
@@ -1488,8 +1552,8 @@ class _ClinicalEventContextCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: DrAiSpacing.xs),
-            const Text(
-              'Clinical Event groups one medical problem over time. Doctors create and update it; patients can read it but cannot edit doctor diagnosis.',
+            Text(
+              context.l10n.clinicalEventDescription,
               style: TextStyle(color: DrAiColors.mutedInk, fontSize: 12),
             ),
             const SizedBox(height: DrAiSpacing.sm),
@@ -1498,24 +1562,28 @@ class _ClinicalEventContextCard extends StatelessWidget {
               runSpacing: DrAiSpacing.xs,
               children: <Widget>[
                 _LightMetricChip(label: diagnosisStatus),
-                _LightMetricChip(label: 'Latest update: $latestUpdate'),
                 _LightMetricChip(
-                  label: '${prescriptions.length} prescription(s)',
+                  label: context.l10n.latestUpdate(latestUpdate),
                 ),
                 _LightMetricChip(
-                  label: '${reminders.length} generated reminder(s)',
+                  label: context.l10n.prescriptionCount(prescriptions.length),
                 ),
                 _LightMetricChip(
-                  label: '${imagingAssets.length} imaging asset(s)',
+                  label: context.l10n.generatedReminderCount(reminders.length),
                 ),
-                _LightMetricChip(label: '${doctorNotes.length} note(s)'),
+                _LightMetricChip(
+                  label: context.l10n.imagingAssetCount(imagingAssets.length),
+                ),
+                _LightMetricChip(
+                  label: context.l10n.noteCount(doctorNotes.length),
+                ),
               ],
             ),
             if (selectedEvent != null &&
                 selectedEvent!.timeline.isNotEmpty) ...<Widget>[
               const SizedBox(height: DrAiSpacing.sm),
               Text(
-                'Event timeline',
+                context.l10n.eventTimeline,
                 style: Theme.of(context).textTheme.titleSmall,
               ),
               const SizedBox(height: DrAiSpacing.xs),
@@ -1533,7 +1601,7 @@ class _ClinicalEventContextCard extends StatelessWidget {
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(
-                          '${entry.title} - ${_dateLabel(entry.occurredAt)}',
+                          '${entry.title} - ${_dateLabel(context, entry.occurredAt)}',
                           style: const TextStyle(fontSize: 12),
                         ),
                       ),
@@ -1627,7 +1695,7 @@ class _ClinicalEventEditorState extends ConsumerState<_ClinicalEventEditor> {
                 const SizedBox(width: DrAiSpacing.xs),
                 Expanded(
                   child: Text(
-                    'Clinical Event Editor',
+                    context.l10n.clinicalEventEditor,
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                 ),
@@ -1644,23 +1712,22 @@ class _ClinicalEventEditorState extends ConsumerState<_ClinicalEventEditor> {
                   icon: const Icon(Icons.save_outlined),
                   label: Text(
                     _editingEventId == null
-                        ? 'Create Clinical Event'
-                        : 'Update Clinical Event',
+                        ? context.l10n.createClinicalEvent
+                        : context.l10n.updateClinicalEvent,
                   ),
                 ),
                 OutlinedButton.icon(
                   key: const Key('clinical-event-new-button'),
                   onPressed: state.isLoading ? null : _startNewEvent,
                   icon: const Icon(Icons.add_circle_outline),
-                  label: const Text('New event'),
+                  label: Text(context.l10n.newEvent),
                 ),
               ],
             ),
             const SizedBox(height: DrAiSpacing.xs),
             if (widget.bundle.clinicalEvents.isEmpty)
-              const _InlineMessage(
-                message:
-                    'No Clinical Event exists yet. Create one before authoring linked care outputs.',
+              _InlineMessage(
+                message: context.l10n.noClinicalEvent,
                 icon: Icons.info_outline,
               )
             else
@@ -1671,7 +1738,9 @@ class _ClinicalEventEditorState extends ConsumerState<_ClinicalEventEditor> {
                   for (final event in widget.bundle.clinicalEvents)
                     ChoiceChip(
                       key: Key('clinical-event-chip-${event.id}'),
-                      label: Text('${event.title} - ${event.status}'),
+                      label: Text(
+                        '${event.title} - ${context.l10n.stableValue(event.status)}',
+                      ),
                       selected: event.id == _editingEventId,
                       onSelected: state.isLoading
                           ? null
@@ -1687,9 +1756,9 @@ class _ClinicalEventEditorState extends ConsumerState<_ClinicalEventEditor> {
               key: const Key('clinical-event-title-field'),
               controller: _titleController,
               maxLength: 160,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 counterText: '',
-                labelText: 'Clinical Event title',
+                labelText: context.l10n.clinicalEventTitle,
                 prefixIcon: Icon(Icons.fact_check_outlined),
               ),
             ),
@@ -1698,9 +1767,9 @@ class _ClinicalEventEditorState extends ConsumerState<_ClinicalEventEditor> {
               key: const Key('clinical-event-chief-complaint-field'),
               controller: _chiefComplaintController,
               maxLength: 240,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 counterText: '',
-                labelText: 'Chief complaint',
+                labelText: context.l10n.chiefComplaint,
                 prefixIcon: Icon(Icons.assignment_outlined),
               ),
             ),
@@ -1712,10 +1781,10 @@ class _ClinicalEventEditorState extends ConsumerState<_ClinicalEventEditor> {
                     key: const Key('clinical-event-onset-date-field'),
                     controller: _onsetDateController,
                     maxLength: 10,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       counterText: '',
-                      labelText: 'Onset date',
-                      helperText: 'YYYY-MM-DD or blank',
+                      labelText: context.l10n.onsetDate,
+                      helperText: context.l10n.dateOptional,
                     ),
                   ),
                 ),
@@ -1725,16 +1794,19 @@ class _ClinicalEventEditorState extends ConsumerState<_ClinicalEventEditor> {
                     key: const Key('clinical-event-status-field'),
                     initialValue: _status,
                     isExpanded: true,
-                    decoration: const InputDecoration(labelText: 'Status'),
-                    items: const <DropdownMenuItem<String>>[
-                      DropdownMenuItem(value: 'active', child: Text('active')),
+                    decoration: InputDecoration(labelText: context.l10n.status),
+                    items: <DropdownMenuItem<String>>[
+                      DropdownMenuItem(
+                        value: 'active',
+                        child: Text(context.l10n.active),
+                      ),
                       DropdownMenuItem(
                         value: 'monitoring',
-                        child: Text('monitoring'),
+                        child: Text(context.l10n.monitoring),
                       ),
                       DropdownMenuItem(
                         value: 'resolved',
-                        child: Text('resolved'),
+                        child: Text(context.l10n.resolved),
                       ),
                     ],
                     onChanged: (value) =>
@@ -1750,9 +1822,9 @@ class _ClinicalEventEditorState extends ConsumerState<_ClinicalEventEditor> {
               maxLength: 1200,
               minLines: 2,
               maxLines: 3,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 counterText: '',
-                labelText: 'Symptom/update summary',
+                labelText: context.l10n.symptomSummary,
                 prefixIcon: Icon(Icons.notes_outlined),
               ),
             ),
@@ -1763,16 +1835,15 @@ class _ClinicalEventEditorState extends ConsumerState<_ClinicalEventEditor> {
               maxLength: 1200,
               minLines: 2,
               maxLines: 3,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 counterText: '',
-                labelText: 'Doctor diagnosis or provisional diagnosis',
+                labelText: context.l10n.doctorDiagnosis,
                 prefixIcon: Icon(Icons.medical_information_outlined),
               ),
             ),
-            const _InlineMessage(
+            _InlineMessage(
               key: Key('clinical-event-doctor-owned-notice'),
-              message:
-                  'Patients can read Clinical Events, but doctor diagnosis fields are doctor-managed and audited.',
+              message: context.l10n.eventDiagnosisNotice,
               icon: Icons.lock_outline,
             ),
             if (_validationError != null)
@@ -1786,15 +1857,17 @@ class _ClinicalEventEditorState extends ConsumerState<_ClinicalEventEditor> {
                 child: LinearProgressIndicator(),
               ),
               error: (error, stackTrace) =>
-                  _InlineMessage(message: _safeErrorMessage(error)),
+                  _InlineMessage(message: _safeErrorMessage(context, error)),
               data: (event) {
                 if (event == null) {
                   return const SizedBox.shrink();
                 }
                 return _InlineMessage(
                   key: const Key('clinical-event-save-success'),
-                  message:
-                      '${event.title} saved as ${event.status}. ${event.safetyLabel}',
+                  message: context.l10n.eventSaved(
+                    event.title,
+                    context.l10n.stableValue(event.status),
+                  ),
                   icon: Icons.check_circle_outline,
                 );
               },
@@ -1807,9 +1880,9 @@ class _ClinicalEventEditorState extends ConsumerState<_ClinicalEventEditor> {
 
   void _loadEvent(ClinicalEventItem? event) {
     _editingEventId = event?.id;
-    _titleController.text = event?.title ?? 'Synthetic care episode';
+    _titleController.text = event?.title ?? context.l10n.newCareEpisode;
     _chiefComplaintController.text =
-        event?.chiefComplaint ?? 'Synthetic chief complaint';
+        event?.chiefComplaint ?? context.l10n.chiefComplaintMissing;
     _symptomSummaryController.text = event?.symptomSummary ?? '';
     _diagnosisSummaryController.text = event?.diagnosisSummary ?? '';
     _onsetDateController.text = event?.onsetDate ?? '';
@@ -1833,9 +1906,7 @@ class _ClinicalEventEditorState extends ConsumerState<_ClinicalEventEditor> {
               r'^\d{4}-\d{2}-\d{2}$',
             ).hasMatch(_onsetDateController.text.trim()));
     setState(() {
-      _validationError = valid
-          ? null
-          : 'Use a title, chief complaint, and optional YYYY-MM-DD onset date.';
+      _validationError = valid ? null : context.l10n.eventValidation;
     });
     return valid;
   }
@@ -1895,39 +1966,50 @@ class _SystemActivitySection extends StatelessWidget {
         for (final entry in selectedEvent!.timeline)
           _ActivityDisplayItem(
             title: entry.title,
-            subtitle: _dateLabel(entry.occurredAt),
-            body: 'Clinical Event timeline entry: ${entry.entryType}.',
+            subtitle: _dateLabel(context, entry.occurredAt),
+            body: context.l10n.timelineEntry(
+              context.l10n.stableValue(entry.entryType),
+            ),
           ),
       for (final prescription in _eventPrescriptions(bundle, selectedEvent))
         _ActivityDisplayItem(
-          title: 'Prescription ${prescription.status}',
-          subtitle: _dateLabel(prescription.issuedAt),
-          body:
-              '${prescription.medications.length} medication line(s) linked to ${_eventTitle(bundle, selectedEvent)}.',
+          title: context.l10n.prescriptionStatus(
+            context.l10n.stableValue(prescription.status),
+          ),
+          subtitle: _dateLabel(context, prescription.issuedAt),
+          body: context.l10n.medicationLinesLinked(
+            prescription.medications.length,
+            _eventTitle(context, bundle, selectedEvent),
+          ),
         ),
       for (final reminder in _eventMedicationReminders(bundle, selectedEvent))
         _ActivityDisplayItem(
           title: reminder.reminderType == 'refill'
-              ? 'Generated refill reminder'
-              : 'Generated medication reminder',
-          subtitle: '${reminder.status} - ${_dateLabel(reminder.nextDueAt)}',
+              ? context.l10n.generatedRefillReminder
+              : context.l10n.generatedMedicationReminder,
+          subtitle:
+              '${context.l10n.stableValue(reminder.status)} - ${_dateLabel(context, reminder.nextDueAt)}',
           body:
-              '${reminder.scheduleLabel}\nCreated from medication schedule context.',
+              '${reminder.scheduleLabel}\n${context.l10n.createdFromMedicationSchedule}',
         ),
       for (final asset in _eventImagingAssets(bundle, selectedEvent))
         _ActivityDisplayItem(
-          title: 'Imaging ${asset.reviewStatus}',
-          subtitle: '${asset.uploadStatus} - ${asset.storageProvider}',
-          body:
-              'Manual review status for ${_eventTitle(bundle, selectedEvent)}.',
+          title: context.l10n.imagingStatusTitle(
+            context.l10n.stableValue(asset.reviewStatus),
+          ),
+          subtitle:
+              '${context.l10n.stableValue(asset.uploadStatus)} - ${asset.storageProvider}',
+          body: context.l10n.manualReviewStatus(
+            _eventTitle(context, bundle, selectedEvent),
+          ),
         ),
     ];
     return _ItemSection<_ActivityDisplayItem>(
       key: const Key('consultation-activity-timeline-section'),
-      title: 'Activity timeline',
+      title: context.l10n.activityTimeline,
       icon: Icons.timeline_outlined,
       items: items,
-      emptyTitle: 'No activity yet',
+      emptyTitle: context.l10n.noActivity,
       itemBuilder: (item) => _InfoTile(
         title: item.title,
         subtitle: item.subtitle,
@@ -1973,13 +2055,13 @@ class _LightMetricChip extends StatelessWidget {
   }
 }
 
-Widget _medicalRecordsSection(PatientCareBundle bundle) {
+Widget _medicalRecordsSection(BuildContext context, PatientCareBundle bundle) {
   return _ItemSection<MedicalRecordItem>(
     key: const Key('medical-history-section'),
-    title: 'Medical History',
+    title: context.l10n.medicalHistory,
     icon: Icons.description_outlined,
     items: bundle.records,
-    emptyTitle: 'No Medical Records',
+    emptyTitle: context.l10n.noMedicalRecords,
     itemBuilder: (item) => _InfoTile(
       title: item.title,
       subtitle: item.category,
@@ -1988,149 +2070,158 @@ Widget _medicalRecordsSection(PatientCareBundle bundle) {
   );
 }
 
-Widget _medicalHistoryReviewsSection(PatientCareBundle bundle) {
+Widget _medicalHistoryReviewsSection(
+  BuildContext context,
+  PatientCareBundle bundle,
+) {
   return _ItemSection<MedicalHistoryReviewItem>(
     key: const Key('medical-history-reviews-section'),
-    title: 'Doctor review and amendments',
+    title: context.l10n.doctorReviewAmendments,
     icon: Icons.verified_user_outlined,
     items: bundle.medicalHistoryReviews,
-    emptyTitle: 'No doctor review records',
+    emptyTitle: context.l10n.noDoctorReviews,
     itemBuilder: (item) => _InfoTile(
-      title: _historyReviewActionLabel(item.action),
-      subtitle: '${item.targetType} - ${_dateLabel(item.createdAt)}',
+      title: _historyReviewActionLabel(context, item.action),
+      subtitle:
+          '${context.l10n.stableValue(item.targetType)} - ${_dateLabel(context, item.createdAt)}',
       body:
-          '${item.amendmentSummary ?? item.correctionRequest ?? 'Clinician verified patient-entered history.'}\n'
-          'Audit-linked overlay; original patient-entered item is preserved.',
+          '${item.amendmentSummary ?? item.correctionRequest ?? context.l10n.clinicianVerifiedHistory}\n'
+          '${context.l10n.auditOverlayNotice}',
     ),
   );
 }
 
-List<_HistoryReviewTarget> _historyReviewTargets(PatientCareBundle bundle) {
+List<_HistoryReviewTarget> _historyReviewTargets(
+  BuildContext context,
+  PatientCareBundle bundle,
+) {
   return <_HistoryReviewTarget>[
     for (final allergy in bundle.allergies)
       _HistoryReviewTarget(
         key: 'allergy:${allergy.id}',
         targetType: 'allergy',
         targetId: allergy.id,
-        label: 'Allergy: ${allergy.label}',
+        label: context.l10n.allergyLabel(allergy.label),
       ),
     for (final condition in bundle.chronicDiseases)
       _HistoryReviewTarget(
         key: 'chronic_disease:${condition.id}',
         targetType: 'chronic_disease',
         targetId: condition.id,
-        label: 'Chronic disease: ${condition.name}',
+        label: context.l10n.chronicDiseaseLabel(condition.name),
       ),
     for (final record in bundle.records)
       _HistoryReviewTarget(
         key: 'medical_record:${record.id}',
         targetType: 'medical_record',
         targetId: record.id,
-        label: 'Medical record: ${record.title}',
+        label: context.l10n.medicalRecordLabel(record.title),
       ),
   ];
 }
 
-String _historyReviewActionLabel(String action) {
+String _historyReviewActionLabel(BuildContext context, String action) {
   return switch (action) {
-    'verified' => 'Clinician verified',
-    'amendment' => 'Doctor amendment',
-    'correction_requested' => 'Patient correction requested',
+    'verified' => context.l10n.clinicianVerified,
+    'amendment' => context.l10n.doctorAmendment,
+    'correction_requested' => context.l10n.patientCorrectionRequested,
     _ => action,
   };
 }
 
 Widget _imagingListSection(
+  BuildContext context,
   PatientCareBundle bundle,
   ClinicalEventItem? selectedEvent,
 ) {
   return _ItemSection<MedicalImagingAsset>(
     key: const Key('imaging-assets-section'),
-    title: 'Imaging',
+    title: context.l10n.imaging,
     icon: Icons.image_search_outlined,
     items: _eventImagingAssets(bundle, selectedEvent),
-    emptyTitle: 'No imaging assets',
+    emptyTitle: context.l10n.noImagingAssets,
     itemBuilder: (item) => _InfoTile(
-      title: '${item.contentType} asset',
-      subtitle: '${item.uploadStatus} - ${item.reviewStatus}',
+      title: context.l10n.contentAsset(item.contentType),
+      subtitle:
+          '${context.l10n.stableValue(item.uploadStatus)} - ${context.l10n.stableValue(item.reviewStatus)}',
       body:
           '${item.sizeBytes} bytes via ${item.storageProvider}\n'
-          'Uploaded: ${_dateLabel(item.uploadedAt)}\n'
-          'Finding/result: ${item.findingSummary ?? 'Pending manual doctor review'}\n'
-          'Measurement/observation: ${item.measurementSummary ?? 'Not recorded'}',
+          '${context.l10n.uploaded(_dateLabel(context, item.uploadedAt))}\n'
+          '${context.l10n.findingResult(item.findingSummary ?? context.l10n.pendingManualReview)}\n'
+          '${context.l10n.measurementObservation(item.measurementSummary ?? context.l10n.notRecorded)}',
     ),
   );
 }
 
 Widget _medicationsListSection(
+  BuildContext context,
   PatientCareBundle bundle,
   ClinicalEventItem? selectedEvent,
 ) {
   return _ItemSection<MedicationItem>(
     key: const Key('medications-section'),
-    title: 'Medications',
+    title: context.l10n.medications,
     icon: Icons.medication_outlined,
     items: _eventMedications(bundle, selectedEvent),
-    emptyTitle: 'No synthetic medications',
+    emptyTitle: context.l10n.noMedicationsRecorded,
     itemBuilder: (item) => _InfoTile(
       title: item.name,
-      subtitle: '${item.dosage} - ${item.status}',
+      subtitle: '${item.dosage} - ${context.l10n.stableValue(item.status)}',
       body: '${item.schedule}\n${item.note}',
     ),
   );
 }
 
 Widget _prescriptionsListSection(
+  BuildContext context,
   PatientCareBundle bundle,
   ClinicalEventItem? selectedEvent,
 ) {
   return _ItemSection<PrescriptionItem>(
     key: const Key('prescriptions-section'),
-    title: 'Prescriptions',
+    title: context.l10n.prescriptions,
     icon: Icons.receipt_long_outlined,
     items: _eventPrescriptions(bundle, selectedEvent),
-    emptyTitle: 'No prescriptions',
+    emptyTitle: context.l10n.noPrescriptions,
     itemBuilder: (item) => _InfoTile(
-      title: '${item.status} prescription',
-      subtitle: '${item.medications.length} medication line(s)',
-      body: _prescriptionSummary(item),
+      title: context.l10n.prescriptionStatus(
+        context.l10n.stableValue(item.status),
+      ),
+      subtitle: context.l10n.medicationLines(item.medications.length),
+      body: _prescriptionSummary(context, item),
     ),
   );
 }
 
 Widget _remindersListSection(
+  BuildContext context,
   PatientCareBundle bundle,
   ClinicalEventItem? selectedEvent,
 ) {
   return _ItemSection<MedicationReminderItem>(
     key: const Key('medication-reminders-section'),
-    title: 'Medication Reminders',
+    title: context.l10n.medicationRemindersTitle,
     icon: Icons.notifications_active_outlined,
     items: _eventMedicationReminders(bundle, selectedEvent),
-    emptyTitle: 'No medication reminders',
+    emptyTitle: context.l10n.noMedicationReminderRecords,
     itemBuilder: (item) => _InfoTile(
       title: item.reminderType == 'refill'
-          ? 'Refill reminder'
-          : 'Medication reminder',
-      subtitle: '${item.status} - ${item.channel}',
-      body: '${item.scheduleLabel}\nNext: ${_dateLabel(item.nextDueAt)}',
+          ? context.l10n.refillReminder
+          : context.l10n.medicationReminder,
+      subtitle:
+          '${context.l10n.stableValue(item.status)} - ${context.l10n.stableValue(item.channel)}',
+      body:
+          '${item.scheduleLabel}\n${context.l10n.nextDue(_dateLabel(context, item.nextDueAt))}',
     ),
   );
 }
 
 enum _MedicationWorkflowMode {
-  medication(
-    title: 'Medication Schedule Editor',
-    icon: Icons.medication_liquid_outlined,
-  ),
-  prescription(
-    title: 'Prescription Order Workflow',
-    icon: Icons.receipt_long_outlined,
-  );
+  medication(icon: Icons.medication_liquid_outlined),
+  prescription(icon: Icons.receipt_long_outlined);
 
-  const _MedicationWorkflowMode({required this.title, required this.icon});
+  const _MedicationWorkflowMode({required this.icon});
 
-  final String title;
   final IconData icon;
 }
 
@@ -2173,20 +2264,16 @@ class _MedicationWorkflowPanelState
     super.initState();
     final medication = _selectedMedication;
     _nameController = TextEditingController(
-      text: medication?.name ?? 'Synthetic medication',
+      text: medication?.name ?? context.l10n.medication,
     );
     _dosageController = TextEditingController(
       text: medication?.dosage ?? '10 mg',
     );
     _scheduleController = TextEditingController(
-      text: medication?.schedule ?? 'Every demo morning',
+      text: medication?.schedule ?? context.l10n.scheduleNotRecorded,
     );
-    _noteController = TextEditingController(
-      text: medication?.note ?? 'Synthetic medication workflow only.',
-    );
-    _prescriptionNoteController = TextEditingController(
-      text: 'Synthetic prescription workflow only.',
-    );
+    _noteController = TextEditingController(text: medication?.note ?? '');
+    _prescriptionNoteController = TextEditingController(text: '');
     _status = medication?.status ?? 'active';
   }
 
@@ -2220,7 +2307,9 @@ class _MedicationWorkflowPanelState
                 const SizedBox(width: DrAiSpacing.xs),
                 Expanded(
                   child: Text(
-                    widget.mode.title,
+                    widget.mode == _MedicationWorkflowMode.medication
+                        ? context.l10n.medicationScheduleEditor
+                        : context.l10n.prescriptionOrderWorkflow,
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                 ),
@@ -2230,14 +2319,13 @@ class _MedicationWorkflowPanelState
             if (widget.mode == _MedicationWorkflowMode.prescription)
               _InlineMessage(
                 message: _selectedMedication == null
-                    ? 'Save a medication before issuing a prescription.'
-                    : 'Prescription lines use the selected event medication values and feed the patient medication schedule.',
+                    ? context.l10n.saveMedicationFirst
+                    : context.l10n.prescriptionWorkflowDescription,
                 icon: Icons.info_outline,
               ),
             if (widget.clinicalEventId == null)
-              const _InlineMessage(
-                message:
-                    'Select or create a Clinical Event before saving new event-linked medication work.',
+              _InlineMessage(
+                message: context.l10n.selectEventMedication,
                 icon: Icons.account_tree_outlined,
               ),
             const SizedBox(height: DrAiSpacing.xs),
@@ -2245,10 +2333,10 @@ class _MedicationWorkflowPanelState
               key: const Key('medication-name-field'),
               controller: _nameController,
               maxLength: 160,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 counterText: '',
-                labelText: 'Medication name',
-                prefixIcon: Icon(Icons.medication_outlined),
+                labelText: context.l10n.medicationName,
+                prefixIcon: const Icon(Icons.medication_outlined),
               ),
             ),
             const SizedBox(height: DrAiSpacing.xs),
@@ -2259,9 +2347,9 @@ class _MedicationWorkflowPanelState
                     key: const Key('medication-dosage-field'),
                     controller: _dosageController,
                     maxLength: 120,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       counterText: '',
-                      labelText: 'Dosage',
+                      labelText: context.l10n.dosage,
                     ),
                   ),
                 ),
@@ -2271,13 +2359,19 @@ class _MedicationWorkflowPanelState
                     key: const Key('medication-status-field'),
                     initialValue: _status,
                     isExpanded: true,
-                    decoration: const InputDecoration(labelText: 'Status'),
-                    items: const <DropdownMenuItem<String>>[
-                      DropdownMenuItem(value: 'active', child: Text('active')),
-                      DropdownMenuItem(value: 'paused', child: Text('paused')),
+                    decoration: InputDecoration(labelText: context.l10n.status),
+                    items: <DropdownMenuItem<String>>[
+                      DropdownMenuItem(
+                        value: 'active',
+                        child: Text(context.l10n.active),
+                      ),
+                      DropdownMenuItem(
+                        value: 'paused',
+                        child: Text(context.l10n.paused),
+                      ),
                       DropdownMenuItem(
                         value: 'stopped',
-                        child: Text('stopped'),
+                        child: Text(context.l10n.stopped),
                       ),
                     ],
                     onChanged: (value) =>
@@ -2291,9 +2385,9 @@ class _MedicationWorkflowPanelState
               key: const Key('medication-schedule-field'),
               controller: _scheduleController,
               maxLength: 160,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 counterText: '',
-                labelText: 'Schedule',
+                labelText: context.l10n.schedule,
               ),
             ),
             if (widget.mode == _MedicationWorkflowMode.medication) ...<Widget>[
@@ -2304,9 +2398,9 @@ class _MedicationWorkflowPanelState
                 maxLength: 800,
                 minLines: 2,
                 maxLines: 3,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   counterText: '',
-                  labelText: 'Medication note',
+                  labelText: context.l10n.medicationNote,
                 ),
               ),
             ],
@@ -2319,10 +2413,10 @@ class _MedicationWorkflowPanelState
                 maxLength: 400,
                 minLines: 2,
                 maxLines: 3,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   counterText: '',
-                  labelText: 'Prescription note',
-                  prefixIcon: Icon(Icons.notes_outlined),
+                  labelText: context.l10n.prescriptionNote,
+                  prefixIcon: const Icon(Icons.notes_outlined),
                 ),
               ),
             ],
@@ -2338,7 +2432,7 @@ class _MedicationWorkflowPanelState
                     ),
               loading: () => const LinearProgressIndicator(),
               error: (error, stackTrace) =>
-                  _InlineMessage(message: _safeErrorMessage(error)),
+                  _InlineMessage(message: _safeErrorMessage(context, error)),
             ),
             const SizedBox(height: DrAiSpacing.xs),
             Wrap(
@@ -2354,8 +2448,8 @@ class _MedicationWorkflowPanelState
                     icon: const Icon(Icons.save_outlined),
                     label: Text(
                       _selectedMedication == null
-                          ? 'Add medication'
-                          : 'Update medication',
+                          ? context.l10n.addMedication
+                          : context.l10n.updateMedication,
                     ),
                   ),
                 if (widget.mode == _MedicationWorkflowMode.prescription)
@@ -2365,7 +2459,7 @@ class _MedicationWorkflowPanelState
                         ? null
                         : _createPrescription,
                     icon: const Icon(Icons.receipt_long_outlined),
-                    label: const Text('Issue prescription'),
+                    label: Text(context.l10n.issuePrescription),
                   ),
               ],
             ),
@@ -2381,9 +2475,7 @@ class _MedicationWorkflowPanelState
         _dosageController.text.trim().isNotEmpty &&
         _scheduleController.text.trim().length >= 2;
     setState(() {
-      _validationMessage = valid
-          ? null
-          : 'Medication name, dosage, and schedule are required.';
+      _validationMessage = valid ? null : context.l10n.medicationValidation;
     });
     return valid;
   }
@@ -2413,7 +2505,7 @@ class _MedicationWorkflowPanelState
     final medication = _selectedMedication;
     if (medication == null) {
       setState(() {
-        _validationMessage = 'Save a medication before issuing a prescription.';
+        _validationMessage = context.l10n.saveMedicationFirst;
       });
       return;
     }
@@ -2431,34 +2523,29 @@ class _MedicationWorkflowPanelState
   }
 }
 
-class _DemoAssessmentWorkflow extends ConsumerStatefulWidget {
-  const _DemoAssessmentWorkflow({
+class DemoAssessmentWorkflow extends ConsumerStatefulWidget {
+  const DemoAssessmentWorkflow({
     required this.patientId,
     required this.clinicalEventId,
+    super.key,
   });
 
   final String patientId;
   final String? clinicalEventId;
 
   @override
-  ConsumerState<_DemoAssessmentWorkflow> createState() =>
+  ConsumerState<DemoAssessmentWorkflow> createState() =>
       _DemoAssessmentWorkflowState();
 }
 
 class _DemoAssessmentWorkflowState
-    extends ConsumerState<_DemoAssessmentWorkflow> {
-  final _filenameController = TextEditingController(
-    text: 'synthetic-ct-demo.png',
-  );
-  final _sizeController = TextEditingController(text: '2048');
-  final _findingController = TextEditingController(
-    text: 'Manual demo finding entered by doctor after imaging review.',
-  );
-  final _measurementController = TextEditingController(
-    text: 'Demo measurement note: no automated interpretation.',
-  );
+    extends ConsumerState<DemoAssessmentWorkflow> {
+  final _filenameController = TextEditingController();
+  final _sizeController = TextEditingController();
+  final _findingController = TextEditingController();
+  final _measurementController = TextEditingController();
   String _contentType = 'image/png';
-  String _fixtureId = 'synthetic_lung_case_001';
+  String _fixtureId = '';
   String? _uploadValidationError;
   String? _assessmentValidationError;
 
@@ -2491,7 +2578,7 @@ class _DemoAssessmentWorkflowState
             const _SimulationDisclosure(),
             const SizedBox(height: DrAiSpacing.sm),
             Text(
-              'Demo Image Upload',
+              context.l10n.imagingUpload,
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: DrAiSpacing.xs),
@@ -2499,11 +2586,11 @@ class _DemoAssessmentWorkflowState
               key: const Key('demo-upload-filename-field'),
               controller: _filenameController,
               maxLength: 160,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 counterText: '',
-                labelText: 'Synthetic image filename',
-                helperText: 'PNG, JPEG, or DICOM demo metadata only',
-                prefixIcon: Icon(Icons.image_outlined),
+                labelText: context.l10n.imageFilename,
+                helperText: context.l10n.imageMetadataHelper,
+                prefixIcon: const Icon(Icons.image_outlined),
               ),
             ),
             const SizedBox(height: DrAiSpacing.xs),
@@ -2514,9 +2601,9 @@ class _DemoAssessmentWorkflowState
                     key: const Key('demo-upload-content-type-field'),
                     initialValue: _contentType,
                     isExpanded: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Content type',
-                      prefixIcon: Icon(Icons.tune_outlined),
+                    decoration: InputDecoration(
+                      labelText: context.l10n.contentType,
+                      prefixIcon: const Icon(Icons.tune_outlined),
                     ),
                     items: const <DropdownMenuItem<String>>[
                       DropdownMenuItem(
@@ -2542,9 +2629,9 @@ class _DemoAssessmentWorkflowState
                     key: const Key('demo-upload-size-field'),
                     controller: _sizeController,
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Size bytes',
-                      prefixIcon: Icon(Icons.straighten_outlined),
+                    decoration: InputDecoration(
+                      labelText: context.l10n.sizeBytes,
+                      prefixIcon: const Icon(Icons.straighten_outlined),
                     ),
                   ),
                 ),
@@ -2566,12 +2653,12 @@ class _DemoAssessmentWorkflowState
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.cloud_upload_outlined),
-              label: const Text('Prepare demo upload'),
+              label: Text(context.l10n.prepareUpload),
             ),
             uploadState.when(
               loading: () => const SizedBox.shrink(),
               error: (error, stackTrace) =>
-                  _InlineMessage(message: _safeErrorMessage(error)),
+                  _InlineMessage(message: _safeErrorMessage(context, error)),
               data: (presign) {
                 if (presign == null) {
                   return const SizedBox.shrink();
@@ -2581,7 +2668,7 @@ class _DemoAssessmentWorkflowState
             ),
             const SizedBox(height: DrAiSpacing.md),
             Text(
-              'Phase 2 Imaging Workflow',
+              context.l10n.imagingWorkflow,
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: DrAiSpacing.xs),
@@ -2591,10 +2678,10 @@ class _DemoAssessmentWorkflowState
               maxLength: 1200,
               minLines: 2,
               maxLines: 4,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 counterText: '',
-                labelText: 'Manual doctor-entered finding/result',
-                prefixIcon: Icon(Icons.fact_check_outlined),
+                labelText: context.l10n.manualFinding,
+                prefixIcon: const Icon(Icons.fact_check_outlined),
               ),
             ),
             const SizedBox(height: DrAiSpacing.xs),
@@ -2602,10 +2689,10 @@ class _DemoAssessmentWorkflowState
               key: const Key('imaging-measurement-field'),
               controller: _measurementController,
               maxLength: 240,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 counterText: '',
-                labelText: 'Manual measurement or observation',
-                prefixIcon: Icon(Icons.straighten_outlined),
+                labelText: context.l10n.manualMeasurement,
+                prefixIcon: const Icon(Icons.straighten_outlined),
               ),
             ),
             const SizedBox(height: DrAiSpacing.xs),
@@ -2620,7 +2707,7 @@ class _DemoAssessmentWorkflowState
                       ? null
                       : _prepareImaging,
                   icon: const Icon(Icons.add_photo_alternate_outlined),
-                  label: const Text('Prepare imaging'),
+                  label: Text(context.l10n.prepareImaging),
                 ),
                 imagingState.when(
                   loading: () => const SizedBox(
@@ -2628,8 +2715,9 @@ class _DemoAssessmentWorkflowState
                     height: 18,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   ),
-                  error: (error, stackTrace) =>
-                      _InlineMessage(message: _safeErrorMessage(error)),
+                  error: (error, stackTrace) => _InlineMessage(
+                    message: _safeErrorMessage(context, error),
+                  ),
                   data: (state) {
                     final canComplete =
                         state.presign != null &&
@@ -2645,13 +2733,13 @@ class _DemoAssessmentWorkflowState
                           key: const Key('imaging-complete-button'),
                           onPressed: canComplete ? _completeImaging : null,
                           icon: const Icon(Icons.cloud_done_outlined),
-                          label: const Text('Finalize upload'),
+                          label: Text(context.l10n.finalizeUpload),
                         ),
                         OutlinedButton.icon(
                           key: const Key('imaging-review-button'),
                           onPressed: canReview ? _reviewImaging : null,
                           icon: const Icon(Icons.fact_check_outlined),
-                          label: const Text('Mark reviewed'),
+                          label: Text(context.l10n.markReviewed),
                         ),
                       ],
                     );
@@ -2671,13 +2759,12 @@ class _DemoAssessmentWorkflowState
             ),
             const SizedBox(height: DrAiSpacing.md),
             if (widget.clinicalEventId == null)
-              const _InlineMessage(
-                message:
-                    'Select or create a Clinical Event before preparing event-linked imaging metadata.',
+              _InlineMessage(
+                message: context.l10n.selectEventImaging,
                 icon: Icons.account_tree_outlined,
               ),
             Text(
-              'Assessment Form',
+              context.l10n.assessmentForm,
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: DrAiSpacing.xs),
@@ -2685,23 +2772,12 @@ class _DemoAssessmentWorkflowState
               key: const Key('assessment-fixture-field'),
               initialValue: _fixtureId,
               isExpanded: true,
-              decoration: const InputDecoration(
-                labelText: 'Synthetic fixture',
-                prefixIcon: Icon(Icons.science_outlined),
+              decoration: InputDecoration(
+                labelText: context.l10n.assessmentFixture,
+                prefixIcon: const Icon(Icons.science_outlined),
               ),
-              items: const <DropdownMenuItem<String>>[
-                DropdownMenuItem(
-                  value: 'synthetic_lung_case_001',
-                  child: Text('synthetic_lung_case_001'),
-                ),
-                DropdownMenuItem(
-                  value: 'synthetic_lung_case_002',
-                  child: Text('synthetic_lung_case_002'),
-                ),
-              ],
-              onChanged: (value) => setState(
-                () => _fixtureId = value ?? 'synthetic_lung_case_001',
-              ),
+              items: const <DropdownMenuItem<String>>[],
+              onChanged: (value) => setState(() => _fixtureId = value ?? ''),
             ),
             if (_assessmentValidationError != null)
               _InlineMessage(
@@ -2719,12 +2795,12 @@ class _DemoAssessmentWorkflowState
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.analytics_outlined),
-              label: const Text('Run simulated assessment'),
+              label: Text(context.l10n.runAssessment),
             ),
             createState.when(
               loading: () => const SizedBox.shrink(),
               error: (error, stackTrace) =>
-                  _InlineMessage(message: _safeErrorMessage(error)),
+                  _InlineMessage(message: _safeErrorMessage(context, error)),
               data: (result) {
                 if (result == null) {
                   return const SizedBox.shrink();
@@ -2734,20 +2810,20 @@ class _DemoAssessmentWorkflowState
             ),
             const SizedBox(height: DrAiSpacing.sm),
             assessments.when(
-              loading: () => const DashboardLoadingView(
-                label: 'Loading simulated assessment history',
+              loading: () => DashboardLoadingView(
+                label: context.l10n.loadingAssessmentHistory,
               ),
               error: (error, stackTrace) => DashboardErrorView(
-                message: _safeErrorMessage(error),
+                message: _safeErrorMessage(context, error),
                 onRetry: () =>
                     ref.invalidate(assessmentListProvider(widget.patientId)),
               ),
               data: (data) {
                 if (data.items.isEmpty) {
-                  return const _EmptyState(
+                  return _EmptyState(
                     icon: Icons.analytics_outlined,
-                    title: 'No simulated results yet',
-                    body: 'Run a synthetic fixture to create a demo result.',
+                    title: context.l10n.noAssessmentResults,
+                    body: context.l10n.assessmentEmptyDescription,
                   );
                 }
                 return Column(
@@ -2770,8 +2846,7 @@ class _DemoAssessmentWorkflowState
     final size = int.tryParse(_sizeController.text.trim());
     if (filename.length < 3 || size == null || size < 1) {
       setState(() {
-        _uploadValidationError =
-            'Enter a demo filename and a positive byte size.';
+        _uploadValidationError = context.l10n.imageUploadValidation;
       });
       return;
     }
@@ -2791,8 +2866,7 @@ class _DemoAssessmentWorkflowState
     final size = int.tryParse(_sizeController.text.trim());
     if (filename.length < 3 || size == null || size < 1) {
       setState(() {
-        _uploadValidationError =
-            'Enter an imaging filename and a positive byte size.';
+        _uploadValidationError = context.l10n.imageUploadValidation;
       });
       return;
     }
@@ -2812,7 +2886,7 @@ class _DemoAssessmentWorkflowState
     final size = int.tryParse(_sizeController.text.trim());
     if (size == null || size < 1) {
       setState(() {
-        _uploadValidationError = 'Enter the uploaded byte size to finalize.';
+        _uploadValidationError = context.l10n.uploadedBytesValidation;
       });
       return;
     }
@@ -2825,8 +2899,7 @@ class _DemoAssessmentWorkflowState
   void _reviewImaging() {
     if (_findingController.text.trim().length < 3) {
       setState(() {
-        _uploadValidationError =
-            'Enter a manual imaging finding/result before review.';
+        _uploadValidationError = context.l10n.manualFindingValidation;
       });
       return;
     }
@@ -2844,7 +2917,7 @@ class _DemoAssessmentWorkflowState
   void _runAssessment() {
     if (_fixtureId.trim().isEmpty) {
       setState(() {
-        _assessmentValidationError = 'Select a synthetic fixture.';
+        _assessmentValidationError = context.l10n.assessmentSelectionValidation;
       });
       return;
     }
@@ -2875,24 +2948,12 @@ class _RecoveryPlanEditor extends ConsumerStatefulWidget {
 }
 
 class _RecoveryPlanEditorState extends ConsumerState<_RecoveryPlanEditor> {
-  final _titleController = TextEditingController(
-    text: 'Synthetic Week 3 Recovery Plan',
-  );
-  final _instructionsController = TextEditingController(
-    text:
-        'Demo-only recovery plan for invited beta workflow validation. '
-        'This is not diagnosis, treatment, or medical advice.',
-  );
-  final _medicationController = TextEditingController(
-    text: 'Demo medication reminder',
-  );
-  final _exerciseController = TextEditingController(
-    text: 'Light demo mobility',
-  );
-  final _dietController = TextEditingController(text: 'Demo hydration check');
-  final _followUpController = TextEditingController(
-    text: 'Synthetic follow-up preparation',
-  );
+  final _titleController = TextEditingController();
+  final _instructionsController = TextEditingController();
+  final _medicationController = TextEditingController();
+  final _exerciseController = TextEditingController();
+  final _dietController = TextEditingController();
+  final _followUpController = TextEditingController();
   String? _selectedPlanId;
   String? _validationError;
 
@@ -2923,21 +2984,21 @@ class _RecoveryPlanEditorState extends ConsumerState<_RecoveryPlanEditor> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
             Text(
-              'Recovery Plan Editor',
+              context.l10n.recoveryPlanEditor,
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: DrAiSpacing.xs),
             if (widget.clinicalEventId == null)
-              const _InlineMessage(
-                message:
-                    'Select or create a Clinical Event before creating an event-linked recovery plan.',
+              _InlineMessage(
+                message: context.l10n.selectEventRecovery,
                 icon: Icons.account_tree_outlined,
               ),
             plans.when(
-              loading: () =>
-                  const DashboardLoadingView(label: 'Loading recovery plans'),
+              loading: () => DashboardLoadingView(
+                label: context.l10n.loadingRecoveryPlans,
+              ),
               error: (error, stackTrace) => DashboardErrorView(
-                message: _safeErrorMessage(error),
+                message: _safeErrorMessage(context, error),
                 onRetry: () =>
                     ref.invalidate(recoveryPlanListProvider(widget.patientId)),
               ),
@@ -2957,9 +3018,8 @@ class _RecoveryPlanEditorState extends ConsumerState<_RecoveryPlanEditor> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
                     if (eventPlans.isEmpty)
-                      const _InlineMessage(
-                        message:
-                            'No recovery plan for this Clinical Event yet. Save a synthetic draft first.',
+                      _InlineMessage(
+                        message: context.l10n.noEventRecoveryPlan,
                         icon: Icons.info_outline,
                       )
                     else
@@ -2970,7 +3030,7 @@ class _RecoveryPlanEditorState extends ConsumerState<_RecoveryPlanEditor> {
                           for (final plan in eventPlans)
                             ChoiceChip(
                               label: Text(
-                                '${plan.title} - ${plan.status} / ${plan.reviewStatus}',
+                                '${plan.title} - ${context.l10n.stableValue(plan.status)} / ${context.l10n.stableValue(plan.reviewStatus)}',
                               ),
                               selected: plan.planId == _selectedPlanId,
                               onSelected: (_) => _loadPlan(plan),
@@ -2981,10 +3041,12 @@ class _RecoveryPlanEditorState extends ConsumerState<_RecoveryPlanEditor> {
                       const SizedBox(height: DrAiSpacing.xs),
                       _InlineMessage(
                         key: const Key('recovery-plan-review-status'),
-                        message:
-                            'Plan ${selectedPlan.status}; review ${selectedPlan.reviewStatus}; '
-                            '${selectedPlan.progressSummary.completedTaskCount}/'
-                            '${selectedPlan.progressSummary.taskCount} tasks complete.',
+                        message: context.l10n.planStatusReview(
+                          context.l10n.stableValue(selectedPlan.status),
+                          context.l10n.stableValue(selectedPlan.reviewStatus),
+                          selectedPlan.progressSummary.completedTaskCount,
+                          selectedPlan.progressSummary.taskCount,
+                        ),
                         icon: Icons.fact_check_outlined,
                       ),
                     ],
@@ -2992,10 +3054,10 @@ class _RecoveryPlanEditorState extends ConsumerState<_RecoveryPlanEditor> {
                     _InlineMessage(
                       key: const Key('recovery-plan-active-event-guardrail'),
                       message: activeEventPlans.isEmpty
-                          ? 'No active Recovery Plan for this Clinical Event.'
+                          ? context.l10n.noActiveEventPlan
                           : activeEventPlans.length == 1
-                          ? 'One active Recovery Plan is linked to this Clinical Event.'
-                          : 'Multiple active plans are visible for this event; approve a replacement to resolve the workflow.',
+                          ? context.l10n.oneActiveEventPlan
+                          : context.l10n.multipleActivePlans,
                       icon: Icons.assignment_turned_in_outlined,
                     ),
                     const SizedBox(height: DrAiSpacing.sm),
@@ -3003,10 +3065,10 @@ class _RecoveryPlanEditorState extends ConsumerState<_RecoveryPlanEditor> {
                       key: const Key('recovery-plan-title-field'),
                       controller: _titleController,
                       maxLength: 160,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         counterText: '',
-                        labelText: 'Synthetic plan title',
-                        prefixIcon: Icon(Icons.assignment_outlined),
+                        labelText: context.l10n.planTitle,
+                        prefixIcon: const Icon(Icons.assignment_outlined),
                       ),
                     ),
                     const SizedBox(height: DrAiSpacing.xs),
@@ -3016,35 +3078,35 @@ class _RecoveryPlanEditorState extends ConsumerState<_RecoveryPlanEditor> {
                       maxLength: 1200,
                       minLines: 2,
                       maxLines: 4,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         counterText: '',
-                        labelText: 'Synthetic instructions',
-                        prefixIcon: Icon(Icons.notes_outlined),
+                        labelText: context.l10n.instructions,
+                        prefixIcon: const Icon(Icons.notes_outlined),
                       ),
                     ),
                     const SizedBox(height: DrAiSpacing.xs),
                     _taskField(
                       key: const Key('recovery-medication-task-field'),
                       controller: _medicationController,
-                      label: 'Medication task',
+                      label: context.l10n.medicationTask,
                       icon: Icons.medication_outlined,
                     ),
                     _taskField(
                       key: const Key('recovery-exercise-task-field'),
                       controller: _exerciseController,
-                      label: 'Exercise task',
+                      label: context.l10n.exerciseTask,
                       icon: Icons.directions_walk_outlined,
                     ),
                     _taskField(
                       key: const Key('recovery-diet-task-field'),
                       controller: _dietController,
-                      label: 'Diet task',
+                      label: context.l10n.dietTask,
                       icon: Icons.restaurant_outlined,
                     ),
                     _taskField(
                       key: const Key('recovery-follow-up-task-field'),
                       controller: _followUpController,
-                      label: 'Follow-up task',
+                      label: context.l10n.followUpTask,
                       icon: Icons.event_available_outlined,
                     ),
                     if (_validationError != null)
@@ -3057,17 +3119,17 @@ class _RecoveryPlanEditorState extends ConsumerState<_RecoveryPlanEditor> {
                         padding: EdgeInsets.only(top: DrAiSpacing.xs),
                         child: LinearProgressIndicator(),
                       ),
-                      error: (error, stackTrace) =>
-                          _InlineMessage(message: _safeErrorMessage(error)),
+                      error: (error, stackTrace) => _InlineMessage(
+                        message: _safeErrorMessage(context, error),
+                      ),
                       data: (plan) {
                         if (plan == null) {
                           return const SizedBox.shrink();
                         }
                         return _InlineMessage(
                           message:
-                              '${plan.title} saved as ${plan.status}. '
-                              'Review ${plan.reviewStatus}. '
-                              '${plan.safetyLabel}',
+                              '${plan.title} ${context.l10n.stableValue(plan.status)}. '
+                              '${context.l10n.reviewStatus(context.l10n.stableValue(plan.reviewStatus))}',
                           icon: Icons.check_circle_outline,
                         );
                       },
@@ -3085,7 +3147,7 @@ class _RecoveryPlanEditorState extends ConsumerState<_RecoveryPlanEditor> {
                               ? null
                               : _save,
                           icon: const Icon(Icons.save_outlined),
-                          label: const Text('Save draft'),
+                          label: Text(context.l10n.saveDraft),
                         ),
                         OutlinedButton.icon(
                           key: const Key('recovery-plan-submit-review-button'),
@@ -3093,7 +3155,7 @@ class _RecoveryPlanEditorState extends ConsumerState<_RecoveryPlanEditor> {
                               ? null
                               : _submitReview,
                           icon: const Icon(Icons.outgoing_mail),
-                          label: const Text('Submit review'),
+                          label: Text(context.l10n.submitReview),
                         ),
                         OutlinedButton.icon(
                           key: const Key(
@@ -3103,13 +3165,13 @@ class _RecoveryPlanEditorState extends ConsumerState<_RecoveryPlanEditor> {
                               ? null
                               : _requestChanges,
                           icon: const Icon(Icons.edit_note_outlined),
-                          label: const Text('Request changes'),
+                          label: Text(context.l10n.requestChanges),
                         ),
                         OutlinedButton.icon(
                           key: const Key('recovery-plan-activate-button'),
                           onPressed: editorState.isLoading ? null : _approve,
                           icon: const Icon(Icons.task_alt_outlined),
-                          label: const Text('Approve for patient'),
+                          label: Text(context.l10n.approvePatient),
                         ),
                         OutlinedButton.icon(
                           key: const Key('recovery-plan-complete-button'),
@@ -3117,7 +3179,7 @@ class _RecoveryPlanEditorState extends ConsumerState<_RecoveryPlanEditor> {
                               ? null
                               : _completePlan,
                           icon: const Icon(Icons.done_all_outlined),
-                          label: const Text('Complete plan'),
+                          label: Text(context.l10n.completePlan),
                         ),
                       ],
                     ),
@@ -3189,27 +3251,27 @@ class _RecoveryPlanEditorState extends ConsumerState<_RecoveryPlanEditor> {
       RecoveryTaskInput(
         category: 'medication',
         title: _medicationController.text.trim(),
-        detail: 'Synthetic medication reminder for demo notification testing.',
-        dueLabel: 'Today',
+        detail: context.l10n.medicationTaskDetail,
+        dueLabel: context.l10n.today,
         notificationTime: '09:00',
       ),
       RecoveryTaskInput(
         category: 'exercise',
         title: _exerciseController.text.trim(),
-        detail: 'Synthetic exercise task for recovery-plan UI validation.',
-        dueLabel: 'Today',
+        detail: context.l10n.exerciseTaskDetail,
+        dueLabel: context.l10n.today,
       ),
       RecoveryTaskInput(
         category: 'diet',
         title: _dietController.text.trim(),
-        detail: 'Synthetic diet task for recovery-plan UI validation.',
-        dueLabel: 'Today',
+        detail: context.l10n.dietTaskDetail,
+        dueLabel: context.l10n.today,
       ),
       RecoveryTaskInput(
         category: 'follow_up',
         title: _followUpController.text.trim(),
-        detail: 'Synthetic follow-up task for recovery-plan UI validation.',
-        dueLabel: 'Today',
+        detail: context.l10n.followUpTaskDetail,
+        dueLabel: context.l10n.today,
       ),
     ];
   }
@@ -3225,8 +3287,7 @@ class _RecoveryPlanEditorState extends ConsumerState<_RecoveryPlanEditor> {
     ];
     if (fields.any((field) => field.trim().length < 3)) {
       setState(() {
-        _validationError =
-            'Use at least three characters for every synthetic plan field.';
+        _validationError = context.l10n.planFieldsValidation;
       });
       return false;
     }
@@ -3261,14 +3322,13 @@ class _RecoveryPlanEditorState extends ConsumerState<_RecoveryPlanEditor> {
       return true;
     }
     setState(() {
-      _validationError =
-          'Save the synthetic recovery plan before $actionLabel.';
+      _validationError = context.l10n.savePlanBeforeAction(actionLabel);
     });
     return false;
   }
 
   void _submitReview() {
-    if (!_requireSelectedPlan('review submission')) {
+    if (!_requireSelectedPlan(context.l10n.submitReview)) {
       return;
     }
     ref
@@ -3277,7 +3337,7 @@ class _RecoveryPlanEditorState extends ConsumerState<_RecoveryPlanEditor> {
   }
 
   void _requestChanges() {
-    if (!_requireSelectedPlan('requesting changes')) {
+    if (!_requireSelectedPlan(context.l10n.requestChanges)) {
       return;
     }
     ref
@@ -3289,7 +3349,7 @@ class _RecoveryPlanEditorState extends ConsumerState<_RecoveryPlanEditor> {
     final planId = _latestPlanId();
     if (planId == null) {
       setState(() {
-        _validationError = 'Save and submit the synthetic recovery plan first.';
+        _validationError = context.l10n.submitPlanFirst;
       });
       return;
     }
@@ -3300,7 +3360,7 @@ class _RecoveryPlanEditorState extends ConsumerState<_RecoveryPlanEditor> {
   }
 
   void _completePlan() {
-    if (!_requireSelectedPlan('completion')) {
+    if (!_requireSelectedPlan(context.l10n.completePlan)) {
       return;
     }
     ref
@@ -3325,12 +3385,8 @@ class _ConsultationRequestPanel extends ConsumerStatefulWidget {
 
 class _ConsultationRequestPanelState
     extends ConsumerState<_ConsultationRequestPanel> {
-  final _specialtyController = TextEditingController(
-    text: 'Pulmonology demo review',
-  );
-  final _summaryController = TextEditingController(
-    text: 'Synthetic review of recovery-plan education questions.',
-  );
+  final _specialtyController = TextEditingController();
+  final _summaryController = TextEditingController();
   String _priority = 'routine';
   String? _validationError;
 
@@ -3357,18 +3413,17 @@ class _ConsultationRequestPanelState
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
             Text(
-              'Specialist Consultation',
+              context.l10n.specialistConsultation,
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: DrAiSpacing.xs),
-            const Text(
-              'Synthetic asynchronous request only. No appointments, billing, video, voice, or clinical assessment.',
+            Text(
+              context.l10n.specialistDescription,
               style: TextStyle(color: DrAiColors.mutedInk, fontSize: 12),
             ),
             if (widget.clinicalEventId == null)
-              const _InlineMessage(
-                message:
-                    'Select or create a Clinical Event before requesting event-linked specialist review.',
+              _InlineMessage(
+                message: context.l10n.selectEventConsultation,
                 icon: Icons.account_tree_outlined,
               ),
             const SizedBox(height: DrAiSpacing.xs),
@@ -3376,10 +3431,10 @@ class _ConsultationRequestPanelState
               key: const Key('consultation-specialty-field'),
               controller: _specialtyController,
               maxLength: 120,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 counterText: '',
-                labelText: 'Synthetic specialty',
-                prefixIcon: Icon(Icons.groups_2_outlined),
+                labelText: context.l10n.specialty,
+                prefixIcon: const Icon(Icons.groups_2_outlined),
               ),
             ),
             const SizedBox(height: DrAiSpacing.xs),
@@ -3389,24 +3444,24 @@ class _ConsultationRequestPanelState
               maxLength: 240,
               minLines: 2,
               maxLines: 3,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 counterText: '',
-                labelText: 'Non-identifying synthetic question summary',
-                prefixIcon: Icon(Icons.forum_outlined),
+                labelText: context.l10n.questionSummary,
+                prefixIcon: const Icon(Icons.forum_outlined),
               ),
             ),
             const SizedBox(height: DrAiSpacing.xs),
             SegmentedButton<String>(
-              segments: const <ButtonSegment<String>>[
+              segments: <ButtonSegment<String>>[
                 ButtonSegment<String>(
                   value: 'routine',
-                  icon: Icon(Icons.schedule_outlined),
-                  label: Text('Routine'),
+                  icon: const Icon(Icons.schedule_outlined),
+                  label: Text(context.l10n.routine),
                 ),
                 ButtonSegment<String>(
                   value: 'soon',
-                  icon: Icon(Icons.priority_high_outlined),
-                  label: Text('Soon'),
+                  icon: const Icon(Icons.priority_high_outlined),
+                  label: Text(context.l10n.soon),
                 ),
               ],
               selected: <String>{_priority},
@@ -3424,15 +3479,16 @@ class _ConsultationRequestPanelState
                 child: LinearProgressIndicator(),
               ),
               error: (error, stackTrace) =>
-                  _InlineMessage(message: _safeErrorMessage(error)),
+                  _InlineMessage(message: _safeErrorMessage(context, error)),
               data: (request) {
                 if (request == null) {
                   return const SizedBox.shrink();
                 }
                 return _InlineMessage(
-                  message:
-                      '${request.specialty} consultation ${request.status}. '
-                      '${request.safetyLabel}',
+                  message: context.l10n.consultationSubmitted(
+                    request.specialty,
+                    context.l10n.stableValue(request.status),
+                  ),
                   icon: Icons.check_circle_outline,
                 );
               },
@@ -3444,15 +3500,15 @@ class _ConsultationRequestPanelState
                   ? null
                   : _submit,
               icon: const Icon(Icons.outgoing_mail),
-              label: const Text('Request specialist review'),
+              label: Text(context.l10n.requestSpecialistReview),
             ),
             const SizedBox(height: DrAiSpacing.sm),
             list.when(
-              loading: () => const DashboardLoadingView(
-                label: 'Loading consultation requests',
+              loading: () => DashboardLoadingView(
+                label: context.l10n.loadingConsultations,
               ),
               error: (error, stackTrace) => DashboardErrorView(
-                message: _safeErrorMessage(error),
+                message: _safeErrorMessage(context, error),
                 onRetry: () => ref.invalidate(consultationListProvider),
               ),
               data: (data) {
@@ -3465,11 +3521,10 @@ class _ConsultationRequestPanelState
                     )
                     .toList();
                 if (items.isEmpty) {
-                  return const _EmptyState(
+                  return _EmptyState(
                     icon: Icons.support_agent_outlined,
-                    title: 'No specialist request yet',
-                    body:
-                        'Submit a synthetic request for asynchronous status tracking.',
+                    title: context.l10n.noSpecialistRequest,
+                    body: context.l10n.specialistEmptyDescription,
                   );
                 }
                 return Column(
@@ -3477,9 +3532,12 @@ class _ConsultationRequestPanelState
                   children: <Widget>[
                     for (final item in items)
                       _InfoTile(
-                        title: '${item.specialty} - ${item.status}',
-                        subtitle: 'Priority: ${item.priority}',
-                        body: '${item.questionSummary}\n${item.safetyLabel}',
+                        title:
+                            '${item.specialty} - ${context.l10n.stableValue(item.status)}',
+                        subtitle: context.l10n.priority(
+                          context.l10n.stableValue(item.priority),
+                        ),
+                        body: item.questionSummary,
                       ),
                   ],
                 );
@@ -3496,8 +3554,7 @@ class _ConsultationRequestPanelState
     final summary = _summaryController.text.trim();
     if (specialty.length < 3 || summary.length < 8) {
       setState(() {
-        _validationError =
-            'Use a synthetic specialty and a non-identifying summary.';
+        _validationError = context.l10n.consultationValidation;
       });
       return;
     }
@@ -3552,12 +3609,12 @@ class _ProfileHeader extends StatelessWidget {
             ),
             const SizedBox(height: DrAiSpacing.xs),
             Text(
-              _demographicsLine(patient),
+              _demographicsLine(context, patient),
               style: const TextStyle(color: DrAiColors.outlineMuted),
             ),
             const SizedBox(height: DrAiSpacing.xs),
             Text(
-              _historyLine(bundle),
+              _historyLine(context, bundle),
               key: const Key('medical-history-overview-section'),
               style: const TextStyle(color: DrAiColors.outlineMuted),
             ),
@@ -3573,26 +3630,29 @@ class _ProfileHeader extends StatelessWidget {
   }
 }
 
-String _demographicsLine(PatientProfile patient) {
+String _demographicsLine(BuildContext context, PatientProfile patient) {
   final values = <String>[
-    if (patient.birthYear != null) 'Born ${patient.birthYear}',
-    if (patient.sex != null) patient.sex!,
-    if (patient.preferredLanguage != null) patient.preferredLanguage!,
-    if (patient.contactPreference != null) patient.contactPreference!,
+    if (patient.birthYear != null) context.l10n.bornYear(patient.birthYear!),
+    if (patient.sex != null) context.l10n.stableValue(patient.sex!),
+    if (patient.preferredLanguage != null)
+      context.l10n.stableValue(patient.preferredLanguage!),
+    if (patient.contactPreference != null)
+      context.l10n.stableValue(patient.contactPreference!),
   ];
-  return values.isEmpty ? 'Demographics not recorded' : values.join(' - ');
+  return values.isEmpty ? context.l10n.demographicsMissing : values.join(' - ');
 }
 
-String _ageSexLabel(PatientProfile patient) {
+String _ageSexLabel(BuildContext context, PatientProfile patient) {
   final values = <String>[
     if (patient.birthYear != null)
-      'Age ${DateTime.now().year - patient.birthYear!}',
-    if (patient.sex != null && patient.sex!.trim().isNotEmpty) patient.sex!,
+      context.l10n.ageYears(DateTime.now().year - patient.birthYear!),
+    if (patient.sex != null && patient.sex!.trim().isNotEmpty)
+      context.l10n.stableValue(patient.sex!),
   ];
-  return values.isEmpty ? 'Age/sex not recorded' : values.join(' - ');
+  return values.isEmpty ? context.l10n.ageSexMissing : values.join(' - ');
 }
 
-String _activePlanLabel(RecoveryPlanListData data) {
+String _activePlanLabel(BuildContext context, RecoveryPlanListData data) {
   RecoveryPlanData? activePlan;
   for (final plan in data.items) {
     if (plan.status == 'active') {
@@ -3602,21 +3662,24 @@ String _activePlanLabel(RecoveryPlanListData data) {
   }
   activePlan ??= data.items.isEmpty ? null : data.items.first;
   if (activePlan == null) {
-    return 'Recovery plan: none';
+    return context.l10n.recoveryPlanNone;
   }
-  return 'Recovery plan: ${activePlan.status} / ${activePlan.reviewStatus}';
+  return context.l10n.recoveryPlanStatus(
+    context.l10n.stableValue(activePlan.status),
+    context.l10n.stableValue(activePlan.reviewStatus),
+  );
 }
 
-String _lastVisitLabel(List<VisitHistoryItem> visits) {
+String _lastVisitLabel(BuildContext context, List<VisitHistoryItem> visits) {
   if (visits.isEmpty) {
-    return 'none recorded';
+    return context.l10n.noneRecorded;
   }
   final sorted = [...visits]
     ..sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
-  return _dateLabel(sorted.first.occurredAt);
+  return _dateLabel(context, sorted.first.occurredAt);
 }
 
-String _workflowStatus(PatientCareBundle bundle) {
+String _workflowStatus(BuildContext context, PatientCareBundle bundle) {
   final hasActivity =
       bundle.records.isNotEmpty ||
       bundle.visitHistory.isNotEmpty ||
@@ -3625,7 +3688,9 @@ String _workflowStatus(PatientCareBundle bundle) {
       bundle.prescriptions.isNotEmpty ||
       bundle.imagingAssets.isNotEmpty ||
       bundle.doctorNotes.isNotEmpty;
-  return hasActivity ? 'Workflow: review ready' : 'Workflow: setup needed';
+  return hasActivity
+      ? context.l10n.workflowReviewReady
+      : context.l10n.workflowSetupNeeded;
 }
 
 ClinicalEventItem? _selectedClinicalEvent(
@@ -3650,26 +3715,32 @@ ClinicalEventItem? _selectedClinicalEvent(
   return bundle.clinicalEvents.first;
 }
 
-String _eventTitle(PatientCareBundle bundle, ClinicalEventItem? selectedEvent) {
+String _eventTitle(
+  BuildContext context,
+  PatientCareBundle bundle,
+  ClinicalEventItem? selectedEvent,
+) {
   if (selectedEvent != null) {
-    return 'Clinical Event: ${selectedEvent.title}';
+    return context.l10n.clinicalEventNamed(selectedEvent.title);
   }
   if (bundle.diagnoses.isNotEmpty) {
-    return 'Clinical Event: ${bundle.diagnoses.first.label}';
+    return context.l10n.clinicalEventNamed(bundle.diagnoses.first.label);
   }
   if (bundle.visitHistory.isNotEmpty) {
-    return 'Clinical Event: ${bundle.visitHistory.first.title}';
+    return context.l10n.clinicalEventNamed(bundle.visitHistory.first.title);
   }
-  return 'Clinical Event: setup needed';
+  return context.l10n.clinicalEventSetup;
 }
 
-String _eventLinkSummary(ClinicalEventItem event) {
+String _eventLinkSummary(BuildContext context, ClinicalEventItem event) {
   final counts = event.linkedResourceCounts;
-  return '${counts['prescriptions'] ?? 0} prescription(s), '
-      '${counts['medications'] ?? 0} medication schedule item(s), '
-      '${counts['recovery_plans'] ?? 0} recovery plan(s), '
-      '${counts['imaging_assets'] ?? 0} imaging asset(s), '
-      '${counts['doctor_notes'] ?? 0} note(s)';
+  return context.l10n.eventResourceSummary(
+    counts['prescriptions'] ?? 0,
+    counts['medications'] ?? 0,
+    counts['recovery_plans'] ?? 0,
+    counts['imaging_assets'] ?? 0,
+    counts['doctor_notes'] ?? 0,
+  );
 }
 
 List<VisitHistoryItem> _eventVisitHistory(
@@ -3760,58 +3831,60 @@ List<T> _eventItems<T>(
       .toList();
 }
 
-String _historyLine(PatientCareBundle bundle) {
-  return 'Allergies: ${_labelsOrEmpty(bundle.allergies)} | '
-      'Chronic diseases: ${_namesOrEmpty(bundle.chronicDiseases)} | '
-      'Visits: ${_visitsOrEmpty(bundle.visitHistory)} | '
-      'Diagnoses: ${_diagnosesOrEmpty(bundle.diagnoses)}';
+String _historyLine(BuildContext context, PatientCareBundle bundle) {
+  return context.l10n.historyOverview(
+    _labelsOrEmpty(context, bundle.allergies),
+    _namesOrEmpty(context, bundle.chronicDiseases),
+    _visitsOrEmpty(context, bundle.visitHistory),
+    _diagnosesOrEmpty(context, bundle.diagnoses),
+  );
 }
 
-String _labelsOrEmpty(List<PatientAllergyItem> items) {
+String _labelsOrEmpty(BuildContext context, List<PatientAllergyItem> items) {
   if (items.isEmpty) {
-    return 'None recorded';
+    return context.l10n.noneRecorded;
   }
   return items.map((item) => item.label).join(', ');
 }
 
-String _namesOrEmpty(List<ChronicDiseaseItem> items) {
+String _namesOrEmpty(BuildContext context, List<ChronicDiseaseItem> items) {
   if (items.isEmpty) {
-    return 'None recorded';
+    return context.l10n.noneRecorded;
   }
   return items.map((item) => item.name).join(', ');
 }
 
-String _visitsOrEmpty(List<VisitHistoryItem> items) {
+String _visitsOrEmpty(BuildContext context, List<VisitHistoryItem> items) {
   if (items.isEmpty) {
-    return 'None recorded';
+    return context.l10n.noneRecorded;
   }
   return items.map((item) => item.title).join(', ');
 }
 
-String _diagnosesOrEmpty(List<DiagnosisItem> items) {
+String _diagnosesOrEmpty(BuildContext context, List<DiagnosisItem> items) {
   if (items.isEmpty) {
-    return 'None recorded';
+    return context.l10n.noneRecorded;
   }
   return items.map((item) => item.label).join(', ');
 }
 
-String _prescriptionSummary(PrescriptionItem item) {
+String _prescriptionSummary(BuildContext context, PrescriptionItem item) {
   final lines = item.medications
       .map((line) => '${line.name}: ${line.dosage} - ${line.schedule}')
       .join('\n');
   final notes = item.notes == null || item.notes!.isEmpty
-      ? 'No prescription note'
+      ? context.l10n.noPrescriptionNote
       : item.notes!;
   return '$lines\n$notes';
 }
 
-String _dateLabel(DateTime? value) {
+String _dateLabel(BuildContext context, DateTime? value) {
   if (value == null) {
-    return 'not scheduled';
+    return context.l10n.notScheduled;
   }
-  return '${value.year.toString().padLeft(4, '0')}-'
-      '${value.month.toString().padLeft(2, '0')}-'
-      '${value.day.toString().padLeft(2, '0')}';
+  return DateFormat.yMd(
+    Localizations.localeOf(context).toLanguageTag(),
+  ).format(value);
 }
 
 class _ItemSection<T> extends StatelessWidget {
@@ -3860,7 +3933,7 @@ class _ItemSection<T> extends StatelessWidget {
               _EmptyState(
                 icon: Icons.inbox_outlined,
                 title: emptyTitle,
-                body: 'Synthetic content has not been seeded for this section.',
+                body: context.l10n.emptySectionDescription,
               )
             else
               for (final item in items) ...<Widget>[
@@ -3922,18 +3995,17 @@ class _SimulationDisclosure extends StatelessWidget {
         color: DrAiColors.patientAccent,
         borderRadius: BorderRadius.circular(DrAiRadii.md),
       ),
-      child: const Padding(
-        padding: EdgeInsets.all(DrAiSpacing.sm),
+      child: Padding(
+        padding: const EdgeInsets.all(DrAiSpacing.sm),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Icon(Icons.info_outline, color: DrAiColors.ink),
-            SizedBox(width: DrAiSpacing.xs),
+            const Icon(Icons.info_outline, color: DrAiColors.ink),
+            const SizedBox(width: DrAiSpacing.xs),
             Expanded(
               child: Text(
-                'Research simulation - not for diagnosis.\n'
-                'Synthetic demonstration data only. Do not enter real patient data.',
-                style: TextStyle(fontWeight: FontWeight.w700),
+                context.l10n.stagingNotice,
+                style: const TextStyle(fontWeight: FontWeight.w700),
               ),
             ),
           ],
@@ -3984,12 +4056,12 @@ class _UploadPreparedCard extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(top: DrAiSpacing.xs),
       child: _InfoTile(
-        title: 'Demo upload prepared',
-        subtitle: 'Synthetic-only ${presign.method} metadata',
+        title: context.l10n.uploadPrepared,
+        subtitle: context.l10n.uploadMetadata(presign.method),
         body:
-            'Object key: ${presign.objectKey}\n'
-            'Expires: ${presign.expiresAt.toUtc().toIso8601String()}\n'
-            '${presign.safetyLabel}',
+            '${context.l10n.objectKey(presign.objectKey)}\n'
+            '${context.l10n.expires(presign.expiresAt.toUtc().toIso8601String())}\n'
+            '${context.l10n.stableValue(presign.safetyLabel)}',
       ),
     );
   }
@@ -4004,18 +4076,20 @@ class _ImagingWorkflowCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final presign = state.presign;
     final asset = state.asset;
-    final title = asset == null ? 'Imaging upload prepared' : 'Imaging status';
+    final title = asset == null
+        ? context.l10n.imagingUploadPrepared
+        : context.l10n.imagingStatus;
     final subtitle = asset == null
         ? '${presign?.storageProvider ?? 'tencent_cos'} metadata'
-        : '${asset.uploadStatus} - ${asset.reviewStatus}';
+        : '${context.l10n.stableValue(asset.uploadStatus)} - ${context.l10n.stableValue(asset.reviewStatus)}';
     final body = asset == null
-        ? 'Expires: ${presign?.expiresAt.toUtc().toIso8601String()}\n'
-              '${presign?.safetyLabel ?? ''}'
-        : '${asset.contentType}, ${asset.uploadedSizeBytes ?? asset.sizeBytes} bytes\n'
-              'Reviewed: ${_dateLabel(asset.reviewedAt)}\n'
-              'Finding/result: ${asset.findingSummary ?? 'Pending manual doctor review'}\n'
-              'Measurement/observation: ${asset.measurementSummary ?? 'Not recorded'}\n'
-              '${asset.safetyLabel}';
+        ? context.l10n.expires(
+            presign?.expiresAt.toUtc().toIso8601String() ?? '',
+          )
+        : '${asset.contentType}, ${context.l10n.bytesVia(asset.uploadedSizeBytes ?? asset.sizeBytes, asset.storageProvider)}\n'
+              '${context.l10n.reviewed(_dateLabel(context, asset.reviewedAt))}\n'
+              '${context.l10n.findingResult(asset.findingSummary ?? context.l10n.pendingManualReview)}\n'
+              '${context.l10n.measurementObservation(asset.measurementSummary ?? context.l10n.notRecorded)}';
     return Padding(
       key: const Key('imaging-workflow-status'),
       padding: const EdgeInsets.only(top: DrAiSpacing.xs),
@@ -4047,7 +4121,7 @@ class _AssessmentResultCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               Text(
-                result.safetyLabel,
+                context.l10n.stableValue(result.safetyLabel),
                 style: const TextStyle(
                   color: DrAiColors.danger,
                   fontWeight: FontWeight.w700,
@@ -4058,18 +4132,25 @@ class _AssessmentResultCard extends StatelessWidget {
                 spacing: DrAiSpacing.xs,
                 runSpacing: DrAiSpacing.xs,
                 children: <Widget>[
-                  _ResultChip(label: 'Risk: ${result.riskBand}'),
-                  _ResultChip(label: 'Demo score: $score'),
-                  _ResultChip(label: result.inputCompleteness),
+                  _ResultChip(
+                    label: context.l10n.risk(
+                      context.l10n.stableValue(result.riskBand),
+                    ),
+                  ),
+                  _ResultChip(label: context.l10n.assessmentScore(score)),
+                  _ResultChip(
+                    label: context.l10n.stableValue(result.inputCompleteness),
+                  ),
                 ],
               ),
               const SizedBox(height: DrAiSpacing.xs),
-              Text('Fixture model: ${result.modelVersion}'),
+              Text(context.l10n.modelVersion(result.modelVersion)),
               const SizedBox(height: DrAiSpacing.xs),
               for (final limitation in result.limitations)
-                Text('- $limitation'),
+                Text('- ${context.l10n.stableValue(limitation)}'),
               const SizedBox(height: DrAiSpacing.xs),
-              for (final step in result.recommendedNextSteps) Text('- $step'),
+              for (final step in result.recommendedNextSteps)
+                Text('- ${context.l10n.stableValue(step)}'),
             ],
           ),
         ),
@@ -4186,16 +4267,16 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
-String _safeErrorMessage(Object error) {
+String _safeErrorMessage(BuildContext context, Object error) {
   if (error is ApiError) {
     if (error.code == 'unauthenticated') {
-      return 'Your session has ended. Please sign in again.';
+      return context.l10n.sessionEnded;
     }
     if (error.code == 'not_found') {
-      return 'This synthetic patient record is not available.';
+      return context.l10n.patientRecordUnavailable;
     }
     if (error.code == 'validation_failed') {
-      return 'Check the entered synthetic data and try again.';
+      return context.l10n.checkInformation;
     }
     if (error.code == 'unsupported_media_type') {
       return error.message;
@@ -4204,9 +4285,9 @@ String _safeErrorMessage(Object error) {
       return error.message;
     }
     if (error.code == 'service_unavailable') {
-      return 'Unable to reach Dr. AI. Check your connection and try again.';
+      return context.l10n.unableToReachRetry;
     }
     return error.message;
   }
-  return 'Unable to reach Dr. AI. Check your connection and try again.';
+  return context.l10n.unableToReachRetry;
 }

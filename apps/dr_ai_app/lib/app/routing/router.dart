@@ -5,7 +5,9 @@ import 'package:dr_ai_app/features/beta/presentation/beta_support_screen.dart';
 import 'package:dr_ai_app/features/doctor/presentation/doctor_dashboard_screen.dart';
 import 'package:dr_ai_app/features/doctor/presentation/patient_management_screen.dart';
 import 'package:dr_ai_app/features/foundation/presentation/unauthorized_screen.dart';
+import 'package:dr_ai_app/features/patient/presentation/patient_contacts_screen.dart';
 import 'package:dr_ai_app/features/patient/presentation/patient_dashboard_screen.dart';
+import 'package:dr_ai_app/l10n/l10n.dart';
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
@@ -29,9 +31,11 @@ GoRouter createRouter(AppRole? role, {String? initialLocation}) {
       final publicLegalPath =
           path == '/privacy' || path == '/terms' || path == '/privacy-policy';
       if (role == null) {
-        return path == '/login' || publicLegalPath ? null : '/login';
+        return path == '/login' || path == '/register' || publicLegalPath
+            ? null
+            : '/login';
       }
-      if (path == '/login') {
+      if (path == '/login' || path == '/register') {
         return homePath;
       }
       if (role == AppRole.unsupported) {
@@ -48,67 +52,121 @@ GoRouter createRouter(AppRole? role, {String? initialLocation}) {
       return null;
     },
     routes: <RouteBase>[
-      GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
+      GoRoute(
+        path: '/login',
+        pageBuilder: (context, state) => _drAiPage(state, const LoginScreen()),
+      ),
+      GoRoute(
+        path: '/register',
+        pageBuilder: (context, state) =>
+            _drAiPage(state, const LoginScreen(initiallyRegistering: true)),
+      ),
       GoRoute(
         path: '/doctor',
-        builder: (context, state) => const DoctorDashboardScreen(),
+        pageBuilder: (context, state) =>
+            _drAiPage(state, const DoctorDashboardScreen()),
         routes: <RouteBase>[
           GoRoute(
             path: 'patients',
-            builder: (context, state) => const PatientManagementScreen(),
+            pageBuilder: (context, state) =>
+                _drAiPage(state, const PatientManagementScreen()),
           ),
           GoRoute(
             path: 'account',
-            builder: (context, state) => const DoctorAccountScreen(),
+            pageBuilder: (context, state) =>
+                _drAiPage(state, const DoctorAccountScreen()),
           ),
         ],
       ),
       GoRoute(
         path: '/patient',
-        builder: (context, state) => const PatientDashboardScreen(),
+        pageBuilder: (context, state) =>
+            _drAiPage(state, const PatientDashboardScreen()),
         routes: <RouteBase>[
           GoRoute(
             path: 'contact',
-            builder: (context, state) => const PatientPlaceholderScreen(
-              selectedIndex: 1,
-              title: 'Contact',
-            ),
+            pageBuilder: (context, state) =>
+                _drAiPage(state, const PatientContactsScreen()),
           ),
           GoRoute(
             path: 'medical-service',
-            builder: (context, state) => const PatientPlaceholderScreen(
-              selectedIndex: 2,
-              title: 'Medical Service',
-            ),
+            redirect: (context, state) => '/patient',
           ),
           GoRoute(
             path: 'recovery-plan',
-            builder: (context, state) => const PatientRecoveryPlanScreen(),
+            pageBuilder: (context, state) =>
+                _drAiPage(state, const PatientRecoveryPlanScreen()),
           ),
           GoRoute(
             path: 'account',
-            builder: (context, state) => const PatientAccountScreen(),
+            pageBuilder: (context, state) =>
+                _drAiPage(state, const PatientAccountScreen()),
           ),
         ],
       ),
       GoRoute(
         path: '/privacy',
-        builder: (context, state) => const BetaSupportScreen(),
+        pageBuilder: (context, state) =>
+            _drAiPage(state, const BetaSupportScreen()),
       ),
       GoRoute(
         path: '/terms',
-        builder: (context, state) =>
-            const LegalPlaceholderScreen(title: 'Terms of Service'),
+        pageBuilder: (context, state) => _drAiPage(
+          state,
+          LegalPlaceholderScreen(title: context.l10n.termsOfService),
+        ),
       ),
       GoRoute(
         path: '/privacy-policy',
-        builder: (context, state) =>
-            const LegalPlaceholderScreen(title: 'Privacy Policy'),
+        pageBuilder: (context, state) => _drAiPage(
+          state,
+          LegalPlaceholderScreen(title: context.l10n.privacyPolicy),
+        ),
       ),
       GoRoute(
         path: '/unauthorized',
-        builder: (context, state) => UnauthorizedScreen(role: role),
+        pageBuilder: (context, state) =>
+            _drAiPage(state, UnauthorizedScreen(role: role)),
       ),
     ],
+  );
+}
+
+CustomTransitionPage<void> _drAiPage(GoRouterState state, Widget child) {
+  return CustomTransitionPage<void>(
+    key: state.pageKey,
+    child: child,
+    transitionDuration: const Duration(milliseconds: 280),
+    reverseTransitionDuration: const Duration(milliseconds: 210),
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      if (MediaQuery.maybeOf(context)?.disableAnimations ?? false) {
+        return child;
+      }
+      final eased = CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeOutCubic,
+        reverseCurve: Curves.easeInCubic,
+      );
+      final exit = CurvedAnimation(
+        parent: secondaryAnimation,
+        curve: Curves.easeOutCubic,
+      );
+      return FadeTransition(
+        opacity: eased,
+        child: SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0.035, 0),
+            end: Offset.zero,
+          ).animate(eased),
+          child: ScaleTransition(
+            scale: Tween<double>(begin: 0.992, end: 1).animate(eased),
+            child: FadeTransition(
+              opacity: Tween<double>(begin: 1, end: 0.92).animate(exit),
+              child: child,
+            ),
+          ),
+        ),
+      );
+    },
   );
 }

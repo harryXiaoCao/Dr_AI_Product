@@ -47,6 +47,8 @@ const doctorProfile = DoctorProfile(
   specialty: 'Pulmonology',
   department: 'Respiratory Medicine',
   preferredLanguage: 'English',
+  lastActiveAt: null,
+  isRecentlyActive: true,
 );
 
 const patientSession = AuthSession(
@@ -161,6 +163,29 @@ final patientDashboard = DashboardData(
   },
 );
 
+const demoPatientDoctorContacts = PatientDoctorContactList(
+  items: <PatientDoctorContact>[
+    PatientDoctorContact(
+      doctorId: 'doctor-profile-test-id',
+      displayName: 'Dr. Avery Demo',
+      title: 'Attending physician',
+      hospitalName: 'Nanshan Care Center',
+      specialty: 'Pulmonology',
+      department: 'Respiratory Medicine',
+      avatarUrl: null,
+    ),
+    PatientDoctorContact(
+      doctorId: 'doctor-profile-test-id-2',
+      displayName: 'Dr. Lin Chen',
+      title: 'Rehabilitation physician',
+      hospitalName: 'Longgang Community Hospital',
+      specialty: 'Rehabilitation Medicine',
+      department: null,
+      avatarUrl: null,
+    ),
+  ],
+);
+
 const demoPatientSummary = PatientSummary(
   patientId: 'patient-profile-test-id',
   displayName: 'Riley Demo Patient',
@@ -249,6 +274,12 @@ final demoPatientCareBundle = PatientCareBundle(
     preferredLanguage: 'English',
     contactPreference: 'in-app',
     avatarUrl: null,
+    country: 'China',
+    province: 'Guangdong',
+    city: 'Shenzhen',
+    homeAddress: '100 Recovery Road',
+    heightCm: 168,
+    weightKg: 62,
     medicalHistorySetupCompleted: true,
   ),
   clinicalEvents: <ClinicalEventItem>[demoClinicalEvent],
@@ -434,6 +465,12 @@ final incompleteOnboardingPatientCareBundle = _copyCareBundle(
     preferredLanguage: null,
     contactPreference: null,
     avatarUrl: null,
+    country: 'China',
+    province: 'Guangdong',
+    city: 'Shenzhen',
+    homeAddress: null,
+    heightCm: null,
+    weightKg: null,
     medicalHistorySetupCompleted: false,
   ),
 );
@@ -650,6 +687,7 @@ class FakeDrAiRepository implements DrAiRepository {
     this.dashboardError,
     PatientListData? patientList,
     PatientCareBundle? patientCareBundle,
+    PatientDoctorContactList? patientDoctorContacts,
     AssessmentListData? assessments,
     RecoveryPlanListData? recoveryPlans,
     PatientTodayData? patientToday,
@@ -670,6 +708,8 @@ class FakeDrAiRepository implements DrAiRepository {
            patientList ??
            const PatientListData(items: <PatientSummary>[demoPatientSummary]),
        patientCareBundle = patientCareBundle ?? demoPatientCareBundle,
+       patientDoctorContacts =
+           patientDoctorContacts ?? demoPatientDoctorContacts,
        assessments =
            assessments ?? const AssessmentListData(items: <AssessmentResult>[]),
        recoveryPlans =
@@ -688,6 +728,7 @@ class FakeDrAiRepository implements DrAiRepository {
   ApiError? dashboardError;
   PatientListData patientList;
   PatientCareBundle patientCareBundle;
+  PatientDoctorContactList patientDoctorContacts;
   AssessmentListData assessments;
   RecoveryPlanListData recoveryPlans;
   PatientTodayData patientToday;
@@ -720,6 +761,10 @@ class FakeDrAiRepository implements DrAiRepository {
   bool imagingCompleted = false;
   bool imagingReviewed = false;
   bool doctorProfileUpdated = false;
+  bool passwordChanged = false;
+  bool passwordReset = false;
+  bool accountEmailUpdated = false;
+  bool patientMatchPreviewed = false;
   String? lastClinicalEventId;
   String? lastLoginEmail;
   String? lastLoginPassword;
@@ -740,6 +785,37 @@ class FakeDrAiRepository implements DrAiRepository {
       throw loginError!;
     }
     return loginSession;
+  }
+
+  @override
+  Future<PhoneVerificationResult> requestPasswordReset(
+    String phoneNumber,
+  ) async {
+    return const PhoneVerificationResult(
+      message: 'Verification code requested.',
+      expiresIn: 600,
+      debugCode: '123456',
+    );
+  }
+
+  @override
+  Future<PhoneVerificationResult> requestRegistrationCode(
+    String phoneNumber,
+  ) async {
+    return const PhoneVerificationResult(
+      message: 'Verification code requested.',
+      expiresIn: 600,
+      debugCode: '123456',
+    );
+  }
+
+  @override
+  Future<void> resetPassword({
+    required String phoneNumber,
+    required String verificationCode,
+    required String newPassword,
+  }) async {
+    passwordReset = true;
   }
 
   @override
@@ -778,6 +854,35 @@ class FakeDrAiRepository implements DrAiRepository {
   }
 
   @override
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    passwordChanged = true;
+  }
+
+  @override
+  Future<SessionUser> updateAccountEmail(String email) async {
+    accountEmailUpdated = true;
+    final current = restoredSession?.user ?? loginSession.user;
+    final updated = SessionUser(
+      id: current.id,
+      email: email,
+      phoneNumber: current.phoneNumber,
+      role: current.role,
+      displayName: current.displayName,
+    );
+    if (restoredSession != null) {
+      restoredSession = AuthSession(
+        accessToken: restoredSession!.accessToken,
+        refreshToken: restoredSession!.refreshToken,
+        user: updated,
+      );
+    }
+    return updated;
+  }
+
+  @override
   Future<DashboardData> loadDashboard(AppRole role) async {
     if (dashboardError != null) {
       throw dashboardError!;
@@ -795,13 +900,13 @@ class FakeDrAiRepository implements DrAiRepository {
     required String displayName,
     required String specialty,
     required String title,
-    required String hospitalName,
     required String department,
     required String contactPhone,
     required String country,
     required String province,
     required String city,
     required String preferredLanguage,
+    required String avatarUrl,
   }) async {
     doctorProfileUpdated = true;
     _doctorProfile = DoctorProfile(
@@ -811,14 +916,16 @@ class FakeDrAiRepository implements DrAiRepository {
       birthDate: _doctorProfile.birthDate,
       gender: _doctorProfile.gender,
       contactPhone: contactPhone,
-      avatarUrl: _doctorProfile.avatarUrl,
+      avatarUrl: avatarUrl.isEmpty ? _doctorProfile.avatarUrl : avatarUrl,
       country: country,
       province: province,
       city: city,
-      hospitalName: hospitalName,
+      hospitalName: _doctorProfile.hospitalName,
       specialty: specialty,
       department: department,
       preferredLanguage: preferredLanguage,
+      lastActiveAt: _doctorProfile.lastActiveAt,
+      isRecentlyActive: _doctorProfile.isRecentlyActive,
     );
     return _doctorProfile;
   }
@@ -855,6 +962,15 @@ class FakeDrAiRepository implements DrAiRepository {
   }
 
   @override
+  Future<PatientMatchPreview> previewPatientByCode(String patientCode) async {
+    patientMatchPreviewed = true;
+    return const PatientMatchPreview(
+      displayName: 'Riley Demo Patient',
+      maskedPatientCode: 'Patient ID ending in T001',
+    );
+  }
+
+  @override
   Future<PatientCareBundle> loadPatientCareBundle(String patientId) async {
     if (patientCareError != null) {
       throw patientCareError!;
@@ -871,6 +987,11 @@ class FakeDrAiRepository implements DrAiRepository {
   }
 
   @override
+  Future<PatientDoctorContactList> loadOwnPatientContacts() async {
+    return patientDoctorContacts;
+  }
+
+  @override
   Future<PatientProfile> updateOwnPatientProfile({
     required String displayName,
     required String birthDate,
@@ -880,6 +1001,13 @@ class FakeDrAiRepository implements DrAiRepository {
     required String emergencyContactPhone,
     required String preferredLanguage,
     required String contactPreference,
+    required String avatarUrl,
+    required String country,
+    required String province,
+    required String city,
+    required String homeAddress,
+    required String heightCm,
+    required String weightKg,
     required bool medicalHistorySetupCompleted,
   }) async {
     patientProfileUpdated = true;
@@ -905,7 +1033,23 @@ class FakeDrAiRepository implements DrAiRepository {
           : emergencyContactPhone,
       preferredLanguage: preferredLanguage,
       contactPreference: contactPreference,
-      avatarUrl: patientCareBundle.patient.avatarUrl,
+      avatarUrl: avatarUrl.isEmpty
+          ? patientCareBundle.patient.avatarUrl
+          : avatarUrl,
+      country: country.isEmpty ? patientCareBundle.patient.country : country,
+      province: province.isEmpty
+          ? patientCareBundle.patient.province
+          : province,
+      city: city.isEmpty ? patientCareBundle.patient.city : city,
+      homeAddress: homeAddress.isEmpty
+          ? patientCareBundle.patient.homeAddress
+          : homeAddress,
+      heightCm: heightCm.isEmpty
+          ? patientCareBundle.patient.heightCm
+          : double.tryParse(heightCm),
+      weightKg: weightKg.isEmpty
+          ? patientCareBundle.patient.weightKg
+          : double.tryParse(weightKg),
       medicalHistorySetupCompleted: medicalHistorySetupCompleted,
     );
     patientCareBundle = _copyCareBundle(patientCareBundle, patient: updated);
