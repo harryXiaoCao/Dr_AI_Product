@@ -14,7 +14,6 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
-
 DEFAULT_BASE_URL = "https://dr-ai.43.132.169.195.sslip.io"
 DEFAULT_DOCTOR_EMAIL = "doctor.demo@example.com"
 DEFAULT_PATIENT_EMAIL = "patient.demo@example.com"
@@ -76,7 +75,9 @@ def request_json(
         safe_code = None
         if isinstance(body, dict):
             safe_code = body.get("error", {}).get("code")
-        raise SmokeFailure(f"{method} {path} returned {status}, expected {sorted(expected)}, code={safe_code}")
+        raise SmokeFailure(
+            f"{method} {path} returned {status}, expected {sorted(expected)}, code={safe_code}"
+        )
     return ApiResponse(status=status, body=body)
 
 
@@ -87,7 +88,9 @@ def request_text(
     *,
     expected_status: int | set[int] = 200,
 ) -> tuple[int, str]:
-    request = Request(f"{base_url.rstrip('/')}{path}", headers={"Accept": "text/html"}, method=method)
+    request = Request(
+        f"{base_url.rstrip('/')}{path}", headers={"Accept": "text/html"}, method=method
+    )
     try:
         with urlopen(request, timeout=20) as response:  # noqa: S310 - approved staging origin.
             status = response.status
@@ -125,7 +128,9 @@ def main() -> int:
     base_url = os.environ.get("DR_AI_STAGING_BASE_URL", DEFAULT_BASE_URL).rstrip("/")
     doctor_email = os.environ.get("DR_AI_STAGING_DOCTOR_EMAIL", DEFAULT_DOCTOR_EMAIL)
     patient_email = os.environ.get("DR_AI_STAGING_PATIENT_EMAIL", DEFAULT_PATIENT_EMAIL)
-    unrelated_email = os.environ.get("DR_AI_STAGING_UNRELATED_PATIENT_EMAIL", DEFAULT_UNRELATED_EMAIL)
+    unrelated_email = os.environ.get(
+        "DR_AI_STAGING_UNRELATED_PATIENT_EMAIL", DEFAULT_UNRELATED_EMAIL
+    )
     doctor_password = env_required("DR_AI_STAGING_DOCTOR_PASSWORD")
     patient_password = env_required("DR_AI_STAGING_PATIENT_PASSWORD")
     unrelated_password = os.environ.get("DR_AI_STAGING_UNRELATED_PATIENT_PASSWORD")
@@ -166,10 +171,14 @@ def main() -> int:
     )
     if logout.body is not None:
         raise SmokeFailure("Logout returned an unexpected body")
-    request_json(base_url, "GET", "/api/v1/me", token=rotated.body["access_token"], expected_status=401)
+    request_json(
+        base_url, "GET", "/api/v1/me", token=rotated.body["access_token"], expected_status=401
+    )
     ok("refresh rotation and logout revocation")
 
-    patients = request_json(base_url, "GET", f"/api/v1/patients?{urlencode({'q': 'Riley'})}", token=doctor_access)
+    patients = request_json(
+        base_url, "GET", f"/api/v1/patients?{urlencode({'q': 'Riley'})}", token=doctor_access
+    )
     assert patients.body is not None
     items = patients.body.get("items", [])
     if len(items) != 1:
@@ -228,7 +237,10 @@ def main() -> int:
             "idempotency_key": smoke_id,
         },
     )
-    if assessment.body is None or assessment.body.get("safety_label") != "Research simulation - not for diagnosis.":
+    if (
+        assessment.body is None
+        or assessment.body.get("safety_label") != "Research simulation - not for diagnosis."
+    ):
         raise SmokeFailure("Assessment response did not include the simulation safety label")
     ok("simulated assessment")
 
@@ -334,12 +346,55 @@ def main() -> int:
         raise SmokeFailure("Patient consultation status did not include the new request")
     ok("doctor consultation request and patient status readback")
 
-    beta_status, beta_body = request_text(base_url, "GET", "/beta-support")
-    has_flutter_shell = "flutter_bootstrap.js" in beta_body
-    has_app_title = "<title>Dr. AI Beta</title>" in beta_body or "<title>dr_ai_app</title>" in beta_body
-    if beta_status != 200 or not has_flutter_shell or not has_app_title:
-        raise SmokeFailure("Beta support web route did not return the Flutter web shell")
-    ok("beta support web surface")
+    patient_contacts = request_json(
+        base_url,
+        "GET",
+        "/api/v1/patient/me/contacts",
+        token=patient_access,
+    )
+    assert patient_contacts.body is not None
+    contact_items = patient_contacts.body.get("items", [])
+    if not contact_items:
+        raise SmokeFailure("Connected patient did not receive a doctor contact")
+    doctor_id = contact_items[0]["doctor_id"]
+    private_message = f"Synthetic staging message {smoke_id}"
+    sent_message = request_json(
+        base_url,
+        "POST",
+        f"/api/v1/private-chats/{doctor_id}/messages",
+        token=patient_access,
+        payload={"message": private_message},
+    )
+    assert sent_message.body is not None
+    message_id = sent_message.body.get("message_id")
+    if sent_message.body.get("sender_role") != "patient" or not message_id:
+        raise SmokeFailure("Patient private message did not return its identifier and role")
+    doctor_messages = request_json(
+        base_url,
+        "GET",
+        f"/api/v1/private-chats/{assigned_patient_id}/messages",
+        token=doctor_access,
+    )
+    assert doctor_messages.body is not None
+    delivered_ids = {item["message_id"] for item in doctor_messages.body.get("items", [])}
+    if message_id not in delivered_ids:
+        raise SmokeFailure("Doctor did not receive the patient's private message")
+    request_json(
+        base_url,
+        "POST",
+        f"/api/v1/private-chats/{unrelated_patient_id}/messages",
+        token=doctor_access,
+        payload={"message": "This synthetic message must not be delivered."},
+        expected_status=404,
+    )
+    ok("connected private messaging and unconnected-patient denial")
+
+    privacy_status, privacy_body = request_text(base_url, "GET", "/privacy")
+    has_flutter_shell = "flutter_bootstrap.js" in privacy_body
+    has_app_title = "<title>Dr. AI</title>" in privacy_body
+    if privacy_status != 200 or not has_flutter_shell or not has_app_title:
+        raise SmokeFailure("Privacy deep link did not return the Flutter web shell")
+    ok("privacy web deep link")
 
     print("STAGING SMOKE PASSED")
     return 0
@@ -350,4 +405,4 @@ if __name__ == "__main__":
         raise SystemExit(main())
     except SmokeFailure as exc:
         print(f"FAIL {exc}", file=sys.stderr)
-        raise SystemExit(1)
+        raise SystemExit(1) from None
