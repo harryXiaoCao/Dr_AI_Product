@@ -428,8 +428,10 @@ erDiagram
   CHAT_THREADS {
     uuid id PK
     uuid patient_id FK
+    uuid doctor_id FK "nullable"
     uuid created_by_user_id FK
     varchar_80 thread_key
+    varchar_40 thread_type
     varchar_160 title
     datetime_tz created_at
     datetime_tz last_message_at "nullable"
@@ -441,6 +443,7 @@ erDiagram
     uuid patient_id FK
     uuid actor_user_id FK
     varchar_40 role
+    text content "nullable"
     varchar_64 prompt_hash "nullable"
     integer prompt_char_count "nullable"
     varchar_80 safety_category
@@ -783,8 +786,10 @@ erDiagram
   be treated as the production medical-imaging source of truth.
 - `recovery_plans`, `recovery_tasks`, and `recovery_task_completions`: doctor
   plan drafting/review plus patient Today completion tracking.
-- `chat_threads`, `chat_messages`, and `chat_rate_limits`: educational chat
-  state, safety metadata, and per-user throttling.
+- `chat_threads`, `chat_messages`, and `chat_rate_limits`: educational-chat
+  safety state plus text-only private conversations between actively connected
+  doctors and patients. Private threads carry both participant profile IDs;
+  system chat remains read-only and group chat has no persistence yet.
 - `consultation_requests`: specialist consultation request/status foundation.
 - `audit_events`: metadata-only audit record for sensitive workflow actions.
 

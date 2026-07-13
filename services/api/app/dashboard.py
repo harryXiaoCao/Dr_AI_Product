@@ -73,6 +73,8 @@ from app.schemas import (
     DoctorNoteListResponse,
     DoctorNoteResponse,
     DoctorNoteUpdateRequest,
+    DoctorPatientContactListResponse,
+    DoctorPatientContactResponse,
     DoctorProfileResponse,
     DoctorProfileUpdateRequest,
     MedicalHistoryReviewListResponse,
@@ -112,6 +114,9 @@ from app.schemas import (
     PrescriptionMedicationResponse,
     PrescriptionRequest,
     PrescriptionResponse,
+    PrivateMessageListResponse,
+    PrivateMessageRequest,
+    PrivateMessageResponse,
     RecoveryPlanCreateRequest,
     RecoveryPlanListResponse,
     RecoveryPlanProgressResponse,
@@ -1759,6 +1764,144 @@ def own_patient_contacts(
             for doctor in doctors
         ]
     )
+
+
+@router.get("/doctor/me/contacts", response_model=DoctorPatientContactListResponse)
+def own_doctor_contacts(user: CurrentUser, db: DbSession) -> DoctorPatientContactListResponse:
+    if user.role != UserRole.doctor or user.doctor_profile is None:
+        raise _neutral_not_found()
+    patients = db.scalars(
+        select(PatientProfile)
+        .join(CareRelationship)
+        .where(
+            CareRelationship.doctor_id == user.doctor_profile.id,
+            CareRelationship.is_active.is_(True),
+        )
+        .order_by(PatientProfile.display_name, PatientProfile.id)
+    ).all()
+    return DoctorPatientContactListResponse(
+        items=[
+            DoctorPatientContactResponse(
+                patient_id=patient.id,
+                display_name=patient.display_name,
+                avatar_url=patient.avatar_url,
+            )
+            for patient in patients
+        ]
+    )
+
+
+def _private_chat_participants(
+    contact_id: uuid.UUID, user: CurrentUser, db: DbSession
+) -> tuple[PatientProfile, DoctorProfile]:
+    if user.role == UserRole.patient and user.patient_profile is not None:
+        patient = user.patient_profile
+        doctor = db.get(DoctorProfile, contact_id)
+    elif user.role == UserRole.doctor and user.doctor_profile is not None:
+        doctor = user.doctor_profile
+        patient = db.get(PatientProfile, contact_id)
+    else:
+        raise _neutral_not_found()
+    if patient is None or doctor is None:
+        raise _neutral_not_found()
+    relationship = db.scalar(
+        select(CareRelationship).where(
+            CareRelationship.patient_id == patient.id,
+            CareRelationship.doctor_id == doctor.id,
+            CareRelationship.is_active.is_(True),
+        )
+    )
+    if relationship is None:
+        raise _neutral_not_found()
+    return patient, doctor
+
+
+def _private_message_response(message: ChatMessage) -> PrivateMessageResponse:
+    return PrivateMessageResponse(
+        message_id=message.id,
+        thread_id=message.thread_id,
+        sender_user_id=message.actor_user_id,
+        sender_role=message.role,
+        content=message.content or "",
+        created_at=message.created_at,
+    )
+
+
+@router.get("/private-chats/{contact_id}/messages", response_model=PrivateMessageListResponse)
+def list_private_messages(
+    contact_id: uuid.UUID, user: CurrentUser, db: DbSession
+) -> PrivateMessageListResponse:
+    patient, doctor = _private_chat_participants(contact_id, user, db)
+    thread = db.scalar(
+        select(ChatThread).where(
+            ChatThread.patient_id == patient.id,
+            ChatThread.doctor_id == doctor.id,
+            ChatThread.thread_type == "private",
+        )
+    )
+    if thread is None:
+        return PrivateMessageListResponse(thread_id=None, items=[])
+    messages = db.scalars(
+        select(ChatMessage)
+        .where(ChatMessage.thread_id == thread.id)
+        .order_by(ChatMessage.created_at, ChatMessage.id)
+    ).all()
+    return PrivateMessageListResponse(
+        thread_id=thread.id,
+        items=[_private_message_response(message) for message in messages],
+    )
+
+
+@router.post("/private-chats/{contact_id}/messages", response_model=PrivateMessageResponse)
+def send_private_message(
+    contact_id: uuid.UUID,
+    request: PrivateMessageRequest,
+    user: CurrentUser,
+    db: DbSession,
+) -> PrivateMessageResponse:
+    patient, doctor = _private_chat_participants(contact_id, user, db)
+    thread = db.scalar(
+        select(ChatThread).where(
+            ChatThread.patient_id == patient.id,
+            ChatThread.doctor_id == doctor.id,
+            ChatThread.thread_type == "private",
+        )
+    )
+    if thread is None:
+        thread = ChatThread(
+            patient_id=patient.id,
+            doctor_id=doctor.id,
+            created_by_user_id=user.id,
+            thread_key=f"private-{doctor.id}",
+            thread_type="private",
+            title=f"{patient.display_name} and {doctor.display_name}",
+        )
+        db.add(thread)
+        db.flush()
+    message = ChatMessage(
+        thread_id=thread.id,
+        patient_id=patient.id,
+        actor_user_id=user.id,
+        role=user.role.value,
+        content=request.message,
+        safety_category="private_care_message",
+        metadata_json={"content_redacted": False, "message_length": len(request.message)},
+    )
+    thread.last_message_at = datetime.now(UTC)
+    db.add(message)
+    db.flush()
+    _record_audit_event(
+        db,
+        actor_user_id=user.id,
+        patient_id=patient.id,
+        event_type="private_message_sent",
+        resource_type="chat_message",
+        resource_id=message.id,
+        metadata={"actor_role": user.role.value, "message_length": len(request.message)},
+    )
+    db.commit()
+    db.refresh(message)
+    return _private_message_response(message)
 
 
 @router.get("/patients", response_model=PatientListResponse)

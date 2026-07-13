@@ -293,6 +293,9 @@ Response:
 | `GET` | `/api/v1/reminders` | Assigned patient scope | Own data | List own medication/refill reminders |
 | `GET` | `/api/v1/patient/me/notifications` | No | Own data | List own metadata-only in-app notification records |
 | `POST` | `/api/v1/chat/threads/{thread_id}/messages` | Authorized thread | Own thread | Send an educational-chat message |
+| `GET` | `/api/v1/doctor/me/contacts` | Doctor | Own active relationships | List connected patients for doctor Contacts |
+| `GET` | `/api/v1/private-chats/{contact_id}/messages` | Doctor or patient | Active mutual care relationship | Read a private conversation |
+| `POST` | `/api/v1/private-chats/{contact_id}/messages` | Doctor or patient | Active mutual care relationship | Send a text-only private message |
 | `GET` | `/api/v1/consultations` | Authorized cases | Own requests | List consultation requests |
 | `POST` | `/api/v1/consultations` | Assigned patient | No | Request asynchronous specialist review |
 | `POST` | `/api/v1/support-requests` | Own account | Own account | Submit authenticated support, deletion, or feedback request |

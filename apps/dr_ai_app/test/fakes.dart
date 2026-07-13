@@ -1079,6 +1079,32 @@ class FakeDrAiRepository implements DrAiRepository {
   }
 
   @override
+  Future<PatientAllergyItem> updatePatientAllergy({
+    required String patientId,
+    required String allergyId,
+    required String label,
+    required String reaction,
+    required String severity,
+    required String status,
+  }) async {
+    final allergy = PatientAllergyItem(
+      id: allergyId,
+      label: label,
+      reaction: reaction.isEmpty ? null : reaction,
+      severity: severity,
+      status: status,
+    );
+    patientCareBundle = _copyCareBundle(
+      patientCareBundle,
+      allergies: <PatientAllergyItem>[
+        allergy,
+        ...patientCareBundle.allergies.where((item) => item.id != allergyId),
+      ],
+    );
+    return allergy;
+  }
+
+  @override
   Future<MedicalRecordItem> createPatientMedicalRecord({
     required String patientId,
     required String title,
@@ -1119,6 +1145,33 @@ class FakeDrAiRepository implements DrAiRepository {
       chronicDiseases: <ChronicDiseaseItem>[
         condition,
         ...patientCareBundle.chronicDiseases,
+      ],
+    );
+    return condition;
+  }
+
+  @override
+  Future<ChronicDiseaseItem> updateChronicDisease({
+    required String patientId,
+    required String conditionId,
+    required String name,
+    required String notes,
+    required String status,
+  }) async {
+    final condition = ChronicDiseaseItem(
+      id: conditionId,
+      name: name,
+      status: status,
+      diagnosedOn: null,
+      notes: notes.isEmpty ? null : notes,
+    );
+    patientCareBundle = _copyCareBundle(
+      patientCareBundle,
+      chronicDiseases: <ChronicDiseaseItem>[
+        condition,
+        ...patientCareBundle.chronicDiseases.where(
+          (item) => item.id != conditionId,
+        ),
       ],
     );
     return condition;
@@ -1670,6 +1723,31 @@ class FakeDrAiRepository implements DrAiRepository {
     return MedicationNotificationScheduleResult(
       scheduledCount: count,
       label: 'Local demo medication notifications armed for $count task(s).',
+    );
+  }
+
+  @override
+  Future<DoctorPatientContactList> loadOwnDoctorContacts() async {
+    return const DoctorPatientContactList(items: <DoctorPatientContact>[]);
+  }
+
+  @override
+  Future<PrivateMessageList> loadPrivateMessages(String contactId) async {
+    return const PrivateMessageList(items: <PrivateMessage>[], threadId: null);
+  }
+
+  @override
+  Future<PrivateMessage> sendPrivateMessage(
+    String contactId,
+    String message,
+  ) async {
+    return PrivateMessage(
+      messageId: 'private-message-test-id',
+      threadId: 'private-thread-test-id',
+      senderUserId: 'sender-test-id',
+      senderRole: 'patient',
+      content: message,
+      createdAt: DateTime.utc(2026, 7, 11),
     );
   }
 

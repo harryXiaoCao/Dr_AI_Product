@@ -49,7 +49,7 @@ class DoctorAccountScreen extends ConsumerWidget {
     final email = auth.value?.user?.email ?? '';
     return ResponsiveAppShell(
       role: AppRole.doctor,
-      selectedIndex: 2,
+      selectedIndex: 3,
       child: profile.when(
         loading: () =>
             DashboardLoadingView(label: context.l10n.loadingDoctorAccount),
@@ -85,6 +85,7 @@ class _DoctorAccountViewState extends ConsumerState<_DoctorAccountView> {
   late String _city;
   late String _preferredLanguage;
   late String _avatarUrl;
+  late String _persistedAvatarUrl;
   bool _saving = false;
   String? _statusMessage;
 
@@ -131,7 +132,8 @@ class _DoctorAccountViewState extends ConsumerState<_DoctorAccountView> {
     _province = _knownProvince(_country, profile.province);
     _city = _knownCity(_country, _province, profile.city);
     _preferredLanguage = profile.preferredLanguage ?? 'English';
-    _avatarUrl = profile.avatarUrl ?? '';
+    _persistedAvatarUrl = profile.avatarUrl ?? '';
+    _avatarUrl = _persistedAvatarUrl;
   }
 
   Future<void> _saveProfile() async {
@@ -220,7 +222,10 @@ class _DoctorAccountViewState extends ConsumerState<_DoctorAccountView> {
 
   void _cancelChanges() {
     setState(() {
+      final persistedAvatarUrl = _persistedAvatarUrl;
       _seedFields(widget.profile);
+      _persistedAvatarUrl = persistedAvatarUrl;
+      _avatarUrl = persistedAvatarUrl;
       _statusMessage = null;
     });
   }
@@ -247,11 +252,52 @@ class _DoctorAccountViewState extends ConsumerState<_DoctorAccountView> {
       if (result == null || !mounted) {
         return;
       }
-      setState(() => _avatarUrl = result.dataUrl);
-      await _saveProfile();
+      setState(() {
+        _saving = true;
+        _statusMessage = null;
+      });
+      final profile = widget.profile;
+      await ref
+          .read(repositoryProvider)
+          .updateOwnDoctorProfile(
+            displayName: profile.displayName,
+            specialty: profile.specialty ?? '',
+            title: profile.title,
+            department: profile.department ?? '',
+            contactPhone: profile.contactPhone ?? '',
+            country: profile.country ?? '',
+            province: profile.province ?? '',
+            city: profile.city ?? '',
+            preferredLanguage: profile.preferredLanguage ?? 'English',
+            avatarUrl: result.dataUrl,
+          );
+      if (mounted) {
+        setState(() {
+          _persistedAvatarUrl = result.dataUrl;
+          _avatarUrl = result.dataUrl;
+          _saving = false;
+        });
+      }
     } on AvatarUploadException catch (error) {
       if (mounted) {
-        setState(() => _statusMessage = error.message);
+        setState(() {
+          _saving = false;
+          _statusMessage = error.message;
+        });
+      }
+    } on ApiError catch (error) {
+      if (mounted) {
+        setState(() {
+          _saving = false;
+          _statusMessage = error.message;
+        });
+      }
+    } on Exception {
+      if (mounted) {
+        setState(() {
+          _saving = false;
+          _statusMessage = context.l10n.accountSaveFailed;
+        });
       }
     }
   }
@@ -261,7 +307,7 @@ class _DoctorAccountViewState extends ConsumerState<_DoctorAccountView> {
     final desktop = MediaQuery.sizeOf(context).width >= 1080;
     final profile = widget.profile;
     return ColoredBox(
-      color: DrAiColors.brandSoft,
+      color: DrAiColors.pageBackground,
       child: ListView(
         key: const Key('doctor-account-list'),
         padding: EdgeInsets.fromLTRB(
@@ -337,9 +383,6 @@ class _DoctorAccountViewState extends ConsumerState<_DoctorAccountView> {
           return;
         }
         setState(() => _preferredLanguage = value);
-        ref
-            .read(localeControllerProvider.notifier)
-            .applyProfilePreference(value);
       },
       onCancel: _saving ? null : _cancelChanges,
       onSave: _saving ? null : _saveProfile,
@@ -438,6 +481,8 @@ class _DoctorAccountProfileCard extends StatelessWidget {
     ]);
     final avatar = avatarImageProvider(avatarUrl);
     return _DoctorAccountCard(
+      title: context.l10n.doctorProfile,
+      icon: Icons.badge_outlined,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
@@ -772,9 +817,11 @@ class _DoctorAccountFormPanel extends StatelessWidget {
 }
 
 class _DoctorAccountCard extends StatelessWidget {
-  const _DoctorAccountCard({required this.child});
+  const _DoctorAccountCard({required this.child, this.title, this.icon});
 
   final Widget child;
+  final String? title;
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
@@ -791,9 +838,43 @@ class _DoctorAccountCard extends StatelessWidget {
           ),
         ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(DrAiSpacing.lg),
-        child: child,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(DrAiRadii.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            if (title != null)
+              Container(
+                color: DrAiColors.sectionHeader,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: DrAiSpacing.md,
+                  vertical: DrAiSpacing.sm,
+                ),
+                child: Row(
+                  children: <Widget>[
+                    if (icon != null) ...<Widget>[
+                      Icon(icon, color: DrAiColors.white, size: 21),
+                      const SizedBox(width: DrAiSpacing.xs),
+                    ],
+                    Expanded(
+                      child: Text(
+                        title!,
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(
+                              color: DrAiColors.white,
+                              fontWeight: FontWeight.w700,
+                            ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            Padding(
+              padding: const EdgeInsets.all(DrAiSpacing.lg),
+              child: child,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -812,48 +893,37 @@ class _DoctorAccountSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        _AccountIcon(icon: icon),
-        const SizedBox(width: DrAiSpacing.md),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+        Container(
+          decoration: BoxDecoration(
+            color: DrAiColors.sectionHeader,
+            borderRadius: BorderRadius.circular(DrAiRadii.md),
+          ),
+          padding: const EdgeInsets.symmetric(
+            horizontal: DrAiSpacing.md,
+            vertical: DrAiSpacing.sm,
+          ),
+          child: Row(
             children: <Widget>[
-              Text(
-                title,
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: DrAiColors.brandDark,
-                  fontWeight: FontWeight.w900,
+              Icon(icon, color: DrAiColors.white, size: 21),
+              const SizedBox(width: DrAiSpacing.xs),
+              Expanded(
+                child: Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: DrAiColors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
-              const SizedBox(height: DrAiSpacing.md),
-              child,
             ],
           ),
         ),
+        const SizedBox(height: DrAiSpacing.md),
+        child,
       ],
-    );
-  }
-}
-
-class _AccountIcon extends StatelessWidget {
-  const _AccountIcon({required this.icon});
-
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: const Color(0xFFF0EEFF),
-        borderRadius: BorderRadius.circular(DrAiRadii.md),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(DrAiSpacing.xs),
-        child: Icon(icon, color: DrAiColors.accentIndigo, size: 22),
-      ),
     );
   }
 }
@@ -1208,7 +1278,7 @@ class _DoctorDashboard extends StatelessWidget {
   Widget build(BuildContext context) {
     final dashboardData = _doctorDashboardData(context, data.data);
     return ColoredBox(
-      color: DrAiColors.brandSoft,
+      color: DrAiColors.pageBackground,
       child: LayoutBuilder(
         builder: (context, constraints) {
           final desktop = constraints.maxWidth >= DrAiBreakpoints.desktop;
@@ -1308,132 +1378,62 @@ class _DoctorIdentityColumn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hospital = Map<String, dynamic>.from(data['hospital'] as Map);
-    final doctor = Map<String, dynamic>.from(data['doctor'] as Map);
-    final rating = doctor['rating'] as int;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        Container(
-          height: 300,
-          decoration: BoxDecoration(
-            color: DrAiColors.ink,
-            borderRadius: BorderRadius.circular(DrAiRadii.md),
+    final team = List<String>.from(data['team'] as List);
+    return _DoctorPanel(
+      title: context.l10n.teamManagement,
+      icon: Icons.groups_outlined,
+      child: Column(
+        children: <Widget>[
+          for (final member in team) ...<Widget>[
+            _TeamManagementTile(label: context.l10n.stableValue(member)),
+            const SizedBox(height: DrAiSpacing.xs),
+          ],
+          const _TeamManagementTile(addAction: true),
+        ],
+      ),
+    );
+  }
+}
+
+class _TeamManagementTile extends StatelessWidget {
+  const _TeamManagementTile({this.label, this.addAction = false});
+
+  final String? label;
+  final bool addAction;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      constraints: const BoxConstraints(minHeight: 82),
+      padding: const EdgeInsets.all(DrAiSpacing.sm),
+      decoration: BoxDecoration(
+        color: DrAiColors.ink,
+        borderRadius: BorderRadius.circular(DrAiRadii.md),
+      ),
+      child: Row(
+        children: <Widget>[
+          Icon(
+            addAction
+                ? Icons.add_circle_outline
+                : Icons.account_circle_outlined,
+            color: addAction ? DrAiColors.outlineMuted : DrAiColors.white,
+            size: 30,
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Container(
-                height: 120,
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: <Color>[
-                      DrAiColors.patientAccent,
-                      DrAiColors.accentCyan,
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.vertical(
-                    top: Radius.circular(DrAiRadii.md),
-                  ),
-                ),
-                child: const Center(
-                  child: Icon(
-                    Icons.local_hospital_outlined,
-                    size: 64,
-                    color: DrAiColors.white,
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(DrAiSpacing.md),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(
-                      hospital['name'] as String,
-                      style: const TextStyle(color: DrAiColors.white),
-                    ),
-                    const SizedBox(height: DrAiSpacing.xs),
-                    Text(
-                      hospital['location'] as String,
-                      style: const TextStyle(
-                        color: DrAiColors.white,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: DrAiSpacing.xs),
-                    Text(
-                      hospital['summary'] as String,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: DrAiColors.outlineMuted,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: DrAiSpacing.sm),
-        Container(
-          padding: const EdgeInsets.all(DrAiSpacing.md),
-          decoration: BoxDecoration(
-            color: DrAiColors.ink,
-            borderRadius: BorderRadius.circular(DrAiRadii.md),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Row(
-                children: List<Widget>.generate(
-                  5,
-                  (index) => Icon(
-                    index < rating ? Icons.star : Icons.star_border,
-                    color: DrAiColors.white,
-                    size: 20,
-                  ),
-                ),
-              ),
-              const SizedBox(height: DrAiSpacing.md),
-              Text(
-                doctor['name'] as String,
+          if (!addAction) ...<Widget>[
+            const SizedBox(width: DrAiSpacing.sm),
+            Expanded(
+              child: Text(
+                label!,
                 style: const TextStyle(
                   color: DrAiColors.white,
-                  fontSize: 22,
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              Text(
-                doctor['title'] as String,
-                style: const TextStyle(color: DrAiColors.white),
-              ),
-              const SizedBox(height: DrAiSpacing.lg),
-              Row(
-                children: <Widget>[
-                  const Icon(
-                    Icons.verified_user_outlined,
-                    color: DrAiColors.white,
-                  ),
-                  const SizedBox(width: DrAiSpacing.sm),
-                  Expanded(
-                    child: Text(
-                      doctor['expertise'] as String,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: DrAiColors.outlineMuted),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ],
+            ),
+          ],
+        ],
+      ),
     );
   }
 }
@@ -1446,7 +1446,6 @@ class _DoctorMainColumn extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final quickAccess = List<String>.from(data['quick_access'] as List);
-    final team = List<String>.from(data['team'] as List);
     return Column(
       children: <Widget>[
         _DoctorPanel(
@@ -1508,61 +1507,6 @@ class _DoctorMainColumn extends StatelessWidget {
                 ),
               );
             },
-          ),
-        ),
-        const SizedBox(height: DrAiSpacing.xs),
-        _DoctorPanel(
-          title: context.l10n.teamManagement,
-          icon: Icons.groups_outlined,
-          child: Row(
-            children: <Widget>[
-              for (final member in team)
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: DrAiSpacing.xs),
-                    child: Container(
-                      height: 132,
-                      decoration: BoxDecoration(
-                        color: DrAiColors.ink,
-                        borderRadius: BorderRadius.circular(DrAiRadii.md),
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: <Widget>[
-                          const Icon(
-                            Icons.account_circle_outlined,
-                            color: DrAiColors.white,
-                            size: 30,
-                          ),
-                          const SizedBox(height: DrAiSpacing.md),
-                          Text(
-                            context.l10n.stableValue(member),
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: DrAiColors.white,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              Expanded(
-                child: Container(
-                  height: 132,
-                  decoration: BoxDecoration(
-                    color: DrAiColors.ink,
-                    borderRadius: BorderRadius.circular(DrAiRadii.md),
-                  ),
-                  child: const Icon(
-                    Icons.add,
-                    size: 48,
-                    color: DrAiColors.outlineMuted,
-                  ),
-                ),
-              ),
-            ],
           ),
         ),
       ],

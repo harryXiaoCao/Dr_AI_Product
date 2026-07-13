@@ -8,6 +8,7 @@ import 'package:dr_ai_app/shared/widgets/dashboard_states.dart';
 import 'package:dr_ai_app/shared/widgets/responsive_app_shell.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 class PatientContactsScreen extends ConsumerWidget {
   const PatientContactsScreen({super.key});
@@ -19,7 +20,7 @@ class PatientContactsScreen extends ConsumerWidget {
       role: AppRole.patient,
       selectedIndex: 1,
       child: ColoredBox(
-        color: DrAiColors.brandSoft,
+        color: DrAiColors.pageBackground,
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 720),
@@ -73,6 +74,7 @@ class _ContactList extends StatelessWidget {
           title: context.l10n.system,
           subtitle: context.l10n.systemContactDescription,
           badge: context.l10n.official,
+          onTap: () => context.push('/patient/contact/system'),
         ),
         const SizedBox(height: DrAiSpacing.sm),
         _ContactTile(
@@ -83,6 +85,7 @@ class _ContactList extends StatelessWidget {
           title: context.l10n.appName,
           subtitle: context.l10n.drAiContactDescription,
           badge: context.l10n.comingLater,
+          onTap: () => context.push('/patient/contact/ai'),
         ),
         const SizedBox(height: DrAiSpacing.lg),
         Row(
@@ -131,11 +134,21 @@ class _SectionLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      label,
-      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-        color: DrAiColors.ink,
-        fontWeight: FontWeight.w800,
+    return Container(
+      decoration: BoxDecoration(
+        color: DrAiColors.sectionHeader,
+        borderRadius: BorderRadius.circular(DrAiRadii.md),
+      ),
+      padding: const EdgeInsets.symmetric(
+        horizontal: DrAiSpacing.md,
+        vertical: DrAiSpacing.sm,
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+          color: DrAiColors.white,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }
@@ -149,6 +162,7 @@ class _ContactTile extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.badge,
+    this.onTap,
     super.key,
   });
 
@@ -158,6 +172,7 @@ class _ContactTile extends StatelessWidget {
   final String title;
   final String subtitle;
   final String badge;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -170,6 +185,7 @@ class _ContactTile extends StatelessWidget {
       title: title,
       subtitle: subtitle,
       badge: badge,
+      onTap: onTap,
     );
   }
 }
@@ -207,6 +223,12 @@ class _DoctorContactTile extends StatelessWidget {
           ? '${doctor.title} · ${doctor.hospitalName}'
           : '$clinicalRole\n${doctor.hospitalName}',
       badge: context.l10n.connected,
+      onTap: () => context.push(
+        Uri(
+          path: '/patient/contact/private',
+          queryParameters: {'id': doctor.doctorId, 'name': doctor.displayName},
+        ).toString(),
+      ),
     );
   }
 }
@@ -217,6 +239,7 @@ class _ContactCard extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.badge,
+    this.onTap,
     super.key,
   });
 
@@ -224,64 +247,82 @@ class _ContactCard extends StatelessWidget {
   final String title;
   final String subtitle;
   final String badge;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     return Semantics(
       container: true,
       label: '$title. $subtitle. $badge.',
-      child: Container(
-        padding: const EdgeInsets.all(DrAiSpacing.md),
-        decoration: BoxDecoration(
-          color: DrAiColors.white,
-          border: Border.all(color: DrAiColors.outline),
+      child: Material(
+        color: DrAiColors.white,
+        borderRadius: BorderRadius.circular(DrAiRadii.lg),
+        child: InkWell(
+          onTap: onTap,
           borderRadius: BorderRadius.circular(DrAiRadii.lg),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: <Widget>[
-            leading,
-            const SizedBox(width: DrAiSpacing.md),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(
-                    title,
+          child: Container(
+            padding: const EdgeInsets.all(DrAiSpacing.md),
+            decoration: BoxDecoration(
+              border: Border.all(color: DrAiColors.outline),
+              borderRadius: BorderRadius.circular(DrAiRadii.lg),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: <Widget>[
+                leading,
+                const SizedBox(width: DrAiSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          color: DrAiColors.ink,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        subtitle,
+                        style: const TextStyle(
+                          color: DrAiColors.inkSecondary,
+                          height: 1.35,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: DrAiSpacing.sm),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE7EEFF),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    badge,
                     style: const TextStyle(
-                      color: DrAiColors.ink,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 16,
+                      color: DrAiColors.brand,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(height: 3),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(
-                      color: DrAiColors.inkSecondary,
-                      height: 1.35,
-                    ),
+                ),
+                if (onTap != null) ...<Widget>[
+                  const SizedBox(width: DrAiSpacing.xs),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    color: DrAiColors.inkSecondary,
                   ),
                 ],
-              ),
+              ],
             ),
-            const SizedBox(width: DrAiSpacing.sm),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-              decoration: BoxDecoration(
-                color: DrAiColors.brandSoft,
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Text(
-                badge,
-                style: const TextStyle(
-                  color: DrAiColors.brand,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

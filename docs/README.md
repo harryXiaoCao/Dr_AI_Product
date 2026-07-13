@@ -1,20 +1,29 @@
 # Dr. AI Documentation Index
 
-Current stage: Phase 2 patient/doctor workflow foundations are implemented,
-but the product is not yet commercial-quality. The next source-of-truth gate is
-`Dr_AI_v1.0_Product_Quality_Gate.md`: Phase 3 AI systems must not begin until
-the app feels like a real healthcare product with credible typography,
-patient avatar/profile setup, guided first-use onboarding, useful empty
-states, and normal user flows that are not dominated by synthetic/demo
-language.
+Current stage: Phase 2 patient/doctor workflow foundations and the Phase 2.5
+product-quality gate are complete. Chatbot evaluation is reported complete,
+and Phase 3 chatbot development planning is active. The product-quality gate
+remains a regression standard, while the next blocking work is the governed
+medical knowledge/retrieval foundation and its medical, native-Chinese,
+privacy, legal, provider, security, and regulatory release gates.
 
 ## Current Production Docs
 
 - `Dr_AI_v1.0_Implementation_Plan.md` - source of truth for production v1.0
   scope, phase tracker, gates, and historical progress log.
-- `Dr_AI_v1.0_Product_Quality_Gate.md` - blocking product-quality gate before
-  Phase 3; defines real-app UX, aesthetic, onboarding, profile, and demo-copy
-  cleanup requirements.
+- `Dr_AI_v1.0_Product_Quality_Gate.md` - completed pre-Phase-3 product-quality
+  gate and continuing regression standard for real-app UX, aesthetics,
+  onboarding, profile, and production copy.
+- `Phase_3_Chatbot_Intended_Use_and_Safety_Boundary.md` - frozen intended use,
+  prohibited behavior, rural-China usage model, patient-context boundary, and
+  safety acceptance criteria for the first Phase 3 chatbot deliverable.
+- `Phase_3_Chatbot_Evaluation_and_Model_Strategy.md` - consolidated research
+  record for evaluation datasets, the private rural-China suite, model
+  benchmarking, selection, fine-tuning, architecture, and deployment gates.
+- `Phase_3_Chatbot_RAG_Agentic_Architecture_and_Knowledge_Base.md` - approved
+  planning baseline for the doctor Resources page, constrained patient-chat
+  agent flow, authoritative Chinese/WHO retrieval, knowledge-base schema,
+  source rights/version governance, and adapter recommendation.
 - `Phase_0_Production_v1_Surface_Audit.md` - current surface inventory,
   classifications, product-scope decisions, and production support/admin/
   specialist judgments.
@@ -48,7 +57,7 @@ source of truth in the implementation plan and product-quality gate.
 - `release-evidence/` - non-secret public-route screenshots captured during
   beta release preparation.
 
-## Next Production Phase
+## Current Production Phase
 
 The doctor Patient Management workspace now uses an active Clinical Event
 context for event create/update/select and event-linked medication,
@@ -57,9 +66,10 @@ writes. The eight-functionality Phase 2 workflow-clarification list is closed
 locally, and manual inspection should use invited sign-up plus patient-code
 connection to create data from zero.
 
-The next phase is **Phase 2.5 Product Quality and First-Use Readiness**, not
-Phase 3 AI. Phase 3 AI systems must not start until the product-quality gate is
-closed.
+The current phase is **Phase 3 AI systems**, beginning with the bounded patient
+chatbot, doctor Resources page, and governed Chinese/WHO retrieval foundation.
+The implementation sequence and release gates are frozen in
+`Phase_3_Chatbot_RAG_Agentic_Architecture_and_Knowledge_Base.md`.
 External push, SMS, email, and native notification delivery remain gated
 beyond the Phase 2 metadata-only in-app queue path. Phase 5 still owns
 specialist/admin UI, audit search, system status, and admin-managed

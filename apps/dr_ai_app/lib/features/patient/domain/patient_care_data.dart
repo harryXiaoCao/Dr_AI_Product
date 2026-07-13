@@ -1329,3 +1329,85 @@ class PatientDoctorContactList {
 
   final List<PatientDoctorContact> items;
 }
+
+class DoctorPatientContact {
+  const DoctorPatientContact({
+    required this.patientId,
+    required this.displayName,
+    required this.avatarUrl,
+  });
+
+  factory DoctorPatientContact.fromJson(Map<String, dynamic> json) {
+    return DoctorPatientContact(
+      patientId: json['patient_id'] as String,
+      displayName: json['display_name'] as String,
+      avatarUrl: json['avatar_url'] as String?,
+    );
+  }
+
+  final String patientId;
+  final String displayName;
+  final String? avatarUrl;
+}
+
+class DoctorPatientContactList {
+  const DoctorPatientContactList({required this.items});
+
+  factory DoctorPatientContactList.fromJson(Map<String, dynamic> json) {
+    return DoctorPatientContactList(
+      items: (json['items'] as List)
+          .map(
+            (item) =>
+                DoctorPatientContact.fromJson(item as Map<String, dynamic>),
+          )
+          .toList(),
+    );
+  }
+
+  final List<DoctorPatientContact> items;
+}
+
+class PrivateMessage {
+  const PrivateMessage({
+    required this.messageId,
+    required this.threadId,
+    required this.senderUserId,
+    required this.senderRole,
+    required this.content,
+    required this.createdAt,
+  });
+
+  factory PrivateMessage.fromJson(Map<String, dynamic> json) {
+    return PrivateMessage(
+      messageId: json['message_id'] as String,
+      threadId: json['thread_id'] as String,
+      senderUserId: json['sender_user_id'] as String,
+      senderRole: json['sender_role'] as String,
+      content: json['content'] as String,
+      createdAt: DateTime.parse(json['created_at'] as String),
+    );
+  }
+
+  final String messageId;
+  final String threadId;
+  final String senderUserId;
+  final String senderRole;
+  final String content;
+  final DateTime createdAt;
+}
+
+class PrivateMessageList {
+  const PrivateMessageList({required this.threadId, required this.items});
+
+  factory PrivateMessageList.fromJson(Map<String, dynamic> json) {
+    return PrivateMessageList(
+      threadId: json['thread_id'] as String?,
+      items: (json['items'] as List)
+          .map((item) => PrivateMessage.fromJson(item as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+
+  final String? threadId;
+  final List<PrivateMessage> items;
+}

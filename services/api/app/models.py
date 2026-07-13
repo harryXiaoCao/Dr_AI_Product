@@ -749,16 +749,21 @@ class ChatThread(Base):
     __table_args__ = (
         UniqueConstraint("patient_id", "thread_key", name="uq_chat_thread_patient_key"),
         Index("ix_chat_threads_patient_updated", "patient_id", "last_message_at"),
+        Index("ix_chat_threads_doctor_updated", "doctor_id", "last_message_at"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     patient_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("patient_profiles.id", ondelete="CASCADE")
     )
+    doctor_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("doctor_profiles.id", ondelete="CASCADE")
+    )
     created_by_user_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE")
     )
     thread_key: Mapped[str] = mapped_column(String(80))
+    thread_type: Mapped[str] = mapped_column(String(40), default="educational")
     title: Mapped[str] = mapped_column(String(160))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     last_message_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -781,6 +786,7 @@ class ChatMessage(Base):
     )
     actor_user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     role: Mapped[str] = mapped_column(String(40))
+    content: Mapped[str | None] = mapped_column(Text)
     prompt_hash: Mapped[str | None] = mapped_column(String(64))
     prompt_char_count: Mapped[int | None] = mapped_column(Integer)
     safety_category: Mapped[str] = mapped_column(String(80))

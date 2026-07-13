@@ -38,7 +38,7 @@ class _PatientManagementScreenState
       role: AppRole.doctor,
       selectedIndex: 1,
       child: ColoredBox(
-        color: DrAiColors.brandSoft,
+        color: DrAiColors.pageBackground,
         child: Padding(
           padding: const EdgeInsets.all(DrAiSpacing.sm),
           child: LayoutBuilder(
@@ -800,7 +800,7 @@ class _DarkStatusChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: DrAiColors.brandDark,
+        color: DrAiColors.sectionHeader,
         borderRadius: BorderRadius.circular(DrAiRadii.sm),
         border: Border.all(color: DrAiColors.outlineMuted),
       ),
@@ -978,37 +978,51 @@ class _SectionScaffold extends StatelessWidget {
         borderRadius: BorderRadius.circular(DrAiRadii.md),
         border: Border.all(color: DrAiColors.outline),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(DrAiSpacing.sm),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(DrAiRadii.md),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            Row(
-              children: <Widget>[
-                Icon(section.icon, color: DrAiColors.brand),
-                const SizedBox(width: DrAiSpacing.xs),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        section.localizedLabel(context),
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      Text(
-                        section.localizedSummary(context),
-                        style: const TextStyle(
-                          color: DrAiColors.mutedInk,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
+            ColoredBox(
+              color: DrAiColors.sectionHeader,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: DrAiSpacing.md,
+                  vertical: DrAiSpacing.sm,
                 ),
-              ],
+                child: Row(
+                  children: <Widget>[
+                    Icon(section.icon, color: DrAiColors.white),
+                    const SizedBox(width: DrAiSpacing.xs),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            section.localizedLabel(context),
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(color: DrAiColors.white),
+                          ),
+                          Text(
+                            section.localizedSummary(context),
+                            style: const TextStyle(
+                              color: Color(0xFFD8D7EC),
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
-            const SizedBox(height: DrAiSpacing.sm),
-            Expanded(child: child),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(DrAiSpacing.sm),
+                child: child,
+              ),
+            ),
           ],
         ),
       ),
@@ -1641,6 +1655,7 @@ class _ClinicalEventEditorState extends ConsumerState<_ClinicalEventEditor> {
   String _status = 'active';
   String? _editingEventId;
   String? _validationError;
+  bool _localizedDefaultsApplied = false;
 
   @override
   void initState() {
@@ -1650,13 +1665,23 @@ class _ClinicalEventEditorState extends ConsumerState<_ClinicalEventEditor> {
     _symptomSummaryController = TextEditingController();
     _diagnosisSummaryController = TextEditingController();
     _onsetDateController = TextEditingController();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_localizedDefaultsApplied) {
+      return;
+    }
+    _localizedDefaultsApplied = true;
     _loadEvent(widget.selectedEvent);
   }
 
   @override
   void didUpdateWidget(covariant _ClinicalEventEditor oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.selectedEvent?.id != widget.selectedEvent?.id) {
+    if (_localizedDefaultsApplied &&
+        oldWidget.selectedEvent?.id != widget.selectedEvent?.id) {
       _loadEvent(widget.selectedEvent);
     }
   }
@@ -2243,13 +2268,14 @@ class _MedicationWorkflowPanel extends ConsumerStatefulWidget {
 
 class _MedicationWorkflowPanelState
     extends ConsumerState<_MedicationWorkflowPanel> {
-  late final TextEditingController _nameController;
+  late TextEditingController _nameController;
   late final TextEditingController _dosageController;
-  late final TextEditingController _scheduleController;
+  late TextEditingController _scheduleController;
   late final TextEditingController _noteController;
   late final TextEditingController _prescriptionNoteController;
   String _status = 'active';
   String? _validationMessage;
+  bool _localizedDefaultsApplied = false;
 
   MedicationItem? get _selectedMedication {
     final medications = _eventMedicationsById(
@@ -2263,18 +2289,27 @@ class _MedicationWorkflowPanelState
   void initState() {
     super.initState();
     final medication = _selectedMedication;
-    _nameController = TextEditingController(
-      text: medication?.name ?? context.l10n.medication,
-    );
+    _nameController = TextEditingController(text: medication?.name ?? '');
     _dosageController = TextEditingController(
       text: medication?.dosage ?? '10 mg',
     );
     _scheduleController = TextEditingController(
-      text: medication?.schedule ?? context.l10n.scheduleNotRecorded,
+      text: medication?.schedule ?? '',
     );
     _noteController = TextEditingController(text: medication?.note ?? '');
     _prescriptionNoteController = TextEditingController(text: '');
     _status = medication?.status ?? 'active';
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_localizedDefaultsApplied || _selectedMedication != null) {
+      return;
+    }
+    _localizedDefaultsApplied = true;
+    _nameController.text = context.l10n.medication;
+    _scheduleController.text = context.l10n.scheduleNotRecorded;
   }
 
   @override

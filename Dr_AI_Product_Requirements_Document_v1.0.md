@@ -2,9 +2,9 @@
 
 Status: formal production PRD
 Owner: Harry Cao
-Last updated: 2026-07-10
+Last updated: 2026-07-13
 Primary platforms: Flutter mobile, Flutter web, FastAPI, PostgreSQL, Tencent Cloud
-Product stage: production/commercial v1.0 in progress; Phase 2 patient/doctor core is implemented, and Phase 2.5 product-quality readiness blocks AI expansion
+Product stage: production/commercial v1.0 in progress; Phase 2 and the Phase 2.5 product-quality gate are complete, chatbot evaluation is reported complete, and Phase 3 chatbot development planning is active
 
 ## 1. Executive Summary
 
@@ -51,7 +51,7 @@ Current verified product state:
 - Clinical Event / Care Episode is the central Phase 2 workflow object.
 - Patient demographics, medical history, allergies, chronic diseases, visit history, diagnoses, doctor notes, medication records, prescriptions, reminders, imaging metadata, recovery plans, patient Today progress, patient event updates, consultation requests, and educational chat have implemented foundations.
 - External push, SMS, email, native local notifications, real model inference, real clinical claims, billing operations, analytics dashboards, clinic operations, specialist workflows, and admin workflows are not production-ready.
-- The product-quality gate remains open: onboarding, profile/avatar setup, visual quality, empty states, and normal-flow removal of demo/synthetic language must be completed before Phase 3 AI expansion.
+- The implementation plan records the Phase 2.5 product-quality gate as complete. Phase 3 chatbot development is open, while each AI workflow still requires its own retrieval, medical-review, safety, privacy, legal, provider, and regulatory release gates.
 
 ## 5. Target Users
 
@@ -79,6 +79,7 @@ Doctors use Dr. AI mainly on tablet or web. They need to:
 - Review patient profile and medical history.
 - Create and manage Clinical Events / Care Episodes.
 - Manage diagnoses, prescriptions, medication schedules, recovery plans, imaging review, private notes, consultation requests, and activity timeline in event context.
+- Search a dedicated doctor-only medical Resources workspace backed exclusively by admitted authoritative Chinese medical organizations or WHO sources, with visible provenance, jurisdiction, dates, language, review, and version status.
 - Use AI assistance only after the non-AI workflow is credible and the relevant safety gates are closed.
 
 ### 5.3 Specialists
@@ -300,6 +301,24 @@ Acceptance criteria:
 - A doctor with a connected patient can create a Clinical Event before adding event-linked care records.
 - Recovery plan, imaging, prescriptions, medication schedule, and consultation do not visually compete as unrelated panels.
 
+#### Doctor Resources
+
+Requirements:
+
+- Add a top-level doctor Resources page at `/doctor/resources`.
+- Move medical-resource search from the doctor header into a dedicated search bar on that page and remove the unscoped global header search.
+- Keep assigned-patient and Clinical Event search inside Patient Management; do not mix patient records with external medical-evidence search.
+- Search only the doctor-approved view of the governed medical knowledge base described in `docs/Phase_3_Chatbot_RAG_Agentic_Architecture_and_Knowledge_Base.md`.
+- Show publisher, official locator, jurisdiction, original language, publication/review date, version/supersession state, rights/display limits, medical-review state, and patient-use eligibility.
+- Support bilingual topic, document-type, organization, jurisdiction, language, audience, date, and current/superseded filters.
+- Provide Search, Saved, Recent updates, and Source registry states without copying patient data into the knowledge base.
+
+Acceptance criteria:
+
+- A doctor can verify every result against its original official source and see when newer guidance supersedes it.
+- Rights-pending, quarantined, expired, withdrawn, or patient-only-ineligible content cannot leak into the active doctor search index.
+- Search telemetry remains metadata-only and does not log raw query text that may contain patient information.
+
 ### 11.4 Clinical Events / Care Episodes
 
 Requirements:
@@ -455,7 +474,9 @@ Acceptance criteria:
 
 ## 12. UX And Product Quality Requirements
 
-The Phase 2.5 product-quality gate is mandatory before Phase 3 AI work.
+The Phase 2.5 product-quality gate was mandatory before Phase 3 AI work and is
+recorded complete in the implementation plan. Its standards remain regression
+requirements throughout Phase 3.
 
 Requirements:
 
@@ -671,7 +692,7 @@ Purpose:
 
 ### Phase 2.5: Product Quality And First-Use Readiness
 
-Status: blocking.
+Status: complete in the implementation plan; remains a regression gate.
 
 Purpose:
 
@@ -680,11 +701,11 @@ Purpose:
 
 ### Phase 3: AI Systems
 
-Status: not started.
+Status: development planning active; chatbot evaluation reported complete.
 
 Purpose:
 
-- Add AI diagnostic workflow, AI recovery-plan drafting, patient chat hardening, Medication Safety Agent framework, and AI audit/safety coverage.
+- Add the doctor Resources workspace and governed Chinese/WHO knowledge base; implement bounded retrieval-grounded patient chat using `deepseek-v4-flash` through a provider-neutral adapter; then add separately gated AI diagnostic workflow, AI recovery-plan drafting, Medication Safety Agent framework, and AI audit/safety coverage.
 
 ### Phase 4: Clinic Operations
 
@@ -745,7 +766,7 @@ The original Word PRD included authentication, patient profiles, medical records
 This Markdown PRD preserves that vision but updates the release interpretation:
 
 - Authentication, patient profiles, medical records, recovery plans, medication management, educational chat, and doctor/patient workflow are v1.0 core.
-- AI diagnosis remains v1.0 product direction but is gated behind Phase 2.5 product quality, model readiness, and safety review.
+- AI diagnosis remains a v1.0 product direction. It has passed the Phase 2.5 product-quality prerequisite but remains gated by separate model-readiness, clinical-safety, privacy, legal, and regulatory review.
 - Specialist, clinic operations, billing, analytics, and admin workflows remain in v1.0 commercial-readiness scope but must stay hidden or disabled until implemented.
 - Offline mode, wearables, national EHR integration, and disease surveillance are deferred beyond v1.0 unless the implementation plan is amended.
 - The product's immediate priority is not adding more modules; it is making the existing doctor/patient product feel real, safe, and trustworthy.

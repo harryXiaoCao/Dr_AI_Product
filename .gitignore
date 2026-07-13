@@ -42,3 +42,6 @@ local.properties
 *.log
 tmp/
 .tmp/
+
+# Sealed chatbot benchmark outputs may contain private evaluation prompts.
+evaluation/chatbot/results/

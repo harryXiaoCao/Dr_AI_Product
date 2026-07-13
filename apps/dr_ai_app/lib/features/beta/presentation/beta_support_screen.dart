@@ -33,7 +33,7 @@ class _BetaSupportScreenState extends ConsumerState<BetaSupportScreen> {
   Widget build(BuildContext context) {
     final user = ref.watch(authControllerProvider).value?.user;
     final content = ColoredBox(
-      color: DrAiColors.brandSoft,
+      color: DrAiColors.pageBackground,
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 960),

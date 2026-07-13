@@ -53,6 +53,9 @@ abstract interface class DrAiRepository {
   Future<PatientCareBundle> loadPatientCareBundle(String patientId);
   Future<PatientCareBundle> loadOwnPatientCare();
   Future<PatientDoctorContactList> loadOwnPatientContacts();
+  Future<DoctorPatientContactList> loadOwnDoctorContacts();
+  Future<PrivateMessageList> loadPrivateMessages(String contactId);
+  Future<PrivateMessage> sendPrivateMessage(String contactId, String message);
   Future<PatientProfile> updateOwnPatientProfile({
     required String displayName,
     required String birthDate,
@@ -77,6 +80,14 @@ abstract interface class DrAiRepository {
     required String reaction,
     required String severity,
   });
+  Future<PatientAllergyItem> updatePatientAllergy({
+    required String patientId,
+    required String allergyId,
+    required String label,
+    required String reaction,
+    required String severity,
+    required String status,
+  });
   Future<MedicalRecordItem> createPatientMedicalRecord({
     required String patientId,
     required String title,
@@ -87,6 +98,13 @@ abstract interface class DrAiRepository {
     required String patientId,
     required String name,
     required String notes,
+  });
+  Future<ChronicDiseaseItem> updateChronicDisease({
+    required String patientId,
+    required String conditionId,
+    required String name,
+    required String notes,
+    required String status,
   });
   Future<ClinicalEventItem> saveClinicalEvent({
     required String patientId,
@@ -615,6 +633,32 @@ class DioDrAiRepository implements DrAiRepository {
   }
 
   @override
+  Future<DoctorPatientContactList> loadOwnDoctorContacts() async {
+    final response = await _authorizedGet('/api/v1/doctor/me/contacts');
+    return DoctorPatientContactList.fromJson(response);
+  }
+
+  @override
+  Future<PrivateMessageList> loadPrivateMessages(String contactId) async {
+    final response = await _authorizedGet(
+      '/api/v1/private-chats/$contactId/messages',
+    );
+    return PrivateMessageList.fromJson(response);
+  }
+
+  @override
+  Future<PrivateMessage> sendPrivateMessage(
+    String contactId,
+    String message,
+  ) async {
+    final response = await _authorizedPost(
+      '/api/v1/private-chats/$contactId/messages',
+      data: <String, String>{'message': message.trim()},
+    );
+    return PrivateMessage.fromJson(response);
+  }
+
+  @override
   Future<PatientProfile> updateOwnPatientProfile({
     required String displayName,
     required String birthDate,
@@ -684,6 +728,27 @@ class DioDrAiRepository implements DrAiRepository {
   }
 
   @override
+  Future<PatientAllergyItem> updatePatientAllergy({
+    required String patientId,
+    required String allergyId,
+    required String label,
+    required String reaction,
+    required String severity,
+    required String status,
+  }) async {
+    final response = await _authorizedPut(
+      '/api/v1/patients/$patientId/allergies/$allergyId',
+      data: <String, dynamic>{
+        'label': label.trim(),
+        if (reaction.trim().isNotEmpty) 'reaction': reaction.trim(),
+        'severity': severity,
+        'status': status,
+      },
+    );
+    return PatientAllergyItem.fromJson(response);
+  }
+
+  @override
   Future<MedicalRecordItem> createPatientMedicalRecord({
     required String patientId,
     required String title,
@@ -712,6 +777,25 @@ class DioDrAiRepository implements DrAiRepository {
       data: <String, dynamic>{
         'name': name.trim(),
         'status': 'active',
+        if (notes.trim().isNotEmpty) 'notes': notes.trim(),
+      },
+    );
+    return ChronicDiseaseItem.fromJson(response);
+  }
+
+  @override
+  Future<ChronicDiseaseItem> updateChronicDisease({
+    required String patientId,
+    required String conditionId,
+    required String name,
+    required String notes,
+    required String status,
+  }) async {
+    final response = await _authorizedPut(
+      '/api/v1/patients/$patientId/chronic-diseases/$conditionId',
+      data: <String, dynamic>{
+        'name': name.trim(),
+        'status': status,
         if (notes.trim().isNotEmpty) 'notes': notes.trim(),
       },
     );

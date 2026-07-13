@@ -29,6 +29,10 @@ class ResponsiveAppShell extends ConsumerWidget {
           label: context.l10n.patientManagement,
         ),
         NavigationDestination(
+          icon: Icon(Icons.chat_bubble_outline),
+          label: context.l10n.contacts,
+        ),
+        NavigationDestination(
           icon: Icon(Icons.manage_accounts_outlined),
           label: context.l10n.account,
         ),
@@ -223,6 +227,10 @@ class ResponsiveAppShell extends ConsumerWidget {
         return;
       }
       if (index == 2) {
+        context.go('/doctor/contact');
+        return;
+      }
+      if (index == 3) {
         context.go('/doctor/account');
         return;
       }

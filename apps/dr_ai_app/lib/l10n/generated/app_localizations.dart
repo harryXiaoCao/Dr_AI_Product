@@ -2645,7 +2645,7 @@ abstract class AppLocalizations {
   /// No description provided for @noConnectedPatients.
   ///
   /// In en, this message translates to:
-  /// **'No connected patients yet'**
+  /// **'No connected patients'**
   String get noConnectedPatients;
 
   /// No description provided for @connectPatientEmpty.
@@ -4271,6 +4271,162 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Imaging review status updated.'**
   String get imagingReviewUpdated;
+
+  /// No description provided for @doctorContactsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Private conversations with your connected patients and Dr. AI services.'**
+  String get doctorContactsDescription;
+
+  /// No description provided for @systemReadOnlyDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminders and notifications · read-only'**
+  String get systemReadOnlyDescription;
+
+  /// No description provided for @aiCareCompanion.
+  ///
+  /// In en, this message translates to:
+  /// **'AI care companion'**
+  String get aiCareCompanion;
+
+  /// No description provided for @myPatients.
+  ///
+  /// In en, this message translates to:
+  /// **'My patients'**
+  String get myPatients;
+
+  /// No description provided for @connectedPatientPrivateChat.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected patient · private chat'**
+  String get connectedPatientPrivateChat;
+
+  /// No description provided for @connectPatientToChat.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect a patient from Patient Management to start a private conversation.'**
+  String get connectPatientToChat;
+
+  /// No description provided for @noGroupChats.
+  ///
+  /// In en, this message translates to:
+  /// **'No group chats'**
+  String get noGroupChats;
+
+  /// No description provided for @groupChatsUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Group conversations are not available yet.'**
+  String get groupChatsUnavailable;
+
+  /// No description provided for @contactsLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Contacts could not be loaded.'**
+  String get contactsLoadFailed;
+
+  /// No description provided for @systemNotifications.
+  ///
+  /// In en, this message translates to:
+  /// **'System notifications'**
+  String get systemNotifications;
+
+  /// No description provided for @systemNotificationsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminders and important account updates will appear here.'**
+  String get systemNotificationsSubtitle;
+
+  /// No description provided for @aiAssistant.
+  ///
+  /// In en, this message translates to:
+  /// **'Dr. AI assistant'**
+  String get aiAssistant;
+
+  /// No description provided for @aiAssistantSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your AI care companion interface is ready for the next phase.'**
+  String get aiAssistantSubtitle;
+
+  /// No description provided for @noSystemNotifications.
+  ///
+  /// In en, this message translates to:
+  /// **'No system notifications yet'**
+  String get noSystemNotifications;
+
+  /// No description provided for @systemReadOnlyNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'This channel is read-only. You cannot send messages to the system.'**
+  String get systemReadOnlyNotice;
+
+  /// No description provided for @aiAvailablePhase3.
+  ///
+  /// In en, this message translates to:
+  /// **'AI conversations will become available in Phase 3'**
+  String get aiAvailablePhase3;
+
+  /// No description provided for @aiPlaceholderNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'This placeholder keeps AI access consistent for doctors and patients while safety work is completed.'**
+  String get aiPlaceholderNotice;
+
+  /// No description provided for @privateCareConversation.
+  ///
+  /// In en, this message translates to:
+  /// **'Private care conversation'**
+  String get privateCareConversation;
+
+  /// No description provided for @loadingConversation.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading conversation…'**
+  String get loadingConversation;
+
+  /// No description provided for @conversationLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'This conversation could not be loaded.'**
+  String get conversationLoadFailed;
+
+  /// No description provided for @messageSendFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Message could not be sent. Please try again.'**
+  String get messageSendFailed;
+
+  /// No description provided for @writeMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Write a message'**
+  String get writeMessage;
+
+  /// No description provided for @sendMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Send message'**
+  String get sendMessage;
+
+  /// No description provided for @noPrivateMessages.
+  ///
+  /// In en, this message translates to:
+  /// **'No messages yet. Start a private conversation about ongoing care.'**
+  String get noPrivateMessages;
+
+  /// No description provided for @patientFallbackName.
+  ///
+  /// In en, this message translates to:
+  /// **'Patient'**
+  String get patientFallbackName;
+
+  /// No description provided for @doctorFallbackName.
+  ///
+  /// In en, this message translates to:
+  /// **'Doctor'**
+  String get doctorFallbackName;
 }
 
 class _AppLocalizationsDelegate

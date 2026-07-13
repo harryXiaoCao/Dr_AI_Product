@@ -179,6 +179,36 @@ class PatientDoctorContactListResponse(BaseModel):
     items: list[PatientDoctorContactResponse]
 
 
+class DoctorPatientContactResponse(BaseModel):
+    patient_id: UUID
+    display_name: str
+    avatar_url: str | None
+
+
+class DoctorPatientContactListResponse(BaseModel):
+    items: list[DoctorPatientContactResponse]
+
+
+class PrivateMessageRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    message: str = Field(min_length=1, max_length=4000)
+
+
+class PrivateMessageResponse(BaseModel):
+    message_id: UUID
+    thread_id: UUID
+    sender_user_id: UUID
+    sender_role: Literal["doctor", "patient"]
+    content: str
+    created_at: datetime
+
+
+class PrivateMessageListResponse(BaseModel):
+    thread_id: UUID | None
+    items: list[PrivateMessageResponse]
+
+
 class PatientConnectRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 

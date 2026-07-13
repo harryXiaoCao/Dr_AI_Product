@@ -2,6 +2,8 @@ import 'package:dr_ai_app/app/routing/app_role.dart';
 import 'package:dr_ai_app/features/auth/presentation/legal_placeholder_screen.dart';
 import 'package:dr_ai_app/features/auth/presentation/login_screen.dart';
 import 'package:dr_ai_app/features/beta/presentation/beta_support_screen.dart';
+import 'package:dr_ai_app/features/chat/presentation/chat_screens.dart';
+import 'package:dr_ai_app/features/doctor/presentation/doctor_contacts_screen.dart';
 import 'package:dr_ai_app/features/doctor/presentation/doctor_dashboard_screen.dart';
 import 'package:dr_ai_app/features/doctor/presentation/patient_management_screen.dart';
 import 'package:dr_ai_app/features/foundation/presentation/unauthorized_screen.dart';
@@ -72,6 +74,43 @@ GoRouter createRouter(AppRole? role, {String? initialLocation}) {
                 _drAiPage(state, const PatientManagementScreen()),
           ),
           GoRoute(
+            path: 'contact',
+            pageBuilder: (context, state) =>
+                _drAiPage(state, const DoctorContactsScreen()),
+            routes: <RouteBase>[
+              GoRoute(
+                path: 'system',
+                pageBuilder: (context, state) => _drAiPage(
+                  state,
+                  const ServiceChatScreen(role: AppRole.doctor, isSystem: true),
+                ),
+              ),
+              GoRoute(
+                path: 'ai',
+                pageBuilder: (context, state) => _drAiPage(
+                  state,
+                  const ServiceChatScreen(
+                    role: AppRole.doctor,
+                    isSystem: false,
+                  ),
+                ),
+              ),
+              GoRoute(
+                path: 'private',
+                pageBuilder: (context, state) => _drAiPage(
+                  state,
+                  PrivateChatScreen(
+                    role: AppRole.doctor,
+                    contactId: state.uri.queryParameters['id'] ?? '',
+                    contactName:
+                        state.uri.queryParameters['name'] ??
+                        context.l10n.patientFallbackName,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          GoRoute(
             path: 'account',
             pageBuilder: (context, state) =>
                 _drAiPage(state, const DoctorAccountScreen()),
@@ -87,6 +126,41 @@ GoRouter createRouter(AppRole? role, {String? initialLocation}) {
             path: 'contact',
             pageBuilder: (context, state) =>
                 _drAiPage(state, const PatientContactsScreen()),
+            routes: <RouteBase>[
+              GoRoute(
+                path: 'system',
+                pageBuilder: (context, state) => _drAiPage(
+                  state,
+                  const ServiceChatScreen(
+                    role: AppRole.patient,
+                    isSystem: true,
+                  ),
+                ),
+              ),
+              GoRoute(
+                path: 'ai',
+                pageBuilder: (context, state) => _drAiPage(
+                  state,
+                  const ServiceChatScreen(
+                    role: AppRole.patient,
+                    isSystem: false,
+                  ),
+                ),
+              ),
+              GoRoute(
+                path: 'private',
+                pageBuilder: (context, state) => _drAiPage(
+                  state,
+                  PrivateChatScreen(
+                    role: AppRole.patient,
+                    contactId: state.uri.queryParameters['id'] ?? '',
+                    contactName:
+                        state.uri.queryParameters['name'] ??
+                        context.l10n.doctorFallbackName,
+                  ),
+                ),
+              ),
+            ],
           ),
           GoRoute(
             path: 'medical-service',

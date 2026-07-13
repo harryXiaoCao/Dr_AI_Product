@@ -51,6 +51,18 @@ final patientDoctorContactsProvider =
       return ref.read(repositoryProvider).loadOwnPatientContacts();
     });
 
+final doctorPatientContactsProvider =
+    FutureProvider.autoDispose<DoctorPatientContactList>((ref) async {
+      ref.watch(authControllerProvider);
+      return ref.read(repositoryProvider).loadOwnDoctorContacts();
+    });
+
+final privateMessagesProvider = FutureProvider.autoDispose
+    .family<PrivateMessageList, String>((ref, contactId) async {
+      ref.watch(authControllerProvider);
+      return ref.read(repositoryProvider).loadPrivateMessages(contactId);
+    });
+
 class PatientConnectionController
     extends StateNotifier<AsyncValue<PatientSummary?>> {
   PatientConnectionController(this._repository, this._ref)
@@ -129,9 +141,11 @@ class PatientOnboardingController extends StateNotifier<AsyncValue<void>> {
     required String city,
     required String homeAddress,
     required bool hasAllergies,
+    required PatientAllergyItem? existingAllergy,
     required String allergyLabel,
     required String allergyReaction,
     required bool hasChronicCondition,
+    required ChronicDiseaseItem? existingChronicCondition,
     required String chronicConditionName,
     required String chronicConditionNotes,
     required String heightCm,
@@ -169,19 +183,40 @@ class PatientOnboardingController extends StateNotifier<AsyncValue<void>> {
         medicalHistorySetupCompleted: true,
       );
       if (hasAllergies && allergyLabel.trim().isNotEmpty) {
-        await _repository.createPatientAllergy(
-          patientId: patientId,
-          label: allergyLabel,
-          reaction: allergyReaction,
-          severity: 'unknown',
-        );
+        if (existingAllergy == null) {
+          await _repository.createPatientAllergy(
+            patientId: patientId,
+            label: allergyLabel,
+            reaction: allergyReaction,
+            severity: 'unknown',
+          );
+        } else {
+          await _repository.updatePatientAllergy(
+            patientId: patientId,
+            allergyId: existingAllergy.id,
+            label: allergyLabel,
+            reaction: allergyReaction,
+            severity: existingAllergy.severity,
+            status: existingAllergy.status,
+          );
+        }
       }
       if (hasChronicCondition && chronicConditionName.trim().isNotEmpty) {
-        await _repository.createChronicDisease(
-          patientId: patientId,
-          name: chronicConditionName,
-          notes: chronicConditionNotes,
-        );
+        if (existingChronicCondition == null) {
+          await _repository.createChronicDisease(
+            patientId: patientId,
+            name: chronicConditionName,
+            notes: chronicConditionNotes,
+          );
+        } else {
+          await _repository.updateChronicDisease(
+            patientId: patientId,
+            conditionId: existingChronicCondition.id,
+            name: chronicConditionName,
+            notes: chronicConditionNotes,
+            status: existingChronicCondition.status,
+          );
+        }
       }
       final intakeSummary = _medicalIntakeSummary(
         heightCm: heightCm,

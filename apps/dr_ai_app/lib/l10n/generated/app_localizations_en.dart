@@ -1384,7 +1384,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get loadingPatients => 'Loading patients';
 
   @override
-  String get noConnectedPatients => 'No connected patients yet';
+  String get noConnectedPatients => 'No connected patients';
 
   @override
   String get connectPatientEmpty =>
@@ -2365,4 +2365,93 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get imagingReviewUpdated => 'Imaging review status updated.';
+
+  @override
+  String get doctorContactsDescription =>
+      'Private conversations with your connected patients and Dr. AI services.';
+
+  @override
+  String get systemReadOnlyDescription =>
+      'Reminders and notifications · read-only';
+
+  @override
+  String get aiCareCompanion => 'AI care companion';
+
+  @override
+  String get myPatients => 'My patients';
+
+  @override
+  String get connectedPatientPrivateChat => 'Connected patient · private chat';
+
+  @override
+  String get connectPatientToChat =>
+      'Connect a patient from Patient Management to start a private conversation.';
+
+  @override
+  String get noGroupChats => 'No group chats';
+
+  @override
+  String get groupChatsUnavailable =>
+      'Group conversations are not available yet.';
+
+  @override
+  String get contactsLoadFailed => 'Contacts could not be loaded.';
+
+  @override
+  String get systemNotifications => 'System notifications';
+
+  @override
+  String get systemNotificationsSubtitle =>
+      'Reminders and important account updates will appear here.';
+
+  @override
+  String get aiAssistant => 'Dr. AI assistant';
+
+  @override
+  String get aiAssistantSubtitle =>
+      'Your AI care companion interface is ready for the next phase.';
+
+  @override
+  String get noSystemNotifications => 'No system notifications yet';
+
+  @override
+  String get systemReadOnlyNotice =>
+      'This channel is read-only. You cannot send messages to the system.';
+
+  @override
+  String get aiAvailablePhase3 =>
+      'AI conversations will become available in Phase 3';
+
+  @override
+  String get aiPlaceholderNotice =>
+      'This placeholder keeps AI access consistent for doctors and patients while safety work is completed.';
+
+  @override
+  String get privateCareConversation => 'Private care conversation';
+
+  @override
+  String get loadingConversation => 'Loading conversation…';
+
+  @override
+  String get conversationLoadFailed => 'This conversation could not be loaded.';
+
+  @override
+  String get messageSendFailed =>
+      'Message could not be sent. Please try again.';
+
+  @override
+  String get writeMessage => 'Write a message';
+
+  @override
+  String get sendMessage => 'Send message';
+
+  @override
+  String get noPrivateMessages =>
+      'No messages yet. Start a private conversation about ongoing care.';
+
+  @override
+  String get patientFallbackName => 'Patient';
+
+  @override
+  String get doctorFallbackName => 'Doctor';
 }

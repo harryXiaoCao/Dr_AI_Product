@@ -11,7 +11,6 @@ import 'package:dr_ai_app/l10n/locale_controller.dart';
 import 'package:dr_ai_app/shared/avatar/avatar_upload.dart';
 import 'package:dr_ai_app/shared/widgets/account_security.dart';
 import 'package:dr_ai_app/shared/widgets/dashboard_states.dart';
-import 'package:dr_ai_app/shared/widgets/interface_language_selector.dart';
 import 'package:dr_ai_app/shared/widgets/responsive_app_shell.dart';
 import 'package:dr_ai_app/shared/widgets/sign_out_button.dart';
 import 'package:flutter/cupertino.dart';
@@ -48,7 +47,7 @@ class PatientAccountScreen extends ConsumerWidget {
       role: AppRole.patient,
       selectedIndex: 3,
       child: ColoredBox(
-        color: DrAiColors.brandSoft,
+        color: DrAiColors.pageBackground,
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 640),
@@ -79,7 +78,7 @@ class PatientRecoveryPlanScreen extends ConsumerWidget {
       role: AppRole.patient,
       selectedIndex: 2,
       child: ColoredBox(
-        color: DrAiColors.brandSoft,
+        color: DrAiColors.pageBackground,
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 640),
@@ -149,7 +148,7 @@ class _PatientDashboard extends ConsumerWidget {
     final cardScale = textScale.clamp(1.0, 1.6).toDouble();
 
     return ColoredBox(
-      color: DrAiColors.brandSoft,
+      color: DrAiColors.pageBackground,
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 640),
@@ -437,95 +436,10 @@ class _PatientAccountView extends ConsumerWidget {
         ),
         const SizedBox(height: DrAiSpacing.md),
         _PatientOnboardingPanel(
-          title: context.l10n.languagePreferences,
-          child: const InterfaceLanguageSelector(),
-        ),
-        const SizedBox(height: DrAiSpacing.md),
-        _PatientOnboardingPanel(
-          title: context.l10n.clinicalEvents,
-          child: bundle.clinicalEvents.isEmpty
-              ? _EmptyAccountState(
-                  icon: Icons.event_note_outlined,
-                  text: context.l10n.clinicalEventsEmpty,
-                )
-              : Column(
-                  children: <Widget>[
-                    for (final event in bundle.clinicalEvents)
-                      _AccountListTile(
-                        icon: Icons.event_note_outlined,
-                        title: event.title,
-                        subtitle: event.status,
-                      ),
-                    const SizedBox(height: DrAiSpacing.xs),
-                    _PatientEventUpdatePanel(bundle: bundle),
-                  ],
-                ),
-        ),
-        const SizedBox(height: DrAiSpacing.md),
-        _PatientOnboardingPanel(
           title: context.l10n.medicalHistory,
           child: Text(
             _patientHistorySummary(context, bundle),
             key: const Key('patient-account-history-summary'),
-          ),
-        ),
-        const SizedBox(height: DrAiSpacing.md),
-        _PatientOnboardingPanel(
-          title: context.l10n.medicalRecordsAndImaging,
-          child: Column(
-            children: <Widget>[
-              _AccountCountLine(
-                label: context.l10n.medicalRecords,
-                count: bundle.records.length,
-              ),
-              for (final record in bundle.records)
-                _AccountListTile(
-                  icon: Icons.description_outlined,
-                  title: context.l10n.stableValue(record.title),
-                  subtitle: record.category,
-                ),
-              const SizedBox(height: DrAiSpacing.xs),
-              _AccountCountLine(
-                label: context.l10n.imagingResults,
-                count: bundle.imagingAssets.length,
-              ),
-              for (final image in bundle.imagingAssets)
-                _AccountListTile(
-                  icon: Icons.document_scanner_outlined,
-                  title: image.contentType,
-                  subtitle:
-                      '${context.l10n.stableValue(image.uploadStatus)} / ${context.l10n.stableValue(image.reviewStatus)}',
-                ),
-            ],
-          ),
-        ),
-        const SizedBox(height: DrAiSpacing.md),
-        _PatientOnboardingPanel(
-          title: context.l10n.medicationsAndPrescriptions,
-          child: Column(
-            children: <Widget>[
-              if (bundle.medications.isEmpty)
-                _EmptyAccountState(
-                  icon: Icons.medication_outlined,
-                  text: context.l10n.noMedications,
-                )
-              else
-                for (final medication in bundle.medications)
-                  _AccountListTile(
-                    icon: Icons.medication_outlined,
-                    title: medication.name,
-                    subtitle: '${medication.dosage} - ${medication.schedule}',
-                  ),
-              const Divider(height: DrAiSpacing.lg),
-              _AccountCountLine(
-                label: context.l10n.prescriptions,
-                count: bundle.prescriptions.length,
-              ),
-              _AccountCountLine(
-                label: context.l10n.medicationReminders,
-                count: bundle.medicationReminders.length,
-              ),
-            ],
           ),
         ),
       ],
@@ -594,6 +508,7 @@ class _PatientAccountView extends ConsumerWidget {
             child: _PatientMedicalSurveyScreen(
               care: AsyncData<PatientCareBundle>(bundle),
               onRetry: () {},
+              closeOnSave: true,
             ),
           );
         },
@@ -627,37 +542,6 @@ class _AccountLine extends StatelessWidget {
                   ? context.l10n.notRecorded
                   : value!,
               style: const TextStyle(fontWeight: FontWeight.w700),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _AccountCountLine extends StatelessWidget {
-  const _AccountCountLine({required this.label, required this.count});
-
-  final String label;
-  final int count;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: DrAiSpacing.xs),
-      child: Row(
-        children: <Widget>[
-          Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(fontWeight: FontWeight.w700),
-            ),
-          ),
-          Text(
-            count.toString(),
-            style: const TextStyle(
-              color: DrAiColors.brand,
-              fontWeight: FontWeight.w800,
             ),
           ),
         ],
@@ -946,10 +830,12 @@ class _PatientMedicalSurveyScreen extends ConsumerStatefulWidget {
   const _PatientMedicalSurveyScreen({
     required this.care,
     required this.onRetry,
+    this.closeOnSave = false,
   });
 
   final AsyncValue<PatientCareBundle> care;
   final VoidCallback onRetry;
+  final bool closeOnSave;
 
   @override
   ConsumerState<_PatientMedicalSurveyScreen> createState() =>
@@ -1042,7 +928,7 @@ class _PatientMedicalSurveyScreenState
   Widget build(BuildContext context) {
     final onboardingState = ref.watch(patientOnboardingControllerProvider);
     return ColoredBox(
-      color: DrAiColors.brandSoft,
+      color: DrAiColors.pageBackground,
       child: LayoutBuilder(
         builder: (context, constraints) {
           return Center(
@@ -1065,7 +951,7 @@ class _PatientMedicalSurveyScreenState
                           onRetry: widget.onRetry,
                         ),
                         data: (bundle) {
-                          _seedFields(bundle.patient);
+                          _seedFields(bundle);
                           return _surveyForm(context, bundle, onboardingState);
                         },
                       ),
@@ -1080,11 +966,12 @@ class _PatientMedicalSurveyScreenState
     );
   }
 
-  void _seedFields(PatientProfile patient) {
+  void _seedFields(PatientCareBundle bundle) {
     if (_seededFromBundle) {
       return;
     }
     _seededFromBundle = true;
+    final patient = bundle.patient;
     _displayNameController.text = patient.displayName == 'New Patient'
         ? ''
         : patient.displayName;
@@ -1114,6 +1001,24 @@ class _PatientMedicalSurveyScreenState
       'In-app',
       'Email',
     ], _contactPreference);
+    final activeAllergies = bundle.allergies.where(
+      (item) => item.status.toLowerCase() == 'active',
+    );
+    if (activeAllergies.isNotEmpty) {
+      final allergy = activeAllergies.first;
+      _hasAllergies = true;
+      _allergyLabelController.text = allergy.label;
+      _allergyReactionController.text = allergy.reaction ?? '';
+    }
+    final activeConditions = bundle.chronicDiseases.where(
+      (item) => item.status.toLowerCase() == 'active',
+    );
+    if (activeConditions.isNotEmpty) {
+      final condition = activeConditions.first;
+      _hasChronicCondition = true;
+      _conditionNameController.text = condition.name;
+      _conditionNotesController.text = condition.notes ?? '';
+    }
   }
 
   Widget _surveyForm(
@@ -1128,7 +1033,7 @@ class _PatientMedicalSurveyScreenState
         children: <Widget>[
           DecoratedBox(
             decoration: BoxDecoration(
-              color: DrAiColors.brandSoft,
+              color: DrAiColors.pageBackground,
               borderRadius: BorderRadius.circular(DrAiRadii.md),
             ),
             child: Padding(
@@ -1667,9 +1572,7 @@ class _PatientMedicalSurveyScreenState
           const SizedBox(height: DrAiSpacing.md),
           FilledButton.icon(
             key: const Key('patient-onboarding-submit'),
-            onPressed: onboardingState.isLoading
-                ? null
-                : () => _submit(bundle.patient.patientId),
+            onPressed: onboardingState.isLoading ? null : () => _submit(bundle),
             icon: onboardingState.isLoading
                 ? const SizedBox.square(
                     dimension: 16,
@@ -1686,7 +1589,7 @@ class _PatientMedicalSurveyScreenState
     );
   }
 
-  Future<void> _submit(String patientId) async {
+  Future<void> _submit(PatientCareBundle bundle) async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
@@ -1694,6 +1597,12 @@ class _PatientMedicalSurveyScreenState
     final email = _accountEmailController.text.trim().toLowerCase();
     final currentEmail =
         ref.read(authControllerProvider).value?.user?.email ?? '';
+    final activeAllergies = bundle.allergies
+        .where((item) => item.status.toLowerCase() == 'active')
+        .toList();
+    final activeConditions = bundle.chronicDiseases
+        .where((item) => item.status.toLowerCase() == 'active')
+        .toList();
     try {
       if (email != currentEmail) {
         await ref
@@ -1709,7 +1618,7 @@ class _PatientMedicalSurveyScreenState
     await ref
         .read(patientOnboardingControllerProvider.notifier)
         .complete(
-          patientId: patientId,
+          patientId: bundle.patient.patientId,
           displayName: _displayNameController.text,
           birthDate: _birthDateController.text,
           gender: _gender,
@@ -1723,9 +1632,15 @@ class _PatientMedicalSurveyScreenState
           city: _city,
           homeAddress: _homeAddressController.text,
           hasAllergies: _hasAllergies,
+          existingAllergy: activeAllergies.isEmpty
+              ? null
+              : activeAllergies.first,
           allergyLabel: _allergyLabelController.text,
           allergyReaction: _allergyReactionController.text,
           hasChronicCondition: _hasChronicCondition,
+          existingChronicCondition: activeConditions.isEmpty
+              ? null
+              : activeConditions.first,
           chronicConditionName: _conditionNameController.text,
           chronicConditionNotes: _conditionNotesController.text,
           heightCm: _heightController.text,
@@ -1771,6 +1686,18 @@ class _PatientMedicalSurveyScreenState
           lifestyleNotes: _lifestyleNotesController.text,
           pregnancyStatus: _pregnancyStatus,
         );
+    if (!mounted) {
+      return;
+    }
+    final saved = ref.read(patientOnboardingControllerProvider);
+    if (saved.hasValue) {
+      await ref
+          .read(localeControllerProvider.notifier)
+          .applyProfilePreference(_preferredLanguage);
+      if (widget.closeOnSave && mounted && Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
+    }
   }
 
   String _conditionDetail(TextEditingController controller) {
@@ -2205,6 +2132,14 @@ class _PatientOnboardingPanel extends StatelessWidget {
       decoration: BoxDecoration(
         color: DrAiColors.white,
         borderRadius: BorderRadius.circular(DrAiRadii.md),
+        border: Border.all(color: DrAiColors.outline),
+        boxShadow: const <BoxShadow>[
+          BoxShadow(
+            color: Color(0x0A030025),
+            blurRadius: 16,
+            offset: Offset(0, 5),
+          ),
+        ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -2214,7 +2149,7 @@ class _PatientOnboardingPanel extends StatelessWidget {
             height: 40,
             alignment: Alignment.center,
             decoration: const BoxDecoration(
-              color: DrAiColors.brand,
+              color: DrAiColors.sectionHeader,
               borderRadius: BorderRadius.vertical(
                 top: Radius.circular(DrAiRadii.md),
               ),

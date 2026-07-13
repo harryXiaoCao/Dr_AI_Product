@@ -13,7 +13,7 @@ abstract final class DrAiTheme {
 
     return ThemeData(
       colorScheme: scheme,
-      scaffoldBackgroundColor: DrAiColors.surface,
+      scaffoldBackgroundColor: DrAiColors.pageBackground,
       useMaterial3: true,
       fontFamily: 'Inter',
       fontFamilyFallback: const <String>[

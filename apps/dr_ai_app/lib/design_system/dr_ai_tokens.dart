@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 
 abstract final class DrAiColors {
   // Verified directly in the two frozen Figma target frames.
-  static const Color brandDark = Color(0xFF030025);
+  static const Color brandDark = Color(0xFF0A0076);
   static const Color brand = Color(0xFF0A0076);
   static const Color brandSoft = Color(0xFFDEDCFC);
+  static const Color sectionHeader = brand;
+  static const Color pageBackground = Color(0xFFF4F7FC);
   static const Color white = Color(0xFFFFFFFF);
   static const Color black = Color(0xFF000000);
   static const Color ink = Color(0xFF1E1E1E);

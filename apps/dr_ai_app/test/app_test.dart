@@ -156,7 +156,8 @@ void main() {
     completer.complete(doctorSession);
     await tester.pumpAndSettle();
     expect(find.text('Quick Access'), findsOneWidget);
-    expect(find.text('Dr. Avery Demo'), findsWidgets);
+    expect(find.text('Team Management'), findsOneWidget);
+    expect(find.text('Dr. Avery Demo'), findsNothing);
   });
 
   testWidgets(
@@ -280,7 +281,6 @@ void main() {
       await tester.pumpAndSettle();
       expect(repository.patientProfileUpdated, isTrue);
       expect(find.byKey(const Key('patient-dashboard-list')), findsOneWidget);
-      expect(find.text('Today'), findsWidgets);
     },
   );
 
@@ -387,9 +387,12 @@ void main() {
 
     await tester.tap(find.text('Account').last);
     await tester.pumpAndSettle();
-    await tester.ensureVisible(
+    await tester.dragUntilVisible(
       find.byKey(const Key('doctor-account-change-password-button')),
+      find.byKey(const Key('doctor-account-list')),
+      const Offset(0, -360),
     );
+    await tester.pumpAndSettle();
     await tester.tap(
       find.byKey(const Key('doctor-account-change-password-button')),
     );
@@ -430,11 +433,11 @@ void main() {
     );
 
     expect(find.text('Today'), findsWidgets);
-    expect(find.text('My Account'), findsOneWidget);
+    expect(find.text('My Account'), findsWidgets);
     expect(find.text('Medical Fee'), findsOneWidget);
   });
 
-  testWidgets('patient can switch the interface to Simplified Chinese', (
+  testWidgets('patient account keeps language changes inside profile editing', (
     tester,
   ) async {
     setViewport(tester, const Size(412, 917));
@@ -449,29 +452,13 @@ void main() {
 
     await tester.tap(find.text('My Account'));
     await tester.pumpAndSettle();
-    await tester.dragUntilVisible(
-      find.byKey(const Key('interface-language-field')),
-      find.byKey(const Key('patient-account-list')),
-      const Offset(0, -360),
-    );
-    await Scrollable.ensureVisible(
-      tester.element(find.byKey(const Key('interface-language-field'))),
-      alignment: 0.5,
+    expect(find.byKey(const Key('interface-language-field')), findsNothing);
+    await tester.tap(
+      find.byKey(const Key('patient-account-edit-profile-button')),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('interface-language-field')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Simplified Chinese').last);
-    await tester.pumpAndSettle();
-
-    expect(find.text('我的账户'), findsWidgets);
-    expect(find.text('语言偏好'), findsOneWidget);
-    await tester.dragUntilVisible(
-      find.byKey(const Key('account-sign-out-button')),
-      find.byKey(const Key('patient-account-list')),
-      const Offset(0, 280),
-    );
-    expect(find.text('退出登录'), findsOneWidget);
+    expect(find.byKey(const Key('onboarding-language-field')), findsOneWidget);
+    expect(find.text('My Account'), findsWidgets);
   });
 
   testWidgets('logout clears the session and returns to sign in', (
@@ -803,11 +790,15 @@ void main() {
     setViewport(tester, const Size(1280, 832));
     await pumpApp(tester, FakeDrAiRepository(restoredSession: doctorSession));
 
-    expect(find.text('Synthetic Community Hospital'), findsOneWidget);
+    expect(find.text('Synthetic Community Hospital'), findsNothing);
     expect(find.text('Quick Access'), findsOneWidget);
     expect(find.text('Recent Activities'), findsOneWidget);
     expect(find.text('Resource Overview'), findsOneWidget);
     expect(find.text('Team Management'), findsOneWidget);
+    expect(
+      find.byKey(const Key('doctor-panel-Team Management')),
+      findsOneWidget,
+    );
     expect(find.byKey(const Key('doctor-panel-Quick Access')), findsOneWidget);
     expect(
       find.byKey(const Key('doctor-panel-Resource Overview')),
@@ -1236,18 +1227,14 @@ void main() {
     ).go('/patient/account');
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('patient-account-list')), findsOneWidget);
-    for (var index = 0; index < 2; index++) {
-      await tester.drag(
-        find.byKey(const Key('patient-account-list')),
-        const Offset(0, -260),
-      );
-      await tester.pumpAndSettle();
-    }
-    expect(find.byKey(const Key('patient-event-update-title')), findsOneWidget);
+    expect(find.byKey(const Key('patient-event-update-title')), findsNothing);
+    expect(find.text('Clinical Events'), findsNothing);
+    expect(find.text('Medical Records And Imaging'), findsNothing);
+    expect(find.text('Medications And Prescriptions'), findsNothing);
     await tester.dragUntilVisible(
       find.byKey(const Key('patient-account-history-summary')),
       find.byKey(const Key('patient-account-list')),
-      const Offset(0, -360),
+      const Offset(0, -240),
     );
     await tester.pumpAndSettle();
     expect(
@@ -1262,13 +1249,6 @@ void main() {
       find.textContaining('Diagnoses: Synthetic observation'),
       findsOneWidget,
     );
-    await tester.dragUntilVisible(
-      find.text('Medication reminders'),
-      find.byKey(const Key('patient-account-list')),
-      const Offset(0, -520),
-    );
-    await tester.pumpAndSettle();
-    expect(find.text('Medication reminders'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -1585,6 +1565,8 @@ void main() {
     container.invalidate(dashboardProvider);
     await tester.pumpAndSettle();
     expect(find.text('Quick Access'), findsOneWidget);
-    expect(find.text('Hospital profile pending'), findsOneWidget);
+    expect(find.text('Hospital profile pending'), findsNothing);
+    expect(find.text('Doctor profile'), findsNothing);
+    expect(find.text('Team Management'), findsOneWidget);
   });
 }

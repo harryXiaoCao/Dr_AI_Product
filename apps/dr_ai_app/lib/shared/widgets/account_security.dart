@@ -18,7 +18,7 @@ class AccountSecuritySection extends ConsumerWidget {
         Text(
           context.l10n.security,
           style: TextStyle(
-            color: DrAiColors.brandDark,
+            color: DrAiColors.sectionHeader,
             fontWeight: FontWeight.w800,
           ),
         ),

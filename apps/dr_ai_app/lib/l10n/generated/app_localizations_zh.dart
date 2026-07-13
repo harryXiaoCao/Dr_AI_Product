@@ -1308,7 +1308,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get loadingPatients => '正在加载患者';
 
   @override
-  String get noConnectedPatients => '尚未连接患者';
+  String get noConnectedPatients => '暂无已连接患者';
 
   @override
   String get connectPatientEmpty => '向患者获取代码并在此建立连接，然后从零开始创建照护工作区。';
@@ -2229,4 +2229,82 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get imagingReviewUpdated => '影像审核状态已更新。';
+
+  @override
+  String get doctorContactsDescription => '与已连接患者进行私密沟通，并使用 Dr. AI 服务。';
+
+  @override
+  String get systemReadOnlyDescription => '提醒与通知 · 只读';
+
+  @override
+  String get aiCareCompanion => 'AI 健康助手';
+
+  @override
+  String get myPatients => '我的患者';
+
+  @override
+  String get connectedPatientPrivateChat => '已连接患者 · 私聊';
+
+  @override
+  String get connectPatientToChat => '请先在患者管理中连接患者，再开始私密对话。';
+
+  @override
+  String get noGroupChats => '暂无群聊';
+
+  @override
+  String get groupChatsUnavailable => '群聊功能暂未开放。';
+
+  @override
+  String get contactsLoadFailed => '无法加载联系人。';
+
+  @override
+  String get systemNotifications => '系统通知';
+
+  @override
+  String get systemNotificationsSubtitle => '提醒和重要账户更新将显示在这里。';
+
+  @override
+  String get aiAssistant => 'Dr. AI 助手';
+
+  @override
+  String get aiAssistantSubtitle => 'AI 健康助手界面已准备好，将在下一阶段开放。';
+
+  @override
+  String get noSystemNotifications => '暂无系统通知';
+
+  @override
+  String get systemReadOnlyNotice => '此频道仅用于接收通知，无法向系统发送消息。';
+
+  @override
+  String get aiAvailablePhase3 => 'AI 对话将在第三阶段开放';
+
+  @override
+  String get aiPlaceholderNotice => '在安全工作完成前，医生和患者均可访问此统一的 AI 入口。';
+
+  @override
+  String get privateCareConversation => '私密照护对话';
+
+  @override
+  String get loadingConversation => '正在加载对话…';
+
+  @override
+  String get conversationLoadFailed => '无法加载此对话。';
+
+  @override
+  String get messageSendFailed => '消息发送失败，请重试。';
+
+  @override
+  String get writeMessage => '输入消息';
+
+  @override
+  String get sendMessage => '发送消息';
+
+  @override
+  String get noPrivateMessages => '暂无消息。您可以就持续照护发起私密对话。';
+
+  @override
+  String get patientFallbackName => '患者';
+
+  @override
+  String get doctorFallbackName => '医生';
 }
