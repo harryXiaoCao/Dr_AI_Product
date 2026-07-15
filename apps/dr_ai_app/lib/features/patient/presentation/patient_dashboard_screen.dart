@@ -1728,6 +1728,15 @@ class _PatientMedicalSurveyScreenState
             .read(authControllerProvider.notifier)
             .updateAccountEmail(email);
       }
+    } on ApiError catch (error) {
+      if (mounted) {
+        setState(
+          () => _accountSaveError = error.code == 'email_already_in_use'
+              ? context.l10n.accountEmailAlreadyInUse
+              : context.l10n.accountSaveFailed,
+        );
+      }
+      return;
     } on Exception {
       if (mounted) {
         setState(() => _accountSaveError = context.l10n.accountSaveFailed);

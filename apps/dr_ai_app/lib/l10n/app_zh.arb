@@ -74,6 +74,7 @@
   "privacySupport": "隐私、同意与支持",
   "accountSaved": "账户更改已保存。",
   "accountSaveFailed": "无法保存账户更改。请检查网络连接后重试。",
+  "accountEmailAlreadyInUse": "该邮箱已绑定其他账户。请使用其他邮箱，或将此项留空。",
   "languageUpdated": "界面语言已更新。",
   "systemLanguageDescription": "系统语言为中文或英文时自动跟随；其他语言默认使用英文。",
   "welcome": "欢迎使用 Dr. AI",

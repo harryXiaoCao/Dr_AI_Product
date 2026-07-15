@@ -719,6 +719,7 @@ class FakeDrAiRepository implements DrAiRepository {
     DashboardData? dashboard,
     this.loginError,
     this.logoutError,
+    this.accountEmailError,
     this.dashboardError,
     PatientListData? patientList,
     PatientCareBundle? patientCareBundle,
@@ -765,6 +766,7 @@ class FakeDrAiRepository implements DrAiRepository {
   DashboardData dashboard;
   ApiError? loginError;
   Exception? logoutError;
+  ApiError? accountEmailError;
   ApiError? dashboardError;
   PatientListData patientList;
   PatientCareBundle patientCareBundle;
@@ -907,6 +909,9 @@ class FakeDrAiRepository implements DrAiRepository {
   @override
   Future<SessionUser> updateAccountEmail(String email) async {
     accountEmailUpdated = true;
+    if (accountEmailError != null) {
+      throw accountEmailError!;
+    }
     final current = restoredSession?.user ?? loginSession.user;
     final updated = SessionUser(
       id: current.id,

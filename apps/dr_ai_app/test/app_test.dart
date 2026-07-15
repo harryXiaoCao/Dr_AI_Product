@@ -962,6 +962,55 @@ void main() {
     );
   });
 
+  testWidgets('patient profile explains a duplicate account email', (
+    tester,
+  ) async {
+    setViewport(tester, const Size(900, 1100));
+    final repository = FakeDrAiRepository(
+      restoredSession: patientSession,
+      loginSession: patientSession,
+      dashboard: patientDashboard,
+      accountEmailError: const ApiError(
+        code: 'email_already_in_use',
+        message: 'An account already uses this email address.',
+        statusCode: 409,
+      ),
+    );
+    await pumpApp(tester, repository);
+
+    GoRouter.of(
+      tester.element(find.byKey(const Key('patient-dashboard-list'))),
+    ).go('/patient/account');
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const Key('patient-account-edit-profile-button')),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('onboarding-email-field')),
+      'already.used@example.com',
+    );
+    for (var index = 0; index < 8; index++) {
+      await tester.drag(
+        find.byKey(const Key('patient-onboarding-list')),
+        const Offset(0, -520),
+      );
+      await tester.pumpAndSettle();
+    }
+    await tester.tap(find.byKey(const Key('patient-onboarding-submit')));
+    await tester.pumpAndSettle();
+
+    expect(repository.accountEmailUpdated, isTrue);
+    expect(repository.patientProfileUpdated, isFalse);
+    expect(
+      find.text(
+        'This email is already linked to another account. '
+        'Use a different email or leave this field empty.',
+      ),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('doctor can search and open assigned patient management', (
     tester,
   ) async {

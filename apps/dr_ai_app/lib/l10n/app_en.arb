@@ -74,6 +74,7 @@
   "privacySupport": "Privacy, consent, and support",
   "accountSaved": "Account changes saved.",
   "accountSaveFailed": "Unable to save account changes. Check your connection and try again.",
+  "accountEmailAlreadyInUse": "This email is already linked to another account. Use a different email or leave this field empty.",
   "languageUpdated": "Interface language updated.",
   "systemLanguageDescription": "Chinese and English follow your device setting. Other system languages use English.",
   "welcome": "Welcome to Dr. AI",

@@ -403,6 +403,41 @@ def test_account_email_can_be_removed(client: TestClient, settings) -> None:
         assert event is not None and event.metadata_json["email_removed"] is True
 
 
+def test_account_email_duplicate_returns_conflict_without_changing_either_account(
+    client: TestClient,
+    settings,
+) -> None:
+    with Session(engine) as db:
+        seed_database(db, settings)
+    tokens = login(
+        client,
+        "patient.demo@example.com",
+        settings.seed_patient_password.get_secret_value(),
+    )
+
+    response = client.patch(
+        "/api/v1/auth/account/email",
+        headers=auth_header(tokens["access_token"]),
+        json={"email": "doctor.demo@example.com"},
+    )
+
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "email_already_in_use"
+    with Session(engine) as db:
+        emails = set(
+            db.scalars(
+                select(User.email).where(
+                    User.email.in_({"doctor.demo@example.com", "patient.demo@example.com"})
+                )
+            ).all()
+        )
+        duplicate_update_event = db.scalar(
+            select(AuditEvent).where(AuditEvent.event_type == "account_email_updated")
+        )
+        assert emails == {"doctor.demo@example.com", "patient.demo@example.com"}
+        assert duplicate_update_event is None
+
+
 def test_recent_doctor_activity_uses_a_fourteen_day_boundary() -> None:
     now = datetime(2026, 7, 10, 12, 0, tzinfo=UTC)
 

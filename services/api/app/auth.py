@@ -510,11 +510,22 @@ def update_account_email(
     email = _normalize_email(str(body.email)) if body.email is not None else None
     if user.email == email:
         return _user_response(user)
+    patient_id = user.patient_profile.id if user.patient_profile else None
+    if email is not None:
+        existing_user_id = db.scalar(
+            select(User.id).where(User.email == email, User.id != user.id)
+        )
+        if existing_user_id is not None:
+            raise ApiError(
+                409,
+                "email_already_in_use",
+                "An account already uses this email address.",
+            )
     user.email = email
     db.add(
         AuditEvent(
             actor_user_id=user.id,
-            patient_id=user.patient_profile.id if user.patient_profile else None,
+            patient_id=patient_id,
             event_type="account_email_updated",
             resource_type="user",
             resource_id=user.id,
@@ -528,7 +539,11 @@ def update_account_email(
         db.commit()
     except IntegrityError:
         db.rollback()
-        raise ApiError(409, "conflict", "An account already uses this email address.") from None
+        raise ApiError(
+            409,
+            "email_already_in_use",
+            "An account already uses this email address.",
+        ) from None
     db.refresh(user)
     return _user_response(user)
 

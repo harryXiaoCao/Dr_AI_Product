@@ -536,6 +536,12 @@ abstract class AppLocalizations {
   /// **'Unable to save account changes. Check your connection and try again.'**
   String get accountSaveFailed;
 
+  /// No description provided for @accountEmailAlreadyInUse.
+  ///
+  /// In en, this message translates to:
+  /// **'This email is already linked to another account. Use a different email or leave this field empty.'**
+  String get accountEmailAlreadyInUse;
+
   /// No description provided for @languageUpdated.
   ///
   /// In en, this message translates to:

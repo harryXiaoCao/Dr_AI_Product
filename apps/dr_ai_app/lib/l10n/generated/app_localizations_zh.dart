@@ -230,6 +230,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get accountSaveFailed => '无法保存账户更改。请检查网络连接后重试。';
 
   @override
+  String get accountEmailAlreadyInUse => '该邮箱已绑定其他账户。请使用其他邮箱，或将此项留空。';
+
+  @override
   String get languageUpdated => '界面语言已更新。';
 
   @override

@@ -236,6 +236,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Unable to save account changes. Check your connection and try again.';
 
   @override
+  String get accountEmailAlreadyInUse =>
+      'This email is already linked to another account. Use a different email or leave this field empty.';
+
+  @override
   String get languageUpdated => 'Interface language updated.';
 
   @override
