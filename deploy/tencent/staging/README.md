@@ -44,8 +44,13 @@ Populate `.env` from `.env.example` on the host with mode `0600`.
    cd ../../apps/dr_ai_app
    flutter build web \
      --release \
+     --no-web-resources-cdn \
      --dart-define=DR_AI_API_BASE_URL=https://$DR_AI_STAGING_HOST
    ```
+
+   `--no-web-resources-cdn` keeps the Flutter renderer assets on the same
+   Tencent origin. This avoids a blank or heavily delayed first render when
+   Google-hosted CanvasKit resources are slow or unavailable in China.
 
 7. Copy the generated `apps/dr_ai_app/build/web` contents to the host-side
    `web/` directory beside `compose.yaml`. Back up any existing `web/`
