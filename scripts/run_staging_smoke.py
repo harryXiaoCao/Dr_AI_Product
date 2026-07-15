@@ -152,6 +152,18 @@ def main() -> int:
     patient_access = patient_tokens["access_token"]
     ok("doctor and patient login")
 
+    resources = request_json(
+        base_url,
+        "GET",
+        f"/api/v1/doctor/resources?{urlencode({'query': 'usually has no symptoms'})}",
+        token=doctor_access,
+    )
+    assert resources.body is not None
+    resource_ids = {item["source_id"] for item in resources.body.get("items", [])}
+    if "KBS-MEDLINEPLUS-HIGH-BLOOD-PRESSURE" not in resource_ids:
+        raise SmokeFailure("Doctor resource search did not match the approved English summary")
+    ok("doctor resource approved-summary search")
+
     rotated = request_json(
         base_url,
         "POST",
