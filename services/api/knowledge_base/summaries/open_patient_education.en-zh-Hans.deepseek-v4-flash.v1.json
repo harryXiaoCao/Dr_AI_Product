@@ -1,0 +1,839 @@
+{
+  "schema_version": "1.0",
+  "source_corpus_locator": "knowledge_base/catalog/open_patient_education.v1.json",
+  "source_corpus_checksum": "df3efa80a306240fb24eb6d00dbdbbdd161a1c6f4cdd2db72f0c6ac83a3911a7",
+  "translation_corpus_locator": "knowledge_base/translations/open_patient_education.zh-Hans.deepseek-v4-flash.v1.json",
+  "translation_corpus_checksum": "0686bfedf2af665f066c8953e1dc31a70d83dcadf53966c0ad2841969ffdb222",
+  "provider": "deepseek",
+  "model": "deepseek-v4-flash",
+  "prompt_policy_version": "bilingual-medical-search-summary-v1",
+  "status": "generated_pending_review",
+  "completed_at": "2026-07-15T14:19:30.396496Z",
+  "documents": [
+    {
+      "source_id": "KBS-MEDLINEPLUS-HIGH-BLOOD-PRESSURE",
+      "source_version_id": "KBV-MEDLINEPLUS-HIGH-BLOOD-PRESSURE-0FD118BC5A00",
+      "source_normalized_checksum": "3116d7137f0db2c342aac25a438ff28875038d3af38bbf6f282314dcdec87f2e",
+      "translation_checksum": "a305c13685b752fe6e098c643931e49bfe72e2fa7b60121471dfd51dba140a35",
+      "english_summary": "High blood pressure is diagnosed through regular checks, as it usually has no symptoms. It includes primary (developing over time) and secondary (caused by another condition or medicine) types. Untreated high blood pressure can lead to heart attack, stroke, heart failure, and kidney failure. Treatments include lifestyle changes and medicines.",
+      "chinese_summary": "高血压通常无症状，需通过定期血压检查诊断。包括原发性（随年龄增长发展）和继发性（由其他疾病或药物引起）两种类型。未治疗的高血压可能导致心脏病发作、中风、心力衰竭和肾衰竭。治疗方法包括生活方式改变和药物。",
+      "usage": {
+        "input_tokens": 1329,
+        "output_tokens": 138,
+        "total_tokens": 1467
+      },
+      "generated_at": "2026-07-15T14:15:32.661511Z",
+      "response_checksum": "a8437a8175a894cebbd5bd8091a7ab920b4caf88f3b5351398c6369b70c5197a"
+    },
+    {
+      "source_id": "KBS-MEDLINEPLUS-DIABETES-TYPE-2",
+      "source_version_id": "KBV-MEDLINEPLUS-DIABETES-TYPE-2-671D316DF58B",
+      "source_normalized_checksum": "5fc79b054c845d3e998e48c58512735891cd5ab7950cac6e1c7f46d3906a925b",
+      "translation_checksum": "1dce4f3c9df92e418915dcd14b34231a004615ab32750d235d7cfce4aa8655e2",
+      "english_summary": "Type 2 diabetes is a condition where blood glucose levels are too high due to insufficient insulin or insulin resistance. Risk factors include being overweight, age over 45, family history, and certain ethnicities. Symptoms may be absent or develop slowly, including increased thirst, frequent urination, and blurred vision. Diagnosis involves blood tests like A1C or fasting glucose. Treatment focuses on lifestyle changes, medication, and regular glucose monitoring. Prevention includes weight loss and physical activity.",
+      "chinese_summary": "2型糖尿病是一种因胰岛素不足或胰岛素抵抗导致血糖过高的疾病。风险因素包括超重、年龄超过45岁、家族史及特定种族。症状可能缺失或缓慢发展，包括口渴、尿频和视力模糊。诊断通过A1C或空腹血糖等血液检查。治疗侧重于生活方式改变、药物和定期血糖监测。预防包括减重和体力活动。",
+      "usage": {
+        "input_tokens": 1846,
+        "output_tokens": 192,
+        "total_tokens": 2038
+      },
+      "generated_at": "2026-07-15T14:15:37.039883Z",
+      "response_checksum": "537d772871bbba17f98a09fabfbaad653b30e2183c97f17ab6dd0dcb31d5cdae"
+    },
+    {
+      "source_id": "KBS-MEDLINEPLUS-ASTHMA",
+      "source_version_id": "KBV-MEDLINEPLUS-ASTHMA-13246ED882BC",
+      "source_normalized_checksum": "4422b6116d140c6f98940ef7482b7602238f779c05acd81c5a41c286f3272e3f",
+      "translation_checksum": "7d99d2d9e2e4e91327201eaef87b29f94a002ecd889af4535df7317f0dde0c35",
+      "english_summary": "Asthma is a chronic lung disease causing airway inflammation and narrowing, leading to symptoms like wheezing, coughing, chest tightness, and shortness of breath. Triggers include allergens, cold air, smoke, and exercise; risk factors include genetics, race/ethnicity (higher in Black/African Americans and Puerto Ricans), and childhood infections. Diagnosis involves lung function tests (spirometry, PEF, FeNO) and allergy tests. Treatment includes avoiding triggers, quick-relief inhalers, daily control medicines, and for severe uncontrolled asthma in adults, bronchial thermoplasty may be considered.",
+      "chinese_summary": "哮喘是一种慢性肺部疾病，导致气道发炎和变窄，症状包括喘息、咳嗽、胸闷和气短。触发因素包括过敏原、冷空气、烟雾和运动；风险因素包括遗传、种族/民族（黑人和非裔美国人及波多黎各人风险更高）以及儿童期感染。诊断包括肺功能检查（肺活量测定、PEF、FeNO）和过敏测试。治疗包括避免触发因素、快速缓解吸入器、每日控制药物，对于成人未控制的严重哮喘，可考虑支气管热成形术。",
+      "usage": {
+        "input_tokens": 2120,
+        "output_tokens": 254,
+        "total_tokens": 2374
+      },
+      "generated_at": "2026-07-15T14:15:41.481955Z",
+      "response_checksum": "7ae80a749697a15210d735c3c34ab22de8842f274cadc9344ed0ab958fd17aa4"
+    },
+    {
+      "source_id": "KBS-MEDLINEPLUS-COPD",
+      "source_version_id": "KBV-MEDLINEPLUS-COPD-A2772062EDE6",
+      "source_normalized_checksum": "638d52c47f921a46cbe56337f6ac5a94d9f56ca5d6fe765dcdd44bd32c06edf3",
+      "translation_checksum": "95b8a6951e351feff95028ea48a7777c1a5b22fed8945fbe4eaa1ff6f3aa9a89",
+      "english_summary": "COPD is a group of progressive lung diseases that make breathing difficult, primarily caused by long-term exposure to irritants like cigarette smoke. Symptoms include coughing, wheezing, shortness of breath, and chest tightness. Diagnosis involves medical history, lung function tests, and imaging. While there is no cure, treatments such as quitting smoking, medications, oxygen therapy, and pulmonary rehabilitation can manage symptoms and slow progression.",
+      "chinese_summary": "COPD是一组进行性肺部疾病，导致呼吸困难，主要由长期接触香烟烟雾等刺激物引起。症状包括咳嗽、喘息、气短和胸闷。诊断依据病史、肺功能检查和影像学检查。虽然无法治愈，但戒烟、药物、氧疗和肺康复等治疗可缓解症状并延缓疾病进展。",
+      "usage": {
+        "input_tokens": 2566,
+        "output_tokens": 168,
+        "total_tokens": 2734
+      },
+      "generated_at": "2026-07-15T14:15:45.107829Z",
+      "response_checksum": "0d51b3260c7158a8eec8dd8ca8c761c60436e9688701c19e0b9e2186c4cd0bb7"
+    },
+    {
+      "source_id": "KBS-MEDLINEPLUS-HEART-DISEASES",
+      "source_version_id": "KBV-MEDLINEPLUS-HEART-DISEASES-6B84CEDBF119",
+      "source_normalized_checksum": "e1af915ee1f4dbf66c93f4b05b337cffa1e63979e979218ae5cc92614471b289",
+      "translation_checksum": "6d6d126fd8111071c848cc1c80844830f9a3cb2289eb81e515cefdedbf31d536",
+      "english_summary": "Heart disease is a general term for many types of heart problems and is the leading cause of death in the United States. Types include congenital heart disease, coronary artery disease, and conditions like angina, heart attack, heart failure, and arrhythmia. Risk factors include age, sex, family history, race/ethnicity, lifestyle habits, and other medical conditions. Diagnosis involves medical history, physical exam, and heart tests; treatment may include lifestyle changes, medicines, procedures, or cardiac rehabilitation.",
+      "chinese_summary": "心脏病是一个广义术语，涵盖多种心脏问题，是美国的主要死亡原因。类型包括先天性心脏病、冠状动脉疾病以及心绞痛、心脏病发作、心力衰竭和心律失常等。风险因素包括年龄、性别、家族史、种族/民族、生活习惯和其他疾病。诊断包括病史、体格检查和心脏检查；治疗可能包括生活方式改变、药物、手术或心脏康复。",
+      "usage": {
+        "input_tokens": 1625,
+        "output_tokens": 190,
+        "total_tokens": 1815
+      },
+      "generated_at": "2026-07-15T14:15:48.780981Z",
+      "response_checksum": "f12fe20886c800403595c84a2443b2339961cedace0c1d6f74d333b8435fbd17"
+    },
+    {
+      "source_id": "KBS-MEDLINEPLUS-STROKE",
+      "source_version_id": "KBV-MEDLINEPLUS-STROKE-97C1DC086F8F",
+      "source_normalized_checksum": "3fc8bdaec1ccc90a3e9f34bb1e5eaea5965a66b3f7ce64f51ceaabaa2238deb4",
+      "translation_checksum": "cd0d382739cd9974e54e506bd6ef37143589aed3527f159f1a6e34c06da9c134",
+      "english_summary": "A stroke occurs when blood flow to part of the brain is lost, causing brain cells to die within minutes and potentially leading to lasting damage or death. There are two main types: ischemic (caused by a blood clot, about 80% of strokes) and hemorrhagic (caused by a bleeding vessel). A transient ischemic attack (TIA) or 'mini-stroke' is a temporary blockage that increases stroke risk. Major risk factors include high blood pressure, diabetes, heart disease, smoking, age, and race/ethnicity. Symptoms include sudden numbness, confusion, vision trouble, dizziness, or severe headache; use the F.A.S.T. test (Face drooping, Arm weakness, Speech difficulty, Time to call 911). Diagnosis involves medical history, physical exam, and imaging (CT/MRI) or heart tests. Treatment depends on type and stage: acute treatment (tPA within 4 hours for ischemic; blood pressure control or surgery for hemorrhagic), rehabilitation, and prevention through lifestyle changes and medications.",
+      "chinese_summary": "中风是指部分大脑失去血液供应，脑细胞在几分钟内开始死亡，可能导致永久性脑损伤或死亡。主要类型包括缺血性中风（由血凝块引起，约占80%）和出血性中风（由血管破裂引起）。短暂性脑缺血发作（TIA）或“小中风”是短暂性阻塞，会增加中风风险。主要风险因素包括高血压、糖尿病、心脏病、吸烟、年龄和种族。症状包括突然麻木、意识混乱、视力障碍、头晕或剧烈头痛；可使用F.A.S.T.测试（面部下垂、手臂无力、言语困难、时间拨打120）。诊断包括病史、体格检查和影像学检查（CT/MRI）或心脏检查。治疗取决于类型和阶段：急性治疗（缺血性中风4小时内使用tPA；出血性中风控制血压或手术）、康复和通过生活方式改变及药物预防。",
+      "usage": {
+        "input_tokens": 2428,
+        "output_tokens": 402,
+        "total_tokens": 2830
+      },
+      "generated_at": "2026-07-15T14:15:54.931700Z",
+      "response_checksum": "a607a9f5a28de453e79ce20edeb68c1d86b2a696f7d8125d56b978f521065af3"
+    },
+    {
+      "source_id": "KBS-MEDLINEPLUS-CHOLESTEROL-LEVELS-WHAT-YOU-NEED-TO-KNOW",
+      "source_version_id": "KBV-MEDLINEPLUS-CHOLESTEROL-LEVELS-WHAT-YOU-NEED-TO-KNOW-B62231B5C55F",
+      "source_normalized_checksum": "2cd77ce943253e38ce9847e85f07548742f94141fd234f12611d90227d67e1eb",
+      "translation_checksum": "d9c0f9d2dfaa6e757fad30d4eeb566cce0331f9eaf4dfca78221be35d02148ea",
+      "english_summary": "Cholesterol is a waxy substance needed by the body, but high levels can narrow or block arteries, increasing heart disease risk. A lipid panel blood test measures total cholesterol, LDL (bad), HDL (good), non-HDL, and triglycerides after fasting 9–12 hours. Desirable levels vary by age and sex; for adults, total cholesterol should be below 200 mg/dL and LDL below 100 mg/dL. Lifestyle changes like diet, weight management, and exercise can lower cholesterol; medications such as statins may be needed if lifestyle alone is insufficient.",
+      "chinese_summary": "胆固醇是身体必需的蜡状物质，但水平过高会堵塞动脉，增加心脏病风险。通过血脂检测可测量总胆固醇、低密度脂蛋白（坏）、高密度脂蛋白（好）、非高密度脂蛋白和甘油三酯，检测前需禁食9-12小时。理想水平因年龄和性别而异；成人总胆固醇应低于200 mg/dL，低密度脂蛋白低于100 mg/dL。通过饮食、体重管理和运动等生活方式改变可降低胆固醇；若效果不足，可能需要他汀类药物等治疗。",
+      "usage": {
+        "input_tokens": 2445,
+        "output_tokens": 243,
+        "total_tokens": 2688
+      },
+      "generated_at": "2026-07-15T14:16:01.009321Z",
+      "response_checksum": "0320d4071e1b32f9f9504adf76a36767031b543b587c5c836e36b1b33f90c062"
+    },
+    {
+      "source_id": "KBS-MEDLINEPLUS-OBESITY",
+      "source_version_id": "KBV-MEDLINEPLUS-OBESITY-A4963694DD36",
+      "source_normalized_checksum": "7d488c41b5db4718b094d8be2a5197a15e0da0689c55b215f62d8dd76f3e17f8",
+      "translation_checksum": "2ca0aa492a8df03719d8aa16498d0750257560a933c617d86923ee56a91b0693",
+      "english_summary": "Obesity is a disease defined by excess body fat, diagnosed using a BMI of 30 or higher, with severe obesity at BMI 40 or above. It results from a long-term calorie imbalance and increases risks for conditions like type 2 diabetes, heart disease, and certain cancers. Losing 5-10% of body weight can help prevent or delay these diseases. Treatments include dietary changes, exercise, counseling, weight-loss medicines, and surgery for severe cases.",
+      "chinese_summary": "肥胖症是一种因体内脂肪过多导致的疾病，通过BMI≥30诊断，严重肥胖为BMI≥40。它由长期热量失衡引起，增加2型糖尿病、心脏病和某些癌症等风险。减重5%-10%可预防或延缓这些疾病。治疗方法包括饮食调整、运动、咨询、减肥药物及严重病例的手术。",
+      "usage": {
+        "input_tokens": 1621,
+        "output_tokens": 184,
+        "total_tokens": 1805
+      },
+      "generated_at": "2026-07-15T14:16:05.442401Z",
+      "response_checksum": "ffb3b6eaed5a809a4d6fa4e52b92079c473c5d99bc9856129e36c201fd8e139d"
+    },
+    {
+      "source_id": "KBS-MEDLINEPLUS-HEALTHY-AGING",
+      "source_version_id": "KBV-MEDLINEPLUS-HEALTHY-AGING-FF60F4C85780",
+      "source_normalized_checksum": "c1d590a4065559bfd88076e9783fb7e4f26a732b7e3c0554308e8014819b9541",
+      "translation_checksum": "6baae00a1e59e9819ccf3054db61f749564b90fedc481e10b0d94518d3d3cdd4",
+      "english_summary": "Healthy aging involves lifestyle choices like healthy eating, regular physical activity, maintaining a healthy weight, keeping your mind active, prioritizing mental health, participating in enjoyable activities, playing an active role in health care, not smoking, and preventing falls. These steps can help manage age-related changes and reduce the risk of health problems.",
+      "chinese_summary": "健康老龄化包括健康饮食、定期身体活动、保持健康体重、保持思维活跃、优先考虑心理健康、参与喜欢的活动、在医疗保健中发挥积极作用、不吸烟以及预防跌倒等生活方式选择。这些措施有助于应对年龄相关的变化并降低健康问题的风险。",
+      "usage": {
+        "input_tokens": 1367,
+        "output_tokens": 136,
+        "total_tokens": 1503
+      },
+      "generated_at": "2026-07-15T14:16:09.077268Z",
+      "response_checksum": "b495c6a216ae110c0def4a97c67c3cb2787b83dcbea7c34150bcb01d8bc23a31"
+    },
+    {
+      "source_id": "KBS-MEDLINEPLUS-DEPRESSION",
+      "source_version_id": "KBV-MEDLINEPLUS-DEPRESSION-63A9759D6E29",
+      "source_normalized_checksum": "54d284af1cd8fff506917e8d3dfff63d0b5d3bb56ea6ab1d15d426a08082d005",
+      "translation_checksum": "cd419e71df76d0853e24f4d1a77a095fe7d5ea6f785f7d558ccb30c4097df1d7",
+      "english_summary": "Depression is a serious mood disorder affecting how you think, feel, and function, often requiring long-term treatment. Common types include major depression (symptoms lasting at least 2 weeks) and persistent depressive disorder (symptoms lasting at least 2 years). Risk factors include family history, trauma, and stressful events. Symptoms vary by age and sex and may include sadness, loss of interest, sleep/appetite changes, and thoughts of death or suicide. Diagnosis involves medical history, physical exam, and mental health evaluation. Treatments include antidepressants, psychotherapy, and for severe cases, ECT or rTMS. Seek help at earliest signs; call 911 in emergencies.",
+      "chinese_summary": "抑郁症是一种严重的情绪障碍，影响思维、感受和日常生活，通常需要长期治疗。常见类型包括重度抑郁症（症状持续至少2周）和持续性抑郁障碍（症状持续至少2年）。风险因素包括家族史、创伤和压力事件。症状因年龄和性别而异，可能包括悲伤、兴趣丧失、睡眠/食欲改变以及死亡或自杀念头。诊断包括病史、体格检查和心理健康评估。治疗包括抗抑郁药、心理治疗，严重病例可采用ECT或rTMS。在问题出现最早迹象时寻求帮助；紧急情况请拨打911。",
+      "usage": {
+        "input_tokens": 2465,
+        "output_tokens": 271,
+        "total_tokens": 2736
+      },
+      "generated_at": "2026-07-15T14:16:14.109234Z",
+      "response_checksum": "ea9125b38c3beaa987770a1ef720dd98f9516964316232bdea1c0cf42f590425"
+    },
+    {
+      "source_id": "KBS-MEDLINEPLUS-ANXIETY",
+      "source_version_id": "KBV-MEDLINEPLUS-ANXIETY-587D93F300A1",
+      "source_normalized_checksum": "6e0cc66c7539eccc3f208989093e4595d56997f32ae854886e585f2316248206",
+      "translation_checksum": "c91ebdd3a07c6dcda09b9a065ab96468044e4b7d4cdc27f360dc4891090396cc",
+      "english_summary": "Anxiety is a normal reaction to stress, but anxiety disorders involve persistent, overwhelming fear that interferes with daily life. Types include generalized anxiety disorder, panic disorder, and phobias. Diagnosis involves medical history, physical exam, and psychological evaluation. Treatments include psychotherapy (e.g., cognitive behavioral therapy) and medications.",
+      "chinese_summary": "焦虑是对压力的正常反应，但焦虑症涉及持续、令人难以承受的恐惧，干扰日常生活。类型包括广泛性焦虑障碍、惊恐障碍和恐惧症。诊断包括病史、体格检查和心理评估。治疗方法包括心理治疗（如认知行为疗法）和药物。",
+      "usage": {
+        "input_tokens": 1860,
+        "output_tokens": 137,
+        "total_tokens": 1997
+      },
+      "generated_at": "2026-07-15T14:16:17.603600Z",
+      "response_checksum": "b05c05085d65c18bba37e62c3df706f46722b8f3cb5c88e1665d84103cf23e9e"
+    },
+    {
+      "source_id": "KBS-MEDLINEPLUS-SLEEP-DISORDERS",
+      "source_version_id": "KBV-MEDLINEPLUS-SLEEP-DISORDERS-7152CCEF3B7A",
+      "source_normalized_checksum": "4a427fe94bc4d6755cfc119bd3c3fa637671cf68ae5be6044a11501ce82191ae",
+      "translation_checksum": "87428371774f8e9a0ba01ca82abf47f15ff0673953e1cc634b1982efcb670915",
+      "english_summary": "Sleep disorders disrupt normal sleep patterns and include insomnia, sleep apnea, restless leg syndrome, hypersomnia, circadian rhythm disorders, and parasomnias. Symptoms may include difficulty falling asleep, daytime sleepiness, loud snoring, or leg sensations. Diagnosis involves medical history, physical exam, and sleep studies. Treatments range from lifestyle changes and CPAP to cognitive behavioral therapy and short-term sleep aids.",
+      "chinese_summary": "睡眠障碍干扰正常睡眠模式，包括失眠、睡眠呼吸暂停、不宁腿综合征、嗜睡症、昼夜节律障碍和异态睡眠。症状可能包括入睡困难、日间嗜睡、大声打鼾或腿部不适。诊断需结合病史、体格检查和睡眠研究。治疗方法包括生活方式调整、CPAP、认知行为疗法及短期助眠药物。",
+      "usage": {
+        "input_tokens": 1933,
+        "output_tokens": 175,
+        "total_tokens": 2108
+      },
+      "generated_at": "2026-07-15T14:16:21.795489Z",
+      "response_checksum": "d227472a3d0b28a978189785d342c3e600375bb5c01c865492590155bb181802"
+    },
+    {
+      "source_id": "KBS-MEDLINEPLUS-FLU",
+      "source_version_id": "KBV-MEDLINEPLUS-FLU-C14C317CCEC4",
+      "source_normalized_checksum": "257f07b77585585b11d07d547fb0589ff0e1034d6469f836881961f712893a2d",
+      "translation_checksum": "61edf7b06eae19eda4ab2922124d02f3fa6d46fc85abce37eefb552c4e5d04ab",
+      "english_summary": "The flu is a respiratory infection caused by viruses that spreads through droplets from coughs, sneezes, or talks. Symptoms come on suddenly and may include fever, cough, sore throat, body aches, and fatigue. Most people recover without medical care, but antiviral medicines can help if started within 2 days. Annual vaccination is the best prevention.",
+      "chinese_summary": "流感是由病毒引起的呼吸道感染，通过咳嗽、打喷嚏或说话时的飞沫传播。症状突然出现，可能包括发烧、咳嗽、喉咙痛、身体疼痛和疲劳。大多数人无需医疗护理即可康复，但抗病毒药物在发病2天内开始服用效果最佳。每年接种疫苗是最佳预防方法。",
+      "usage": {
+        "input_tokens": 1621,
+        "output_tokens": 153,
+        "total_tokens": 1774
+      },
+      "generated_at": "2026-07-15T14:16:25.404498Z",
+      "response_checksum": "77dc71cd17d8e6b5869a9bc4db1ed951a0b41737d235419298e5926c6d996730"
+    },
+    {
+      "source_id": "KBS-MEDLINEPLUS-PNEUMONIA",
+      "source_version_id": "KBV-MEDLINEPLUS-PNEUMONIA-BA3015E2F3B6",
+      "source_normalized_checksum": "63fa517a8fe4f0bc9995851c8eda32e3ede2e4bbe7880f7085764ad4079fc564",
+      "translation_checksum": "4f50e18de16199ddc37fe880bc9535bb30527a36897bf0abe3ef12a1c382de2f",
+      "english_summary": "Pneumonia is a lung infection causing air sacs to fill with fluid or pus, ranging from mild to severe. Causes include bacteria (most common), viruses, and fungi. Symptoms include fever, chills, cough with phlegm, shortness of breath, and chest pain. Treatment depends on the cause: antibiotics for bacterial, antivirals for viral, and antifungals for fungal. Vaccines and good hygiene can help prevent it.",
+      "chinese_summary": "肺炎是一种肺部感染，导致气囊充满液体或脓液，严重程度从轻微到严重不等。病因包括细菌（最常见）、病毒和真菌。症状包括发热、寒战、咳嗽伴痰液、呼吸急促和胸痛。治疗取决于病因：细菌性使用抗生素，病毒性使用抗病毒药，真菌性使用抗真菌药。疫苗和良好卫生习惯有助于预防。",
+      "usage": {
+        "input_tokens": 2344,
+        "output_tokens": 188,
+        "total_tokens": 2532
+      },
+      "generated_at": "2026-07-15T14:16:29.017590Z",
+      "response_checksum": "db21840fcec87b8b5c4ba7f73980b8c6df3d6bf166a70a10f89f742198021b72"
+    },
+    {
+      "source_id": "KBS-MEDLINEPLUS-TUBERCULOSIS",
+      "source_version_id": "KBV-MEDLINEPLUS-TUBERCULOSIS-3CE747BB2446",
+      "source_normalized_checksum": "0bc7069ddf5562e0102fd19d0dde07f78db6e28670823b21d442abb98fe1340f",
+      "translation_checksum": "f18eda0767b6626c3606275315d4db91cf046f9fb5ab1af6913498d2f226b77f",
+      "english_summary": "Tuberculosis (TB) is a bacterial disease that usually attacks the lungs but can affect other organs. Not everyone infected with TB bacteria becomes ill; there are two conditions: latent TB infection (inactive, no symptoms, not contagious) and active TB disease (causes symptoms, can be fatal if untreated). TB spreads through the air when a person with active TB of the throat or lungs coughs, sneezes, or speaks. Treatment involves antibiotics taken for 3-9 months depending on the type; it is crucial to complete the full course to prevent drug resistance.",
+      "chinese_summary": "结核病（TB）是一种细菌性疾病，通常攻击肺部，但也可影响其他器官。并非所有感染结核菌的人都会生病；有两种状况：潜伏性结核感染（非活动性，无症状，不传染）和活动性结核病（引起症状，若不治疗可能致命）。结核病通过空气传播，当活动性肺结核或喉结核患者咳嗽、打喷嚏或说话时传播。治疗使用抗生素，根据类型需服药3-9个月；完成全程治疗至关重要，以防止耐药性。",
+      "usage": {
+        "input_tokens": 2832,
+        "output_tokens": 239,
+        "total_tokens": 3071
+      },
+      "generated_at": "2026-07-15T14:16:33.706578Z",
+      "response_checksum": "5f84ed741063c87686c23fe64a896501c5e7782479ec6893ce753f0c8bdeacd2"
+    },
+    {
+      "source_id": "KBS-MEDLINEPLUS-HEPATITIS-B",
+      "source_version_id": "KBV-MEDLINEPLUS-HEPATITIS-B-B1DEA4E1309A",
+      "source_normalized_checksum": "db1ffefc00e71dd793d0373f4f25e695526e986518b8cabb59058f925e83fe9d",
+      "translation_checksum": "a01199eb689e1685c57b05ccbdd6a28d819d99f972b128c9e8fe49c7ab1546c3",
+      "english_summary": "Hepatitis B is a viral liver infection that can be acute or chronic. It spreads through contact with infected blood, semen, or other body fluids. Many people have no symptoms, but acute cases may cause jaundice, fatigue, and abdominal pain. Chronic hepatitis B can lead to cirrhosis or liver cancer. Vaccination is the best prevention; post-exposure prophylaxis with vaccine and HBIG is effective within 24 hours.",
+      "chinese_summary": "乙型肝炎是一种病毒性肝脏感染，可为急性或慢性。通过接触感染者的血液、精液或其他体液传播。许多人无症状，但急性病例可能出现黄疸、疲劳和腹痛。慢性乙型肝炎可导致肝硬化或肝癌。接种疫苗是最佳预防措施；暴露后24小时内接种疫苗和乙型肝炎免疫球蛋白（HBIG）可有效预防感染。",
+      "usage": {
+        "input_tokens": 2233,
+        "output_tokens": 177,
+        "total_tokens": 2410
+      },
+      "generated_at": "2026-07-15T14:16:37.780827Z",
+      "response_checksum": "ddf678b8907c6b5f22f962433d57c6a05cc32dcc77e0820e221a4c2e13ea72f0"
+    },
+    {
+      "source_id": "KBS-MEDLINEPLUS-HIV",
+      "source_version_id": "KBV-MEDLINEPLUS-HIV-7131ED2E3A31",
+      "source_normalized_checksum": "c3786589363f79d30f9a10137528f3ddb65ed8031285f3e71a2fbe82b04531a3",
+      "translation_checksum": "38041f1ec8b8e5a56deb0683b28266092c2a64a7298fc258f6619d4961873188",
+      "english_summary": "HIV is a virus that attacks the immune system, and AIDS is its final stage. It spreads through certain body fluids, primarily via unprotected sex or shared needles. Anyone can get HIV, but groups at higher risk include people with STIs, gay and bisexual men, and certain racial/ethnic groups. There is no cure, but antiretroviral therapy (ART) can manage the infection and reduce transmission risk.",
+      "chinese_summary": "HIV是一种攻击免疫系统的病毒，艾滋病是其最终阶段。它通过某些体液传播，主要通过无保护性行为或共用针头。任何人都可能感染HIV，但风险较高的群体包括患有性传播感染的人、男同性恋和双性恋男性以及某些种族/族裔群体。目前无法治愈，但抗逆转录病毒治疗（ART）可以控制感染并降低传播风险。",
+      "usage": {
+        "input_tokens": 1840,
+        "output_tokens": 180,
+        "total_tokens": 2020
+      },
+      "generated_at": "2026-07-15T14:16:42.573001Z",
+      "response_checksum": "9c0b5c37149de764211f7a520c3f2f09c4bf3e2faf045fef791d448929ed8769"
+    },
+    {
+      "source_id": "KBS-MEDLINEPLUS-BREAST-CANCER",
+      "source_version_id": "KBV-MEDLINEPLUS-BREAST-CANCER-9D48D46BBD22",
+      "source_normalized_checksum": "b9f6136b812924490a332eb046e71fa2312c7d272189099ef3445d1d0831f4e6",
+      "translation_checksum": "ccd52ffa2e84ee2617e0b26104878b9016461f9aa67873b2c687c0273888fca8",
+      "english_summary": "Breast cancer is a cancer that starts in breast tissue, often forming a tumor. It can be non-invasive (in situ) or invasive, spreading to nearby tissues or metastasizing. Risk factors include older age, genetic changes (e.g., BRCA1/BRCA2), dense breast tissue, reproductive history, hormone therapy, obesity, and alcohol use. Symptoms include a new lump, breast shape/size changes, skin dimpling, nipple changes, or discharge. Diagnosis involves physical exam, imaging (mammogram, ultrasound, MRI), biopsy, and blood tests. Treatment options include surgery (mastectomy or lumpectomy), radiation, chemotherapy, hormone therapy, targeted therapy, and immunotherapy. Prevention may involve healthy lifestyle changes, limiting estrogen exposure, and regular mammograms.",
+      "chinese_summary": "乳腺癌是一种始于乳腺组织的癌症，常形成肿瘤。可分为非浸润性（原位）或浸润性，可能扩散至附近组织或转移。风险因素包括年龄较大、遗传变化（如BRCA1/BRCA2）、乳腺组织致密、生育史、激素治疗、肥胖和饮酒。症状包括新肿块、乳房大小/形状改变、皮肤凹陷、乳头变化或溢液。诊断涉及体格检查、影像学检查（乳腺X线摄影、超声、MRI）、活检和血液检查。治疗选择包括手术（乳房切除术或保乳手术）、放疗、化疗、激素治疗、靶向治疗和免疫治疗。预防可通过健康生活方式、限制雌激素暴露和定期乳腺X线摄影。",
+      "usage": {
+        "input_tokens": 2662,
+        "output_tokens": 323,
+        "total_tokens": 2985
+      },
+      "generated_at": "2026-07-15T14:16:48.170284Z",
+      "response_checksum": "02557bbea2cd1409d3e584f3cfd842ca700adadb8bec476f1b17f5900718412b"
+    },
+    {
+      "source_id": "KBS-MEDLINEPLUS-LUNG-CANCER",
+      "source_version_id": "KBV-MEDLINEPLUS-LUNG-CANCER-5F0FCCFA4A04",
+      "source_normalized_checksum": "4998a7c62bc489e24fef33ad6ec5a89bde4262efac687d62cc4536ba423b2e98",
+      "translation_checksum": "7e8217f6a93649c4b3991e8ba9700af2c02c33db5affb92d39e737ad3a7af168",
+      "english_summary": "Lung cancer forms in lung tissues, usually in airway lining cells, and is the leading cause of cancer death. Smoking causes about 90% of cases in men and 80% in women; other risks include secondhand smoke, family history, workplace exposures, radiation, HIV, and air pollution. Symptoms often appear late and may include persistent cough, chest pain, coughing up blood, and weight loss. Diagnosis involves medical history, imaging, lab tests, and biopsy; treatment depends on type and stage, with options including surgery, chemotherapy, radiation, immunotherapy, and targeted therapy, but current treatments rarely cure the cancer.",
+      "chinese_summary": "肺癌形成于肺组织，通常发生在气道内壁细胞，是癌症死亡的主要原因。吸烟导致约90%的男性病例和80%的女性病例；其他风险包括二手烟、家族史、工作场所暴露、辐射、HIV感染和空气污染。症状常在晚期出现，可能包括持续咳嗽、胸痛、咳血和体重减轻。诊断包括病史、影像学、实验室检查和活检；治疗取决于类型和分期，选项包括手术、化疗、放疗、免疫治疗和靶向治疗，但当前治疗很少能治愈癌症。",
+      "usage": {
+        "input_tokens": 2168,
+        "output_tokens": 255,
+        "total_tokens": 2423
+      },
+      "generated_at": "2026-07-15T14:16:53.067375Z",
+      "response_checksum": "5a07c6fa285fbd8e3782aa4797d7c1bf430fc2cb3dee79f6116227be4e8fe1a4"
+    },
+    {
+      "source_id": "KBS-MEDLINEPLUS-COLORECTAL-CANCER",
+      "source_version_id": "KBV-MEDLINEPLUS-COLORECTAL-CANCER-22A3DDA574EC",
+      "source_normalized_checksum": "9552f80ae3f100a08abd032f42cc3a425419cf2201e7ce29071309e0cb087fb0",
+      "translation_checksum": "86bd5b6ea4ade75ec3f60796870a343f0dbb33e5e57c682e71feaf1c293fc75e",
+      "english_summary": "Colorectal cancer develops in the colon or rectum and often has no early symptoms. Risk factors include age, family history, adenomas, genetic syndromes, chronic ulcerative colitis or Crohn disease for 8+ years, smoking, heavy alcohol use (3+ drinks/day), Black race, and obesity. Screening is recommended from age 45 to at least 75. Treatment depends on cancer type and stage, and may include surgery, chemotherapy, radiation, targeted therapy, or immunotherapy.",
+      "chinese_summary": "结直肠癌发生于结肠或直肠，早期常无症状。风险因素包括年龄、家族史、腺瘤、遗传综合征、慢性溃疡性结肠炎或克罗恩病（8年及以上）、吸烟、大量饮酒（每天3杯或以上）、黑人种族和肥胖。建议从45岁开始筛查，至少持续至75岁。治疗取决于癌症类型和分期，可能包括手术、化疗、放疗、靶向治疗或免疫治疗。",
+      "usage": {
+        "input_tokens": 2255,
+        "output_tokens": 205,
+        "total_tokens": 2460
+      },
+      "generated_at": "2026-07-15T14:16:56.940556Z",
+      "response_checksum": "5cb994421b2df070f2f26ceb585b35147b90e4896dbbff96f4e19e8340e01e19"
+    },
+    {
+      "source_id": "KBS-MEDLINEPLUS-PREGNANCY",
+      "source_version_id": "KBV-MEDLINEPLUS-PREGNANCY-5D03D93E0CE9",
+      "source_normalized_checksum": "849313b5a418cfd5e00fd54c0f9425db5ce3af326d7d7bd88ad75edc353ef771",
+      "translation_checksum": "de95942ca4e277360ee73680c66cd21d675d92801634ac115a27fe6cc432de6f",
+      "english_summary": "Pregnancy requires regular prenatal care visits to monitor health and detect problems early. Key steps include eating a balanced diet, taking prenatal vitamins with folic acid and iron, staying active, and avoiding alcohol, drugs, and tobacco. Always consult your healthcare provider before taking any medicines or supplements.",
+      "chinese_summary": "怀孕期间需要定期进行产前保健检查，以监测健康状况并及早发现问题。关键措施包括均衡饮食、服用含叶酸和铁的产前维生素、保持活跃，以及避免酒精、毒品和烟草。在服用任何药物或补充剂前务必咨询医疗保健提供者。",
+      "usage": {
+        "input_tokens": 845,
+        "output_tokens": 134,
+        "total_tokens": 979
+      },
+      "generated_at": "2026-07-15T14:17:00.627271Z",
+      "response_checksum": "f42e35d4b786309e2770e20900f63df9fda0e7f9bc5f6b865e339c954382e906"
+    },
+    {
+      "source_id": "KBS-MEDLINEPLUS-PRENATAL-CARE",
+      "source_version_id": "KBV-MEDLINEPLUS-PRENATAL-CARE-44A6F9BEFFE1",
+      "source_normalized_checksum": "02a3575add78c14e872b7a80c9f01e9d7bc06d0c785611fa3879626f41eaf323",
+      "translation_checksum": "7b0b7f546deafee0b8b5de692f9923fba37b3993b41eb3ba6600eda85d1a187c",
+      "english_summary": "Prenatal care is health care during pregnancy, including checkups and testing, typically provided by an obstetrician or midwife. It helps detect health problems early, and visits are scheduled monthly from weeks 4-28, twice monthly from weeks 28-36, and weekly from week 36 until delivery. High-risk pregnancies or age over 35 may require more frequent visits. Visits include physical exams, lab tests, blood pressure checks, and monitoring fetal growth; avoid harmful substances like tobacco, alcohol, and drugs.",
+      "chinese_summary": "产前护理是怀孕期间的医疗保健，包括检查和检测，通常由产科医生或助产士提供。它有助于及早发现健康问题，检查安排为第4-28周每月一次，第28-36周每两周一次，第36周至分娩每周一次。高风险妊娠或年龄超过35岁可能需要更频繁的检查。检查包括体格检查、实验室检测、血压测量和胎儿生长监测；应避免烟草、酒精和毒品等有害物质。",
+      "usage": {
+        "input_tokens": 1283,
+        "output_tokens": 221,
+        "total_tokens": 1504
+      },
+      "generated_at": "2026-07-15T14:17:04.630596Z",
+      "response_checksum": "64f91a690a74cdae6aaac6da737f993c213e0519eec8e3a139c7f3007976e192"
+    },
+    {
+      "source_id": "KBS-MEDLINEPLUS-CHILDREN-S-HEALTH",
+      "source_version_id": "KBV-MEDLINEPLUS-CHILDREN-S-HEALTH-45C3BCA00DDB",
+      "source_normalized_checksum": "fe28235d9c2eb2f2ec185043e5581c7467c37689a089257630649653d54c34a6",
+      "translation_checksum": "ff3801dfbdce59726bebd1ddbc6d49866982246537e5d64b6490c03340fe691f",
+      "english_summary": "Children's health encompasses physical, mental, and social well-being. Basics include healthy foods, sleep, exercise, and safety, plus regular checkups to monitor development and prevent problems. School-age children should see a provider for significant weight changes, sleep or behavior issues, fever over 102°F, rashes, frequent sore throats, or breathing problems.",
+      "chinese_summary": "儿童健康包括身体、心理和社交健康。基本方法包括提供健康食品、确保充足睡眠和锻炼以及保障安全，此外定期检查可监测发育并预防问题。学龄儿童在出现体重显著变化、睡眠或行为问题、发烧超过102华氏度、皮疹、频繁喉咙痛或呼吸问题时需就医。",
+      "usage": {
+        "input_tokens": 490,
+        "output_tokens": 158,
+        "total_tokens": 648
+      },
+      "generated_at": "2026-07-15T14:17:07.981389Z",
+      "response_checksum": "44d592b6375459a5eb7f56c324e84b5eb9d42ffda928a85d9a809475e6cbbf67"
+    },
+    {
+      "source_id": "KBS-MEDLINEPLUS-NUTRITION",
+      "source_version_id": "KBV-MEDLINEPLUS-NUTRITION-0CE229C1F2E8",
+      "source_normalized_checksum": "5e17760f3c8b9fc02e04261ab63422de650b432b71e4d520135c1222d06bb7cd",
+      "translation_checksum": "eaa2449f39067b2e17d910d46b058d433bb76e83df4fd11888732809608715aa",
+      "english_summary": "Good nutrition supports health across all life stages and reduces risks of heart disease, type 2 diabetes, and obesity. It involves a balanced eating plan with variety, including vegetables, fruits, whole grains, lean proteins, and low-fat dairy, while limiting salt, added sugars, alcohol, and saturated fat. The plan should respect personal preferences, cultural traditions, and budget, and does not require strict dieting or eliminating favorite foods.",
+      "chinese_summary": "良好的营养支持所有生命阶段的健康，并降低心脏病、2型糖尿病和肥胖的风险。它涉及均衡的饮食计划，包括蔬菜、水果、全谷物、瘦肉蛋白和低脂乳制品，同时限制盐、添加糖、酒精和饱和脂肪。该计划应尊重个人偏好、文化传统和预算，并不要求严格节食或放弃喜爱的食物。",
+      "usage": {
+        "input_tokens": 756,
+        "output_tokens": 180,
+        "total_tokens": 936
+      },
+      "generated_at": "2026-07-15T14:17:11.588098Z",
+      "response_checksum": "b059f1a4ab8bab31023f19f5d443d87084749fe771df90c0eab37c3a9919e3fa"
+    },
+    {
+      "source_id": "KBS-MEDLINEPLUS-EXERCISE-AND-PHYSICAL-FITNESS",
+      "source_version_id": "KBV-MEDLINEPLUS-EXERCISE-AND-PHYSICAL-FITNESS-AB6AD1CA507D",
+      "source_normalized_checksum": "e72bba15950b0c6633d383b8ee795b9e55cdb9d916bf0c2ca71a2bfea6bef217",
+      "translation_checksum": "a1edb535688efa1ea3f539b2ef82476dcea5e52ccb41ee6bfa68e6405981bfc0",
+      "english_summary": "Regular exercise improves overall health and reduces the risk of chronic diseases. Types include aerobic, strength, balance, and flexibility exercises. Start slowly, consult a healthcare provider if needed, and stop if you experience pain, extreme shortness of breath, or dizziness. Stay motivated by choosing enjoyable activities, setting realistic goals, and mixing up workouts.",
+      "chinese_summary": "定期运动可改善整体健康并降低慢性病风险。运动类型包括有氧、力量、平衡和柔韧性练习。应缓慢开始，必要时咨询医疗保健提供者，如出现疼痛、极度气短或头晕则停止运动。通过选择喜欢的活动、设定切合实际的目标和混合锻炼方式保持动力。",
+      "usage": {
+        "input_tokens": 2054,
+        "output_tokens": 151,
+        "total_tokens": 2205
+      },
+      "generated_at": "2026-07-15T14:17:14.835978Z",
+      "response_checksum": "4488d9d8ad17bdc3fe5158b4a5c5d26d681c9dadb86de11ee2a1f7c8471f0fb4"
+    },
+    {
+      "source_id": "KBS-MEDLINEPLUS-BLOOD-GLUCOSE-TEST",
+      "source_version_id": "KBV-MEDLINEPLUS-BLOOD-GLUCOSE-TEST-389869CB4FAB",
+      "source_normalized_checksum": "6bdfbb7096fe16eee432698778fcc381d5dc2097fbd18bb5bf89f79148df5402",
+      "translation_checksum": "1df91abf5ce5aa33f28c4310a08a6ebf96d8274219fbbde102ad0e4691a0b5ae",
+      "english_summary": "A blood glucose test measures glucose levels in the blood and is used to screen for and monitor prediabetes and diabetes, as well as other conditions affecting glucose. High levels may indicate prediabetes, diabetes, or other issues like pancreatitis; low levels are often caused by diabetes medications and can lead to seizures or brain damage if untreated. Several test types exist, including fasting, random, glucose challenge, oral glucose tolerance, and A1C tests. The American Diabetes Association recommends screening starting at age 35 for those at high risk.",
+      "chinese_summary": "血糖检测测量血液中的葡萄糖水平，用于筛查和监测糖尿病前期、糖尿病及其他影响血糖的疾病。高血糖可能提示糖尿病前期、糖尿病或胰腺炎等问题；低血糖常由糖尿病药物引起，若不治疗可能导致癫痫发作或脑损伤。检测类型包括空腹、随机、葡萄糖激发、口服葡萄糖耐量和A1C检测。美国糖尿病协会建议高风险人群从35岁开始筛查。",
+      "usage": {
+        "input_tokens": 9577,
+        "output_tokens": 208,
+        "total_tokens": 9785
+      },
+      "generated_at": "2026-07-15T14:17:19.570015Z",
+      "response_checksum": "e2b78dad206c157ae757e2bce9dc41670fbdd2e5da7fc7a44ca0cb3c2757253e"
+    },
+    {
+      "source_id": "KBS-MEDLINEPLUS-CHOLESTEROL-LEVELS",
+      "source_version_id": "KBV-MEDLINEPLUS-CHOLESTEROL-LEVELS-90D5452D5201",
+      "source_normalized_checksum": "45568b212b1fc6bfb8fb65d5437f592c68a2cb6dd75116d126c6d56ac6075fd4",
+      "translation_checksum": "987b60dbd4b9f3327418af3aad9b009172e77f575758aa15588570f90a5c33da",
+      "english_summary": "A cholesterol test (lipid profile) measures LDL, HDL, total cholesterol, and triglycerides in blood. High LDL can lead to plaque buildup in arteries, increasing risk of heart attack, stroke, or peripheral artery disease. Testing frequency depends on age and risk factors; fasting for 9-12 hours may be required. Healthy levels vary by age and sex, but generally low LDL and high HDL are desirable. Lifestyle changes like diet, exercise, and quitting smoking can help lower cholesterol.",
+      "chinese_summary": "胆固醇检测（血脂谱）测量血液中的LDL、HDL、总胆固醇和甘油三酯。高LDL可导致动脉斑块积聚，增加心脏病发作、中风或外周动脉疾病的风险。检测频率取决于年龄和风险因素；可能需要禁食9-12小时。健康水平因年龄和性别而异，但通常低LDL和高HDL是理想的。生活方式改变如饮食、运动和戒烟有助于降低胆固醇。",
+      "usage": {
+        "input_tokens": 7711,
+        "output_tokens": 201,
+        "total_tokens": 7912
+      },
+      "generated_at": "2026-07-15T14:17:24.520279Z",
+      "response_checksum": "822ea866c55f804ae8c3ea746dea62419fbb2c192a7eb0e72f7dc48598ff92eb"
+    },
+    {
+      "source_id": "KBS-MEDLINEPLUS-COMPLETE-BLOOD-COUNT-CBC",
+      "source_version_id": "KBV-MEDLINEPLUS-COMPLETE-BLOOD-COUNT-CBC-F95608C71BBC",
+      "source_normalized_checksum": "9fdb4a76c4a34a4aaf8c233155d9dd890acb6ea07e00e1172a8671f3c53c1b81",
+      "translation_checksum": "d2a3c66aab61e37d1debdbc0bf951a13186e89493971879f618561fadbed1833",
+      "english_summary": "A complete blood count (CBC) is a group of tests that measures the number and size of different blood cells, including red blood cells, white blood cells, platelets, hemoglobin, hematocrit, and mean corpuscular volume. It is often part of a routine checkup and used to monitor conditions like infections, anemia, immune system disorders, and blood cancers. Abnormal levels may indicate various conditions but do not always require treatment, as factors like diet, activity, and medications can affect results. No special preparation is usually needed, but fasting may be required if other tests are ordered.",
+      "chinese_summary": "全血细胞计数（CBC）是一组检测，测量血液中不同细胞的数量和大小，包括红细胞、白细胞、血小板、血红蛋白、血细胞比容和平均红细胞体积。它通常是常规体检的一部分，用于监测感染、贫血、免疫系统疾病和血液癌症等状况。水平异常可能提示多种疾病，但并不总是需要治疗，因为饮食、活动、药物等因素可能影响结果。通常无需特殊准备，但如果同时进行其他检测，可能需要禁食。",
+      "usage": {
+        "input_tokens": 3915,
+        "output_tokens": 234,
+        "total_tokens": 4149
+      },
+      "generated_at": "2026-07-15T14:17:28.984295Z",
+      "response_checksum": "b365d8a0afcd8c0412592b9515623f67987b831042952d7583ffc9f5a68bc9ff"
+    },
+    {
+      "source_id": "KBS-MEDLINEPLUS-COMPREHENSIVE-METABOLIC-PANEL-CMP",
+      "source_version_id": "KBV-MEDLINEPLUS-COMPREHENSIVE-METABOLIC-PANEL-CMP-9E797CEB7039",
+      "source_normalized_checksum": "d67cfc4083bf80aa0582432002513b8f145fdba9cad222e2478e144646df6ca9",
+      "translation_checksum": "054517528636f8aa2d45322bc8bb42d07a0c4f1f7ca2e3ad5fbf1a505703a15b",
+      "english_summary": "A comprehensive metabolic panel (CMP) is a routine blood test that measures 14 substances, including glucose, calcium, electrolytes, proteins, liver enzymes, bilirubin, and kidney waste products. It is used to assess liver and kidney health, blood glucose, protein levels, fluid and electrolyte balance, and metabolism, often as part of a routine checkup or to diagnose symptoms. Fasting may be required before the test. Abnormal results may indicate conditions like diabetes, but further testing is usually needed for diagnosis.",
+      "chinese_summary": "全面代谢面板（CMP）是一项常规血液检查，测量14种物质，包括葡萄糖、钙、电解质、蛋白质、肝酶、胆红素和肾脏废物。它用于评估肝脏和肾脏健康、血糖、蛋白质水平、液体和电解质平衡以及新陈代谢，通常作为常规体检的一部分或用于诊断症状。检查前可能需要禁食。异常结果可能提示糖尿病等疾病，但通常需要进一步检查以确诊。",
+      "usage": {
+        "input_tokens": 4638,
+        "output_tokens": 208,
+        "total_tokens": 4846
+      },
+      "generated_at": "2026-07-15T14:17:33.419151Z",
+      "response_checksum": "8a6cdaf04b874d0eec8896beb7f23268cde9a2e45afc6f0e699a0cce01e147cf"
+    },
+    {
+      "source_id": "KBS-MEDLINEPLUS-HEMOGLOBIN-A1C-HBA1C-TEST",
+      "source_version_id": "KBV-MEDLINEPLUS-HEMOGLOBIN-A1C-HBA1C-TEST-A6375749AFAA",
+      "source_normalized_checksum": "91e06897d51f38a262a3d6cd568572aafb64d9a66a521ba4b781add71ba14412",
+      "translation_checksum": "4abc707bb10bfa27e273e0bdf6cd939553de90370f5fb7b646021a3519c5f330",
+      "english_summary": "The hemoglobin A1C (HbA1c) test measures average blood glucose over the past 2-3 months and is used to screen for or diagnose prediabetes and type 2 diabetes, as well as monitor diabetes management. High A1C levels indicate diabetes, which can lead to heart disease, kidney disease, and nerve damage. The CDC recommends testing for adults over 45 and younger individuals with risk factors such as obesity, family history, or certain ethnic backgrounds. Results are interpreted as normal (below 5.7%), prediabetes (5.7%-6.4%), or diabetes (6.5% or higher).",
+      "chinese_summary": "血红蛋白A1C（HbA1c）检测可显示过去2-3个月的平均血糖水平，用于筛查或诊断糖尿病前期和2型糖尿病，并监测糖尿病管理。高A1C水平提示糖尿病，可能导致心脏病、肾病和神经损伤。美国CDC建议45岁以上成人以及具有肥胖、家族史或特定种族背景等风险因素的年轻人进行检测。结果解读为正常（低于5.7%）、糖尿病前期（5.7%-6.4%）或糖尿病（6.5%或更高）。",
+      "usage": {
+        "input_tokens": 5860,
+        "output_tokens": 259,
+        "total_tokens": 6119
+      },
+      "generated_at": "2026-07-15T14:17:37.573206Z",
+      "response_checksum": "1f2dc1be998b6dfbfd3477558d041c4d12e498ebe4e8f911efd75bb008b6d679"
+    },
+    {
+      "source_id": "KBS-MEDLINEPLUS-LIVER-FUNCTION-TESTS",
+      "source_version_id": "KBV-MEDLINEPLUS-LIVER-FUNCTION-TESTS-1AF8D428BC28",
+      "source_normalized_checksum": "ab4bb3d5c39b4a1a4bd4550d327ef9e6fdb356466695958625511ed13267b820",
+      "translation_checksum": "3373455d830232cf9983344ebc11bafc6413b4c53f34525a38779c529d4da31c",
+      "english_summary": "Liver function tests (LFTs) measure substances like albumin, enzymes, and bilirubin in blood to assess liver health. They help detect liver damage or disease, monitor treatment, and check medication side effects. Symptoms like jaundice, abdominal pain, or dark urine may prompt testing, and risk factors include alcohol use, obesity, and hepatitis. Abnormal results require further tests for diagnosis.",
+      "chinese_summary": "肝功能检查通过测量血液中的白蛋白、酶和胆红素等物质来评估肝脏健康。它们有助于发现肝损伤或疾病、监测治疗效果以及检查药物副作用。黄疸、腹痛或深色尿液等症状可能提示需要检查，风险因素包括饮酒、肥胖和肝炎。异常结果需要进一步检查以明确诊断。",
+      "usage": {
+        "input_tokens": 4926,
+        "output_tokens": 162,
+        "total_tokens": 5088
+      },
+      "generated_at": "2026-07-15T14:17:41.913588Z",
+      "response_checksum": "108724ffe7742cf969c464e7b412ad6e5d7f18e1e65dad00ee044864be821bfe"
+    },
+    {
+      "source_id": "KBS-MEDLINEPLUS-MEASURING-BLOOD-PRESSURE",
+      "source_version_id": "KBV-MEDLINEPLUS-MEASURING-BLOOD-PRESSURE-9C36F4A2146D",
+      "source_normalized_checksum": "09043c2bd343387fa204faa93d363e1e83457c16a11f743f9b56fde4b018f004",
+      "translation_checksum": "18df50ba9092037cd4b623e0648482b1ad91af1e6c95844d87abcfb16c66a515",
+      "english_summary": "A blood pressure measurement tests the force of blood in your arteries and is used to diagnose high blood pressure (hypertension), which affects about half of U.S. adults and rarely causes symptoms but increases risk of heart attack and stroke. It can also detect low blood pressure (hypotension), which often causes dizziness, fainting, and weakness. Everyone age 3 or older should be tested at least yearly; more frequent testing is recommended for those at higher risk, including people 40+, overweight, or with a family history. Seek emergency care if blood pressure is over 180/120 mmHg with symptoms like chest pain or vision changes.",
+      "chinese_summary": "血压测量检测动脉中的血液压力，用于诊断高血压（约半数美国成年人受影响，通常无症状但增加心脏病发作和中风风险），也可检测低血压（常引起头晕、昏厥和虚弱）。3岁及以上人群应至少每年测量一次；高风险人群（如40岁以上、超重或有家族史者）需更频繁检测。若血压超过180/120 mmHg并伴有胸痛或视力变化等症状，应立即就医。",
+      "usage": {
+        "input_tokens": 8377,
+        "output_tokens": 236,
+        "total_tokens": 8613
+      },
+      "generated_at": "2026-07-15T14:17:47.417585Z",
+      "response_checksum": "b655ab796c2a854eeaa2efc8375e5fc33e8b0fbbff67da160053a6478e3eeb5c"
+    },
+    {
+      "source_id": "KBS-MEDLINEPLUS-TSH-THYROID-STIMULATING-HORMONE-TEST",
+      "source_version_id": "KBV-MEDLINEPLUS-TSH-THYROID-STIMULATING-HORMONE-TEST-BECB398B38F1",
+      "source_normalized_checksum": "38f859cd7219da47b862653f1c589aa1558b278465543a6fce77d71ad8a8990b",
+      "translation_checksum": "8403fe114f9864e9862b7647a7204d3bd8d29492494d494969886c4b4e32a2b5",
+      "english_summary": "A TSH test measures thyroid-stimulating hormone in the blood to check thyroid function. It helps diagnose hyperthyroidism (too much thyroid hormone) or hypothyroidism (too little), but cannot determine the cause. Symptoms of hyperthyroidism include weight loss, rapid heartbeat, and nervousness; hypothyroidism symptoms include fatigue, weight gain, and cold sensitivity. The test is also used to monitor thyroid hormone levels in people taking thyroid medication or after hyperthyroidism treatment.",
+      "chinese_summary": "TSH检测通过测量血液中的促甲状腺激素来评估甲状腺功能。它有助于诊断甲状腺功能亢进（甲状腺激素过多）或甲状腺功能减退（甲状腺激素过少），但无法确定病因。甲状腺功能亢进的症状包括体重减轻、心跳过快和紧张；甲状腺功能减退的症状包括疲劳、体重增加和对寒冷敏感。该检测也用于监测服用甲状腺药物或甲状腺功能亢进治疗后患者的甲状腺激素水平。",
+      "usage": {
+        "input_tokens": 5926,
+        "output_tokens": 198,
+        "total_tokens": 6124
+      },
+      "generated_at": "2026-07-15T14:17:51.548856Z",
+      "response_checksum": "32777e5b34ac77b50b9ecaf78c6549f07e07d66e2b076fa9bf4cade661f26464"
+    },
+    {
+      "source_id": "KBS-MEDLINEPLUS-BLOOD-IN-URINE",
+      "source_version_id": "KBV-MEDLINEPLUS-BLOOD-IN-URINE-70657DC55557",
+      "source_normalized_checksum": "d4b3c1efb7e5cdd2a2a8d64ff4c513737c3b443a60ad8a13a4fa032703bcd1d8",
+      "translation_checksum": "abfc316234c7402c45bf01aae1b6e66845be84a03b4bc0e0f795e83eea4b441c",
+      "english_summary": "A urinalysis test detects blood in urine (hematuria), which may be visible (gross hematuria) or only detectable under a microscope (microscopic hematuria). While often not serious and can be caused by certain foods or medicines, it may indicate conditions like urinary tract infection, kidney disease, or liver disease. Symptoms prompting testing include painful or frequent urination, back pain, or abdominal pain. The test involves collecting a urine sample using the clean catch method, and results may require further investigation if blood is found.",
+      "chinese_summary": "尿液分析可检测尿中带血（血尿），分为肉眼可见的肉眼血尿和仅在显微镜下可见的镜下血尿。虽然通常不严重，且可能由某些食物或药物引起，但也可能提示尿路感染、肾脏疾病或肝脏疾病等需要治疗的疾病。需要检测的症状包括排尿疼痛、尿频、背痛或腹痛。检测需使用清洁中段尿方法收集样本，若结果发现血液，可能需要进一步检查以明确原因。",
+      "usage": {
+        "input_tokens": 4642,
+        "output_tokens": 226,
+        "total_tokens": 4868
+      },
+      "generated_at": "2026-07-15T14:17:56.383223Z",
+      "response_checksum": "6a16d025d6d29e158ef18ae4ffcb70218acb7cad11c310d321277c28da6d942a"
+    },
+    {
+      "source_id": "KBS-MEDLINEPLUS-CREATININE-TEST",
+      "source_version_id": "KBV-MEDLINEPLUS-CREATININE-TEST-362145EA4DFF",
+      "source_normalized_checksum": "6d9bf18d1ac064573e020e470a694dd749310558e8c1775b89197f6f2499b0bd",
+      "translation_checksum": "812c9e6920a606a016235642fe01f0cd19ed1824b831fcf5f78281710a7f27a1",
+      "english_summary": "A creatinine test measures waste levels in blood or urine to check kidney health. It helps diagnose or monitor kidney disease and detect medication side effects. Abnormal levels may indicate kidney problems, but results are often combined with other calculations like eGFR for accuracy. Symptoms of kidney disease include swelling, fatigue, and changes in urination.",
+      "chinese_summary": "肌酐检测通过测量血液或尿液中的废物水平来检查肾脏健康。它有助于诊断或监测肾脏疾病，并检测药物副作用。异常水平可能提示肾脏问题，但结果常需结合eGFR等其他计算以提高准确性。肾脏疾病的症状包括肿胀、疲劳和排尿变化。",
+      "usage": {
+        "input_tokens": 6959,
+        "output_tokens": 141,
+        "total_tokens": 7100
+      },
+      "generated_at": "2026-07-15T14:18:01.521091Z",
+      "response_checksum": "18362406e4aa94e84939ccbaf6428475e98ce1814c5b5753f879349ae65b8625"
+    },
+    {
+      "source_id": "KBS-NCI-WHAT-IS-CANCER",
+      "source_version_id": "KBV-NCI-WHAT-IS-CANCER-63A62E6789CE",
+      "source_normalized_checksum": "77b94c05f3c56d04c618e27308ccd7f064efe996eaa0fd7e126ce1f2921998ee",
+      "translation_checksum": "d45f3de8910893cb9bb940042e001d66009e42ce8271ba219a36a396804062ee",
+      "english_summary": "Cancer is a disease where cells grow uncontrollably and spread to other body parts. It can form malignant tumors that invade nearby tissues and metastasize, while benign tumors do not spread. Cancer cells differ from normal cells in growth, division, and immune evasion. Genetic changes in proto-oncogenes, tumor suppressor genes, and DNA repair genes drive cancer development. Metastatic cancer retains the name and cell type of the primary cancer. Not all tissue changes are cancer; hyperplasia, dysplasia, and carcinoma in situ may require monitoring or treatment.",
+      "chinese_summary": "癌症是一种细胞不受控制生长并扩散到身体其他部位的疾病。癌性肿瘤会侵入邻近组织并转移，而良性肿瘤不会扩散。癌细胞在生长、分裂和免疫逃逸方面与正常细胞不同。原癌基因、肿瘤抑制基因和DNA修复基因的基因变化驱动癌症发展。转移性癌症保留原发癌的名称和细胞类型。并非所有组织变化都是癌症；增生、异型增生和原位癌可能需要监测或治疗。",
+      "usage": {
+        "input_tokens": 6090,
+        "output_tokens": 220,
+        "total_tokens": 6310
+      },
+      "generated_at": "2026-07-15T14:18:06.190880Z",
+      "response_checksum": "03900b56d0a53fc7bdb24371d45b807c6a1d7acfc1ca7e329ec611b90e54d295"
+    },
+    {
+      "source_id": "KBS-NCI-CANCER-DIAGNOSIS",
+      "source_version_id": "KBV-NCI-CANCER-DIAGNOSIS-5712E837D2F9",
+      "source_normalized_checksum": "d1ebda6db9db2caa9a3c97595f34128cfa47a85156b573943c6836b1a2d1d662",
+      "translation_checksum": "a918e3c48a753a2f6667dc9f32a2661eeb853d7c6f98e875059f3facde961ccd",
+      "english_summary": "Cancer diagnosis involves multiple tests, as no single test can diagnose cancer. Doctors start with medical history and physical exam, then may order lab tests, imaging, or a biopsy, which is often the only way to confirm cancer. Lab tests like blood chemistry, CBC, and tumor markers can suggest cancer but are not definitive; results must be interpreted alongside other tests. Imaging tests (CT, MRI, PET, etc.) create pictures to detect tumors, and biopsies provide tissue for pathological analysis to confirm cancer and guide treatment.",
+      "chinese_summary": "癌症诊断需要多项检查，因为没有任何单一检测可以确诊。医生首先询问病史和进行体格检查，然后可能安排实验室检查、影像学检查或活检，活检通常是确定是否患癌的唯一方法。实验室检查如血液生化、全血细胞计数和肿瘤标志物可能提示癌症，但不能确诊，结果需结合其他检查解读。影像学检查（CT、MRI、PET等）可生成图像以发现肿瘤，活检则提供组织进行病理分析，以确认癌症并指导治疗。",
+      "usage": {
+        "input_tokens": 5934,
+        "output_tokens": 225,
+        "total_tokens": 6159
+      },
+      "generated_at": "2026-07-15T14:18:11.543943Z",
+      "response_checksum": "652d5bc00c19bdc30ab0b53079bfd50e508dc7aa09204936b5f1eb1796f7549f"
+    },
+    {
+      "source_id": "KBS-NCI-CANCER-STAGING",
+      "source_version_id": "KBV-NCI-CANCER-STAGING-D9A8EB63F98B",
+      "source_normalized_checksum": "dc6350ba8362d6042e25506b85388a741ca652f31be49b07fa7080c59f080e92",
+      "translation_checksum": "89dfbeaf3a1bb574418dc321c0e88cf67addad6011a54a9318d653ad03f70ff2",
+      "english_summary": "Cancer staging describes the extent of cancer, including tumor size and spread, and helps guide treatment and prognosis. The stage is determined at diagnosis and does not change even if the cancer progresses. The TNM system is the most widely used staging method, assessing primary tumor (T), regional lymph nodes (N), and distant metastasis (M). Stages are often grouped into 0–IV, with higher numbers indicating more advanced disease.",
+      "chinese_summary": "癌症分期描述癌症的范围，包括肿瘤大小和是否扩散，有助于指导治疗和预后。分期在诊断时确定，即使癌症进展也不会改变。TNM系统是最常用的分期方法，评估原发肿瘤（T）、区域淋巴结（N）和远处转移（M）。分期通常分为0–IV期，数字越大表示疾病越晚期。",
+      "usage": {
+        "input_tokens": 2629,
+        "output_tokens": 175,
+        "total_tokens": 2804
+      },
+      "generated_at": "2026-07-15T14:18:14.636370Z",
+      "response_checksum": "31d2da6d6fc4ac58af4a9501e28a87f23340990249c4fe6e63dafb2ad1ca6215"
+    },
+    {
+      "source_id": "KBS-NCI-TREATMENT-TYPES",
+      "source_version_id": "KBV-NCI-TREATMENT-TYPES-FC59C97AE533",
+      "source_normalized_checksum": "ddbbbf0fe2b0774ae2c627033a73617d9b93c9b389125b22b6a914d086a22742",
+      "translation_checksum": "4cc4020d4511055b46839d1b3f8f8f4a9d5a3179f94bdc4e4d24bbb836a07f3c",
+      "english_summary": "Cancer treatment types include surgery, chemotherapy, radiation therapy, and others. Most patients receive a combination of treatments depending on cancer type and stage. Biomarker testing may help choose treatment. Treatments listed alphabetically include chemotherapy, hormone therapy, hyperthermia, immunotherapy, photodynamic therapy, radiation therapy, stem cell transplant, surgery, and targeted therapy.",
+      "chinese_summary": "癌症治疗类型包括手术、化疗、放疗等。大多数患者根据癌症类型和分期接受联合治疗。生物标志物检测可能有助于选择治疗。按字母顺序列出的治疗包括化疗、激素疗法、热疗、免疫疗法、光动力疗法、放射治疗、干细胞移植、手术和靶向治疗。",
+      "usage": {
+        "input_tokens": 953,
+        "output_tokens": 152,
+        "total_tokens": 1105
+      },
+      "generated_at": "2026-07-15T14:18:17.828759Z",
+      "response_checksum": "c6ca6d7d5e2c777602ce3741151a0f7c774df6d329a47cb4e3eeaf9f9e576920"
+    },
+    {
+      "source_id": "KBS-NCI-TREATMENT-SIDE-EFFECTS",
+      "source_version_id": "KBV-NCI-TREATMENT-SIDE-EFFECTS-6760F78336AF",
+      "source_normalized_checksum": "18b20a9dd5f90084deebbbdee91dff4833a20675c7eaa2b1b8209d2bffb80d43",
+      "translation_checksum": "a35172a41dfb86fe888496ccb3d1f178f9d94e9d0b2548ccb1f730929d282574",
+      "english_summary": "Cancer treatments and cancer itself can cause side effects when healthy tissues or organs are affected. Patients are encouraged to report any problems to their healthcare team, who can help manage or reduce these side effects. The resource lists over 30 common side effects, including anemia, fatigue, hair loss, nausea, pain, and fertility issues, noting that side effects vary from person to person even with the same treatment.",
+      "chinese_summary": "癌症治疗和癌症本身可能导致副作用，即治疗影响健康组织或器官时出现的问题。建议患者及时告知医疗团队任何不适，以便获得治疗或减轻副作用的方法。该资源列出了30多种常见副作用，包括贫血、疲劳、脱发、恶心、疼痛和生育问题，并指出即使接受相同治疗，副作用也因人而异。",
+      "usage": {
+        "input_tokens": 901,
+        "output_tokens": 169,
+        "total_tokens": 1070
+      },
+      "generated_at": "2026-07-15T14:18:21.853866Z",
+      "response_checksum": "fc8541d175782c4016b0e8bf35187f558d1f170a2a1bcdc382430fe6a3b58a28"
+    },
+    {
+      "source_id": "KBS-NCI-COPING-WITH-CANCER",
+      "source_version_id": "KBV-NCI-COPING-WITH-CANCER-AA63837418F9",
+      "source_normalized_checksum": "fa5ef29a1a1598610a1a7bf6ce367dd103e2ca09902e19a5d4821a321280b9e1",
+      "translation_checksum": "16bdc275f127a113d60c79ce43b952c12e1bc62ddec4868b9496bc66156f8ae2",
+      "english_summary": "This resource helps patients, survivors, and caregivers cope with cancer, covering emotional health, daily life adjustments, and support groups. It includes tips for managing stress, self-image changes, and late effects of treatment, as well as guidance on follow-up care and questions to ask doctors.",
+      "chinese_summary": "本资源帮助患者、幸存者和照顾者应对癌症，涵盖情绪健康、日常生活调整和支持小组。内容包括管理压力、自我形象变化和治疗晚期效应的技巧，以及后续护理和向医生提问的指导。",
+      "usage": {
+        "input_tokens": 1201,
+        "output_tokens": 117,
+        "total_tokens": 1318
+      },
+      "generated_at": "2026-07-15T14:18:25.257093Z",
+      "response_checksum": "a32a6d8fadc12a1b194e15bce1d3f33f149d26d2937744a651ac13156967b29a"
+    },
+    {
+      "source_id": "KBS-NCI-FEELINGS-AND-CANCER",
+      "source_version_id": "KBV-NCI-FEELINGS-AND-CANCER-E9F934DE1AE1",
+      "source_normalized_checksum": "8a0bc05a0888150656a8ef185150a6f4b389e92390f5451a56791a1d78b78051",
+      "translation_checksum": "4e6d7f0da836b012a47ef458c28423e44b8194f336d654f8e5d1f0732e148df9",
+      "english_summary": "Cancer can trigger intense, fluctuating emotions that are normal for patients, survivors, and loved ones. Common feelings include being overwhelmed, fear, worry, stress, anxiety, anger, sadness, depression, loneliness, guilt, and gratitude. The resource provides coping strategies such as expressing feelings, staying active, and seeking support, and emphasizes that depression is treatable with professional help.",
+      "chinese_summary": "癌症可能引发强烈且波动的情绪，这对患者、幸存者和家人来说都是正常的。常见情绪包括不知所措、恐惧、担忧、压力、焦虑、愤怒、悲伤、抑郁、孤独、内疚和感恩。该资源提供了应对策略，如表达感受、保持活跃和寻求支持，并强调抑郁症是可治疗的，需要专业帮助。",
+      "usage": {
+        "input_tokens": 7031,
+        "output_tokens": 163,
+        "total_tokens": 7194
+      },
+      "generated_at": "2026-07-15T14:18:29.918823Z",
+      "response_checksum": "71b17181289b31d39c3a984f5ebadcf79ee1603340c4ac33b51c62aaf1d7d5b9"
+    },
+    {
+      "source_id": "KBS-NCI-QUESTIONS-FOR-DOCTOR",
+      "source_version_id": "KBV-NCI-QUESTIONS-FOR-DOCTOR-E881BCEA420B",
+      "source_normalized_checksum": "60ee2febf8b3516864189b4e3b11e0b86bbd6fd9099d50a41185cfba2c48d940",
+      "translation_checksum": "09db16f0fd7889fd4b0b359f5c0b11d5a989ca7b6a2fc14bd3382ccb35a703ee",
+      "english_summary": "This resource helps cancer patients prepare questions for their healthcare team. It covers topics such as cancer screening, diagnosis, treatment, clinical trials, post-treatment, advanced cancer, and end-stage cancer with hospice care. Patients are advised to select questions relevant to their situation.",
+      "chinese_summary": "本资源帮助癌症患者准备向医疗团队咨询的问题。涵盖癌症筛查、诊断、治疗、临床试验、治疗结束后、晚期癌症以及终末期癌症与临终关怀等主题。建议患者根据自身情况选择相关问题。",
+      "usage": {
+        "input_tokens": 551,
+        "output_tokens": 115,
+        "total_tokens": 666
+      },
+      "generated_at": "2026-07-15T14:18:33.499119Z",
+      "response_checksum": "89ea44537b4e7e640cf11699cde5e068a53b93ae766be04b28a58455967b9898"
+    },
+    {
+      "source_id": "KBS-NCI-CANCER-PREVENTION-OVERVIEW",
+      "source_version_id": "KBV-NCI-CANCER-PREVENTION-OVERVIEW-463C2ACAF1CE",
+      "source_normalized_checksum": "a044696ee7efc000d728929c3efd40d338fea2d160071e49173576d4d25b40bc",
+      "translation_checksum": "b87efe752e70f559708acd3d6a550c0dd89c020e71f71d4f452b819213ecc452",
+      "english_summary": "Cancer prevention involves actions to lower the chance of getting cancer, including avoiding known carcinogens, diet and lifestyle changes, early detection of precancerous conditions, chemoprevention, and risk-reducing surgery. Key risk factors include smoking, infections, radiation, immunosuppressive medicines, diet, alcohol, physical inactivity, obesity, diabetes, and environmental exposures. Aspirin and vitamin supplements have not been shown to prevent most cancers, though long-term aspirin use may reduce colorectal cancer risk in some people. Clinical trials continue to study new prevention methods.",
+      "chinese_summary": "癌症预防包括降低患癌几率的行动，如避免已知致癌物、改变饮食和生活方式、早期发现癌前病变、化学预防和降低风险的手术。主要风险因素包括吸烟、感染、辐射、免疫抑制药物、饮食、酒精、缺乏体力活动、肥胖、糖尿病和环境暴露。阿司匹林和维生素补充剂尚未被证明能预防大多数癌症，但长期服用阿司匹林可能降低某些人患结直肠癌的风险。临床试验继续研究新的预防方法。",
+      "usage": {
+        "input_tokens": 9341,
+        "output_tokens": 228,
+        "total_tokens": 9569
+      },
+      "generated_at": "2026-07-15T14:18:41.976947Z",
+      "response_checksum": "b63f84bc6349168e4472425d7c9b5053e16411fa44789708d704ba1c1f8dbc14"
+    },
+    {
+      "source_id": "KBS-NCI-CANCER-PROGNOSIS",
+      "source_version_id": "KBV-NCI-CANCER-PROGNOSIS-4BCA195F8414",
+      "source_normalized_checksum": "3c7c468f645e072ac34914cff350be5273bd85d0e1792f2e709cc327d75c47be",
+      "translation_checksum": "6755ce3bfb6ccd409ee42ff48c5d1f5d08f3218413d38979966606004d7b232a",
+      "english_summary": "Cancer prognosis is an estimate of how the disease will progress, based on factors like cancer type, stage, grade, genetic traits, age, and treatment response. Statistics such as cancer-specific survival, relative survival, overall survival, and disease-free survival are used, but they cannot predict individual outcomes. Prognosis is an educated guess, and patients can decide how much information to seek. Cure means no traces of cancer after treatment, while remission indicates reduced signs; complete remission for 5+ years may be considered cured, but recurrence is possible.",
+      "chinese_summary": "癌症预后是对疾病发展情况的估计，基于癌症类型、分期、分级、遗传特征、年龄和治疗反应等因素。常用统计指标包括癌症特异性生存率、相对生存率、总生存率和无病生存率，但这些无法预测个人结果。预后是有根据的猜测，患者可自行决定获取多少信息。治愈指治疗后无癌症痕迹，缓解指体征减轻；完全缓解5年或以上可能被视为治愈，但仍有复发可能。",
+      "usage": {
+        "input_tokens": 2993,
+        "output_tokens": 218,
+        "total_tokens": 3211
+      },
+      "generated_at": "2026-07-15T14:18:46.868621Z",
+      "response_checksum": "3d1eceb6c6b7cbb03f9f38ed257952ba31cc64531739dfafb0c4c8caa7de1135"
+    },
+    {
+      "source_id": "KBS-NIMH-DEPRESSION",
+      "source_version_id": "KBV-NIMH-DEPRESSION-C291ED6FC5BD",
+      "source_normalized_checksum": "cafcf31720a7e661cf34facfc5555096382e3a5b63ef5f27d4f2241006aea9d1",
+      "translation_checksum": "233549299a4c67a60b2157aa505487999ffdb2179a7fdf0c6d618d60decea81d",
+      "english_summary": "Depression (major depressive disorder) causes severe symptoms affecting daily activities for at least 2 weeks. Common types include major depression, persistent depressive disorder (dysthymia), seasonal affective disorder, and bipolar disorder. Symptoms include persistent sad mood, loss of interest, fatigue, changes in sleep/appetite, and thoughts of death or suicide. Treatment involves psychotherapy, medication, or brain stimulation therapy; natural products like St. John's wort are not FDA-approved and may have risks.",
+      "chinese_summary": "抑郁症（重度抑郁症）会引起至少持续2周的严重症状，影响日常活动。常见类型包括重度抑郁症、持续性抑郁障碍（心境恶劣）、季节性情感障碍和双相障碍。症状包括持续悲伤、兴趣丧失、疲劳、睡眠/食欲改变以及死亡或自杀念头。治疗包括心理治疗、药物或脑刺激疗法；天然产品如圣约翰草未经FDA批准且可能有风险。",
+      "usage": {
+        "input_tokens": 6686,
+        "output_tokens": 198,
+        "total_tokens": 6884
+      },
+      "generated_at": "2026-07-15T14:18:51.147651Z",
+      "response_checksum": "db2020e12189823f90e4680ff9f593a49cf95bbeb7a913d3a1fd5da5ea22b89b"
+    },
+    {
+      "source_id": "KBS-NIMH-GENERALIZED-ANXIETY-DISORDER",
+      "source_version_id": "KBV-NIMH-GENERALIZED-ANXIETY-DISORDER-0F7C3E5E5618",
+      "source_normalized_checksum": "eba2b65cf324e7d6930a76379a045185f7b195d8ce58a8665cc8d0cd8cf5422a",
+      "translation_checksum": "dc9282747488821040a65a63c294e07bdd785b35d242938606ed1fb9f42add65",
+      "english_summary": "Generalized anxiety disorder (GAD) involves persistent, excessive worry that interferes with daily life, lasting months or years. Symptoms include restlessness, fatigue, trouble concentrating, irritability, muscle tension, and sleep problems. Diagnosis requires difficulty controlling worry on most days for at least 6 months plus three or more symptoms. Treatment includes psychotherapy (e.g., CBT, ACT), medication (e.g., SSRIs, SNRIs, benzodiazepines, buspirone), and healthy habits.",
+      "chinese_summary": "广泛性焦虑障碍（GAD）表现为持续、过度的担忧，干扰日常生活，持续数月或数年。症状包括不安、疲劳、注意力不集中、易怒、肌肉紧张和睡眠问题。诊断要求在至少6个月的大部分日子里难以控制担忧，并伴有至少三种症状。治疗包括心理治疗（如CBT、ACT）、药物（如SSRIs、SNRIs、苯二氮卓类、丁螺环酮）和健康习惯。",
+      "usage": {
+        "input_tokens": 4925,
+        "output_tokens": 212,
+        "total_tokens": 5137
+      },
+      "generated_at": "2026-07-15T14:18:55.253786Z",
+      "response_checksum": "c3ca3941160c793a2ee62dda2069b9247e6499d0153f0611793d52e7c8e3b2a2"
+    },
+    {
+      "source_id": "KBS-NIMH-POST-TRAUMATIC-STRESS-DISORDER",
+      "source_version_id": "KBV-NIMH-POST-TRAUMATIC-STRESS-DISORDER-76B6B91EC310",
+      "source_normalized_checksum": "858a9d206686aef9ad76454cee53eeab62155c24624b749c2402746c4293d591",
+      "translation_checksum": "50b25770ba67733024216da09741592b1d96492cf14f5b083603f24e04e71d75",
+      "english_summary": "Post-traumatic stress disorder (PTSD) is a condition that can develop after experiencing or witnessing a traumatic event, with symptoms including re-experiencing, avoidance, arousal, and mood changes lasting over a month. About 6% of people experience PTSD in their lifetime, with women more likely to be affected. Treatment includes psychotherapy (e.g., cognitive behavioral therapy) and FDA-approved SSRIs, and recovery is possible with professional help.",
+      "chinese_summary": "创伤后应激障碍（PTSD）是一种在经历或目睹创伤事件后可能出现的状况，症状包括再体验、回避、警觉性增高和情绪改变，持续超过一个月。约6%的人一生中会经历PTSD，女性更易受影响。治疗包括心理治疗（如认知行为疗法）和FDA批准的SSRIs药物，通过专业帮助可以康复。",
+      "usage": {
+        "input_tokens": 5338,
+        "output_tokens": 183,
+        "total_tokens": 5521
+      },
+      "generated_at": "2026-07-15T14:18:59.572737Z",
+      "response_checksum": "cfadd1330dd002df6d79a8fee37864d0a45a024ecde36b2289e25bce349b8461"
+    },
+    {
+      "source_id": "KBS-NIMH-SCHIZOPHRENIA",
+      "source_version_id": "KBV-NIMH-SCHIZOPHRENIA-DA7E0247B572",
+      "source_normalized_checksum": "e0109bcb32ab85acb034fc10a4976cc435d69f32e7b76d0c2dcaed17a60940a5",
+      "translation_checksum": "a49480a1e95dc9b6ca9a8c704ef33f2ac4b57ee8301860733ba08f512bdc39e7",
+      "english_summary": "Schizophrenia is a serious mental illness affecting thought, feeling, and behavior, with symptoms including psychotic (hallucinations, delusions, thought disorder), negative (loss of motivation, social withdrawal), and cognitive (attention, memory problems). Most people with schizophrenia are not violent, but risk of self-harm or violence increases when untreated or with substance misuse. Treatment includes antipsychotic medication, psychosocial therapies, and coordinated specialty care, especially after first-episode psychosis.",
+      "chinese_summary": "精神分裂症是一种严重的精神疾病，影响思维、感受和行为，症状包括精神病性（幻觉、妄想、思维障碍）、阴性（动力丧失、社交退缩）和认知（注意力、记忆力问题）症状。大多数患者并不暴力，但未经治疗或伴有物质滥用时自伤或暴力风险增加。治疗包括抗精神病药物、心理社会治疗和协调专科护理，尤其在首次精神病发作后。",
+      "usage": {
+        "input_tokens": 4700,
+        "output_tokens": 193,
+        "total_tokens": 4893
+      },
+      "generated_at": "2026-07-15T14:19:03.779651Z",
+      "response_checksum": "3cd0a7960856bf95796ac48424f2e0ebdf192af538d70a5ae6e6bc0ba8726469"
+    },
+    {
+      "source_id": "KBS-NIMH-UNDERSTANDING-PSYCHOSIS",
+      "source_version_id": "KBV-NIMH-UNDERSTANDING-PSYCHOSIS-51E3C00AD432",
+      "source_normalized_checksum": "5ba8b513a017629dcae33c9ebcc1ac600e8dea52bb386022c82114671c782683",
+      "translation_checksum": "a950b875a3d8549c6d31dc1a5943299318fd8b21d3a88ab3352d24744241677e",
+      "english_summary": "Psychosis involves a loss of contact with reality, with symptoms like delusions and hallucinations. It often begins in young adulthood, and early treatment improves outcomes. Treatment includes antipsychotic medication and coordinated specialty care, which is the standard for early psychosis. Seek help if you or someone you know shows warning signs like suspiciousness, social withdrawal, or decline in functioning.",
+      "chinese_summary": "精神病涉及与现实失去联系，症状包括妄想和幻觉。它通常始于青年期，早期治疗可改善预后。治疗包括抗精神病药物和协调专科护理，这是早期精神病的标准护理。如果您或您认识的人出现多疑、社交退缩或功能下降等警示迹象，请寻求帮助。",
+      "usage": {
+        "input_tokens": 4356,
+        "output_tokens": 153,
+        "total_tokens": 4509
+      },
+      "generated_at": "2026-07-15T14:19:08.159382Z",
+      "response_checksum": "379b0d42a9f4c4bc8697a2cba21c77068ca234430ffc37251b1c5e3c4146d6e7"
+    },
+    {
+      "source_id": "KBS-MYHEALTHFINDER-GET-SCREENED",
+      "source_version_id": "KBV-MYHEALTHFINDER-GET-SCREENED-3BED98BB6D72",
+      "source_normalized_checksum": "2cf12f5aa3ded744f07a5c39aa9e426c6b7636f7f6b5143f2199c5a8ee076e13",
+      "translation_checksum": "90308e05f6c9d074f1ccae9df361556dc50f14e973288a0abdda8b8a519ad2d5",
+      "english_summary": "Screenings are medical tests to check for diseases before symptoms appear, helping find problems early when they are easier to treat. Depending on age, sex, and medical history, you may need screening for cancers, high blood pressure, diabetes, osteoporosis, STIs, or mental health conditions. Talk to your doctor about which screenings are right for you, ask about risks and benefits, and ensure you get results. Under the Affordable Care Act, many screenings may be covered at no cost.",
+      "chinese_summary": "筛查是在出现症状前检查疾病的医学检测，有助于及早发现问题，此时更容易治疗。根据年龄、性别和病史，您可能需要筛查癌症、高血压、糖尿病、骨质疏松症、性传播感染或心理健康状况。与医生讨论哪些筛查适合您，询问风险和益处，并确保获取结果。根据《平价医疗法案》，许多筛查可能免费覆盖。",
+      "usage": {
+        "input_tokens": 2062,
+        "output_tokens": 187,
+        "total_tokens": 2249
+      },
+      "generated_at": "2026-07-15T14:19:11.898684Z",
+      "response_checksum": "4f3d2a1381a9abc1965549c44d5fdc533da0e122419ae68528861d57565ff984"
+    },
+    {
+      "source_id": "KBS-MYHEALTHFINDER-BLOOD-PRESSURE",
+      "source_version_id": "KBV-MYHEALTHFINDER-BLOOD-PRESSURE-79BD770C0800",
+      "source_normalized_checksum": "752cd684c9871fe23b070d8a714545182189cfe01a8f807bc10c7a157dbf777e",
+      "translation_checksum": "d16648b22c6780699a10b7a99647b904f929ba0e3fabc9869f2fee2838e0c4dd",
+      "english_summary": "Nearly half of U.S. adults have high blood pressure, which increases risk for stroke and heart attack. Starting at age 18, get checked regularly: annually if 40+ or at higher risk, every 3–5 years if 18–39 and not at higher risk. High blood pressure usually has no symptoms, so testing is the only way to know. Treatment includes healthy lifestyle changes and possibly medication.",
+      "chinese_summary": "美国近一半成年人患有高血压，这会增加中风和心脏病发作的风险。从18岁开始定期检查：40岁及以上或高风险者每年一次，18-39岁且非高风险者每3-5年一次。高血压通常无症状，因此检测是唯一知晓的方法。治疗包括健康生活方式改变和可能的药物。",
+      "usage": {
+        "input_tokens": 4968,
+        "output_tokens": 168,
+        "total_tokens": 5136
+      },
+      "generated_at": "2026-07-15T14:19:15.978122Z",
+      "response_checksum": "421b12c6e232210ceff49c1709230fac6c9f772b1c2c2b7964b3bda9044845f9"
+    },
+    {
+      "source_id": "KBS-MYHEALTHFINDER-ENOUGH-SLEEP",
+      "source_version_id": "KBV-MYHEALTHFINDER-ENOUGH-SLEEP-3CD812898F8F",
+      "source_normalized_checksum": "cc63b0cbe1425d0eede6bdb5957c6685f79f97a11282951c9a6ef05edd80d6c5",
+      "translation_checksum": "719427ae6bef7f820b6e102ee56eb0bb3c8a731e9c73c7cd813de4ff9841d3a1",
+      "english_summary": "Most adults need 7 or more hours of sleep per night, while children require more depending on age. Adequate sleep helps reduce the risk of diabetes and heart disease, improves mood and memory, and prevents injuries like car accidents from drowsy driving. Common signs of sleep disorders include trouble falling asleep despite healthy habits, daytime sleepiness, loud snoring, or breathing pauses during sleep. If you experience these, consult a doctor; keep a sleep diary and discuss treatment options, including sleep routines or medicines.",
+      "chinese_summary": "大多数成年人每晚需要7小时或以上睡眠，儿童根据年龄需要更多。充足睡眠有助于降低糖尿病和心脏病风险，改善情绪和记忆力，并预防疲劳驾驶等伤害。睡眠障碍的常见迹象包括健康习惯下仍难以入睡、白天嗜睡、大声打鼾或睡眠时呼吸暂停。如有这些症状，请就医；记录睡眠日记并与医生讨论治疗方案，包括睡眠习惯或药物。",
+      "usage": {
+        "input_tokens": 3259,
+        "output_tokens": 204,
+        "total_tokens": 3463
+      },
+      "generated_at": "2026-07-15T14:19:21.371016Z",
+      "response_checksum": "d257a6521346cfc5bc0231afa7c07c10c016c09d3015fa67f79e5d509d00173b"
+    },
+    {
+      "source_id": "KBS-MYHEALTHFINDER-HEART-HEALTHY",
+      "source_version_id": "KBV-MYHEALTHFINDER-HEART-HEALTHY-A7B33A78F1E5",
+      "source_normalized_checksum": "cc5b4737218139f1602fd8893707590a54b682ccb68c021a1587343a5b7acacc",
+      "translation_checksum": "7094168a9e46d7cfadd9d3555c109cd48d25f9213242557e2d689588d146c790",
+      "english_summary": "Heart disease is the leading cause of death in the United States. Risk factors include high cholesterol, high blood pressure, diabetes, smoking, obesity, and family history. Prevention involves a heart-healthy diet, regular physical activity, weight management, quitting smoking, and controlling cholesterol, blood pressure, and blood sugar. Seek emergency care for heart attack symptoms like chest pain, shortness of breath, or dizziness.",
+      "chinese_summary": "心脏病是美国的主要死因。风险因素包括高胆固醇、高血压、糖尿病、吸烟、肥胖和家族史。预防措施包括有益心脏健康的饮食、定期体力活动、体重管理、戒烟以及控制胆固醇、血压和血糖。如出现胸痛、气短或头晕等心脏病发作症状，应立即寻求紧急医疗救助。",
+      "usage": {
+        "input_tokens": 4845,
+        "output_tokens": 165,
+        "total_tokens": 5010
+      },
+      "generated_at": "2026-07-15T14:19:25.691534Z",
+      "response_checksum": "96950d2b7b4023c16114c5e125f56bdf8e95147df7c432b74356613350f2ff07"
+    },
+    {
+      "source_id": "KBS-MYHEALTHFINDER-PREVENT-TYPE-2-DIABETES",
+      "source_version_id": "KBV-MYHEALTHFINDER-PREVENT-TYPE-2-DIABETES-C4807DB88703",
+      "source_normalized_checksum": "5b2f605ba5c3a94152c2f012cad81da7d368d6638d669643a77fb54f2ea57e54",
+      "translation_checksum": "e1794e1908f3a9cc86e83c31b6e53e646910a5dcc0846793892f8cd05a4a46d2",
+      "english_summary": "Type 2 diabetes is a leading cause of death in the U.S. and increases risks of heart disease, stroke, blindness, nerve damage, and kidney failure. You can prevent or delay it by reaching a healthy weight, staying active, eating healthy, and quitting smoking. Risk factors include prediabetes, age over 45, overweight, family history, certain ethnicities, high blood pressure, and physical inactivity. Symptoms develop gradually and may include thirst, frequent urination, fatigue, and blurred vision; testing is recommended for adults aged 35–70 with overweight.",
+      "chinese_summary": "2型糖尿病是美国的主要死因之一，会增加心脏病、中风、失明、神经损伤和肾衰竭的风险。通过达到健康体重、保持活跃、健康饮食和戒烟，可以预防或延缓其发生。风险因素包括糖尿病前期、年龄超过45岁、超重、家族史、特定种族、高血压和缺乏体力活动。症状逐渐出现，可能包括口渴、尿频、疲劳和视力模糊；建议35至70岁超重成人进行检测。",
+      "usage": {
+        "input_tokens": 4316,
+        "output_tokens": 230,
+        "total_tokens": 4546
+      },
+      "generated_at": "2026-07-15T14:19:30.396496Z",
+      "response_checksum": "480003e0336407626da497bdda20fdbe7f6566fe4d74d84c237340159d976b4b"
+    }
+  ]
+}

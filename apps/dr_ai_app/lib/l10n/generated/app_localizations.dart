@@ -152,18 +152,6 @@ abstract class AppLocalizations {
   /// **'Patient workspace'**
   String get patientWorkspace;
 
-  /// No description provided for @searchDoctor.
-  ///
-  /// In en, this message translates to:
-  /// **'Search patients and resources'**
-  String get searchDoctor;
-
-  /// No description provided for @searchDoctorWide.
-  ///
-  /// In en, this message translates to:
-  /// **'Search patients, cases, diagnoses, resources'**
-  String get searchDoctorWide;
-
   /// No description provided for @restoringSession.
   ///
   /// In en, this message translates to:
@@ -1532,6 +1520,12 @@ abstract class AppLocalizations {
   /// **'Blood type'**
   String get bloodType;
 
+  /// No description provided for @bloodPressure.
+  ///
+  /// In en, this message translates to:
+  /// **'Blood pressure'**
+  String get bloodPressure;
+
   /// No description provided for @unknown.
   ///
   /// In en, this message translates to:
@@ -2552,6 +2546,30 @@ abstract class AppLocalizations {
   /// **'Overview'**
   String get overview;
 
+  /// No description provided for @verifiedHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'Verified History'**
+  String get verifiedHistory;
+
+  /// No description provided for @activeClinicalEvents.
+  ///
+  /// In en, this message translates to:
+  /// **'Active Clinical Events'**
+  String get activeClinicalEvents;
+
+  /// No description provided for @activeRecoveryPlan.
+  ///
+  /// In en, this message translates to:
+  /// **'Active Recovery Plan'**
+  String get activeRecoveryPlan;
+
+  /// No description provided for @currentMedications.
+  ///
+  /// In en, this message translates to:
+  /// **'Current Medications'**
+  String get currentMedications;
+
   /// No description provided for @overviewSummary.
   ///
   /// In en, this message translates to:
@@ -2629,6 +2647,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Search patients'**
   String get searchPatients;
+
+  /// No description provided for @collapsePatientList.
+  ///
+  /// In en, this message translates to:
+  /// **'Collapse patient list'**
+  String get collapsePatientList;
+
+  /// No description provided for @expandPatientList.
+  ///
+  /// In en, this message translates to:
+  /// **'Expand patient list'**
+  String get expandPatientList;
+
+  /// No description provided for @collapseSectionNavigation.
+  ///
+  /// In en, this message translates to:
+  /// **'Collapse section navigation'**
+  String get collapseSectionNavigation;
+
+  /// No description provided for @expandSectionNavigation.
+  ///
+  /// In en, this message translates to:
+  /// **'Expand section navigation'**
+  String get expandSectionNavigation;
 
   /// No description provided for @namePatientId.
   ///
@@ -4427,6 +4469,947 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Doctor'**
   String get doctorFallbackName;
+
+  /// No description provided for @resources.
+  ///
+  /// In en, this message translates to:
+  /// **'Resources'**
+  String get resources;
+
+  /// No description provided for @medicalResources.
+  ///
+  /// In en, this message translates to:
+  /// **'Medical Resources'**
+  String get medicalResources;
+
+  /// No description provided for @medicalResourcesSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Search reviewed clinical sources, verify provenance, and keep guidance for later.'**
+  String get medicalResourcesSubtitle;
+
+  /// No description provided for @resourceCatalogPreviewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Authoritative source catalog'**
+  String get resourceCatalogPreviewTitle;
+
+  /// No description provided for @resourceCatalogPreviewBody.
+  ///
+  /// In en, this message translates to:
+  /// **'These are 200 real WHO fact sheets paired across official Chinese and English pages. Full text is not stored or used for AI retrieval while commercial rights and medical review remain pending.'**
+  String get resourceCatalogPreviewBody;
+
+  /// No description provided for @resourceSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search medical resources in Chinese or English'**
+  String get resourceSearchHint;
+
+  /// No description provided for @resourceSearchTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Search'**
+  String get resourceSearchTab;
+
+  /// No description provided for @savedResourcesTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved'**
+  String get savedResourcesTab;
+
+  /// No description provided for @recentUpdatesTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent updates'**
+  String get recentUpdatesTab;
+
+  /// No description provided for @sourceRegistryTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Source registry'**
+  String get sourceRegistryTab;
+
+  /// No description provided for @resourceFilters.
+  ///
+  /// In en, this message translates to:
+  /// **'Filters'**
+  String get resourceFilters;
+
+  /// No description provided for @showFilters.
+  ///
+  /// In en, this message translates to:
+  /// **'Show filters'**
+  String get showFilters;
+
+  /// No description provided for @hideFilters.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide filters'**
+  String get hideFilters;
+
+  /// No description provided for @clearFilters.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear filters'**
+  String get clearFilters;
+
+  /// No description provided for @allOptions.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get allOptions;
+
+  /// No description provided for @topicFilter.
+  ///
+  /// In en, this message translates to:
+  /// **'Topic'**
+  String get topicFilter;
+
+  /// No description provided for @documentTypeFilter.
+  ///
+  /// In en, this message translates to:
+  /// **'Document type'**
+  String get documentTypeFilter;
+
+  /// No description provided for @organizationFilter.
+  ///
+  /// In en, this message translates to:
+  /// **'Organization'**
+  String get organizationFilter;
+
+  /// No description provided for @jurisdictionFilter.
+  ///
+  /// In en, this message translates to:
+  /// **'Jurisdiction'**
+  String get jurisdictionFilter;
+
+  /// No description provided for @originalLanguageFilter.
+  ///
+  /// In en, this message translates to:
+  /// **'Original language'**
+  String get originalLanguageFilter;
+
+  /// No description provided for @intendedAudienceFilter.
+  ///
+  /// In en, this message translates to:
+  /// **'Intended audience'**
+  String get intendedAudienceFilter;
+
+  /// No description provided for @publicationReviewDateFilter.
+  ///
+  /// In en, this message translates to:
+  /// **'Publication / catalog date'**
+  String get publicationReviewDateFilter;
+
+  /// No description provided for @versionStatusFilter.
+  ///
+  /// In en, this message translates to:
+  /// **'Current / superseded'**
+  String get versionStatusFilter;
+
+  /// No description provided for @topicRespiratoryCare.
+  ///
+  /// In en, this message translates to:
+  /// **'Respiratory care'**
+  String get topicRespiratoryCare;
+
+  /// No description provided for @topicCardiovascularCare.
+  ///
+  /// In en, this message translates to:
+  /// **'Cardiovascular care'**
+  String get topicCardiovascularCare;
+
+  /// No description provided for @topicDiabetesCare.
+  ///
+  /// In en, this message translates to:
+  /// **'Diabetes care'**
+  String get topicDiabetesCare;
+
+  /// No description provided for @topicRehabilitation.
+  ///
+  /// In en, this message translates to:
+  /// **'Rehabilitation'**
+  String get topicRehabilitation;
+
+  /// No description provided for @documentClinicalGuide.
+  ///
+  /// In en, this message translates to:
+  /// **'Clinical guide'**
+  String get documentClinicalGuide;
+
+  /// No description provided for @documentCarePathway.
+  ///
+  /// In en, this message translates to:
+  /// **'Care pathway'**
+  String get documentCarePathway;
+
+  /// No description provided for @documentSafetyBulletin.
+  ///
+  /// In en, this message translates to:
+  /// **'Safety bulletin'**
+  String get documentSafetyBulletin;
+
+  /// No description provided for @documentPatientEducation.
+  ///
+  /// In en, this message translates to:
+  /// **'Patient education'**
+  String get documentPatientEducation;
+
+  /// No description provided for @organizationPrimaryCareCouncil.
+  ///
+  /// In en, this message translates to:
+  /// **'Primary Care Review Council'**
+  String get organizationPrimaryCareCouncil;
+
+  /// No description provided for @organizationMedicinesSafetyCenter.
+  ///
+  /// In en, this message translates to:
+  /// **'Medicines Safety Review Center'**
+  String get organizationMedicinesSafetyCenter;
+
+  /// No description provided for @organizationRehabilitationCollaborative.
+  ///
+  /// In en, this message translates to:
+  /// **'Continuity and Rehabilitation Collaborative'**
+  String get organizationRehabilitationCollaborative;
+
+  /// No description provided for @jurisdictionMainlandChina.
+  ///
+  /// In en, this message translates to:
+  /// **'Mainland China'**
+  String get jurisdictionMainlandChina;
+
+  /// No description provided for @jurisdictionInternational.
+  ///
+  /// In en, this message translates to:
+  /// **'International'**
+  String get jurisdictionInternational;
+
+  /// No description provided for @jurisdictionChina.
+  ///
+  /// In en, this message translates to:
+  /// **'China'**
+  String get jurisdictionChina;
+
+  /// No description provided for @audienceDoctors.
+  ///
+  /// In en, this message translates to:
+  /// **'Doctors'**
+  String get audienceDoctors;
+
+  /// No description provided for @audienceDoctorsAndPatients.
+  ///
+  /// In en, this message translates to:
+  /// **'Doctors and patients'**
+  String get audienceDoctorsAndPatients;
+
+  /// No description provided for @dateAny.
+  ///
+  /// In en, this message translates to:
+  /// **'Any date'**
+  String get dateAny;
+
+  /// No description provided for @datePast12Months.
+  ///
+  /// In en, this message translates to:
+  /// **'Past 12 months'**
+  String get datePast12Months;
+
+  /// No description provided for @datePast24Months.
+  ///
+  /// In en, this message translates to:
+  /// **'Past 24 months'**
+  String get datePast24Months;
+
+  /// No description provided for @statusCurrent.
+  ///
+  /// In en, this message translates to:
+  /// **'Current'**
+  String get statusCurrent;
+
+  /// No description provided for @statusSuperseded.
+  ///
+  /// In en, this message translates to:
+  /// **'Superseded'**
+  String get statusSuperseded;
+
+  /// No description provided for @searchSuggestions.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggested searches'**
+  String get searchSuggestions;
+
+  /// No description provided for @resourceSuggestionOne.
+  ///
+  /// In en, this message translates to:
+  /// **'Hypertension follow-up'**
+  String get resourceSuggestionOne;
+
+  /// No description provided for @resourceSuggestionTwo.
+  ///
+  /// In en, this message translates to:
+  /// **'呼吸道感染用药安全'**
+  String get resourceSuggestionTwo;
+
+  /// No description provided for @resourceSuggestionThree.
+  ///
+  /// In en, this message translates to:
+  /// **'Diabetes sick-day education'**
+  String get resourceSuggestionThree;
+
+  /// No description provided for @resourceResultCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No resources} =1{1 resource} other{{count} resources}}'**
+  String resourceResultCount(int count);
+
+  /// No description provided for @currentAndReviewed.
+  ///
+  /// In en, this message translates to:
+  /// **'Current and reviewed'**
+  String get currentAndReviewed;
+
+  /// No description provided for @supersededDoNotRely.
+  ///
+  /// In en, this message translates to:
+  /// **'Superseded—do not rely on as current guidance'**
+  String get supersededDoNotRely;
+
+  /// No description provided for @rightsLimitedLinkOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Rights-limited—link only / no stored full text'**
+  String get rightsLimitedLinkOnly;
+
+  /// No description provided for @doctorOnlyResource.
+  ///
+  /// In en, this message translates to:
+  /// **'Doctor-only'**
+  String get doctorOnlyResource;
+
+  /// No description provided for @patientEducationApproved.
+  ///
+  /// In en, this message translates to:
+  /// **'Patient education approved'**
+  String get patientEducationApproved;
+
+  /// No description provided for @patientUseNotApproved.
+  ///
+  /// In en, this message translates to:
+  /// **'Not approved for patient use'**
+  String get patientUseNotApproved;
+
+  /// No description provided for @publisherLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Publisher'**
+  String get publisherLabel;
+
+  /// No description provided for @sourceTypeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Source type'**
+  String get sourceTypeLabel;
+
+  /// No description provided for @publishedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Published'**
+  String get publishedLabel;
+
+  /// No description provided for @lastMedicalReviewLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Last medical review'**
+  String get lastMedicalReviewLabel;
+
+  /// No description provided for @openSourceDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Open source details'**
+  String get openSourceDetails;
+
+  /// No description provided for @saveResource.
+  ///
+  /// In en, this message translates to:
+  /// **'Save resource'**
+  String get saveResource;
+
+  /// No description provided for @removeSavedResource.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from saved'**
+  String get removeSavedResource;
+
+  /// No description provided for @resourceSavedConfirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'Resource saved.'**
+  String get resourceSavedConfirmation;
+
+  /// No description provided for @resourceRemovedConfirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'Resource removed from saved.'**
+  String get resourceRemovedConfirmation;
+
+  /// No description provided for @officialLocator.
+  ///
+  /// In en, this message translates to:
+  /// **'Official locator'**
+  String get officialLocator;
+
+  /// No description provided for @provenance.
+  ///
+  /// In en, this message translates to:
+  /// **'Provenance'**
+  String get provenance;
+
+  /// No description provided for @provenanceBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Paired from the official WHO Chinese and English fact-sheet indexes on 14 July 2026. Only titles and locators are stored; source bodies remain on WHO\'s website.'**
+  String get provenanceBody;
+
+  /// No description provided for @versionHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'Version history'**
+  String get versionHistory;
+
+  /// No description provided for @versionCurrentEntry.
+  ///
+  /// In en, this message translates to:
+  /// **'Current reviewed version · active in this catalog'**
+  String get versionCurrentEntry;
+
+  /// No description provided for @versionSupersededEntry.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous version · retained only for traceability'**
+  String get versionSupersededEntry;
+
+  /// No description provided for @relevantPassages.
+  ///
+  /// In en, this message translates to:
+  /// **'Relevant passages'**
+  String get relevantPassages;
+
+  /// No description provided for @relatedSources.
+  ///
+  /// In en, this message translates to:
+  /// **'Related sources'**
+  String get relatedSources;
+
+  /// No description provided for @stableInternalReference.
+  ///
+  /// In en, this message translates to:
+  /// **'Stable internal reference'**
+  String get stableInternalReference;
+
+  /// No description provided for @copyCitation.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy citation'**
+  String get copyCitation;
+
+  /// No description provided for @citationCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Citation copied.'**
+  String get citationCopied;
+
+  /// No description provided for @copyOfficialLocator.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy official locator'**
+  String get copyOfficialLocator;
+
+  /// No description provided for @officialLocatorCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Official locator copied.'**
+  String get officialLocatorCopied;
+
+  /// No description provided for @resourceCitation.
+  ///
+  /// In en, this message translates to:
+  /// **'{title}. {publisher}. {year}. {locator}'**
+  String resourceCitation(
+    String title,
+    String publisher,
+    String year,
+    String locator,
+  );
+
+  /// No description provided for @noResourceResultsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No matching resources'**
+  String get noResourceResultsTitle;
+
+  /// No description provided for @noResourceResultsBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Try another term or clear one or more filters.'**
+  String get noResourceResultsBody;
+
+  /// No description provided for @noSavedResourcesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No saved resources'**
+  String get noSavedResourcesTitle;
+
+  /// No description provided for @noSavedResourcesBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Save a source from Search to keep it available here.'**
+  String get noSavedResourcesBody;
+
+  /// No description provided for @noRecentUpdatesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No recent updates'**
+  String get noRecentUpdatesTitle;
+
+  /// No description provided for @noRecentUpdatesBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Reviewed source updates will appear here when available.'**
+  String get noRecentUpdatesBody;
+
+  /// No description provided for @sourceRegistrySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Organizations represented in the current local catalog.'**
+  String get sourceRegistrySubtitle;
+
+  /// No description provided for @viewOrganizationSources.
+  ///
+  /// In en, this message translates to:
+  /// **'View sources'**
+  String get viewOrganizationSources;
+
+  /// No description provided for @reviewedSourceCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No catalog sources} =1{1 catalog source} other{{count} catalog sources}}'**
+  String reviewedSourceCount(int count);
+
+  /// No description provided for @loadingMedicalResources.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading medical resources'**
+  String get loadingMedicalResources;
+
+  /// No description provided for @resourceOfflineTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Resources are unavailable offline'**
+  String get resourceOfflineTitle;
+
+  /// No description provided for @resourceOfflineBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Reconnect to verify current source status. Saved references remain listed without cached full text.'**
+  String get resourceOfflineBody;
+
+  /// No description provided for @resourceServiceFailureTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Medical resources could not be loaded'**
+  String get resourceServiceFailureTitle;
+
+  /// No description provided for @resourceServiceFailureBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The source service did not respond. No patient or query content was sent.'**
+  String get resourceServiceFailureBody;
+
+  /// No description provided for @resourcePartialIndexTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Some reviewed sources are temporarily unavailable'**
+  String get resourcePartialIndexTitle;
+
+  /// No description provided for @resourcePartialIndexBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Results may be incomplete while the current source index is restored.'**
+  String get resourcePartialIndexBody;
+
+  /// No description provided for @resourceRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get resourceRetry;
+
+  /// No description provided for @resourceUpdatedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Catalog verified {date}'**
+  String resourceUpdatedLabel(String date);
+
+  /// No description provided for @resourceTitleRespiratory.
+  ///
+  /// In en, this message translates to:
+  /// **'Safe antibiotic decisions for uncomplicated respiratory symptoms'**
+  String get resourceTitleRespiratory;
+
+  /// No description provided for @resourcePassageRespiratory.
+  ///
+  /// In en, this message translates to:
+  /// **'Review symptom duration, severity, red flags, and likely viral features before considering antimicrobial treatment.'**
+  String get resourcePassageRespiratory;
+
+  /// No description provided for @resourcePassageRespiratoryDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Document the clinical rationale and give a clear follow-up threshold when immediate antibiotics are not indicated.'**
+  String get resourcePassageRespiratoryDetail;
+
+  /// No description provided for @resourceTitleHypertension.
+  ///
+  /// In en, this message translates to:
+  /// **'Primary-care follow-up pathway for stable hypertension'**
+  String get resourceTitleHypertension;
+
+  /// No description provided for @resourcePassageHypertension.
+  ///
+  /// In en, this message translates to:
+  /// **'Use consistent blood-pressure technique, review adherence and adverse effects, and agree on a practical follow-up interval.'**
+  String get resourcePassageHypertension;
+
+  /// No description provided for @resourcePassageHypertensionDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Escalate promptly when severe readings occur with concerning symptoms or evidence of acute organ injury.'**
+  String get resourcePassageHypertensionDetail;
+
+  /// No description provided for @resourceTitleDiabetes.
+  ///
+  /// In en, this message translates to:
+  /// **'Sick-day safety education for adults living with type 2 diabetes'**
+  String get resourceTitleDiabetes;
+
+  /// No description provided for @resourcePassageDiabetes.
+  ///
+  /// In en, this message translates to:
+  /// **'Explain hydration, monitoring, warning signs, and when to contact a clinician without independently changing prescribed medicines.'**
+  String get resourcePassageDiabetes;
+
+  /// No description provided for @resourcePassageDiabetesDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Patient-facing wording should be checked against the current prescription and the connected clinician\'s instructions.'**
+  String get resourcePassageDiabetesDetail;
+
+  /// No description provided for @resourceTitleStroke.
+  ///
+  /// In en, this message translates to:
+  /// **'Transition checklist after stroke rehabilitation discharge'**
+  String get resourceTitleStroke;
+
+  /// No description provided for @resourcePassageStroke.
+  ///
+  /// In en, this message translates to:
+  /// **'This earlier checklist covered medication reconciliation, mobility support, caregiver communication, and follow-up ownership.'**
+  String get resourcePassageStroke;
+
+  /// No description provided for @resourcePassageStrokeDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'A newer transition standard replaces this version; retain it only to understand prior documentation.'**
+  String get resourcePassageStrokeDetail;
+
+  /// No description provided for @resourceOfficialMetadataStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Official catalog metadata'**
+  String get resourceOfficialMetadataStatus;
+
+  /// No description provided for @rightsReviewPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Rights review pending—official link only'**
+  String get rightsReviewPending;
+
+  /// No description provided for @resourceCatalogMetadataNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Open either official WHO language page to read the source. Dr. AI stores only paired titles and locators; the content is not yet eligible for excerpts, embeddings, or AI retrieval.'**
+  String get resourceCatalogMetadataNote;
+
+  /// No description provided for @catalogVerifiedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Catalog verified'**
+  String get catalogVerifiedLabel;
+
+  /// No description provided for @documentFactSheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Fact sheet'**
+  String get documentFactSheet;
+
+  /// No description provided for @documentClinicalGuideline.
+  ///
+  /// In en, this message translates to:
+  /// **'Clinical guideline'**
+  String get documentClinicalGuideline;
+
+  /// No description provided for @documentClinicalProtocol.
+  ///
+  /// In en, this message translates to:
+  /// **'Clinical protocol'**
+  String get documentClinicalProtocol;
+
+  /// No description provided for @documentPracticeGuideline.
+  ///
+  /// In en, this message translates to:
+  /// **'Practice guideline'**
+  String get documentPracticeGuideline;
+
+  /// No description provided for @documentGuidance.
+  ///
+  /// In en, this message translates to:
+  /// **'Guidance'**
+  String get documentGuidance;
+
+  /// No description provided for @organizationWorldHealthOrganization.
+  ///
+  /// In en, this message translates to:
+  /// **'World Health Organization'**
+  String get organizationWorldHealthOrganization;
+
+  /// No description provided for @topicInfectiousDisease.
+  ///
+  /// In en, this message translates to:
+  /// **'Infectious diseases'**
+  String get topicInfectiousDisease;
+
+  /// No description provided for @topicChronicDisease.
+  ///
+  /// In en, this message translates to:
+  /// **'Chronic diseases'**
+  String get topicChronicDisease;
+
+  /// No description provided for @topicMaternalChildHealth.
+  ///
+  /// In en, this message translates to:
+  /// **'Maternal and child health'**
+  String get topicMaternalChildHealth;
+
+  /// No description provided for @topicMentalHealth.
+  ///
+  /// In en, this message translates to:
+  /// **'Mental health'**
+  String get topicMentalHealth;
+
+  /// No description provided for @topicInjuryEmergency.
+  ///
+  /// In en, this message translates to:
+  /// **'Injury and emergency care'**
+  String get topicInjuryEmergency;
+
+  /// No description provided for @topicEnvironmentalHealth.
+  ///
+  /// In en, this message translates to:
+  /// **'Environmental health'**
+  String get topicEnvironmentalHealth;
+
+  /// No description provided for @topicNutritionLifestyle.
+  ///
+  /// In en, this message translates to:
+  /// **'Nutrition and lifestyle'**
+  String get topicNutritionLifestyle;
+
+  /// No description provided for @topicHealthSystems.
+  ///
+  /// In en, this message translates to:
+  /// **'Health systems and safety'**
+  String get topicHealthSystems;
+
+  /// No description provided for @showMoreResources.
+  ///
+  /// In en, this message translates to:
+  /// **'Show 20 more resources'**
+  String get showMoreResources;
+
+  /// No description provided for @catalogUseStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Catalog and retrieval status'**
+  String get catalogUseStatus;
+
+  /// No description provided for @bilingualChineseEnglish.
+  ///
+  /// In en, this message translates to:
+  /// **'Bilingual: Chinese and English'**
+  String get bilingualChineseEnglish;
+
+  /// No description provided for @languageChinese.
+  ///
+  /// In en, this message translates to:
+  /// **'Chinese'**
+  String get languageChinese;
+
+  /// No description provided for @languageEnglish.
+  ///
+  /// In en, this message translates to:
+  /// **'English'**
+  String get languageEnglish;
+
+  /// No description provided for @organizationNationalHealthCommission.
+  ///
+  /// In en, this message translates to:
+  /// **'National Health Commission of China'**
+  String get organizationNationalHealthCommission;
+
+  /// No description provided for @chineseOfficialSource.
+  ///
+  /// In en, this message translates to:
+  /// **'Official Chinese page'**
+  String get chineseOfficialSource;
+
+  /// No description provided for @englishOfficialSource.
+  ///
+  /// In en, this message translates to:
+  /// **'Official English page'**
+  String get englishOfficialSource;
+
+  /// No description provided for @copyEnglishOfficialLocator.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy English official locator'**
+  String get copyEnglishOfficialLocator;
+
+  /// No description provided for @englishOfficialLocatorCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'English official locator copied.'**
+  String get englishOfficialLocatorCopied;
+
+  /// No description provided for @close.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get close;
+
+  /// No description provided for @readOriginalText.
+  ///
+  /// In en, this message translates to:
+  /// **'Read original text'**
+  String get readOriginalText;
+
+  /// No description provided for @openOfficialSource.
+  ///
+  /// In en, this message translates to:
+  /// **'Open official source'**
+  String get openOfficialSource;
+
+  /// No description provided for @originalEnglish.
+  ///
+  /// In en, this message translates to:
+  /// **'Original English'**
+  String get originalEnglish;
+
+  /// No description provided for @backToResources.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to resources'**
+  String get backToResources;
+
+  /// No description provided for @resourceReaderTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Original document'**
+  String get resourceReaderTitle;
+
+  /// No description provided for @resourceReaderReviewPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Medical review pending'**
+  String get resourceReaderReviewPending;
+
+  /// No description provided for @resourceReaderReviewApproved.
+  ///
+  /// In en, this message translates to:
+  /// **'Medical review approved'**
+  String get resourceReaderReviewApproved;
+
+  /// No description provided for @resourceReaderNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Publisher-authored original text for doctor reference. This foreign-jurisdiction document is not currently used for AI retrieval or patient-facing answers.'**
+  String get resourceReaderNotice;
+
+  /// No description provided for @resourceReaderUnavailableTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Original text is not available'**
+  String get resourceReaderUnavailableTitle;
+
+  /// No description provided for @resourceReaderUnavailableBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This source does not currently have stored text approved for display. Use the official publisher source instead.'**
+  String get resourceReaderUnavailableBody;
+
+  /// No description provided for @resourceReaderLoadFailedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'The original document could not be loaded'**
+  String get resourceReaderLoadFailedTitle;
+
+  /// No description provided for @resourceReaderLoadFailedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Check your connection and try again. No patient information was sent.'**
+  String get resourceReaderLoadFailedBody;
+
+  /// No description provided for @resourceReaderRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get resourceReaderRetry;
+
+  /// No description provided for @publicationDateLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Published'**
+  String get publicationDateLabel;
+
+  /// No description provided for @captureDateLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Captured'**
+  String get captureDateLabel;
+
+  /// No description provided for @rightsAndAttribution.
+  ///
+  /// In en, this message translates to:
+  /// **'Rights and attribution'**
+  String get rightsAndAttribution;
+
+  /// No description provided for @copyDocumentCitation.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy document citation'**
+  String get copyDocumentCitation;
+
+  /// No description provided for @reviewedChineseTranslation.
+  ///
+  /// In en, this message translates to:
+  /// **'Reviewed Chinese translation'**
+  String get reviewedChineseTranslation;
+
+  /// No description provided for @unofficialAiTranslationNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'This is an unofficial AI-generated Chinese translation that has completed medical and native-Chinese review. Use the publisher\'s English original for authoritative verification. The translation remains separate from retrieval approval.'**
+  String get unofficialAiTranslationNotice;
 }
 
 class _AppLocalizationsDelegate

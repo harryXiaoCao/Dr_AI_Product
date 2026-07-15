@@ -253,6 +253,23 @@ def _demographics_response(profile: PatientProfile) -> PatientDemographicsRespon
         home_address=profile.home_address,
         height_cm=profile.height_cm,
         weight_kg=profile.weight_kg,
+        blood_type=profile.blood_type,
+        systolic_blood_pressure=profile.systolic_blood_pressure,
+        diastolic_blood_pressure=profile.diastolic_blood_pressure,
+        smoking_status=profile.smoking_status,
+        alcohol_consumption=profile.alcohol_consumption,
+        heart_history=profile.heart_history,
+        endocrine_history=profile.endocrine_history,
+        neuro_history=profile.neuro_history,
+        digestive_history=profile.digestive_history,
+        respiratory_history=profile.respiratory_history,
+        kidney_history=profile.kidney_history,
+        cancer_history=profile.cancer_history,
+        patient_reported_medications=profile.patient_reported_medications,
+        surgery_history=profile.surgery_history,
+        family_history=profile.family_history,
+        lifestyle_notes=profile.lifestyle_notes,
+        pregnancy_status=profile.pregnancy_status,
         medical_history_setup_completed=profile.medical_history_setup_completed,
     )
 
@@ -1246,25 +1263,31 @@ def _apply_demographics_update(
         "home_address",
         "height_cm",
         "weight_kg",
+        "blood_type",
+        "systolic_blood_pressure",
+        "diastolic_blood_pressure",
+        "smoking_status",
+        "alcohol_consumption",
+        "heart_history",
+        "endocrine_history",
+        "neuro_history",
+        "digestive_history",
+        "respiratory_history",
+        "kidney_history",
+        "cancer_history",
+        "patient_reported_medications",
+        "surgery_history",
+        "family_history",
+        "lifestyle_notes",
+        "pregnancy_status",
         "medical_history_setup_completed",
     ):
+        if field not in request.model_fields_set:
+            continue
         value = getattr(request, field)
-        if value is not None and getattr(profile, field) != value:
+        if getattr(profile, field) != value:
             setattr(profile, field, value)
             updated_fields.append(field)
-    if not updated_fields:
-        raise ApiError(
-            422,
-            "validation_failed",
-            "The request could not be validated.",
-            [
-                {
-                    "field": "profile",
-                    "code": "no_fields_updated",
-                    "message": "Provide at least one changed profile field.",
-                }
-            ],
-        )
     return updated_fields
 
 
@@ -2218,7 +2241,10 @@ def patient_records(
     profile = _authorized_patient(patient_id, user, db)
     records = db.scalars(
         select(MedicalRecord)
-        .where(MedicalRecord.patient_id == profile.id)
+        .where(
+            MedicalRecord.patient_id == profile.id,
+            MedicalRecord.category != "intake_summary",
+        )
         .order_by(MedicalRecord.recorded_at.desc())
     ).all()
     return MedicalRecordListResponse(items=[_record_response(item) for item in records])
@@ -3388,7 +3414,10 @@ def patient_care_bundle(
     ).all()
     records = db.scalars(
         select(MedicalRecord)
-        .where(MedicalRecord.patient_id == profile.id)
+        .where(
+            MedicalRecord.patient_id == profile.id,
+            MedicalRecord.category != "intake_summary",
+        )
         .order_by(MedicalRecord.recorded_at.desc())
     ).all()
     imaging_assets = db.scalars(
@@ -4541,7 +4570,10 @@ def own_patient_care(user: CurrentUser, db: DbSession) -> PatientCareBundleRespo
     ).all()
     records = db.scalars(
         select(MedicalRecord)
-        .where(MedicalRecord.patient_id == profile.id)
+        .where(
+            MedicalRecord.patient_id == profile.id,
+            MedicalRecord.category != "intake_summary",
+        )
         .order_by(MedicalRecord.recorded_at.desc())
     ).all()
     imaging_assets = db.scalars(

@@ -36,12 +36,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get patientWorkspace => 'Patient workspace';
 
   @override
-  String get searchDoctor => 'Search patients and resources';
-
-  @override
-  String get searchDoctorWide => 'Search patients, cases, diagnoses, resources';
-
-  @override
   String get restoringSession => 'Restoring secure session';
 
   @override
@@ -773,6 +767,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get bloodType => 'Blood type';
 
   @override
+  String get bloodPressure => 'Blood pressure';
+
+  @override
   String get unknown => 'Unknown';
 
   @override
@@ -1332,6 +1329,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get overview => 'Overview';
 
   @override
+  String get verifiedHistory => 'Verified History';
+
+  @override
+  String get activeClinicalEvents => 'Active Clinical Events';
+
+  @override
+  String get activeRecoveryPlan => 'Active Recovery Plan';
+
+  @override
+  String get currentMedications => 'Current Medications';
+
+  @override
   String get overviewSummary => 'Patient snapshot and active event context';
 
   @override
@@ -1376,6 +1385,18 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get searchPatients => 'Search patients';
+
+  @override
+  String get collapsePatientList => 'Collapse patient list';
+
+  @override
+  String get expandPatientList => 'Expand patient list';
+
+  @override
+  String get collapseSectionNavigation => 'Collapse section navigation';
+
+  @override
+  String get expandSectionNavigation => 'Expand section navigation';
 
   @override
   String get namePatientId => 'Name or patient ID';
@@ -2454,4 +2475,537 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get doctorFallbackName => 'Doctor';
+
+  @override
+  String get resources => 'Resources';
+
+  @override
+  String get medicalResources => 'Medical Resources';
+
+  @override
+  String get medicalResourcesSubtitle =>
+      'Search reviewed clinical sources, verify provenance, and keep guidance for later.';
+
+  @override
+  String get resourceCatalogPreviewTitle => 'Authoritative source catalog';
+
+  @override
+  String get resourceCatalogPreviewBody =>
+      'These are 200 real WHO fact sheets paired across official Chinese and English pages. Full text is not stored or used for AI retrieval while commercial rights and medical review remain pending.';
+
+  @override
+  String get resourceSearchHint =>
+      'Search medical resources in Chinese or English';
+
+  @override
+  String get resourceSearchTab => 'Search';
+
+  @override
+  String get savedResourcesTab => 'Saved';
+
+  @override
+  String get recentUpdatesTab => 'Recent updates';
+
+  @override
+  String get sourceRegistryTab => 'Source registry';
+
+  @override
+  String get resourceFilters => 'Filters';
+
+  @override
+  String get showFilters => 'Show filters';
+
+  @override
+  String get hideFilters => 'Hide filters';
+
+  @override
+  String get clearFilters => 'Clear filters';
+
+  @override
+  String get allOptions => 'All';
+
+  @override
+  String get topicFilter => 'Topic';
+
+  @override
+  String get documentTypeFilter => 'Document type';
+
+  @override
+  String get organizationFilter => 'Organization';
+
+  @override
+  String get jurisdictionFilter => 'Jurisdiction';
+
+  @override
+  String get originalLanguageFilter => 'Original language';
+
+  @override
+  String get intendedAudienceFilter => 'Intended audience';
+
+  @override
+  String get publicationReviewDateFilter => 'Publication / catalog date';
+
+  @override
+  String get versionStatusFilter => 'Current / superseded';
+
+  @override
+  String get topicRespiratoryCare => 'Respiratory care';
+
+  @override
+  String get topicCardiovascularCare => 'Cardiovascular care';
+
+  @override
+  String get topicDiabetesCare => 'Diabetes care';
+
+  @override
+  String get topicRehabilitation => 'Rehabilitation';
+
+  @override
+  String get documentClinicalGuide => 'Clinical guide';
+
+  @override
+  String get documentCarePathway => 'Care pathway';
+
+  @override
+  String get documentSafetyBulletin => 'Safety bulletin';
+
+  @override
+  String get documentPatientEducation => 'Patient education';
+
+  @override
+  String get organizationPrimaryCareCouncil => 'Primary Care Review Council';
+
+  @override
+  String get organizationMedicinesSafetyCenter =>
+      'Medicines Safety Review Center';
+
+  @override
+  String get organizationRehabilitationCollaborative =>
+      'Continuity and Rehabilitation Collaborative';
+
+  @override
+  String get jurisdictionMainlandChina => 'Mainland China';
+
+  @override
+  String get jurisdictionInternational => 'International';
+
+  @override
+  String get jurisdictionChina => 'China';
+
+  @override
+  String get audienceDoctors => 'Doctors';
+
+  @override
+  String get audienceDoctorsAndPatients => 'Doctors and patients';
+
+  @override
+  String get dateAny => 'Any date';
+
+  @override
+  String get datePast12Months => 'Past 12 months';
+
+  @override
+  String get datePast24Months => 'Past 24 months';
+
+  @override
+  String get statusCurrent => 'Current';
+
+  @override
+  String get statusSuperseded => 'Superseded';
+
+  @override
+  String get searchSuggestions => 'Suggested searches';
+
+  @override
+  String get resourceSuggestionOne => 'Hypertension follow-up';
+
+  @override
+  String get resourceSuggestionTwo => '呼吸道感染用药安全';
+
+  @override
+  String get resourceSuggestionThree => 'Diabetes sick-day education';
+
+  @override
+  String resourceResultCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count resources',
+      one: '1 resource',
+      zero: 'No resources',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get currentAndReviewed => 'Current and reviewed';
+
+  @override
+  String get supersededDoNotRely =>
+      'Superseded—do not rely on as current guidance';
+
+  @override
+  String get rightsLimitedLinkOnly =>
+      'Rights-limited—link only / no stored full text';
+
+  @override
+  String get doctorOnlyResource => 'Doctor-only';
+
+  @override
+  String get patientEducationApproved => 'Patient education approved';
+
+  @override
+  String get patientUseNotApproved => 'Not approved for patient use';
+
+  @override
+  String get publisherLabel => 'Publisher';
+
+  @override
+  String get sourceTypeLabel => 'Source type';
+
+  @override
+  String get publishedLabel => 'Published';
+
+  @override
+  String get lastMedicalReviewLabel => 'Last medical review';
+
+  @override
+  String get openSourceDetails => 'Open source details';
+
+  @override
+  String get saveResource => 'Save resource';
+
+  @override
+  String get removeSavedResource => 'Remove from saved';
+
+  @override
+  String get resourceSavedConfirmation => 'Resource saved.';
+
+  @override
+  String get resourceRemovedConfirmation => 'Resource removed from saved.';
+
+  @override
+  String get officialLocator => 'Official locator';
+
+  @override
+  String get provenance => 'Provenance';
+
+  @override
+  String get provenanceBody =>
+      'Paired from the official WHO Chinese and English fact-sheet indexes on 14 July 2026. Only titles and locators are stored; source bodies remain on WHO\'s website.';
+
+  @override
+  String get versionHistory => 'Version history';
+
+  @override
+  String get versionCurrentEntry =>
+      'Current reviewed version · active in this catalog';
+
+  @override
+  String get versionSupersededEntry =>
+      'Previous version · retained only for traceability';
+
+  @override
+  String get relevantPassages => 'Relevant passages';
+
+  @override
+  String get relatedSources => 'Related sources';
+
+  @override
+  String get stableInternalReference => 'Stable internal reference';
+
+  @override
+  String get copyCitation => 'Copy citation';
+
+  @override
+  String get citationCopied => 'Citation copied.';
+
+  @override
+  String get copyOfficialLocator => 'Copy official locator';
+
+  @override
+  String get officialLocatorCopied => 'Official locator copied.';
+
+  @override
+  String resourceCitation(
+    String title,
+    String publisher,
+    String year,
+    String locator,
+  ) {
+    return '$title. $publisher. $year. $locator';
+  }
+
+  @override
+  String get noResourceResultsTitle => 'No matching resources';
+
+  @override
+  String get noResourceResultsBody =>
+      'Try another term or clear one or more filters.';
+
+  @override
+  String get noSavedResourcesTitle => 'No saved resources';
+
+  @override
+  String get noSavedResourcesBody =>
+      'Save a source from Search to keep it available here.';
+
+  @override
+  String get noRecentUpdatesTitle => 'No recent updates';
+
+  @override
+  String get noRecentUpdatesBody =>
+      'Reviewed source updates will appear here when available.';
+
+  @override
+  String get sourceRegistrySubtitle =>
+      'Organizations represented in the current local catalog.';
+
+  @override
+  String get viewOrganizationSources => 'View sources';
+
+  @override
+  String reviewedSourceCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count catalog sources',
+      one: '1 catalog source',
+      zero: 'No catalog sources',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get loadingMedicalResources => 'Loading medical resources';
+
+  @override
+  String get resourceOfflineTitle => 'Resources are unavailable offline';
+
+  @override
+  String get resourceOfflineBody =>
+      'Reconnect to verify current source status. Saved references remain listed without cached full text.';
+
+  @override
+  String get resourceServiceFailureTitle =>
+      'Medical resources could not be loaded';
+
+  @override
+  String get resourceServiceFailureBody =>
+      'The source service did not respond. No patient or query content was sent.';
+
+  @override
+  String get resourcePartialIndexTitle =>
+      'Some reviewed sources are temporarily unavailable';
+
+  @override
+  String get resourcePartialIndexBody =>
+      'Results may be incomplete while the current source index is restored.';
+
+  @override
+  String get resourceRetry => 'Retry';
+
+  @override
+  String resourceUpdatedLabel(String date) {
+    return 'Catalog verified $date';
+  }
+
+  @override
+  String get resourceTitleRespiratory =>
+      'Safe antibiotic decisions for uncomplicated respiratory symptoms';
+
+  @override
+  String get resourcePassageRespiratory =>
+      'Review symptom duration, severity, red flags, and likely viral features before considering antimicrobial treatment.';
+
+  @override
+  String get resourcePassageRespiratoryDetail =>
+      'Document the clinical rationale and give a clear follow-up threshold when immediate antibiotics are not indicated.';
+
+  @override
+  String get resourceTitleHypertension =>
+      'Primary-care follow-up pathway for stable hypertension';
+
+  @override
+  String get resourcePassageHypertension =>
+      'Use consistent blood-pressure technique, review adherence and adverse effects, and agree on a practical follow-up interval.';
+
+  @override
+  String get resourcePassageHypertensionDetail =>
+      'Escalate promptly when severe readings occur with concerning symptoms or evidence of acute organ injury.';
+
+  @override
+  String get resourceTitleDiabetes =>
+      'Sick-day safety education for adults living with type 2 diabetes';
+
+  @override
+  String get resourcePassageDiabetes =>
+      'Explain hydration, monitoring, warning signs, and when to contact a clinician without independently changing prescribed medicines.';
+
+  @override
+  String get resourcePassageDiabetesDetail =>
+      'Patient-facing wording should be checked against the current prescription and the connected clinician\'s instructions.';
+
+  @override
+  String get resourceTitleStroke =>
+      'Transition checklist after stroke rehabilitation discharge';
+
+  @override
+  String get resourcePassageStroke =>
+      'This earlier checklist covered medication reconciliation, mobility support, caregiver communication, and follow-up ownership.';
+
+  @override
+  String get resourcePassageStrokeDetail =>
+      'A newer transition standard replaces this version; retain it only to understand prior documentation.';
+
+  @override
+  String get resourceOfficialMetadataStatus => 'Official catalog metadata';
+
+  @override
+  String get rightsReviewPending => 'Rights review pending—official link only';
+
+  @override
+  String get resourceCatalogMetadataNote =>
+      'Open either official WHO language page to read the source. Dr. AI stores only paired titles and locators; the content is not yet eligible for excerpts, embeddings, or AI retrieval.';
+
+  @override
+  String get catalogVerifiedLabel => 'Catalog verified';
+
+  @override
+  String get documentFactSheet => 'Fact sheet';
+
+  @override
+  String get documentClinicalGuideline => 'Clinical guideline';
+
+  @override
+  String get documentClinicalProtocol => 'Clinical protocol';
+
+  @override
+  String get documentPracticeGuideline => 'Practice guideline';
+
+  @override
+  String get documentGuidance => 'Guidance';
+
+  @override
+  String get organizationWorldHealthOrganization => 'World Health Organization';
+
+  @override
+  String get topicInfectiousDisease => 'Infectious diseases';
+
+  @override
+  String get topicChronicDisease => 'Chronic diseases';
+
+  @override
+  String get topicMaternalChildHealth => 'Maternal and child health';
+
+  @override
+  String get topicMentalHealth => 'Mental health';
+
+  @override
+  String get topicInjuryEmergency => 'Injury and emergency care';
+
+  @override
+  String get topicEnvironmentalHealth => 'Environmental health';
+
+  @override
+  String get topicNutritionLifestyle => 'Nutrition and lifestyle';
+
+  @override
+  String get topicHealthSystems => 'Health systems and safety';
+
+  @override
+  String get showMoreResources => 'Show 20 more resources';
+
+  @override
+  String get catalogUseStatus => 'Catalog and retrieval status';
+
+  @override
+  String get bilingualChineseEnglish => 'Bilingual: Chinese and English';
+
+  @override
+  String get languageChinese => 'Chinese';
+
+  @override
+  String get languageEnglish => 'English';
+
+  @override
+  String get organizationNationalHealthCommission =>
+      'National Health Commission of China';
+
+  @override
+  String get chineseOfficialSource => 'Official Chinese page';
+
+  @override
+  String get englishOfficialSource => 'Official English page';
+
+  @override
+  String get copyEnglishOfficialLocator => 'Copy English official locator';
+
+  @override
+  String get englishOfficialLocatorCopied => 'English official locator copied.';
+
+  @override
+  String get close => 'Close';
+
+  @override
+  String get readOriginalText => 'Read original text';
+
+  @override
+  String get openOfficialSource => 'Open official source';
+
+  @override
+  String get originalEnglish => 'Original English';
+
+  @override
+  String get backToResources => 'Back to resources';
+
+  @override
+  String get resourceReaderTitle => 'Original document';
+
+  @override
+  String get resourceReaderReviewPending => 'Medical review pending';
+
+  @override
+  String get resourceReaderReviewApproved => 'Medical review approved';
+
+  @override
+  String get resourceReaderNotice =>
+      'Publisher-authored original text for doctor reference. This foreign-jurisdiction document is not currently used for AI retrieval or patient-facing answers.';
+
+  @override
+  String get resourceReaderUnavailableTitle => 'Original text is not available';
+
+  @override
+  String get resourceReaderUnavailableBody =>
+      'This source does not currently have stored text approved for display. Use the official publisher source instead.';
+
+  @override
+  String get resourceReaderLoadFailedTitle =>
+      'The original document could not be loaded';
+
+  @override
+  String get resourceReaderLoadFailedBody =>
+      'Check your connection and try again. No patient information was sent.';
+
+  @override
+  String get resourceReaderRetry => 'Retry';
+
+  @override
+  String get publicationDateLabel => 'Published';
+
+  @override
+  String get captureDateLabel => 'Captured';
+
+  @override
+  String get rightsAndAttribution => 'Rights and attribution';
+
+  @override
+  String get copyDocumentCitation => 'Copy document citation';
+
+  @override
+  String get reviewedChineseTranslation => 'Reviewed Chinese translation';
+
+  @override
+  String get unofficialAiTranslationNotice =>
+      'This is an unofficial AI-generated Chinese translation that has completed medical and native-Chinese review. Use the publisher\'s English original for authoritative verification. The translation remains separate from retrieval approval.';
 }

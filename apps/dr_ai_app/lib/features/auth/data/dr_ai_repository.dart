@@ -4,6 +4,7 @@ import 'package:dr_ai_app/core/api/api_error.dart';
 import 'package:dr_ai_app/features/auth/domain/auth_models.dart';
 import 'package:dr_ai_app/features/dashboard/domain/dashboard_data.dart';
 import 'package:dr_ai_app/features/doctor/domain/doctor_profile.dart';
+import 'package:dr_ai_app/features/doctor/domain/medical_resource_fixture.dart';
 import 'package:dr_ai_app/features/patient/domain/patient_care_data.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
@@ -35,6 +36,8 @@ abstract interface class DrAiRepository {
   Future<void> logout();
   Future<DashboardData> loadDashboard(AppRole role);
   Future<DoctorProfile> loadOwnDoctorProfile();
+  Future<List<MedicalResourceFixture>> loadMedicalResources();
+  Future<MedicalResourceDetail> loadMedicalResource(String sourceId);
   Future<DoctorProfile> updateOwnDoctorProfile({
     required String displayName,
     required String specialty,
@@ -72,6 +75,23 @@ abstract interface class DrAiRepository {
     required String homeAddress,
     required String heightCm,
     required String weightKg,
+    required String bloodType,
+    required String systolicBloodPressure,
+    required String diastolicBloodPressure,
+    required String smokingStatus,
+    required String alcoholConsumption,
+    required String heartHistory,
+    required String endocrineHistory,
+    required String neuroHistory,
+    required String digestiveHistory,
+    required String respiratoryHistory,
+    required String kidneyHistory,
+    required String cancerHistory,
+    required String patientReportedMedications,
+    required String surgeryHistory,
+    required String familyHistory,
+    required String lifestyleNotes,
+    required String pregnancyStatus,
     required bool medicalHistorySetupCompleted,
   });
   Future<PatientAllergyItem> createPatientAllergy({
@@ -540,6 +560,37 @@ class DioDrAiRepository implements DrAiRepository {
     }
   }
 
+  @override
+  Future<List<MedicalResourceFixture>> loadMedicalResources() async {
+    const pageSize = 100;
+    var offset = 0;
+    var total = 1;
+    final resources = <MedicalResourceFixture>[];
+    while (offset < total) {
+      final response = await _authorizedGet(
+        '/api/v1/doctor/resources',
+        queryParameters: <String, dynamic>{'limit': pageSize, 'offset': offset},
+      );
+      total = response['total'] as int;
+      final items = (response['items'] as List<dynamic>)
+          .cast<Map<String, dynamic>>();
+      resources.addAll(items.map(MedicalResourceFixture.fromApiJson));
+      if (items.isEmpty) {
+        break;
+      }
+      offset += items.length;
+    }
+    return resources;
+  }
+
+  @override
+  Future<MedicalResourceDetail> loadMedicalResource(String sourceId) async {
+    final response = await _authorizedGet(
+      '/api/v1/doctor/resources/${Uri.encodeComponent(sourceId)}',
+    );
+    return MedicalResourceDetail.fromApiJson(response);
+  }
+
   Future<DashboardData> _getDashboard(String path) async {
     final response = await _authorizedGet(path);
     return DashboardData.fromJson(response);
@@ -675,6 +726,23 @@ class DioDrAiRepository implements DrAiRepository {
     required String homeAddress,
     required String heightCm,
     required String weightKg,
+    required String bloodType,
+    required String systolicBloodPressure,
+    required String diastolicBloodPressure,
+    required String smokingStatus,
+    required String alcoholConsumption,
+    required String heartHistory,
+    required String endocrineHistory,
+    required String neuroHistory,
+    required String digestiveHistory,
+    required String respiratoryHistory,
+    required String kidneyHistory,
+    required String cancerHistory,
+    required String patientReportedMedications,
+    required String surgeryHistory,
+    required String familyHistory,
+    required String lifestyleNotes,
+    required String pregnancyStatus,
     required bool medicalHistorySetupCompleted,
   }) async {
     final response = await _authorizedPatch(
@@ -702,10 +770,40 @@ class DioDrAiRepository implements DrAiRepository {
           'height_cm': double.parse(heightCm.trim()),
         if (weightKg.trim().isNotEmpty)
           'weight_kg': double.parse(weightKg.trim()),
+        if (bloodType.trim().isNotEmpty) 'blood_type': bloodType.trim(),
+        'systolic_blood_pressure': int.tryParse(systolicBloodPressure.trim()),
+        'diastolic_blood_pressure': int.tryParse(diastolicBloodPressure.trim()),
+        'smoking_status': smokingStatus.trim().isEmpty
+            ? null
+            : smokingStatus.trim(),
+        'alcohol_consumption': alcoholConsumption.trim().isEmpty
+            ? null
+            : alcoholConsumption.trim(),
+        'heart_history': _nullableText(heartHistory),
+        'endocrine_history': _nullableText(endocrineHistory),
+        'neuro_history': _nullableText(neuroHistory),
+        'digestive_history': _nullableText(digestiveHistory),
+        'respiratory_history': _nullableText(respiratoryHistory),
+        'kidney_history': _nullableText(kidneyHistory),
+        'cancer_history': _nullableText(cancerHistory),
+        'patient_reported_medications': _nullableText(
+          patientReportedMedications,
+        ),
+        'surgery_history': _nullableText(surgeryHistory),
+        'family_history': _nullableText(familyHistory),
+        'lifestyle_notes': _nullableText(lifestyleNotes),
+        'pregnancy_status': pregnancyStatus.trim().isEmpty
+            ? null
+            : pregnancyStatus.trim(),
         'medical_history_setup_completed': medicalHistorySetupCompleted,
       },
     );
     return PatientProfile.fromJson(response);
+  }
+
+  String? _nullableText(String value) {
+    final normalized = value.trim();
+    return normalized.isEmpty ? null : normalized;
   }
 
   @override

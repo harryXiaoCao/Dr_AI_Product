@@ -62,6 +62,23 @@ class PatientProfile extends PatientSummary {
     required this.homeAddress,
     required this.heightCm,
     required this.weightKg,
+    required this.bloodType,
+    required this.systolicBloodPressure,
+    required this.diastolicBloodPressure,
+    required this.smokingStatus,
+    required this.alcoholConsumption,
+    required this.heartHistory,
+    required this.endocrineHistory,
+    required this.neuroHistory,
+    required this.digestiveHistory,
+    required this.respiratoryHistory,
+    required this.kidneyHistory,
+    required this.cancerHistory,
+    required this.patientReportedMedications,
+    required this.surgeryHistory,
+    required this.familyHistory,
+    required this.lifestyleNotes,
+    required this.pregnancyStatus,
     required this.medicalHistorySetupCompleted,
   });
 
@@ -91,6 +108,24 @@ class PatientProfile extends PatientSummary {
       homeAddress: demographics['home_address'] as String?,
       heightCm: (demographics['height_cm'] as num?)?.toDouble(),
       weightKg: (demographics['weight_kg'] as num?)?.toDouble(),
+      bloodType: demographics['blood_type'] as String?,
+      systolicBloodPressure: demographics['systolic_blood_pressure'] as int?,
+      diastolicBloodPressure: demographics['diastolic_blood_pressure'] as int?,
+      smokingStatus: demographics['smoking_status'] as String?,
+      alcoholConsumption: demographics['alcohol_consumption'] as String?,
+      heartHistory: demographics['heart_history'] as String?,
+      endocrineHistory: demographics['endocrine_history'] as String?,
+      neuroHistory: demographics['neuro_history'] as String?,
+      digestiveHistory: demographics['digestive_history'] as String?,
+      respiratoryHistory: demographics['respiratory_history'] as String?,
+      kidneyHistory: demographics['kidney_history'] as String?,
+      cancerHistory: demographics['cancer_history'] as String?,
+      patientReportedMedications:
+          demographics['patient_reported_medications'] as String?,
+      surgeryHistory: demographics['surgery_history'] as String?,
+      familyHistory: demographics['family_history'] as String?,
+      lifestyleNotes: demographics['lifestyle_notes'] as String?,
+      pregnancyStatus: demographics['pregnancy_status'] as String?,
       medicalHistorySetupCompleted:
           demographics['medical_history_setup_completed'] as bool? ?? false,
     );
@@ -114,6 +149,23 @@ class PatientProfile extends PatientSummary {
   final String? homeAddress;
   final double? heightCm;
   final double? weightKg;
+  final String? bloodType;
+  final int? systolicBloodPressure;
+  final int? diastolicBloodPressure;
+  final String? smokingStatus;
+  final String? alcoholConsumption;
+  final String? heartHistory;
+  final String? endocrineHistory;
+  final String? neuroHistory;
+  final String? digestiveHistory;
+  final String? respiratoryHistory;
+  final String? kidneyHistory;
+  final String? cancerHistory;
+  final String? patientReportedMedications;
+  final String? surgeryHistory;
+  final String? familyHistory;
+  final String? lifestyleNotes;
+  final String? pregnancyStatus;
   final bool medicalHistorySetupCompleted;
 }
 

@@ -18,6 +18,8 @@ from app.errors import (
     safe_internal_error,
     validation_error_handler,
 )
+from app.knowledge_catalog import router as knowledge_catalog_router
+from app.knowledge_retrieval import router as knowledge_retrieval_router
 from app.support import router as support_router
 
 
@@ -72,6 +74,8 @@ def create_app() -> FastAPI:
 
     app.include_router(auth_router)
     app.include_router(dashboard_router)
+    app.include_router(knowledge_catalog_router)
+    app.include_router(knowledge_retrieval_router)
     app.include_router(support_router)
     return app
 

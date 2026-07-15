@@ -6,6 +6,7 @@ import 'package:dr_ai_app/features/auth/data/dr_ai_repository.dart';
 import 'package:dr_ai_app/features/auth/domain/auth_models.dart';
 import 'package:dr_ai_app/features/dashboard/domain/dashboard_data.dart';
 import 'package:dr_ai_app/features/doctor/domain/doctor_profile.dart';
+import 'package:dr_ai_app/features/doctor/domain/medical_resource_fixture.dart';
 import 'package:dr_ai_app/features/patient/domain/patient_care_data.dart';
 
 const doctorUser = SessionUser(
@@ -280,6 +281,23 @@ final demoPatientCareBundle = PatientCareBundle(
     homeAddress: '100 Recovery Road',
     heightCm: 168,
     weightKg: 62,
+    bloodType: 'O+',
+    systolicBloodPressure: 118,
+    diastolicBloodPressure: 76,
+    smokingStatus: 'Never',
+    alcoholConsumption: 'None or rare',
+    heartHistory: null,
+    endocrineHistory: null,
+    neuroHistory: null,
+    digestiveHistory: null,
+    respiratoryHistory: null,
+    kidneyHistory: null,
+    cancerHistory: null,
+    patientReportedMedications: null,
+    surgeryHistory: null,
+    familyHistory: null,
+    lifestyleNotes: null,
+    pregnancyStatus: 'Prefer not to say',
     medicalHistorySetupCompleted: true,
   ),
   clinicalEvents: <ClinicalEventItem>[demoClinicalEvent],
@@ -471,6 +489,23 @@ final incompleteOnboardingPatientCareBundle = _copyCareBundle(
     homeAddress: null,
     heightCm: null,
     weightKg: null,
+    bloodType: null,
+    systolicBloodPressure: null,
+    diastolicBloodPressure: null,
+    smokingStatus: null,
+    alcoholConsumption: null,
+    heartHistory: null,
+    endocrineHistory: null,
+    neuroHistory: null,
+    digestiveHistory: null,
+    respiratoryHistory: null,
+    kidneyHistory: null,
+    cancerHistory: null,
+    patientReportedMedications: null,
+    surgeryHistory: null,
+    familyHistory: null,
+    lifestyleNotes: null,
+    pregnancyStatus: null,
     medicalHistorySetupCompleted: false,
   ),
 );
@@ -692,6 +727,8 @@ class FakeDrAiRepository implements DrAiRepository {
     RecoveryPlanListData? recoveryPlans,
     PatientTodayData? patientToday,
     ConsultationListData? consultations,
+    List<MedicalResourceFixture>? medicalResources,
+    Map<String, MedicalResourceDetail>? medicalResourceDetails,
     this.patientListError,
     this.patientCareError,
     this.presignError,
@@ -718,7 +755,10 @@ class FakeDrAiRepository implements DrAiRepository {
        patientToday = patientToday ?? demoPatientToday,
        consultations =
            consultations ??
-           const ConsultationListData(items: <ConsultationRequestItem>[]);
+           const ConsultationListData(items: <ConsultationRequestItem>[]),
+       medicalResources =
+           medicalResources ?? authoritativeMedicalResourceCatalog,
+       medicalResourceDetails = medicalResourceDetails ?? const {};
 
   AuthSession? restoredSession;
   AuthSession loginSession;
@@ -733,6 +773,8 @@ class FakeDrAiRepository implements DrAiRepository {
   RecoveryPlanListData recoveryPlans;
   PatientTodayData patientToday;
   ConsultationListData consultations;
+  List<MedicalResourceFixture> medicalResources;
+  Map<String, MedicalResourceDetail> medicalResourceDetails;
   ApiError? patientListError;
   ApiError? patientCareError;
   ApiError? presignError;
@@ -747,6 +789,7 @@ class FakeDrAiRepository implements DrAiRepository {
   bool logoutCalled = false;
   bool registerCalled = false;
   bool patientProfileUpdated = false;
+  String? lastPatientBloodType;
   bool patientAllergyCreated = false;
   bool patientMedicalRecordCreated = false;
   bool chronicDiseaseCreated = false;
@@ -891,6 +934,23 @@ class FakeDrAiRepository implements DrAiRepository {
   }
 
   @override
+  Future<List<MedicalResourceFixture>> loadMedicalResources() async =>
+      medicalResources;
+
+  @override
+  Future<MedicalResourceDetail> loadMedicalResource(String sourceId) async {
+    final detail = medicalResourceDetails[sourceId];
+    if (detail == null) {
+      throw const ApiError(
+        code: 'resource_not_found',
+        message: 'The resource was not found.',
+        statusCode: 404,
+      );
+    }
+    return detail;
+  }
+
+  @override
   Future<DoctorProfile> loadOwnDoctorProfile() async => _doctorProfile;
 
   DoctorProfile _doctorProfile = doctorProfile;
@@ -1008,9 +1068,27 @@ class FakeDrAiRepository implements DrAiRepository {
     required String homeAddress,
     required String heightCm,
     required String weightKg,
+    required String bloodType,
+    required String systolicBloodPressure,
+    required String diastolicBloodPressure,
+    required String smokingStatus,
+    required String alcoholConsumption,
+    required String heartHistory,
+    required String endocrineHistory,
+    required String neuroHistory,
+    required String digestiveHistory,
+    required String respiratoryHistory,
+    required String kidneyHistory,
+    required String cancerHistory,
+    required String patientReportedMedications,
+    required String surgeryHistory,
+    required String familyHistory,
+    required String lifestyleNotes,
+    required String pregnancyStatus,
     required bool medicalHistorySetupCompleted,
   }) async {
     patientProfileUpdated = true;
+    lastPatientBloodType = bloodType;
     final updated = PatientProfile(
       patientId: patientCareBundle.patient.patientId,
       displayName: displayName,
@@ -1050,6 +1128,27 @@ class FakeDrAiRepository implements DrAiRepository {
       weightKg: weightKg.isEmpty
           ? patientCareBundle.patient.weightKg
           : double.tryParse(weightKg),
+      bloodType: bloodType,
+      systolicBloodPressure: int.tryParse(systolicBloodPressure),
+      diastolicBloodPressure: int.tryParse(diastolicBloodPressure),
+      smokingStatus: smokingStatus,
+      alcoholConsumption: alcoholConsumption,
+      heartHistory: heartHistory.isEmpty ? null : heartHistory,
+      endocrineHistory: endocrineHistory.isEmpty ? null : endocrineHistory,
+      neuroHistory: neuroHistory.isEmpty ? null : neuroHistory,
+      digestiveHistory: digestiveHistory.isEmpty ? null : digestiveHistory,
+      respiratoryHistory: respiratoryHistory.isEmpty
+          ? null
+          : respiratoryHistory,
+      kidneyHistory: kidneyHistory.isEmpty ? null : kidneyHistory,
+      cancerHistory: cancerHistory.isEmpty ? null : cancerHistory,
+      patientReportedMedications: patientReportedMedications.isEmpty
+          ? null
+          : patientReportedMedications,
+      surgeryHistory: surgeryHistory.isEmpty ? null : surgeryHistory,
+      familyHistory: familyHistory.isEmpty ? null : familyHistory,
+      lifestyleNotes: lifestyleNotes.isEmpty ? null : lifestyleNotes,
+      pregnancyStatus: pregnancyStatus,
       medicalHistorySetupCompleted: medicalHistorySetupCompleted,
     );
     patientCareBundle = _copyCareBundle(patientCareBundle, patient: updated);

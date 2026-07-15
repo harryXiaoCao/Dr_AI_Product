@@ -17,9 +17,7 @@ def test_connected_doctor_and_patient_share_private_conversation(client, setting
     with Session(engine) as db:
         seed_database(db, settings)
         patient = db.scalar(
-            select(PatientProfile).where(
-                PatientProfile.synthetic_identifier == "SYN-PATIENT-001"
-            )
+            select(PatientProfile).where(PatientProfile.synthetic_identifier == "SYN-PATIENT-001")
         )
         assert patient is not None
         patient_id = str(patient.id)
@@ -51,9 +49,7 @@ def test_connected_doctor_and_patient_share_private_conversation(client, setting
     assert sent.status_code == 200
     assert sent.json()["sender_role"] == "patient"
 
-    received = client.get(
-        f"/api/v1/private-chats/{patient_id}/messages", headers=doctor_headers
-    )
+    received = client.get(f"/api/v1/private-chats/{patient_id}/messages", headers=doctor_headers)
     assert received.status_code == 200
     assert [item["content"] for item in received.json()["items"]] == [
         "Could you clarify tomorrow's follow-up plan?"
@@ -80,9 +76,7 @@ def test_private_conversation_rejects_unconnected_patient(client, settings) -> N
     with Session(engine) as db:
         seed_database(db, settings)
         unrelated = db.scalar(
-            select(PatientProfile).where(
-                PatientProfile.synthetic_identifier == "SYN-PATIENT-002"
-            )
+            select(PatientProfile).where(PatientProfile.synthetic_identifier == "SYN-PATIENT-002")
         )
         assert unrelated is not None
         unrelated_id = str(unrelated.id)

@@ -5,6 +5,8 @@ import 'package:dr_ai_app/features/beta/presentation/beta_support_screen.dart';
 import 'package:dr_ai_app/features/chat/presentation/chat_screens.dart';
 import 'package:dr_ai_app/features/doctor/presentation/doctor_contacts_screen.dart';
 import 'package:dr_ai_app/features/doctor/presentation/doctor_dashboard_screen.dart';
+import 'package:dr_ai_app/features/doctor/presentation/doctor_resource_reader_screen.dart';
+import 'package:dr_ai_app/features/doctor/presentation/doctor_resources_screen.dart';
 import 'package:dr_ai_app/features/doctor/presentation/patient_management_screen.dart';
 import 'package:dr_ai_app/features/foundation/presentation/unauthorized_screen.dart';
 import 'package:dr_ai_app/features/patient/presentation/patient_contacts_screen.dart';
@@ -72,6 +74,20 @@ GoRouter createRouter(AppRole? role, {String? initialLocation}) {
             path: 'patients',
             pageBuilder: (context, state) =>
                 _drAiPage(state, const PatientManagementScreen()),
+          ),
+          GoRoute(
+            path: 'resources',
+            pageBuilder: (context, state) =>
+                _drAiPage(state, const DoctorResourcesScreen()),
+          ),
+          GoRoute(
+            path: 'resources/:sourceId/read',
+            pageBuilder: (context, state) => _drAiPage(
+              state,
+              DoctorResourceReaderScreen(
+                sourceId: state.pathParameters['sourceId']!,
+              ),
+            ),
           ),
           GoRoute(
             path: 'contact',

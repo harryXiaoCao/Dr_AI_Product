@@ -24,6 +24,8 @@ class _PatientManagementScreenState
   String? _selectedPatientId;
   String? _selectedClinicalEventId;
   _DoctorPatientSection _selectedSection = _DoctorPatientSection.overview;
+  bool _patientPaneCollapsed = false;
+  bool _sectionRailCollapsed = false;
 
   @override
   void dispose() {
@@ -48,6 +50,12 @@ class _PatientManagementScreenState
                 controller: _searchController,
                 patients: patients,
                 selectedPatientId: _selectedPatientId,
+                collapsed: wide && _patientPaneCollapsed,
+                onToggle: wide
+                    ? () => setState(
+                        () => _patientPaneCollapsed = !_patientPaneCollapsed,
+                      )
+                    : null,
                 onSearchChanged: (value) =>
                     ref.read(patientSearchQueryProvider.notifier).state = value,
                 onSelect: (patientId) => setState(() {
@@ -66,6 +74,10 @@ class _PatientManagementScreenState
                     setState(() => _selectedSection = section),
                 onClinicalEventChanged: (eventId) =>
                     setState(() => _selectedClinicalEventId = eventId),
+                sectionRailCollapsed: _sectionRailCollapsed,
+                onToggleSectionRail: () => setState(
+                  () => _sectionRailCollapsed = !_sectionRailCollapsed,
+                ),
                 onOpenPatientPicker: () =>
                     _showPatientPicker(context, patients),
               );
@@ -73,7 +85,10 @@ class _PatientManagementScreenState
                 return Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
-                    SizedBox(width: 320, child: list),
+                    SizedBox(
+                      width: _patientPaneCollapsed ? 68 : 300,
+                      child: list,
+                    ),
                     const SizedBox(width: DrAiSpacing.sm),
                     Expanded(child: detail),
                   ],
@@ -103,6 +118,8 @@ class _PatientManagementScreenState
               controller: _searchController,
               patients: patients,
               selectedPatientId: _selectedPatientId,
+              collapsed: false,
+              onToggle: null,
               onSearchChanged: (value) =>
                   ref.read(patientSearchQueryProvider.notifier).state = value,
               onSelect: (patientId) {
@@ -170,6 +187,8 @@ class _PatientSearchPane extends StatelessWidget {
     required this.controller,
     required this.patients,
     required this.selectedPatientId,
+    required this.collapsed,
+    required this.onToggle,
     required this.onSearchChanged,
     required this.onSelect,
     required this.onRetry,
@@ -178,15 +197,46 @@ class _PatientSearchPane extends StatelessWidget {
   final TextEditingController controller;
   final AsyncValue<PatientListData> patients;
   final String? selectedPatientId;
+  final bool collapsed;
+  final VoidCallback? onToggle;
   final ValueChanged<String> onSearchChanged;
   final ValueChanged<String> onSelect;
   final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) {
+    if (collapsed) {
+      return DecoratedBox(
+        key: const Key('collapsed-patient-pane'),
+        decoration: BoxDecoration(
+          color: DrAiColors.white,
+          borderRadius: BorderRadius.circular(DrAiRadii.lg),
+          border: Border.all(color: DrAiColors.outline),
+        ),
+        child: Column(
+          children: <Widget>[
+            IconButton(
+              key: const Key('expand-patient-pane-button'),
+              tooltip: context.l10n.expandPatientList,
+              onPressed: onToggle,
+              icon: const Icon(Icons.keyboard_double_arrow_right_rounded),
+            ),
+            const Divider(height: 1),
+            const SizedBox(height: DrAiSpacing.sm),
+            const Icon(Icons.people_outline, color: DrAiColors.brand),
+          ],
+        ),
+      );
+    }
     return _CarePanel(
       title: context.l10n.patientManagement,
       icon: Icons.people_outline,
+      trailing: IconButton(
+        key: const Key('collapse-patient-pane-button'),
+        tooltip: context.l10n.collapsePatientList,
+        onPressed: onToggle,
+        icon: const Icon(Icons.keyboard_double_arrow_left_rounded),
+      ),
       child: Column(
         children: <Widget>[
           const _PatientConnectPanel(),
@@ -440,6 +490,8 @@ class _PatientDetailPane extends ConsumerWidget {
     required this.compact,
     required this.onSectionChanged,
     required this.onClinicalEventChanged,
+    required this.sectionRailCollapsed,
+    required this.onToggleSectionRail,
     required this.onOpenPatientPicker,
   });
 
@@ -449,6 +501,8 @@ class _PatientDetailPane extends ConsumerWidget {
   final bool compact;
   final ValueChanged<_DoctorPatientSection> onSectionChanged;
   final ValueChanged<String?> onClinicalEventChanged;
+  final bool sectionRailCollapsed;
+  final VoidCallback onToggleSectionRail;
   final VoidCallback onOpenPatientPicker;
 
   @override
@@ -501,6 +555,8 @@ class _PatientDetailPane extends ConsumerWidget {
           compact: compact,
           onSectionChanged: onSectionChanged,
           onClinicalEventChanged: onClinicalEventChanged,
+          sectionRailCollapsed: sectionRailCollapsed,
+          onToggleSectionRail: onToggleSectionRail,
           onOpenPatientPicker: onOpenPatientPicker,
         ),
       ),
@@ -533,6 +589,8 @@ class _PatientCareBundleView extends StatelessWidget {
     this.compact = false,
     this.onSectionChanged,
     this.onClinicalEventChanged,
+    this.sectionRailCollapsed = false,
+    this.onToggleSectionRail,
     this.onOpenPatientPicker,
   });
 
@@ -543,6 +601,8 @@ class _PatientCareBundleView extends StatelessWidget {
   final bool compact;
   final ValueChanged<_DoctorPatientSection>? onSectionChanged;
   final ValueChanged<String?>? onClinicalEventChanged;
+  final bool sectionRailCollapsed;
+  final VoidCallback? onToggleSectionRail;
   final VoidCallback? onOpenPatientPicker;
 
   @override
@@ -565,12 +625,13 @@ class _PatientCareBundleView extends StatelessWidget {
       bundle: bundle,
       selectedSection: selectedSection,
       selectedEvent: selectedEvent,
+      compact: compact,
       onClinicalEventChanged: onClinicalEventChanged,
     );
-    return Column(
-      key: const Key('patient-care-bundle-list'),
-      children: <Widget>[
-        if (compact)
+    if (compact) {
+      return ListView(
+        key: const Key('patient-care-bundle-list'),
+        children: <Widget>[
           Align(
             alignment: Alignment.centerLeft,
             child: OutlinedButton.icon(
@@ -580,42 +641,56 @@ class _PatientCareBundleView extends StatelessWidget {
               label: Text(context.l10n.changePatient),
             ),
           ),
-        if (compact) const SizedBox(height: DrAiSpacing.xs),
+          const SizedBox(height: DrAiSpacing.xs),
+          _SelectedPatientSummaryHeader(bundle: bundle),
+          const SizedBox(height: DrAiSpacing.sm),
+          _ActiveClinicalEventBar(
+            bundle: bundle,
+            selectedEvent: selectedEvent,
+            compact: true,
+            onChanged: onClinicalEventChanged,
+          ),
+          const SizedBox(height: DrAiSpacing.xs),
+          _CompactSectionPicker(
+            selectedSection: selectedSection,
+            onChanged: onSectionChanged,
+          ),
+          const SizedBox(height: DrAiSpacing.sm),
+          content,
+          const SizedBox(height: DrAiSpacing.sm),
+        ],
+      );
+    }
+    return Column(
+      key: const Key('patient-care-bundle-list'),
+      children: <Widget>[
         _SelectedPatientSummaryHeader(bundle: bundle),
         const SizedBox(height: DrAiSpacing.sm),
         _ActiveClinicalEventBar(
           bundle: bundle,
           selectedEvent: selectedEvent,
-          compact: compact,
+          compact: false,
           onChanged: onClinicalEventChanged,
         ),
-        SizedBox(height: compact ? DrAiSpacing.xs : DrAiSpacing.sm),
-        if (compact)
-          _CompactSectionPicker(
-            selectedSection: selectedSection,
-            onChanged: onSectionChanged,
-          )
-        else
-          Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                SizedBox(
-                  width: 214,
-                  child: _SectionNavigation(
-                    selectedSection: selectedSection,
-                    onChanged: onSectionChanged,
-                  ),
+        const SizedBox(height: DrAiSpacing.sm),
+        Expanded(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              SizedBox(
+                width: sectionRailCollapsed ? 72 : 214,
+                child: _SectionNavigation(
+                  selectedSection: selectedSection,
+                  collapsed: sectionRailCollapsed,
+                  onToggle: onToggleSectionRail,
+                  onChanged: onSectionChanged,
                 ),
-                const SizedBox(width: DrAiSpacing.sm),
-                Expanded(child: content),
-              ],
-            ),
+              ),
+              const SizedBox(width: DrAiSpacing.sm),
+              Expanded(child: content),
+            ],
           ),
-        if (compact) ...<Widget>[
-          const SizedBox(height: DrAiSpacing.sm),
-          Expanded(child: content),
-        ],
+        ),
       ],
     );
   }
@@ -635,46 +710,60 @@ class _SelectedPatientSummaryHeader extends ConsumerWidget {
     return DecoratedBox(
       key: const Key('selected-patient-summary-header'),
       decoration: BoxDecoration(
-        color: DrAiColors.ink,
-        borderRadius: BorderRadius.circular(DrAiRadii.md),
+        color: DrAiColors.white,
+        borderRadius: BorderRadius.circular(DrAiRadii.lg),
+        border: Border.all(color: DrAiColors.outline),
       ),
       child: Padding(
         padding: const EdgeInsets.all(DrAiSpacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: <Widget>[
-            Wrap(
-              spacing: DrAiSpacing.sm,
-              runSpacing: DrAiSpacing.xs,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: <Widget>[
-                Text(
-                  patient.displayName,
-                  style: const TextStyle(
-                    color: DrAiColors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                _DarkStatusChip(label: _ageSexLabel(context, patient)),
-              ],
+            const CircleAvatar(
+              radius: 28,
+              backgroundColor: DrAiColors.brandSoft,
+              child: Icon(
+                Icons.person_outline_rounded,
+                color: DrAiColors.brand,
+                size: 28,
+              ),
             ),
-            const SizedBox(height: DrAiSpacing.sm),
-            Wrap(
-              spacing: DrAiSpacing.xs,
-              runSpacing: DrAiSpacing.xs,
-              children: <Widget>[
-                _DarkStatusChip(
-                  label: plans.when(
-                    loading: () => context.l10n.recoveryPlanLoading,
-                    error: (error, stackTrace) =>
-                        context.l10n.recoveryPlanUnavailable,
-                    data: (data) => _activePlanLabel(context, data),
+            const SizedBox(width: DrAiSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    patient.displayName,
+                    style: const TextStyle(
+                      color: DrAiColors.ink,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                ),
-                _DarkStatusChip(label: context.l10n.lastVisit(lastVisit)),
-                _DarkStatusChip(label: workflowStatus),
-              ],
+                  const SizedBox(height: DrAiSpacing.xs),
+                  Wrap(
+                    spacing: DrAiSpacing.xs,
+                    runSpacing: DrAiSpacing.xs,
+                    children: <Widget>[
+                      _LightMetricChip(label: patient.syntheticIdentifier),
+                      _LightMetricChip(label: _ageSexLabel(context, patient)),
+                      _LightMetricChip(
+                        label: plans.when(
+                          loading: () => context.l10n.recoveryPlanLoading,
+                          error: (error, stackTrace) =>
+                              context.l10n.recoveryPlanUnavailable,
+                          data: (data) => _activePlanLabel(context, data),
+                        ),
+                      ),
+                      _LightMetricChip(
+                        label: context.l10n.lastVisit(lastVisit),
+                      ),
+                      _LightMetricChip(label: workflowStatus),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -733,17 +822,7 @@ class _ActiveClinicalEventBar extends StatelessWidget {
               ],
             ),
             const SizedBox(height: DrAiSpacing.xs),
-            if (compact)
-              Text(
-                event == null
-                    ? context.l10n.createEventFirst
-                    : '${event.title} - ${event.chiefComplaint}',
-                style: const TextStyle(
-                  color: DrAiColors.mutedInk,
-                  fontSize: 12,
-                ),
-              )
-            else if (events.isEmpty)
+            if (events.isEmpty)
               Text(
                 context.l10n.createEventBeforeCare,
                 style: const TextStyle(
@@ -759,6 +838,7 @@ class _ActiveClinicalEventBar extends StatelessWidget {
                 decoration: InputDecoration(
                   labelText: context.l10n.selectedCareEpisode,
                   prefixIcon: const Icon(Icons.fact_check_outlined),
+                  isDense: compact,
                 ),
                 items: <DropdownMenuItem<String>>[
                   for (final event in events)
@@ -791,73 +871,79 @@ class _ActiveClinicalEventBar extends StatelessWidget {
   }
 }
 
-class _DarkStatusChip extends StatelessWidget {
-  const _DarkStatusChip({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: DrAiColors.sectionHeader,
-        borderRadius: BorderRadius.circular(DrAiRadii.sm),
-        border: Border.all(color: DrAiColors.outlineMuted),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: DrAiSpacing.xs,
-          vertical: 6,
-        ),
-        child: Text(
-          label,
-          style: const TextStyle(color: DrAiColors.white, fontSize: 12),
-        ),
-      ),
-    );
-  }
-}
-
 class _SectionNavigation extends StatelessWidget {
   const _SectionNavigation({
     required this.selectedSection,
+    required this.collapsed,
+    required this.onToggle,
     required this.onChanged,
   });
 
   final _DoctorPatientSection selectedSection;
+  final bool collapsed;
+  final VoidCallback? onToggle;
   final ValueChanged<_DoctorPatientSection>? onChanged;
 
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: DrAiColors.surfaceSubtle,
-        borderRadius: BorderRadius.circular(DrAiRadii.md),
+        color: DrAiColors.white,
+        borderRadius: BorderRadius.circular(DrAiRadii.lg),
         border: Border.all(color: DrAiColors.outline),
       ),
-      child: ListView(
+      child: SingleChildScrollView(
         key: const Key('doctor-workspace-section-nav'),
         padding: const EdgeInsets.all(DrAiSpacing.xs),
-        children: <Widget>[
-          for (final section in _DoctorPatientSection.values)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Material(
-                color: section == selectedSection
-                    ? DrAiColors.patientAccent
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(DrAiRadii.sm),
-                child: ListTile(
-                  key: Key('doctor-section-${section.name}'),
-                  dense: true,
-                  selected: section == selectedSection,
-                  leading: Icon(section.icon, color: DrAiColors.brand),
-                  title: Text(section.localizedLabel(context), maxLines: 2),
-                  onTap: onChanged == null ? null : () => onChanged!(section),
+        child: Column(
+          children: <Widget>[
+            Align(
+              alignment: collapsed ? Alignment.center : Alignment.centerRight,
+              child: IconButton(
+                key: const Key('toggle-section-rail-button'),
+                tooltip: collapsed
+                    ? context.l10n.expandSectionNavigation
+                    : context.l10n.collapseSectionNavigation,
+                onPressed: onToggle,
+                icon: Icon(
+                  collapsed
+                      ? Icons.keyboard_double_arrow_right_rounded
+                      : Icons.keyboard_double_arrow_left_rounded,
                 ),
               ),
             ),
-        ],
+            const Divider(height: 1),
+            const SizedBox(height: DrAiSpacing.xs),
+            for (final section in _DoctorPatientSection.values)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Material(
+                  color: section == selectedSection
+                      ? DrAiColors.brandSoft
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(DrAiRadii.md),
+                  child: ListTile(
+                    key: Key('doctor-section-${section.name}'),
+                    dense: true,
+                    minLeadingWidth: 20,
+                    contentPadding: collapsed
+                        ? const EdgeInsets.symmetric(horizontal: 12)
+                        : const EdgeInsets.symmetric(horizontal: 10),
+                    selected: section == selectedSection,
+                    leading: Icon(section.icon, color: DrAiColors.brand),
+                    title: collapsed
+                        ? null
+                        : Text(section.localizedLabel(context), maxLines: 2),
+                    titleTextStyle: const TextStyle(
+                      color: DrAiColors.ink,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    onTap: onChanged == null ? null : () => onChanged!(section),
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -908,67 +994,77 @@ class _WorkspaceSectionContent extends StatelessWidget {
     required this.bundle,
     required this.selectedSection,
     required this.selectedEvent,
+    required this.compact,
     required this.onClinicalEventChanged,
   });
 
   final PatientCareBundle bundle;
   final _DoctorPatientSection selectedSection;
   final ClinicalEventItem? selectedEvent;
+  final bool compact;
   final ValueChanged<String?>? onClinicalEventChanged;
 
   @override
   Widget build(BuildContext context) {
+    final sectionContent = switch (selectedSection) {
+      _DoctorPatientSection.overview => _OverviewSection(
+        bundle: bundle,
+        selectedEvent: selectedEvent,
+      ),
+      _DoctorPatientSection.profile => _ProfileReviewSection(bundle: bundle),
+      _DoctorPatientSection.medicalHistory => _MedicalHistorySection(
+        bundle: bundle,
+      ),
+      _DoctorPatientSection.clinicalEvents => _ClinicalEventsSection(
+        bundle: bundle,
+        selectedEvent: selectedEvent,
+        onEventChanged: onClinicalEventChanged,
+      ),
+      _DoctorPatientSection.medicationPrescriptions =>
+        _MedicationPrescriptionsSection(
+          bundle: bundle,
+          selectedEvent: selectedEvent,
+        ),
+      _DoctorPatientSection.recoveryPlans => _RecoveryPlanEditor(
+        patientId: bundle.patient.patientId,
+        clinicalEventId: selectedEvent?.id,
+      ),
+      _DoctorPatientSection.imaging => _ImagingSection(
+        bundle: bundle,
+        selectedEvent: selectedEvent,
+      ),
+      _DoctorPatientSection.consultationActivity =>
+        _ConsultationActivitySection(
+          bundle: bundle,
+          selectedEvent: selectedEvent,
+        ),
+    };
     return _SectionScaffold(
       section: selectedSection,
-      child: ListView(
-        key: Key('doctor-section-list-${selectedSection.name}'),
-        children: <Widget>[
-          switch (selectedSection) {
-            _DoctorPatientSection.overview => _OverviewSection(
-              bundle: bundle,
-              selectedEvent: selectedEvent,
+      expandBody: !compact,
+      child: compact
+          ? KeyedSubtree(
+              key: Key('doctor-section-list-${selectedSection.name}'),
+              child: sectionContent,
+            )
+          : ListView(
+              key: Key('doctor-section-list-${selectedSection.name}'),
+              children: <Widget>[sectionContent],
             ),
-            _DoctorPatientSection.profile => _ProfileReviewSection(
-              bundle: bundle,
-            ),
-            _DoctorPatientSection.medicalHistory => _MedicalHistorySection(
-              bundle: bundle,
-            ),
-            _DoctorPatientSection.clinicalEvents => _ClinicalEventsSection(
-              bundle: bundle,
-              selectedEvent: selectedEvent,
-              onEventChanged: onClinicalEventChanged,
-            ),
-            _DoctorPatientSection.medicationPrescriptions =>
-              _MedicationPrescriptionsSection(
-                bundle: bundle,
-                selectedEvent: selectedEvent,
-              ),
-            _DoctorPatientSection.recoveryPlans => _RecoveryPlanEditor(
-              patientId: bundle.patient.patientId,
-              clinicalEventId: selectedEvent?.id,
-            ),
-            _DoctorPatientSection.imaging => _ImagingSection(
-              bundle: bundle,
-              selectedEvent: selectedEvent,
-            ),
-            _DoctorPatientSection.consultationActivity =>
-              _ConsultationActivitySection(
-                bundle: bundle,
-                selectedEvent: selectedEvent,
-              ),
-          },
-        ],
-      ),
     );
   }
 }
 
 class _SectionScaffold extends StatelessWidget {
-  const _SectionScaffold({required this.section, required this.child});
+  const _SectionScaffold({
+    required this.section,
+    required this.child,
+    this.expandBody = true,
+  });
 
   final _DoctorPatientSection section;
   final Widget child;
+  final bool expandBody;
 
   @override
   Widget build(BuildContext context) {
@@ -983,46 +1079,59 @@ class _SectionScaffold extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            ColoredBox(
-              color: DrAiColors.sectionHeader,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: DrAiSpacing.md,
-                  vertical: DrAiSpacing.sm,
-                ),
-                child: Row(
-                  children: <Widget>[
-                    Icon(section.icon, color: DrAiColors.white),
-                    const SizedBox(width: DrAiSpacing.xs),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          Text(
-                            section.localizedLabel(context),
-                            style: Theme.of(context).textTheme.titleMedium
-                                ?.copyWith(color: DrAiColors.white),
-                          ),
-                          Text(
-                            section.localizedSummary(context),
-                            style: const TextStyle(
-                              color: Color(0xFFD8D7EC),
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
+            Padding(
+              padding: const EdgeInsets.all(DrAiSpacing.md),
+              child: Row(
+                children: <Widget>[
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: DrAiColors.brandSoft,
+                      borderRadius: BorderRadius.circular(DrAiRadii.md),
                     ),
-                  ],
-                ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(DrAiSpacing.xs),
+                      child: Icon(section.icon, color: DrAiColors.brand),
+                    ),
+                  ),
+                  const SizedBox(width: DrAiSpacing.sm),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          section.localizedLabel(context),
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(
+                                color: DrAiColors.ink,
+                                fontWeight: FontWeight.w700,
+                              ),
+                        ),
+                        Text(
+                          section.localizedSummary(context),
+                          style: const TextStyle(
+                            color: DrAiColors.mutedInk,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
-            Expanded(
-              child: Padding(
+            const Divider(height: 1),
+            if (expandBody)
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(DrAiSpacing.sm),
+                  child: child,
+                ),
+              )
+            else
+              Padding(
                 padding: const EdgeInsets.all(DrAiSpacing.sm),
                 child: child,
               ),
-            ),
           ],
         ),
       ),
@@ -1038,25 +1147,132 @@ class _OverviewSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        _ProfileHeader(bundle: bundle),
-        const SizedBox(height: DrAiSpacing.sm),
-        _InfoTile(
-          title: context.l10n.clinicalEventReadiness,
-          subtitle: selectedEvent == null
-              ? _workflowStatus(context, bundle)
-              : context.l10n.activeEventStatus(
-                  context.l10n.stableValue(selectedEvent!.status),
+    final plans = _eventRecoveryPlansById(
+      bundle.recoveryPlans,
+      selectedEvent?.id,
+    );
+    final medications = _eventMedications(bundle, selectedEvent);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final twoColumns = constraints.maxWidth >= 760;
+        final cardWidth = twoColumns
+            ? (constraints.maxWidth - DrAiSpacing.sm) / 2
+            : constraints.maxWidth;
+        return Wrap(
+          spacing: DrAiSpacing.sm,
+          runSpacing: DrAiSpacing.sm,
+          children: <Widget>[
+            SizedBox(
+              width: cardWidth,
+              child: _OverviewSummaryCard(
+                icon: Icons.verified_user_outlined,
+                title: context.l10n.verifiedHistory,
+                body: _historyLine(context, bundle),
+                bodyKey: const Key('medical-history-overview-section'),
+              ),
+            ),
+            SizedBox(
+              width: cardWidth,
+              child: _OverviewSummaryCard(
+                icon: Icons.event_note_outlined,
+                title: context.l10n.activeClinicalEvents,
+                body: selectedEvent == null
+                    ? context.l10n.noClinicalEvent
+                    : '${selectedEvent!.title}\n${selectedEvent!.chiefComplaint}\n${_eventLinkSummary(context, selectedEvent!)}',
+              ),
+            ),
+            SizedBox(
+              width: cardWidth,
+              child: _OverviewSummaryCard(
+                icon: Icons.favorite_border_rounded,
+                title: context.l10n.activeRecoveryPlan,
+                body: plans.isEmpty
+                    ? context.l10n.noEventRecoveryPlan
+                    : '${plans.first.title}\n${context.l10n.stableValue(plans.first.status)}',
+              ),
+            ),
+            SizedBox(
+              width: cardWidth,
+              child: _OverviewSummaryCard(
+                icon: Icons.medication_outlined,
+                title: context.l10n.currentMedications,
+                body: medications.isEmpty
+                    ? context.l10n.noMedications
+                    : medications
+                          .take(4)
+                          .map((item) => '${item.name} · ${item.dosage}')
+                          .join('\n'),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _OverviewSummaryCard extends StatelessWidget {
+  const _OverviewSummaryCard({
+    required this.icon,
+    required this.title,
+    required this.body,
+    this.bodyKey,
+  });
+
+  final IconData icon;
+  final String title;
+  final String body;
+  final Key? bodyKey;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: DrAiColors.white,
+        borderRadius: BorderRadius.circular(DrAiRadii.lg),
+        border: Border.all(color: DrAiColors.outline),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(DrAiSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: DrAiColors.brandSoft,
+                    borderRadius: BorderRadius.circular(DrAiRadii.md),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(DrAiSpacing.xs),
+                    child: Icon(icon, color: DrAiColors.brand, size: 20),
+                  ),
                 ),
-          body: selectedEvent == null
-              ? context.l10n.createSelectEventDescription
-              : '${selectedEvent!.title} · ${_eventLinkSummary(context, selectedEvent!)}',
+                const SizedBox(width: DrAiSpacing.sm),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                      color: DrAiColors.ink,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: DrAiSpacing.sm),
+            Text(
+              body,
+              key: bodyKey,
+              style: const TextStyle(
+                color: DrAiColors.inkSecondary,
+                height: 1.45,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: DrAiSpacing.sm),
-        _ClinicalEventContextCard(bundle: bundle, selectedEvent: selectedEvent),
-      ],
+      ),
     );
   }
 }
@@ -4214,46 +4430,59 @@ class _CarePanel extends StatelessWidget {
     required this.title,
     required this.icon,
     required this.child,
+    this.trailing,
   });
 
   final String title;
   final IconData icon;
   final Widget child;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
         color: DrAiColors.white,
-        borderRadius: BorderRadius.circular(DrAiRadii.md),
+        borderRadius: BorderRadius.circular(DrAiRadii.lg),
+        border: Border.all(color: DrAiColors.outline),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          Container(
-            height: 48,
-            padding: const EdgeInsets.symmetric(horizontal: DrAiSpacing.md),
-            decoration: const BoxDecoration(
-              color: DrAiColors.brand,
-              borderRadius: BorderRadius.vertical(
-                top: Radius.circular(DrAiRadii.md),
-              ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              DrAiSpacing.sm,
+              DrAiSpacing.xs,
+              DrAiSpacing.xs,
+              DrAiSpacing.xs,
             ),
             child: Row(
               children: <Widget>[
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: DrAiColors.brandSoft,
+                    borderRadius: BorderRadius.circular(DrAiRadii.md),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(DrAiSpacing.xs),
+                    child: Icon(icon, color: DrAiColors.brand, size: 20),
+                  ),
+                ),
+                const SizedBox(width: DrAiSpacing.xs),
                 Expanded(
                   child: Text(
                     title,
-                    style: const TextStyle(
-                      color: DrAiColors.white,
-                      fontSize: 18,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: DrAiColors.ink,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
-                Icon(icon, color: DrAiColors.white),
+                ?trailing,
               ],
             ),
           ),
+          const Divider(height: 1),
           Expanded(
             child: Padding(
               padding: const EdgeInsets.all(DrAiSpacing.sm),

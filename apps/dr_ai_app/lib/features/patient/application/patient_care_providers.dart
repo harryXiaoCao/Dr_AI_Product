@@ -180,6 +180,25 @@ class PatientOnboardingController extends StateNotifier<AsyncValue<void>> {
         homeAddress: homeAddress,
         heightCm: heightCm,
         weightKg: weightKg,
+        bloodType: bloodType,
+        systolicBloodPressure: systolicBloodPressure,
+        diastolicBloodPressure: diastolicBloodPressure,
+        smokingStatus: smokingStatus,
+        alcoholConsumption: alcoholConsumption,
+        heartHistory: conditionDetails['Heart or blood vessel history'] ?? '',
+        endocrineHistory:
+            conditionDetails['Diabetes, thyroid, or bone health'] ?? '',
+        neuroHistory: conditionDetails['Brain, mood, or nervous system'] ?? '',
+        digestiveHistory:
+            conditionDetails['Stomach, bowel, or liver history'] ?? '',
+        respiratoryHistory: conditionDetails['Lung or breathing history'] ?? '',
+        kidneyHistory: conditionDetails['Kidney or urinary history'] ?? '',
+        cancerHistory: conditionDetails['Cancer or active treatment'] ?? '',
+        patientReportedMedications: currentMedications,
+        surgeryHistory: surgeryHistory,
+        familyHistory: familyHistory,
+        lifestyleNotes: lifestyleNotes,
+        pregnancyStatus: pregnancyStatus,
         medicalHistorySetupCompleted: true,
       );
       if (hasAllergies && allergyLabel.trim().isNotEmpty) {
@@ -218,29 +237,6 @@ class PatientOnboardingController extends StateNotifier<AsyncValue<void>> {
           );
         }
       }
-      final intakeSummary = _medicalIntakeSummary(
-        heightCm: heightCm,
-        weightKg: weightKg,
-        bloodType: bloodType,
-        systolicBloodPressure: systolicBloodPressure,
-        diastolicBloodPressure: diastolicBloodPressure,
-        smokingStatus: smokingStatus,
-        alcoholConsumption: alcoholConsumption,
-        conditionDetails: conditionDetails,
-        currentMedications: currentMedications,
-        surgeryHistory: surgeryHistory,
-        familyHistory: familyHistory,
-        lifestyleNotes: lifestyleNotes,
-        pregnancyStatus: pregnancyStatus,
-      );
-      if (intakeSummary.isNotEmpty) {
-        await _repository.createPatientMedicalRecord(
-          patientId: patientId,
-          title: 'Patient intake summary',
-          category: 'intake_summary',
-          summary: intakeSummary,
-        );
-      }
       _ref.invalidate(ownPatientCareProvider);
       _ref.invalidate(dashboardProvider);
       state = const AsyncData<void>(null);
@@ -248,51 +244,6 @@ class PatientOnboardingController extends StateNotifier<AsyncValue<void>> {
       state = AsyncError<void>(error, stackTrace);
     }
   }
-}
-
-String _medicalIntakeSummary({
-  required String heightCm,
-  required String weightKg,
-  required String bloodType,
-  required String systolicBloodPressure,
-  required String diastolicBloodPressure,
-  required String smokingStatus,
-  required String alcoholConsumption,
-  required Map<String, String> conditionDetails,
-  required String currentMedications,
-  required String surgeryHistory,
-  required String familyHistory,
-  required String lifestyleNotes,
-  required String pregnancyStatus,
-}) {
-  final bloodPressure =
-      systolicBloodPressure.trim().isEmpty ||
-          diastolicBloodPressure.trim().isEmpty
-      ? ''
-      : '${systolicBloodPressure.trim()}/${diastolicBloodPressure.trim()} mmHg';
-  final lines = <String>[
-    if (heightCm.trim().isNotEmpty) 'Height: ${heightCm.trim()} cm',
-    if (weightKg.trim().isNotEmpty) 'Weight: ${weightKg.trim()} kg',
-    if (bloodType.trim().isNotEmpty) 'Blood type: ${bloodType.trim()}',
-    if (bloodPressure.isNotEmpty) 'Blood pressure: $bloodPressure',
-    if (smokingStatus.trim().isNotEmpty)
-      'Smoking status: ${smokingStatus.trim()}',
-    if (alcoholConsumption.trim().isNotEmpty)
-      'Alcohol consumption: ${alcoholConsumption.trim()}',
-    for (final entry in conditionDetails.entries)
-      if (entry.value.trim().isNotEmpty) '${entry.key}: ${entry.value.trim()}',
-    if (currentMedications.trim().isNotEmpty)
-      'Current medications: ${currentMedications.trim()}',
-    if (surgeryHistory.trim().isNotEmpty)
-      'Surgery or hospitalization history: ${surgeryHistory.trim()}',
-    if (familyHistory.trim().isNotEmpty)
-      'Family medical history: ${familyHistory.trim()}',
-    if (lifestyleNotes.trim().isNotEmpty)
-      'Smoking, alcohol, exercise, and sleep notes: ${lifestyleNotes.trim()}',
-    if (pregnancyStatus.trim().isNotEmpty)
-      'Pregnancy status: ${pregnancyStatus.trim()}',
-  ];
-  return lines.join('\n');
 }
 
 final assessmentListProvider = FutureProvider.autoDispose

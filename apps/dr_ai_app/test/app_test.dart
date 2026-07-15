@@ -255,7 +255,7 @@ void main() {
       expect(find.byKey(const Key('patient-onboarding-list')), findsOneWidget);
       await tester.enterText(
         find.byKey(const Key('onboarding-name-field')),
-        'Riley Patient',
+        '曹',
       );
       await tester.dragUntilVisible(
         find.byKey(const Key('onboarding-height-field')),
@@ -453,6 +453,10 @@ void main() {
     await tester.tap(find.text('My Account'));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('interface-language-field')), findsNothing);
+    await tester.ensureVisible(
+      find.byKey(const Key('patient-account-edit-profile-button')),
+    );
+    await tester.pumpAndSettle();
     await tester.tap(
       find.byKey(const Key('patient-account-edit-profile-button')),
     );
@@ -726,7 +730,7 @@ void main() {
     expect(find.byKey(const Key('beta-support-list')), findsOneWidget);
   });
 
-  testWidgets('patient role cannot navigate to the doctor route', (
+  testWidgets('patient role cannot navigate to doctor-only resources', (
     tester,
   ) async {
     final router = createRouter(AppRole.patient);
@@ -746,7 +750,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    router.go('/doctor');
+    router.go('/doctor/resources/KBS-MEDLINEPLUS-HIGH-BLOOD-PRESSURE/read');
     await tester.pumpAndSettle();
 
     expect(find.byIcon(Icons.lock_outline), findsOneWidget);
@@ -890,7 +894,26 @@ void main() {
     );
     await tester.pumpAndSettle();
     await tester.enterText(find.byKey(const Key('onboarding-email-field')), '');
-    for (var index = 0; index < 8; index++) {
+    for (var index = 0; index < 2; index++) {
+      await tester.drag(
+        find.byKey(const Key('patient-onboarding-list')),
+        const Offset(0, -420),
+      );
+      await tester.pumpAndSettle();
+    }
+    await tester.tap(find.byKey(const Key('onboarding-blood-type-field')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('A+').last);
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('onboarding-systolic-field')),
+      '126',
+    );
+    await tester.enterText(
+      find.byKey(const Key('onboarding-diastolic-field')),
+      '82',
+    );
+    for (var index = 0; index < 6; index++) {
       await tester.drag(
         find.byKey(const Key('patient-onboarding-list')),
         const Offset(0, -520),
@@ -901,7 +924,42 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(repository.accountEmailUpdated, isTrue);
+    expect(repository.patientProfileUpdated, isTrue);
+    expect(repository.lastPatientBloodType, 'A+');
+    expect(repository.patientMedicalRecordCreated, isFalse);
+    expect(repository.patientCareBundle.patient.systolicBloodPressure, 126);
+    expect(repository.patientCareBundle.patient.diastolicBloodPressure, 82);
     expect(find.byKey(const Key('patient-account-email-error')), findsNothing);
+
+    await tester.tap(
+      find.byKey(const Key('patient-account-edit-profile-button')),
+    );
+    await tester.pumpAndSettle();
+    for (var index = 0; index < 2; index++) {
+      await tester.drag(
+        find.byKey(const Key('patient-onboarding-list')),
+        const Offset(0, -420),
+      );
+      await tester.pumpAndSettle();
+    }
+    expect(
+      tester
+          .widget<TextFormField>(
+            find.byKey(const Key('onboarding-systolic-field')),
+          )
+          .controller
+          ?.text,
+      '126',
+    );
+    expect(
+      tester
+          .widget<TextFormField>(
+            find.byKey(const Key('onboarding-diastolic-field')),
+          )
+          .controller
+          ?.text,
+      '82',
+    );
   });
 
   testWidgets('doctor can search and open assigned patient management', (
@@ -1152,6 +1210,52 @@ void main() {
       findsOneWidget,
     );
     expect(find.byKey(const Key('doctor-workspace-section-nav')), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('doctor workspace sidebars collapse without losing sections', (
+    tester,
+  ) async {
+    setViewport(tester, const Size(1280, 832));
+    await pumpApp(tester, FakeDrAiRepository(restoredSession: doctorSession));
+    await openDoctorPatientWorkflow(tester, section: 'overview');
+
+    for (final section in <String>[
+      'overview',
+      'profile',
+      'medicalHistory',
+      'clinicalEvents',
+      'medicationPrescriptions',
+      'recoveryPlans',
+      'imaging',
+      'consultationActivity',
+    ]) {
+      expect(find.byKey(Key('doctor-section-$section')), findsOneWidget);
+    }
+
+    await tester.tap(find.byKey(const Key('collapse-patient-pane-button')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('collapsed-patient-pane')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('expand-patient-pane-button')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('patient-search-field')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('toggle-section-rail-button')));
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<ListTile>(find.byKey(const Key('doctor-section-overview')))
+          .title,
+      isNull,
+    );
+    await tester.tap(find.byKey(const Key('toggle-section-rail-button')));
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<ListTile>(find.byKey(const Key('doctor-section-overview')))
+          .title,
+      isNotNull,
+    );
     expect(tester.takeException(), isNull);
   });
 
@@ -1425,6 +1529,13 @@ void main() {
       find.byKey(const Key('consultation-summary-field')),
       'Review respiratory symptoms and recent imaging.',
     );
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.dragUntilVisible(
+      find.byKey(const Key('consultation-request-button')),
+      find.byKey(const Key('doctor-section-list-consultationActivity')),
+      const Offset(0, -240),
+    );
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('consultation-request-button')));
     await tester.pumpAndSettle();
 
@@ -1483,8 +1594,13 @@ void main() {
     await tester.dragUntilVisible(
       find.byKey(const Key('patient-account-change-password-button')),
       find.byKey(const Key('patient-account-list')),
-      const Offset(0, -320),
+      const Offset(0, -240),
     );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(
+      find.byKey(const Key('patient-account-change-password-button')),
+    );
+    await tester.pumpAndSettle();
     await tester.tap(
       find.byKey(const Key('patient-account-change-password-button')),
     );

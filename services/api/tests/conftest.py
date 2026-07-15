@@ -43,6 +43,11 @@ def clean_database(migrated_database: None) -> Generator[None]:
         connection.execute(
             text(
                 "TRUNCATE phone_verification_challenges, support_requests, "
+                "kb_retrieval_events, kb_index_release_passages, kb_terms, kb_passages, "
+                "kb_sections, kb_summary_artifacts, kb_translation_sections, "
+                "kb_translation_artifacts, "
+                "kb_active_index_releases, kb_reviews, kb_source_versions, "
+                "kb_index_releases, kb_sources, kb_rights_records, kb_publishers, "
                 "analytics_events, revenue_summaries, "
                 "payment_statuses, invoices, notifications, medication_reminders, "
                 "prescription_medications, prescriptions, equipment_bookings, "

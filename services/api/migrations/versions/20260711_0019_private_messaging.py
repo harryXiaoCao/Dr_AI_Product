@@ -20,7 +20,12 @@ def upgrade() -> None:
     op.add_column("chat_threads", sa.Column("doctor_id", sa.Uuid(), nullable=True))
     op.add_column(
         "chat_threads",
-        sa.Column("thread_type", sa.String(length=40), nullable=False, server_default="educational"),
+        sa.Column(
+            "thread_type",
+            sa.String(length=40),
+            nullable=False,
+            server_default="educational",
+        ),
     )
     op.create_foreign_key(
         "fk_chat_threads_doctor_id",
@@ -30,7 +35,11 @@ def upgrade() -> None:
         ["id"],
         ondelete="CASCADE",
     )
-    op.create_index("ix_chat_threads_doctor_updated", "chat_threads", ["doctor_id", "last_message_at"])
+    op.create_index(
+        "ix_chat_threads_doctor_updated",
+        "chat_threads",
+        ["doctor_id", "last_message_at"],
+    )
     op.add_column("chat_messages", sa.Column("content", sa.Text(), nullable=True))
 
 

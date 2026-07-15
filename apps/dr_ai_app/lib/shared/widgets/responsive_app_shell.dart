@@ -29,6 +29,11 @@ class ResponsiveAppShell extends ConsumerWidget {
           label: context.l10n.patientManagement,
         ),
         NavigationDestination(
+          icon: Icon(Icons.menu_book_outlined),
+          selectedIcon: Icon(Icons.menu_book),
+          label: context.l10n.resources,
+        ),
+        NavigationDestination(
           icon: Icon(Icons.chat_bubble_outline),
           label: context.l10n.contacts,
         ),
@@ -69,12 +74,27 @@ class ResponsiveAppShell extends ConsumerWidget {
       return Scaffold(
         appBar: _appBar(context),
         body: child,
-        bottomNavigationBar: NavigationBar(
-          height: 66,
-          selectedIndex: selectedIndex,
-          onDestinationSelected: (index) => _goToDestination(context, index),
-          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-          destinations: destinations,
+        bottomNavigationBar: DecoratedBox(
+          decoration: const BoxDecoration(
+            color: DrAiColors.white,
+            border: Border(top: BorderSide(color: DrAiColors.outline)),
+          ),
+          child: NavigationBarTheme(
+            data: _navigationBarTheme(context),
+            child: NavigationBar(
+              height: role == AppRole.doctor ? 74 : 68,
+              backgroundColor: DrAiColors.white,
+              surfaceTintColor: Colors.transparent,
+              elevation: 0,
+              selectedIndex: selectedIndex,
+              onDestinationSelected: (index) =>
+                  _goToDestination(context, index),
+              labelBehavior: role == AppRole.doctor
+                  ? NavigationDestinationLabelBehavior.onlyShowSelected
+                  : NavigationDestinationLabelBehavior.alwaysShow,
+              destinations: destinations,
+            ),
+          ),
         ),
       );
     }
@@ -84,24 +104,42 @@ class ResponsiveAppShell extends ConsumerWidget {
         body: SafeArea(
           child: Row(
             children: <Widget>[
-              NavigationRail(
-                selectedIndex: selectedIndex,
-                onDestinationSelected: (index) =>
-                    _goToDestination(context, index),
-                labelType: width >= 760
-                    ? NavigationRailLabelType.all
-                    : NavigationRailLabelType.selected,
-                destinations: destinations
-                    .map(
-                      (destination) => NavigationRailDestination(
-                        icon: destination.icon,
-                        selectedIcon: destination.selectedIcon,
-                        label: Text(destination.label),
-                      ),
-                    )
-                    .toList(),
+              DecoratedBox(
+                decoration: const BoxDecoration(
+                  color: DrAiColors.white,
+                  border: Border(right: BorderSide(color: DrAiColors.outline)),
+                ),
+                child: NavigationRail(
+                  backgroundColor: DrAiColors.white,
+                  indicatorColor: DrAiColors.brandSoft,
+                  selectedIconTheme: const IconThemeData(
+                    color: DrAiColors.brand,
+                  ),
+                  selectedLabelTextStyle: const TextStyle(
+                    color: DrAiColors.brand,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  unselectedIconTheme: const IconThemeData(
+                    color: DrAiColors.inkSecondary,
+                  ),
+                  groupAlignment: -0.75,
+                  selectedIndex: selectedIndex,
+                  onDestinationSelected: (index) =>
+                      _goToDestination(context, index),
+                  labelType: width >= 760
+                      ? NavigationRailLabelType.all
+                      : NavigationRailLabelType.selected,
+                  destinations: destinations
+                      .map(
+                        (destination) => NavigationRailDestination(
+                          icon: destination.icon,
+                          selectedIcon: destination.selectedIcon,
+                          label: Text(destination.label),
+                        ),
+                      )
+                      .toList(),
+                ),
               ),
-              const VerticalDivider(width: 1),
               Expanded(
                 child: Column(
                   children: <Widget>[
@@ -130,11 +168,26 @@ class ResponsiveAppShell extends ConsumerWidget {
 
   AppBar _appBar(BuildContext context) {
     return AppBar(
+      backgroundColor: DrAiColors.white,
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
+      scrolledUnderElevation: 0,
       leading: const Padding(
         padding: EdgeInsets.all(10),
         child: DrAiBrandMark(size: 32),
       ),
-      title: Text(context.l10n.appName),
+      titleSpacing: 2,
+      title: Text(
+        context.l10n.appName,
+        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+          color: DrAiColors.ink,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+      bottom: const PreferredSize(
+        preferredSize: Size.fromHeight(1),
+        child: Divider(height: 1, color: DrAiColors.outline),
+      ),
     );
   }
 
@@ -156,16 +209,7 @@ class ResponsiveAppShell extends ConsumerWidget {
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                 ],
-                if (!compact && role == AppRole.doctor) ...<Widget>[
-                  const SizedBox(width: DrAiSpacing.xl),
-                  Expanded(
-                    child: SearchBar(
-                      hintText: context.l10n.searchDoctor,
-                      leading: const Icon(Icons.search),
-                    ),
-                  ),
-                ] else
-                  const Spacer(),
+                const Spacer(),
                 if (!compact) ...<Widget>[
                   const SizedBox(width: DrAiSpacing.md),
                   Flexible(
@@ -186,37 +230,70 @@ class ResponsiveAppShell extends ConsumerWidget {
   }
 
   Widget _doctorDesktopHeader(BuildContext context) {
-    return ColoredBox(
-      color: DrAiColors.white,
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        color: DrAiColors.white,
+        border: Border(bottom: BorderSide(color: DrAiColors.outline)),
+      ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: DrAiSpacing.md),
         child: Row(
           children: <Widget>[
             const DrAiBrandMark(size: 38),
-            const SizedBox(width: DrAiSpacing.xl),
-            SizedBox(
-              width: 280,
-              height: 48,
-              child: SearchBar(
-                hintText: context.l10n.searchDoctorWide,
-                leading: const Icon(Icons.search),
+            const SizedBox(width: DrAiSpacing.xs),
+            Text(
+              context.l10n.appName,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                color: DrAiColors.ink,
+                fontWeight: FontWeight.w800,
               ),
             ),
             const SizedBox(width: DrAiSpacing.xl),
             Expanded(
-              child: NavigationBar(
-                height: 52,
-                selectedIndex: selectedIndex,
-                onDestinationSelected: (index) =>
-                    _goToDestination(context, index),
-                labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-                destinations: _doctorDestinations(context),
+              child: NavigationBarTheme(
+                data: _navigationBarTheme(context),
+                child: NavigationBar(
+                  height: 52,
+                  backgroundColor: Colors.transparent,
+                  surfaceTintColor: Colors.transparent,
+                  elevation: 0,
+                  selectedIndex: selectedIndex,
+                  onDestinationSelected: (index) =>
+                      _goToDestination(context, index),
+                  labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+                  destinations: _doctorDestinations(context),
+                ),
               ),
             ),
             const SizedBox(width: DrAiSpacing.md),
           ],
         ),
       ),
+    );
+  }
+
+  NavigationBarThemeData _navigationBarTheme(BuildContext context) {
+    return NavigationBarThemeData(
+      indicatorColor: DrAiColors.brandSoft,
+      iconTheme: WidgetStateProperty.resolveWith<IconThemeData>((states) {
+        return IconThemeData(
+          color: states.contains(WidgetState.selected)
+              ? DrAiColors.brand
+              : DrAiColors.inkSecondary,
+          size: 22,
+        );
+      }),
+      labelTextStyle: WidgetStateProperty.resolveWith<TextStyle>((states) {
+        return (Theme.of(context).textTheme.labelMedium ?? const TextStyle())
+            .copyWith(
+              color: states.contains(WidgetState.selected)
+                  ? DrAiColors.brand
+                  : DrAiColors.inkSecondary,
+              fontWeight: states.contains(WidgetState.selected)
+                  ? FontWeight.w700
+                  : FontWeight.w500,
+            );
+      }),
     );
   }
 
@@ -227,10 +304,14 @@ class ResponsiveAppShell extends ConsumerWidget {
         return;
       }
       if (index == 2) {
-        context.go('/doctor/contact');
+        context.go('/doctor/resources');
         return;
       }
       if (index == 3) {
+        context.go('/doctor/contact');
+        return;
+      }
+      if (index == 4) {
         context.go('/doctor/account');
         return;
       }

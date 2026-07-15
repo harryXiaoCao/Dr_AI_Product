@@ -18,7 +18,7 @@ class DoctorContactsScreen extends ConsumerWidget {
     final contacts = ref.watch(doctorPatientContactsProvider);
     return ResponsiveAppShell(
       role: AppRole.doctor,
-      selectedIndex: 2,
+      selectedIndex: 3,
       child: ColoredBox(
         color: DrAiColors.pageBackground,
         child: Center(

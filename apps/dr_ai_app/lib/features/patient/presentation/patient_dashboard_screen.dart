@@ -417,6 +417,21 @@ class _PatientAccountView extends ConsumerWidget {
                     ? null
                     : '${_formatProfileNumber(bundle.patient.weightKg!)} kg',
               ),
+              _AccountLine(
+                label: context.l10n.bloodType,
+                value: bundle.patient.bloodType == null
+                    ? null
+                    : context.l10n.stableValue(bundle.patient.bloodType!),
+              ),
+              _AccountLine(
+                label: context.l10n.bloodPressure,
+                value:
+                    bundle.patient.systolicBloodPressure == null ||
+                        bundle.patient.diastolicBloodPressure == null
+                    ? null
+                    : '${bundle.patient.systolicBloodPressure}/'
+                          '${bundle.patient.diastolicBloodPressure} mmHg',
+              ),
               const SizedBox(height: DrAiSpacing.sm),
               FilledButton.icon(
                 key: const Key('patient-account-edit-profile-button'),
@@ -474,6 +489,28 @@ class _PatientAccountView extends ConsumerWidget {
             homeAddress: bundle.patient.homeAddress ?? '',
             heightCm: _nullableProfileNumber(bundle.patient.heightCm),
             weightKg: _nullableProfileNumber(bundle.patient.weightKg),
+            bloodType: bundle.patient.bloodType ?? 'Unknown',
+            systolicBloodPressure:
+                bundle.patient.systolicBloodPressure?.toString() ?? '',
+            diastolicBloodPressure:
+                bundle.patient.diastolicBloodPressure?.toString() ?? '',
+            smokingStatus: bundle.patient.smokingStatus ?? 'Never',
+            alcoholConsumption:
+                bundle.patient.alcoholConsumption ?? 'None or rare',
+            heartHistory: bundle.patient.heartHistory ?? '',
+            endocrineHistory: bundle.patient.endocrineHistory ?? '',
+            neuroHistory: bundle.patient.neuroHistory ?? '',
+            digestiveHistory: bundle.patient.digestiveHistory ?? '',
+            respiratoryHistory: bundle.patient.respiratoryHistory ?? '',
+            kidneyHistory: bundle.patient.kidneyHistory ?? '',
+            cancerHistory: bundle.patient.cancerHistory ?? '',
+            patientReportedMedications:
+                bundle.patient.patientReportedMedications ?? '',
+            surgeryHistory: bundle.patient.surgeryHistory ?? '',
+            familyHistory: bundle.patient.familyHistory ?? '',
+            lifestyleNotes: bundle.patient.lifestyleNotes ?? '',
+            pregnancyStatus:
+                bundle.patient.pregnancyStatus ?? 'Prefer not to say',
             medicalHistorySetupCompleted:
                 bundle.patient.medicalHistorySetupCompleted,
           );
@@ -984,6 +1021,78 @@ class _PatientMedicalSurveyScreenState
     _homeAddressController.text = patient.homeAddress ?? '';
     _heightController.text = _nullableProfileNumber(patient.heightCm);
     _weightController.text = _nullableProfileNumber(patient.weightKg);
+    _bloodType = _knownOption(patient.bloodType, <String>[
+      'Unknown',
+      'A+',
+      'A-',
+      'B+',
+      'B-',
+      'AB+',
+      'AB-',
+      'O+',
+      'O-',
+    ], _bloodType);
+    _systolicController.text = patient.systolicBloodPressure?.toString() ?? '';
+    _diastolicController.text =
+        patient.diastolicBloodPressure?.toString() ?? '';
+    _smokingStatus = _knownOption(patient.smokingStatus, <String>[
+      'Never',
+      'Former',
+      'Current',
+    ], _smokingStatus);
+    _alcoholConsumption = _knownOption(patient.alcoholConsumption, <String>[
+      'None or rare',
+      'Occasional',
+      'Weekly',
+      'Daily',
+    ], _alcoholConsumption);
+    _seedCondition(
+      patient.heartHistory,
+      _heartDetailsController,
+      (value) => _hasHeartIssue = value,
+    );
+    _seedCondition(
+      patient.endocrineHistory,
+      _endocrineDetailsController,
+      (value) => _hasEndocrineIssue = value,
+    );
+    _seedCondition(
+      patient.neuroHistory,
+      _neuroDetailsController,
+      (value) => _hasNeuroIssue = value,
+    );
+    _seedCondition(
+      patient.digestiveHistory,
+      _digestiveDetailsController,
+      (value) => _hasDigestiveIssue = value,
+    );
+    _seedCondition(
+      patient.respiratoryHistory,
+      _respiratoryDetailsController,
+      (value) => _hasRespiratoryIssue = value,
+    );
+    _seedCondition(
+      patient.kidneyHistory,
+      _kidneyDetailsController,
+      (value) => _hasKidneyIssue = value,
+    );
+    _seedCondition(
+      patient.cancerHistory,
+      _cancerDetailsController,
+      (value) => _hasCancerIssue = value,
+    );
+    _currentMedicationsController.text =
+        patient.patientReportedMedications ?? '';
+    _surgeryHistoryController.text = patient.surgeryHistory ?? '';
+    _familyHistoryController.text = patient.familyHistory ?? '';
+    _lifestyleNotesController.text = patient.lifestyleNotes ?? '';
+    _pregnancyStatus = _knownOption(patient.pregnancyStatus, <String>[
+      'Prefer not to say',
+      'Not applicable',
+      'No',
+      'Yes',
+      'Unsure',
+    ], _pregnancyStatus);
     _country = _knownLocationCountry(patient.country);
     _province = _knownLocationProvince(_country, patient.province);
     _city = _knownLocationCity(_country, _province, patient.city);
@@ -1019,6 +1128,16 @@ class _PatientMedicalSurveyScreenState
       _conditionNameController.text = condition.name;
       _conditionNotesController.text = condition.notes ?? '';
     }
+  }
+
+  void _seedCondition(
+    String? detail,
+    TextEditingController controller,
+    ValueChanged<bool> setEnabled,
+  ) {
+    final normalized = detail?.trim() ?? '';
+    setEnabled(normalized.isNotEmpty);
+    controller.text = normalized;
   }
 
   Widget _surveyForm(
@@ -1299,7 +1418,7 @@ class _PatientMedicalSurveyScreenState
           Row(
             children: <Widget>[
               Expanded(
-                child: _decimalTextField(
+                child: _integerTextField(
                   controller: _systolicController,
                   label: context.l10n.systolicBp,
                   keyName: 'onboarding-systolic-field',
@@ -1307,7 +1426,7 @@ class _PatientMedicalSurveyScreenState
               ),
               const SizedBox(width: DrAiSpacing.sm),
               Expanded(
-                child: _decimalTextField(
+                child: _integerTextField(
                   controller: _diastolicController,
                   label: context.l10n.diastolicBp,
                   keyName: 'onboarding-diastolic-field',
@@ -1715,7 +1834,7 @@ class _PatientMedicalSurveyScreenState
       label: label,
       keyName: keyName,
       validator: (value) {
-        if ((value?.trim() ?? '').length < 2) {
+        if ((value?.trim() ?? '').isEmpty) {
           return context.l10n.required;
         }
         return null;
@@ -1791,6 +1910,29 @@ class _PatientMedicalSurveyScreenState
           return context.l10n.required;
         }
         if (text.isNotEmpty && double.tryParse(text) == null) {
+          return context.l10n.useNumbersOnly;
+        }
+        return null;
+      },
+    );
+  }
+
+  Widget _integerTextField({
+    required TextEditingController controller,
+    required String label,
+    required String keyName,
+  }) {
+    return TextFormField(
+      key: Key(keyName),
+      controller: controller,
+      keyboardType: TextInputType.number,
+      decoration: InputDecoration(
+        labelText: label,
+        border: const OutlineInputBorder(),
+      ),
+      validator: (value) {
+        final text = value?.trim() ?? '';
+        if (text.isNotEmpty && int.tryParse(text) == null) {
           return context.l10n.useNumbersOnly;
         }
         return null;

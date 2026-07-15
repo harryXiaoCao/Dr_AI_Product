@@ -143,6 +143,23 @@ class PatientProfile(Base):
     home_address: Mapped[str | None] = mapped_column(String(240))
     height_cm: Mapped[float | None] = mapped_column(Float)
     weight_kg: Mapped[float | None] = mapped_column(Float)
+    blood_type: Mapped[str | None] = mapped_column(String(10))
+    systolic_blood_pressure: Mapped[int | None] = mapped_column(Integer)
+    diastolic_blood_pressure: Mapped[int | None] = mapped_column(Integer)
+    smoking_status: Mapped[str | None] = mapped_column(String(40))
+    alcohol_consumption: Mapped[str | None] = mapped_column(String(40))
+    heart_history: Mapped[str | None] = mapped_column(Text)
+    endocrine_history: Mapped[str | None] = mapped_column(Text)
+    neuro_history: Mapped[str | None] = mapped_column(Text)
+    digestive_history: Mapped[str | None] = mapped_column(Text)
+    respiratory_history: Mapped[str | None] = mapped_column(Text)
+    kidney_history: Mapped[str | None] = mapped_column(Text)
+    cancer_history: Mapped[str | None] = mapped_column(Text)
+    patient_reported_medications: Mapped[str | None] = mapped_column(Text)
+    surgery_history: Mapped[str | None] = mapped_column(Text)
+    family_history: Mapped[str | None] = mapped_column(Text)
+    lifestyle_notes: Mapped[str | None] = mapped_column(Text)
+    pregnancy_status: Mapped[str | None] = mapped_column(String(40))
     medical_history_setup_completed: Mapped[bool] = mapped_column(Boolean, default=False)
 
     user: Mapped[User] = relationship(back_populates="patient_profile")
@@ -1364,3 +1381,392 @@ class SupportRequest(Base):
     requester: Mapped[User | None] = relationship(foreign_keys=[requester_user_id])
     patient: Mapped[PatientProfile | None] = relationship()
     assigned_to: Mapped[User | None] = relationship(foreign_keys=[assigned_to_user_id])
+
+
+class KbPublisher(Base):
+    __tablename__ = "kb_publishers"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    stable_id: Mapped[str] = mapped_column(String(120), unique=True, index=True)
+    official_name_zh: Mapped[str] = mapped_column(String(240))
+    official_name_en: Mapped[str | None] = mapped_column(String(240))
+    organization_type: Mapped[str] = mapped_column(String(80))
+    authority_basis: Mapped[str] = mapped_column(Text)
+    authority_evidence_locator: Mapped[str] = mapped_column(Text)
+    verified_domains_json: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    jurisdiction: Mapped[str] = mapped_column(String(40))
+    review_status: Mapped[str] = mapped_column(String(40), default="pending")
+    allowed_content_classes_json: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class KbRightsRecord(Base):
+    __tablename__ = "kb_rights_records"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    stable_id: Mapped[str] = mapped_column(String(120), unique=True, index=True)
+    publisher_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("kb_publishers.id", ondelete="CASCADE"), index=True
+    )
+    source_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("kb_sources.id", ondelete="CASCADE"), index=True
+    )
+    scope: Mapped[str] = mapped_column(String(40))
+    license_name: Mapped[str | None] = mapped_column(String(200))
+    permission_reference: Mapped[str | None] = mapped_column(Text)
+    commercial_use_allowed: Mapped[bool] = mapped_column(Boolean, default=False)
+    storage_allowed: Mapped[bool] = mapped_column(Boolean, default=False)
+    transformation_allowed: Mapped[bool] = mapped_column(Boolean, default=False)
+    translation_allowed: Mapped[bool] = mapped_column(Boolean, default=False)
+    embedding_allowed: Mapped[bool] = mapped_column(Boolean, default=False)
+    excerpt_display_allowed: Mapped[bool] = mapped_column(Boolean, default=False)
+    model_provider_transmission_allowed: Mapped[bool] = mapped_column(Boolean, default=False)
+    redistribution_allowed: Mapped[bool] = mapped_column(Boolean, default=False)
+    prior_version_retention_allowed: Mapped[bool] = mapped_column(Boolean, default=False)
+    attribution_requirements: Mapped[str | None] = mapped_column(Text)
+    evidence_checksum: Mapped[str] = mapped_column(String(64))
+    evidence_locator: Mapped[str] = mapped_column(Text)
+    decision_status: Mapped[str] = mapped_column(String(40), default="pending")
+    legal_reviewer_id: Mapped[str | None] = mapped_column(String(120))
+    effective_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class KbSource(Base):
+    __tablename__ = "kb_sources"
+    __table_args__ = (
+        Index("ix_kb_sources_catalog_status", "catalog_visible", "status"),
+        Index("ix_kb_sources_publisher_topic", "publisher_id", "topic"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    stable_id: Mapped[str] = mapped_column(String(120), unique=True, index=True)
+    publisher_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("kb_publishers.id", ondelete="RESTRICT")
+    )
+    rights_record_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("kb_rights_records.id", ondelete="RESTRICT")
+    )
+    title: Mapped[str] = mapped_column(String(500))
+    canonical_locator: Mapped[str] = mapped_column(Text, unique=True)
+    source_type: Mapped[str] = mapped_column(String(80))
+    jurisdiction: Mapped[str] = mapped_column(String(40))
+    intended_audiences_json: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    topic: Mapped[str] = mapped_column(String(120))
+    specialty: Mapped[str | None] = mapped_column(String(120))
+    population: Mapped[str | None] = mapped_column(String(120))
+    original_language: Mapped[str] = mapped_column(String(20))
+    official_translations_json: Mapped[list[dict[str, str]]] = mapped_column(JSONB, default=list)
+    catalog_summary: Mapped[str] = mapped_column(Text)
+    search_keywords_json: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    publication_date: Mapped[date | None] = mapped_column(Date)
+    effective_date: Mapped[date | None] = mapped_column(Date)
+    review_due_date: Mapped[date | None] = mapped_column(Date)
+    expiry_date: Mapped[date | None] = mapped_column(Date)
+    authority_tier: Mapped[str] = mapped_column(String(4))
+    lifecycle_state: Mapped[str] = mapped_column(String(60), default="discovered")
+    medical_review_status: Mapped[str] = mapped_column(String(40), default="pending")
+    native_language_review_status: Mapped[str] = mapped_column(String(40), default="pending")
+    doctor_eligible: Mapped[bool] = mapped_column(Boolean, default=False)
+    patient_eligible: Mapped[bool] = mapped_column(Boolean, default=False)
+    catalog_visible: Mapped[bool] = mapped_column(Boolean, default=False)
+    status: Mapped[str] = mapped_column(String(40), default="current")
+    discovered_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    catalog_verified_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class KbSourceVersion(Base):
+    __tablename__ = "kb_source_versions"
+    __table_args__ = (
+        UniqueConstraint("source_id", "raw_checksum", name="uq_kb_source_version_checksum"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    stable_id: Mapped[str] = mapped_column(String(160), unique=True, index=True)
+    source_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("kb_sources.id", ondelete="CASCADE"), index=True
+    )
+    publisher_version_label: Mapped[str | None] = mapped_column(String(200))
+    captured_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    capture_mode: Mapped[str] = mapped_column(String(40))
+    raw_checksum: Mapped[str] = mapped_column(String(64))
+    normalized_checksum: Mapped[str] = mapped_column(String(64))
+    raw_artifact_locator: Mapped[str | None] = mapped_column(Text)
+    normalized_artifact_locator: Mapped[str | None] = mapped_column(Text)
+    parser_version: Mapped[str] = mapped_column(String(80))
+    valid_from: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    valid_to: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    supersedes_version_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("kb_source_versions.id", ondelete="SET NULL")
+    )
+    change_summary: Mapped[str | None] = mapped_column(Text)
+    review_decision: Mapped[str] = mapped_column(String(40), default="pending")
+    quarantine_reason_code: Mapped[str | None] = mapped_column(String(120))
+    index_release_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("kb_index_releases.id", ondelete="SET NULL")
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class KbSection(Base):
+    __tablename__ = "kb_sections"
+    __table_args__ = (
+        UniqueConstraint("version_id", "ordinal", name="uq_kb_section_version_ordinal"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    stable_id: Mapped[str] = mapped_column(String(180), unique=True, index=True)
+    version_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("kb_source_versions.id", ondelete="CASCADE"), index=True
+    )
+    heading_path_json: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    ordinal: Mapped[int] = mapped_column(Integer)
+    language: Mapped[str] = mapped_column(String(20))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class KbPassage(Base):
+    __tablename__ = "kb_passages"
+    __table_args__ = (
+        UniqueConstraint("section_id", "ordinal", name="uq_kb_passage_section_ordinal"),
+        Index("ix_kb_passages_version_eligibility", "version_id", "lexical_eligible"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    stable_id: Mapped[str] = mapped_column(String(200), unique=True, index=True)
+    section_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("kb_sections.id", ondelete="CASCADE"), index=True
+    )
+    version_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("kb_source_versions.id", ondelete="CASCADE"), index=True
+    )
+    ordinal: Mapped[int] = mapped_column(Integer)
+    text: Mapped[str] = mapped_column(Text)
+    language: Mapped[str] = mapped_column(String(20))
+    character_count: Mapped[int] = mapped_column(Integer)
+    source_offset_start: Mapped[int | None] = mapped_column(Integer)
+    source_offset_end: Mapped[int | None] = mapped_column(Integer)
+    clinical_concept_tags_json: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    audience_json: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    contraindication_flag: Mapped[bool] = mapped_column(Boolean, default=False)
+    red_flag: Mapped[bool] = mapped_column(Boolean, default=False)
+    chunking_version: Mapped[str] = mapped_column(String(100))
+    patient_readability_review_status: Mapped[str] = mapped_column(String(40), default="pending")
+    lexical_eligible: Mapped[bool] = mapped_column(Boolean, default=False)
+    vector_eligible: Mapped[bool] = mapped_column(Boolean, default=False)
+    embedding_json: Mapped[list[float] | None] = mapped_column(JSONB)
+    content_checksum: Mapped[str] = mapped_column(String(64))
+    conflict_group_key: Mapped[str | None] = mapped_column(String(160), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class KbTranslationArtifact(Base):
+    __tablename__ = "kb_translation_artifacts"
+    __table_args__ = (
+        UniqueConstraint(
+            "source_version_id",
+            "target_language",
+            "model",
+            "prompt_policy_version",
+            name="uq_kb_translation_artifact_generation",
+        ),
+        Index("ix_kb_translation_artifacts_source_status", "source_id", "status"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    stable_id: Mapped[str] = mapped_column(String(180), unique=True, index=True)
+    source_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("kb_sources.id", ondelete="CASCADE"), index=True
+    )
+    source_version_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("kb_source_versions.id", ondelete="CASCADE"), index=True
+    )
+    target_language: Mapped[str] = mapped_column(String(20))
+    translated_title: Mapped[str] = mapped_column(String(500))
+    provider: Mapped[str] = mapped_column(String(80))
+    model: Mapped[str] = mapped_column(String(160))
+    prompt_policy_version: Mapped[str] = mapped_column(String(120))
+    source_checksum: Mapped[str] = mapped_column(String(64))
+    translation_checksum: Mapped[str] = mapped_column(String(64))
+    artifact_locator: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(60), default="generated_pending_review")
+    medical_review_status: Mapped[str] = mapped_column(String(40), default="pending")
+    native_language_review_status: Mapped[str] = mapped_column(String(40), default="pending")
+    input_tokens: Mapped[int | None] = mapped_column(Integer)
+    output_tokens: Mapped[int | None] = mapped_column(Integer)
+    generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class KbTranslationSection(Base):
+    __tablename__ = "kb_translation_sections"
+    __table_args__ = (
+        UniqueConstraint("artifact_id", "ordinal", name="uq_kb_translation_section_ordinal"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    stable_id: Mapped[str] = mapped_column(String(200), unique=True, index=True)
+    artifact_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("kb_translation_artifacts.id", ondelete="CASCADE"), index=True
+    )
+    source_section_stable_id: Mapped[str] = mapped_column(String(180))
+    ordinal: Mapped[int] = mapped_column(Integer)
+    translated_heading: Mapped[str] = mapped_column(Text)
+    translated_text: Mapped[str] = mapped_column(Text)
+    content_checksum: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class KbSummaryArtifact(Base):
+    __tablename__ = "kb_summary_artifacts"
+    __table_args__ = (
+        UniqueConstraint(
+            "source_version_id",
+            "model",
+            "prompt_policy_version",
+            name="uq_kb_summary_artifact_generation",
+        ),
+        Index("ix_kb_summary_artifacts_source_status", "source_id", "status"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    stable_id: Mapped[str] = mapped_column(String(180), unique=True, index=True)
+    source_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("kb_sources.id", ondelete="CASCADE"), index=True
+    )
+    source_version_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("kb_source_versions.id", ondelete="CASCADE"), index=True
+    )
+    translation_artifact_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("kb_translation_artifacts.id", ondelete="RESTRICT"), index=True
+    )
+    english_summary: Mapped[str] = mapped_column(Text)
+    chinese_summary: Mapped[str] = mapped_column(Text)
+    provider: Mapped[str] = mapped_column(String(80))
+    model: Mapped[str] = mapped_column(String(160))
+    prompt_policy_version: Mapped[str] = mapped_column(String(120))
+    source_checksum: Mapped[str] = mapped_column(String(64))
+    translation_checksum: Mapped[str] = mapped_column(String(64))
+    summary_checksum: Mapped[str] = mapped_column(String(64))
+    artifact_locator: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(60), default="approved")
+    reviewer_id: Mapped[str] = mapped_column(String(160))
+    review_findings: Mapped[str | None] = mapped_column(Text)
+    reviewed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    input_tokens: Mapped[int | None] = mapped_column(Integer)
+    output_tokens: Mapped[int | None] = mapped_column(Integer)
+    generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class KbTerm(Base):
+    __tablename__ = "kb_terms"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    stable_id: Mapped[str] = mapped_column(String(160), unique=True, index=True)
+    preferred_zh: Mapped[str] = mapped_column(String(240))
+    preferred_en: Mapped[str | None] = mapped_column(String(240))
+    aliases_json: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    concept_type: Mapped[str] = mapped_column(String(80))
+    disambiguation_notes: Mapped[str | None] = mapped_column(Text)
+    provenance_source_ids_json: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    prohibited_expansions_json: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    review_status: Mapped[str] = mapped_column(String(40), default="pending")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class KbIndexReleasePassage(Base):
+    __tablename__ = "kb_index_release_passages"
+
+    release_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("kb_index_releases.id", ondelete="CASCADE"), primary_key=True
+    )
+    passage_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("kb_passages.id", ondelete="RESTRICT"), primary_key=True, index=True
+    )
+
+
+class KbRetrievalEvent(Base):
+    __tablename__ = "kb_retrieval_events"
+    __table_args__ = (Index("ix_kb_retrieval_events_occurred", "occurred_at"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    request_id: Mapped[str] = mapped_column(String(120), unique=True, index=True)
+    actor_role: Mapped[str] = mapped_column(String(40))
+    workflow: Mapped[str] = mapped_column(String(80))
+    query_sha256: Mapped[str] = mapped_column(String(64))
+    query_length: Mapped[int] = mapped_column(Integer)
+    filter_classes_json: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    index_release_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("kb_index_releases.id", ondelete="SET NULL"), index=True
+    )
+    retrieved_source_ids_json: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    retrieved_passage_ids_json: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    score_summary_json: Mapped[dict[str, object]] = mapped_column(JSONB, default=dict)
+    latency_ms: Mapped[int] = mapped_column(Integer)
+    evidence_decision: Mapped[str] = mapped_column(String(80))
+    fallback_code: Mapped[str | None] = mapped_column(String(80))
+    occurred_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
+class KbReview(Base):
+    __tablename__ = "kb_reviews"
+    __table_args__ = (Index("ix_kb_reviews_target", "target_type", "target_stable_id"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    stable_id: Mapped[str] = mapped_column(String(160), unique=True, index=True)
+    target_type: Mapped[str] = mapped_column(String(40))
+    target_stable_id: Mapped[str] = mapped_column(String(160))
+    review_type: Mapped[str] = mapped_column(String(40))
+    reviewer_role: Mapped[str] = mapped_column(String(80))
+    reviewer_id: Mapped[str] = mapped_column(String(120))
+    decision: Mapped[str] = mapped_column(String(40))
+    decision_code: Mapped[str] = mapped_column(String(120))
+    findings: Mapped[str | None] = mapped_column(Text)
+    reviewed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    next_review_date: Mapped[date | None] = mapped_column(Date)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class KbIndexRelease(Base):
+    __tablename__ = "kb_index_releases"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    stable_id: Mapped[str] = mapped_column(String(160), unique=True, index=True)
+    manifest_checksum: Mapped[str] = mapped_column(String(64), unique=True)
+    manifest_artifact_locator: Mapped[str] = mapped_column(Text)
+    source_count: Mapped[int] = mapped_column(Integer)
+    version_count: Mapped[int] = mapped_column(Integer)
+    passage_count: Mapped[int] = mapped_column(Integer, default=0)
+    embedding_model_version: Mapped[str] = mapped_column(String(160))
+    lexical_analyzer_version: Mapped[str] = mapped_column(String(160))
+    reranker_version: Mapped[str] = mapped_column(String(160))
+    build_results_json: Mapped[dict[str, object]] = mapped_column(JSONB, default=dict)
+    approver_ids_json: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    rollback_predecessor_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("kb_index_releases.id", ondelete="SET NULL")
+    )
+    status: Mapped[str] = mapped_column(String(40), default="built")
+    released_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class KbActiveIndexRelease(Base):
+    __tablename__ = "kb_active_index_releases"
+
+    audience: Mapped[str] = mapped_column(String(40), primary_key=True)
+    release_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("kb_index_releases.id", ondelete="RESTRICT"), index=True
+    )
+    activated_by: Mapped[str] = mapped_column(String(120))
+    activated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

@@ -254,24 +254,59 @@ def test_patient_can_update_allowed_profile_and_allergy_surfaces(
 ) -> None:
     assigned_id, unrelated_id = _seed_patient_ids(settings)
     headers = _patient_headers(client, settings)
+    records_before = client.get(
+        "/api/v1/patient/me/care",
+        headers=headers,
+    ).json()["records"]
 
     profile_response = client.patch(
         "/api/v1/patient/me/profile",
         headers=headers,
         json={
-            "display_name": "Riley Demo Patient Updated",
+            "display_name": "曹",
             "birth_year": 1988,
             "sex": "not specified",
             "preferred_language": "English",
             "contact_preference": "in-app",
             "height_cm": 168,
             "weight_kg": 62.5,
+            "blood_type": "A+",
+            "systolic_blood_pressure": 118,
+            "diastolic_blood_pressure": 76,
+            "smoking_status": "Never",
+            "alcohol_consumption": "None or rare",
+            "heart_history": "Occasional palpitations under review",
+            "patient_reported_medications": "Daily multivitamin",
+            "surgery_history": "Appendectomy in childhood",
+            "family_history": "Parent with hypertension",
+            "lifestyle_notes": "Walks most evenings",
+            "pregnancy_status": "Not applicable",
         },
     )
     assert profile_response.status_code == 200
+    assert profile_response.json()["display_name"] == "曹"
     assert profile_response.json()["demographics"]["birth_year"] == 1988
     assert profile_response.json()["demographics"]["height_cm"] == 168
     assert profile_response.json()["demographics"]["weight_kg"] == 62.5
+    assert profile_response.json()["demographics"]["blood_type"] == "A+"
+    assert profile_response.json()["demographics"]["systolic_blood_pressure"] == 118
+    assert profile_response.json()["demographics"]["diastolic_blood_pressure"] == 76
+    assert profile_response.json()["demographics"]["heart_history"] == (
+        "Occasional palpitations under review"
+    )
+
+    unchanged_response = client.patch(
+        "/api/v1/patient/me/profile",
+        headers=headers,
+        json={"blood_type": "A+"},
+    )
+    assert unchanged_response.status_code == 200
+    assert unchanged_response.json()["demographics"]["blood_type"] == "A+"
+    records_after = client.get(
+        "/api/v1/patient/me/care",
+        headers=headers,
+    ).json()["records"]
+    assert len(records_after) == len(records_before)
 
     allergy_response = client.post(
         f"/api/v1/patients/{assigned_id}/allergies",

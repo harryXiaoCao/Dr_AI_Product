@@ -1,8 +1,8 @@
 # Dr. AI v1.0 Database ERD
 
 Status: working data-integrity map
-Last updated: 2026-07-10
-Source: `services/api/app/models.py` and Alembic migrations through `20260710_0015`
+Last updated: 2026-07-14
+Source: `services/api/app/models.py` and Alembic migrations through `20260714_0023`
 
 This file is a field-level ERD for implementation reviews. It is intentionally
 more detailed than a product overview because Dr. AI depends on one consistent
@@ -111,6 +111,23 @@ erDiagram
     varchar_240 home_address "nullable"
     float height_cm "nullable"
     float weight_kg "nullable"
+    varchar blood_type "nullable; Unknown/A+/A-/B+/B-/AB+/AB-/O+/O-"
+    int systolic_blood_pressure "nullable"
+    int diastolic_blood_pressure "nullable"
+    varchar smoking_status "nullable"
+    varchar alcohol_consumption "nullable"
+    text heart_history "nullable"
+    text endocrine_history "nullable"
+    text neuro_history "nullable"
+    text digestive_history "nullable"
+    text respiratory_history "nullable"
+    text kidney_history "nullable"
+    text cancer_history "nullable"
+    text patient_reported_medications "nullable"
+    text surgery_history "nullable"
+    text family_history "nullable"
+    text lifestyle_notes "nullable"
+    varchar pregnancy_status "nullable"
     boolean medical_history_setup_completed
   }
 
@@ -803,6 +820,36 @@ erDiagram
   revenue foundation.
 - `analytics_events`: operational/product analytics events.
 - `support_requests`: support, deletion, and feedback queue foundation.
+
+### Governed Medical Knowledge And Retrieval
+
+- `kb_publishers`, `kb_rights_records`, `kb_sources`, and
+  `kb_source_versions`: authority, rights, searchable catalog metadata,
+  immutable source lineage, review status, and audience eligibility.
+- `kb_sections` and `kb_passages`: structured reviewed evidence with source
+  offsets, concept tags, language/audience flags, content checksums, and
+  independently controlled lexical/vector eligibility.
+- `kb_terms`: reviewed Chinese/English concepts, aliases, provenance, and
+  prohibited expansions used for bounded query expansion.
+- `kb_reviews`: medical, native-language, rights, product, and safety review
+  lineage for sources and versions.
+- `kb_translation_artifacts` and `kb_translation_sections`: unofficial derived
+  translations tied to one immutable source version, with provider/model/prompt
+  lineage, checksums, token usage, aligned sections, and separate medical plus
+  native-Chinese approval state. Their uniqueness is per source version,
+  target language, model, and prompt-policy version; they never duplicate a
+  `kb_sources` row or become retrieval-eligible by import alone.
+- `kb_summary_artifacts`: manually reviewed English and Simplified-Chinese
+  search summaries tied to one source version and its approved translation,
+  with provider/model/prompt lineage, input checksums, summary checksum, token
+  usage, reviewer provenance, and approval state. Approved summaries expand
+  catalog matching without changing source count or passage eligibility.
+- `kb_index_releases`, `kb_index_release_passages`, and
+  `kb_active_index_releases`: immutable audience-specific passage membership,
+  model/analyzer/reranker versions, approvals, activation, and rollback.
+- `kb_retrieval_events`: metadata-only query hash/length, filters, release and
+  result IDs, score summary, latency, decision, and fallback. It never stores
+  raw query or passage content.
 
 ## Integrity Rules
 

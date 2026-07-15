@@ -24,7 +24,7 @@ class ServiceChatScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return ResponsiveAppShell(
       role: role,
-      selectedIndex: role == AppRole.doctor ? 2 : 1,
+      selectedIndex: role == AppRole.doctor ? 3 : 1,
       child: _ChatPageFrame(
         title: isSystem
             ? context.l10n.systemNotifications
@@ -125,7 +125,7 @@ class _PrivateChatScreenState extends ConsumerState<PrivateChatScreen> {
     final messages = ref.watch(privateMessagesProvider(widget.contactId));
     return ResponsiveAppShell(
       role: widget.role,
-      selectedIndex: widget.role == AppRole.doctor ? 2 : 1,
+      selectedIndex: widget.role == AppRole.doctor ? 3 : 1,
       child: _ChatPageFrame(
         title: widget.contactName,
         subtitle: context.l10n.privateCareConversation,

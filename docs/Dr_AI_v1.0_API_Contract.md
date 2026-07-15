@@ -24,7 +24,10 @@ core Phase 2 resources, event-linked care-bundle readback, neutral denials, and
 metadata-only audit events. Production v1.0 still needs the reserved
 specialist, administrator, admin support-queue handling, external notification
 delivery, and audit-read workflows before those surfaces can be treated as
-available.
+available. Phase 3 Slice 1 freezes chatbot governance and shared contracts.
+Slice 3 adds a doctor-only authoritative-link catalog route. Slice 4 adds
+release-specific doctor and patient retrieval endpoints while keeping the real
+WHO/NHC passage corpus inactive until rights and clinician-review approval.
 
 Contract version: `1.0.0`
 
@@ -301,7 +304,15 @@ Response:
 | `POST` | `/api/v1/support-requests` | Own account | Own account | Submit authenticated support, deletion, or feedback request |
 | `GET` | `/api/v1/support-requests` | Own requests | Own requests | Read own support request statuses |
 | `GET` | `/api/v1/support-requests/{request_id}` | Own request | Own request | Read one own support request status |
+| `GET` | `/api/v1/doctor/resources` | Doctor | No | Search catalog-visible official-link metadata |
+| `GET` | `/api/v1/doctor/resources/{source_id}` | Doctor | No | Read governed source details and display-approved original sections |
+| `POST` | `/api/v1/retrieval/doctor/resources/search` | Doctor | No | Search active doctor-approved evidence release |
+| `POST` | `/api/v1/retrieval/patient/evidence` | No | Own request | Retrieve sufficient patient-approved evidence for Slice 5 |
 | `GET` | `/api/v1/audit-events` | Administrator only | No | Reserved production audit metadata read/search; not implemented in beta |
+
+All registration and profile-update `display_name` fields accept trimmed
+Unicode text from 1 to 120 characters. A single CJK character is valid; empty
+or whitespace-only names remain invalid.
 
 The singular `/patient/me/today` path is intentional and is implemented for
 the Week 1 patient dashboard. It represents the
@@ -373,6 +384,16 @@ Rules:
   Clinical Events, visit history, diagnoses, records, medications,
   prescriptions, reminders, notification metadata, imaging metadata,
   recovery-plan metadata, and care-bundle data.
+- Patient profile updates are idempotent: submitting the current values returns
+  the current profile rather than a validation error. Blood type is a persisted
+  patient-profile field and accepts `Unknown`, `A+`, `A-`, `B+`, `B-`, `AB+`,
+  `AB-`, `O+`, or `O-`.
+- The editable medical-profile survey is a singleton attached to the patient
+  profile. Blood pressure, smoking/alcohol status, condition details,
+  patient-reported medication and history notes, and pregnancy status are
+  updated in place and returned for future form prefill. Saving this profile
+  does not create a `medical_records` intake-summary row. Clinical Events remain
+  separate appendable care episodes and retain their own timelines.
 - Patients can update only allowed own-profile fields, allergies, and chronic
   diseases in this slice.
 - Doctors create and update Clinical Events/Care Episodes. Patients can read
@@ -502,6 +523,19 @@ must be rejected in the v1 beta until model code, weights, preprocessing,
 governance, and release approval exist. Adding a new enum value is treated as a
 contract change and requires client compatibility review.
 
+## Phase 3 chatbot contract foundation
+
+`app/chatbot_contracts.py` freezes rights- and review-gated source admission,
+doctor search and patient evidence schemas, structured model output, allowlisted
+tools, safety/fallback codes, and metadata-only telemetry. The Slice 4
+doctor-search and patient-evidence contracts are enabled endpoints; the later
+model/orchestrator contracts remain inactive until Slice 5.
+
+Development inference is synthetic-only. Real patient context remains
+fail-closed unless the configured Mainland-China location, field allowlist,
+no-training, no-retention, privacy, legal, and product approval gates all pass.
+This restriction does not change Dr. AI's production/commercial positioning.
+
 ## Error envelope
 
 Every non-2xx application response uses this shape:
@@ -545,6 +579,7 @@ rate_limited
 unsupported_media_type
 payload_too_large
 service_unavailable
+retrieval_unavailable
 internal_error
 ```
 
@@ -561,7 +596,7 @@ Recommended HTTP mapping:
 | `413` | `payload_too_large` |
 | `415` | `unsupported_media_type` |
 | `429` | `rate_limited` |
-| `503` | `service_unavailable` |
+| `503` | `service_unavailable`, `retrieval_unavailable` |
 | `500` | `internal_error` |
 
 Cross-patient and wrong-role access returns a neutral `404 not_found` when
@@ -1207,3 +1242,77 @@ Related records:
 - [Implementation plan](Dr_AI_v1.0_Implementation_Plan.md)
 - [Design freeze](Dr_AI_v1.0_Design_Freeze.md)
 - [Week 1 Days 1-2 foundation record](beta/Week_1_Days_1_2_Foundation_Record.md)
+
+## Phase 3 Doctor Resource Catalog
+
+### `GET /api/v1/doctor/resources`
+
+Doctor-only, paginated access to catalog-visible authoritative source metadata.
+This is a governed link-catalog endpoint, not the approved-passage retrieval
+endpoint. It never returns stored article bodies or generated passages.
+
+Optional query parameters: `query`, `topic`, `publisher_id`, `limit` (1-100),
+and `offset`.
+
+Each item includes the stable source/publisher IDs, official title and locator,
+official English title and locator where paired, `available_languages`,
+`is_bilingual`, catalog summary, search keywords, source type, topic,
+jurisdiction, language, authority tier, catalog verification time,
+lifecycle/review state, `rights_mode`, and nullable `zh_translation_status`.
+`official_link_only` means the source may be shown as an official locator but is
+not admitted for excerpts, embeddings, or AI retrieval. A generated translation
+does not add `zh-Hans` to `available_languages` or set `is_bilingual` until its
+medical and native-Chinese reviews are both approved. Translation never creates
+a second catalog source.
+
+The optional `query` searches title, official translation title, topic,
+catalog summary, bilingual search keywords, and the English plus
+Simplified-Chinese text of approved generated summary artifacts. Generated
+summary text affects catalog matching only after manual review and approved
+import; pending or rejected summaries are excluded. For link-only sources,
+catalog summaries still describe verified metadata only and explicitly do not
+summarize unstored article text.
+
+### `GET /api/v1/doctor/resources/{source_id}`
+
+Doctor-only source detail used by the stable
+`/doctor/resources/{sourceId}/read` application route. It returns the catalog
+fields above plus ordered `sections` containing `heading` and `original_text`
+only when the current source version was captured as publisher-original text
+and its approved rights record permits storage, display, and redistribution.
+Link-only sources return no sections. An approved generated translation is
+returned separately in `translations` with `language`, translated `title`,
+`translation_type=ai_generated_unofficial`,
+`review_status=medical_and_native_chinese_approved`, and aligned `sections`.
+Pending or singly-approved translations are omitted. The client must not infer
+display permission from a button or cached list item, and patient roles receive
+`403 forbidden`.
+
+Readable doctor content remains separate from retrieval admission. Medical,
+native-language, patient-readability, lifecycle, and immutable-release gates
+still determine whether any passage may enter doctor or patient retrieval.
+
+## Phase 3 Approved Retrieval Baseline
+
+### `POST /api/v1/retrieval/doctor/resources/search`
+
+Doctor-only hybrid search over the active `doctor` index release. The request
+uses `DoctorResourceSearchRequest`: query, topic/document/organization/
+jurisdiction/language/date/status filters, cursor, and limit. The response
+preserves the original query, shows reviewed expanded terms, exposes the
+evidence decision and active release ID, and returns matched passages with
+source/version citations. It does not call an LLM.
+
+### `POST /api/v1/retrieval/patient/evidence`
+
+Patient-only evidence lookup for the later Slice 5 orchestrator. It searches
+only the active `patient` release and requires patient eligibility,
+native-language/readability approval, current status, requested language and
+China jurisdiction, and at least two source records for a sufficient decision.
+Failed sufficiency or conflict gates return no passages.
+
+Both endpoints return `503 retrieval_unavailable` when no valid audience index
+is active or the release embedding model is not configured. Retrieval events
+store only query SHA-256, query length, filter categories, release/source/
+passage IDs, score summary, latency, decision, and fallback code. Raw queries
+and passage text are never written to retrieval telemetry.

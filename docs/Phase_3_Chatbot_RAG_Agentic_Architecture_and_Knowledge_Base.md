@@ -1,6 +1,6 @@
 # Phase 3 Chatbot RAG, Agentic Architecture, and Medical Knowledge Base
 
-Status: approved planning baseline; implementation not started<br>
+Status: approved baseline; Slices 1-4 implemented locally with real-corpus promotion gated<br>
 Date: 2026-07-13<br>
 Owner: Harry Cao<br>
 Applies to: Dr. AI production/commercial v1.0 patient chatbot and doctor
@@ -460,14 +460,25 @@ or crawler based. Every publisher must be either:
   mechanism;
 - a Chinese public medical institution whose authority and publishing channel
   have been verified for the specific content class; or
-- the World Health Organization.
+- the World Health Organization; or
+- a verified foreign national health, public-health, medicines, or medical-
+  research authority whose specific content is explicitly public domain or
+  licensed for worldwide commercial copying, storage, adaptation, translation,
+  embedding, excerpt display, redistribution, and the intended model-provider
+  transmission.
 
 Initial candidate families include the National Health Commission, National
 Medical Products Administration, Chinese Center for Disease Control and
 Prevention, National Administration of Traditional Chinese Medicine where
 scope-appropriate, admitted National Health Science Popularization Resource
-Library publishers, and WHO. This is a candidate allowlist, not automatic
-permission to ingest.
+Library publishers, WHO, and narrowly selected patient-education collections
+from MedlinePlus/NLM, the US National Cancer Institute, the US National
+Institute of Mental Health, MyHealthfinder/ODPHP, and other foreign national
+authorities only after the same source-family review. This is a candidate
+allowlist, not automatic permission to ingest. A general government-domain or
+open-website statement is insufficient when a page contains third-party text,
+images, drug monographs, encyclopedia content, logos, or another page-level
+rights exception.
 
 For each source family, legal/product review must determine whether Dr. AI may:
 
@@ -487,12 +498,21 @@ commercial ingestion until the specific licence or permission is recorded.
 Chinese government publication likewise does not by itself prove commercial
 reuse rights.
 
+Foreign-authority material supplements rather than displaces China-applicable
+evidence. When current guidance from the National Health Commission, National
+Medical Products Administration, Chinese CDC, or another competent Chinese
+authority conflicts with foreign guidance, the Chinese source governs the
+China-facing answer. The response must preserve the foreign source's
+jurisdiction and must not silently combine screening schedules, emergency
+instructions, medicine approvals, care pathways, or other jurisdiction-
+dependent recommendations.
+
 ### 5.2 Authority and audience tiers
 
 | Tier | Content | Default eligibility |
 |---|---|---|
 | A | Current Chinese law/regulation, regulator safety communication, national clinical/public-health guidance, official drug/device registration data | Doctor; patient only after readability and intended-use review |
-| B | Current WHO normative guidance and official fact sheets with cleared rights | Doctor; patient after China-applicability and language review |
+| B | Current WHO material and verified foreign-national-authority patient education with explicit public-domain or open commercial reuse evidence | Doctor; patient after China-applicability, medical, native-Chinese, and readability review |
 | C | Official Chinese public-health education and admitted health-popularization resources | Doctor and patient when medically reviewed |
 | D | Verified official hospital/medical-institution education | Doctor by default; patient only after provenance, conflict, and review gates |
 
@@ -636,6 +656,16 @@ release pointer; it does not mutate evidence history.
 - Store paragraph/section alignment only when reviewed.
 - Machine translation may help candidate discovery but is not production
   evidence until native-language and medical review are complete.
+- A DeepSeek or other model translation is an unofficial derived artifact, not
+  an official translation. It may be created only when the source rights record
+  permits translation and model-provider transmission and the provider/privacy/
+  data-location gates are closed. Store the exact source version, translation
+  model and prompt-policy version, generation date, and aligned source offsets;
+  never overwrite the original-language artifact.
+- Do not index or display a machine translation in a patient retrieval view
+  until medical and native-Chinese reviewers approve it. Until then, Doctor
+  Resources may expose only the reviewed original text and label its language
+  and jurisdiction accurately.
 - Query translation/expansion must retain the original query and record which
   verified terminology mappings were applied.
 - If China-specific and WHO guidance differ, do not flatten them into one
@@ -740,8 +770,15 @@ regulatory gates are closed.
 
 ## 8. Implementation Sequence
 
+Each slice owns the modules named below and should leave them ready for the
+next dependent slice.
+
 ### Slice 1: Governance and contracts
 
+Status: complete locally on 2026-07-13.
+
+- **Module ownership:** policy/configuration, API and model contracts, safety
+  codes, and telemetry schemas shared by all chatbot components.
 - Freeze source admission, rights, review, lifecycle, and audience policies.
 - Define API schemas for doctor search and patient retrieval evidence.
 - Define structured model output, tool schemas, fallback codes, and safe
@@ -749,8 +786,20 @@ regulatory gates are closed.
 - Obtain explicit decisions for external-provider transmission and data
   location before using any real patient context.
 
+Development is synthetic-only. Real patient context is denied to external
+providers until Mainland-China data location, field allowlisting, no-training,
+no-retention, privacy, legal, and product approvals are all recorded. Retrieval,
+embedding, and reranking remain self-hosted in the approved Mainland China
+region. This restriction does not change the production/commercial product
+target.
+
 ### Slice 2: Doctor Resources shell
 
+Status: complete locally on 2026-07-13. The Flutter shell uses a local reviewed
+fixture catalog only; backend retrieval remains deferred to later slices.
+
+- **Module ownership:** Flutter doctor Resources navigation, search/filter UI,
+  result cards, source details, and saved/recent states.
 - Add `/doctor/resources` and the doctor navigation destination.
 - Remove the global doctor header search.
 - Build production loading/empty/error/filter/result/source-detail states
@@ -759,6 +808,23 @@ regulatory gates are closed.
 
 ### Slice 3: Knowledge ingestion foundation
 
+Status: foundation implemented locally on 2026-07-14; source-promotion gate
+remains open. The governed database schema,
+metadata-only ingestion path, immutable artifact adapter, deterministic index
+release/activation/rollback controls, and doctor-only catalog API are
+implemented. The 298-entry real-source catalog preserves all 239 official WHO
+Chinese fact sheets and all 241 official WHO English fact sheets: 234 exact
+slug matches are bilingual records, while five Chinese and seven English
+unmatched pages remain monolingual. It also includes 52 Chinese-only,
+authority-tier-A 国家卫生健康委员会 guidelines and clinical protocols and replaces
+the fictional Doctor Resources data. Because commercial reuse rights and medical
+review are not yet recorded, the pilot stores titles and official locators
+only and is deliberately excluded from retrieval indexes. Slice 3 cannot be
+declared fully closed until legal/product and medical/native-Chinese reviewers
+approve at least one rights-cleared pilot source version.
+
+- **Module ownership:** knowledge-base database models, source ingestion and
+  review pipeline, artifact storage, and index-release management.
 - Implement publisher/source/rights/version/review schemas.
 - Add immutable capture, parsing, checksums, lineage, and quarantine.
 - Create a tiny rights-cleared pilot corpus before scaling.
@@ -766,12 +832,88 @@ regulatory gates are closed.
 
 ### Slice 4: Retrieval baseline
 
+Status: baseline implemented locally on 2026-07-14. The doctor link-only
+catalog now searches titles, official translations, catalog summaries, topic
+metadata, and per-source bilingual keywords rather than titles alone. Approved
+passage retrieval is release-specific and implements Unicode normalization,
+Chinese character/bigram and English word lexical matching, reviewed term
+expansion, dense-vector scoring, metadata filters, authority/China preference
+reranking, duplicate collapse, source diversity, conflict/sufficiency gates,
+and metadata-only events. Doctor and patient retrieval remain separate
+server-authorized views. Retrieval metrics are computed independently from
+generation.
+
+The checked-in deterministic embedding is a development/test baseline behind a
+versioned provider boundary. A production release must configure the approved
+self-hosted multilingual medical embedding service in Mainland China and use a
+clinically evaluated reranker. No real WHO or 国家卫生健康委员会 passage is active
+yet: their rights and doctor-review gates remain open, so the current 298-source
+catalog stays official-link metadata only. This blocks real-corpus promotion,
+not further retrieval implementation or later removal/replacement of a source.
+
+Doctor Resources also connects display-approved catalog records to the
+doctor-only `/doctor/resources/{sourceId}/read` route. The reader fetches the
+governed detail endpoint, presents original-language sections with provenance,
+rights, jurisdiction, and review status, and remains distinct from retrieval
+eligibility. Link-only records retain the official-source action and never show
+the read-original-text action.
+
+On 2026-07-15, Slice 4 added the governed Simplified-Chinese translation
+pipeline for the 55 rights-cleared English documents (426 aligned sections;
+418,089 source characters). DeepSeek generation is resumable and append-only,
+uses structured JSON with thinking disabled, records the exact source-version,
+model, prompt-policy, checksums, timestamps, and provider-reported token usage,
+and enforces a configurable cost ceiling. Import creates derived translation
+artifacts and aligned translation sections; it never creates another
+`kb_sources` row, so the catalog remains 353 sources rather than treating each
+language as a separate entry.
+
+Every imported translation starts as `generated_pending_review`. It is excluded
+from catalog bilingual status, doctor display, lexical/vector eligibility, and
+all retrieval releases until separate medical and native-Chinese reviews both
+approve the artifact. After both approvals, the existing source advertises
+English and `zh-Hans`, Chinese-title catalog search is enabled, and the
+doctor-only reader offers Original English / Reviewed Chinese translation on
+the same stable route. The UI labels the translation as unofficial and keeps
+the publisher's English original available for authoritative verification.
+Patient display and retrieval admission remain separate, stricter gates.
+
+Translation status on 2026-07-15: all 55 artifacts and 426 aligned sections were
+validated and imported using DeepSeek v4 Flash (107,006 input tokens; 94,090
+output tokens; approximately `$0.0413` from provider-reported usage). The source
+registry remains 353 rows. The product owner subsequently confirmed completion
+of medical and native-Chinese review for all 55; the system recorded 110
+separate approved review rows and promoted every artifact to `approved`.
+Doctor Resources now exposes the same 55 entries as English + `zh-Hans` and the
+reader provides the reviewed unofficial translation beside the original.
+Reviewer names were not supplied in the confirmation, so audit findings record
+that provenance explicitly. Zero translated passages are retrieval-eligible:
+doctor display approval still does not create an immutable retrieval release or
+patient-use approval.
+
+Bilingual summary status on 2026-07-15: DeepSeek v4 Flash generated all 55
+English and Simplified-Chinese summary pairs from the immutable English sources
+and their aligned reviewed translations (192,598 input tokens; 10,802 output
+tokens). After the product owner confirmed manual review of every pair, the
+system imported 55 approved `kb_summary_artifacts` and 55 review records while
+keeping the source registry at 353 rows. Doctor Resources catalog search now
+matches approved English or Chinese summary text in addition to titles,
+official translations, topics, catalog metadata summaries, and bilingual
+keywords. Reviewer names were not supplied, so the review records preserve the
+product-owner confirmation and that provenance limitation explicitly. Summary
+approval changes catalog matching only; it does not admit passages to a doctor
+or patient retrieval release.
+
+- **Module ownership:** approved retrieval views, lexical/vector search,
+  reranking, evidence checks, and retrieval evaluation.
 - Implement Chinese/English lexical plus dense retrieval.
 - Add metadata filters, reranking, deduplication, and evidence sufficiency.
 - Validate retrieval independently from generation.
 
 ### Slice 5: Patient RAG workflow
 
+- **Module ownership:** patient chat UI and API, agent orchestrator, deterministic
+  safety routing, allowlisted tools, provider adapter, and response validator.
 - Add the finite-state orchestrator and allowlisted tools.
 - Integrate `deepseek-v4-flash` through the provider adapter.
 - Enforce structured output, citation mapping, policy validation, and fixed
@@ -780,6 +922,8 @@ regulatory gates are closed.
 
 ### Slice 6: Adapter experiment
 
+- **Module ownership:** retrieval training-pair pipeline, optional query/reranker
+  adapter, and baseline comparison report.
 - Build rights-cleared clinician-reviewed retrieval training pairs.
 - Compare the small reranking/query adapter against the frozen retrieval
   baseline.
@@ -787,6 +931,8 @@ regulatory gates are closed.
 
 ### Slice 7: Production and clinical gates
 
+- **Module ownership:** end-to-end release tests, clinical/safety review,
+  observability, operational controls, staged rollout, and rollback readiness.
 - Run the frozen model suite plus retrieval-specific and live workflow tests.
 - Complete medical/native-Chinese review, threat modeling, privacy/legal/
   provider review, load tests, observability, incident response, and rollback.

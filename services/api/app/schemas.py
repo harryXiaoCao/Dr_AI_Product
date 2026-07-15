@@ -10,7 +10,7 @@ from app.models import UserRole
 class PatientSignupProfileRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
-    display_name: str | None = Field(default=None, min_length=2, max_length=120)
+    display_name: str | None = Field(default=None, min_length=1, max_length=120)
     birth_date: date | None = None
     gender: str | None = Field(default=None, min_length=2, max_length=40)
     contact_phone: str | None = Field(default=None, min_length=5, max_length=40)
@@ -26,7 +26,7 @@ class PatientSignupProfileRequest(BaseModel):
 class DoctorSignupProfileRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
-    display_name: str | None = Field(default=None, min_length=2, max_length=120)
+    display_name: str | None = Field(default=None, min_length=1, max_length=120)
     birth_date: date | None = None
     gender: str | None = Field(default=None, min_length=2, max_length=40)
     contact_phone: str | None = Field(default=None, min_length=5, max_length=40)
@@ -229,7 +229,7 @@ class PatientProfileResponse(PatientSummaryResponse):
 class PatientDemographicsUpdateRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
-    display_name: str | None = Field(default=None, min_length=2, max_length=120)
+    display_name: str | None = Field(default=None, min_length=1, max_length=120)
     birth_date: date | None = None
     birth_year: int | None = Field(default=None, ge=1900, le=2026)
     sex: str | None = Field(default=None, min_length=2, max_length=40)
@@ -246,6 +246,25 @@ class PatientDemographicsUpdateRequest(BaseModel):
     home_address: str | None = Field(default=None, min_length=2, max_length=240)
     height_cm: float | None = Field(default=None, ge=30, le=260)
     weight_kg: float | None = Field(default=None, ge=1, le=400)
+    blood_type: Literal["Unknown", "A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"] | None = None
+    systolic_blood_pressure: int | None = Field(default=None, ge=50, le=260)
+    diastolic_blood_pressure: int | None = Field(default=None, ge=30, le=180)
+    smoking_status: Literal["Never", "Former", "Current"] | None = None
+    alcohol_consumption: Literal["None or rare", "Occasional", "Weekly", "Daily"] | None = None
+    heart_history: str | None = Field(default=None, max_length=2_000)
+    endocrine_history: str | None = Field(default=None, max_length=2_000)
+    neuro_history: str | None = Field(default=None, max_length=2_000)
+    digestive_history: str | None = Field(default=None, max_length=2_000)
+    respiratory_history: str | None = Field(default=None, max_length=2_000)
+    kidney_history: str | None = Field(default=None, max_length=2_000)
+    cancer_history: str | None = Field(default=None, max_length=2_000)
+    patient_reported_medications: str | None = Field(default=None, max_length=4_000)
+    surgery_history: str | None = Field(default=None, max_length=4_000)
+    family_history: str | None = Field(default=None, max_length=4_000)
+    lifestyle_notes: str | None = Field(default=None, max_length=4_000)
+    pregnancy_status: (
+        Literal["Prefer not to say", "Not applicable", "No", "Yes", "Unsure"] | None
+    ) = None
     medical_history_setup_completed: bool | None = None
 
 
@@ -267,13 +286,30 @@ class PatientDemographicsResponse(BaseModel):
     home_address: str | None
     height_cm: float | None
     weight_kg: float | None
+    blood_type: str | None
+    systolic_blood_pressure: int | None
+    diastolic_blood_pressure: int | None
+    smoking_status: str | None
+    alcohol_consumption: str | None
+    heart_history: str | None
+    endocrine_history: str | None
+    neuro_history: str | None
+    digestive_history: str | None
+    respiratory_history: str | None
+    kidney_history: str | None
+    cancer_history: str | None
+    patient_reported_medications: str | None
+    surgery_history: str | None
+    family_history: str | None
+    lifestyle_notes: str | None
+    pregnancy_status: str | None
     medical_history_setup_completed: bool
 
 
 class DoctorProfileUpdateRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
-    display_name: str | None = Field(default=None, min_length=2, max_length=120)
+    display_name: str | None = Field(default=None, min_length=1, max_length=120)
     title: str | None = Field(default=None, min_length=2, max_length=160)
     birth_date: date | None = None
     gender: str | None = Field(default=None, min_length=2, max_length=40)

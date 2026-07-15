@@ -36,12 +36,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get patientWorkspace => '患者空间';
 
   @override
-  String get searchDoctor => '搜索患者和资源';
-
-  @override
-  String get searchDoctorWide => '搜索患者、病例、诊断和资源';
-
-  @override
   String get restoringSession => '正在恢复安全会话';
 
   @override
@@ -733,6 +727,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get bloodType => '血型';
 
   @override
+  String get bloodPressure => '血压';
+
+  @override
   String get unknown => '未知';
 
   @override
@@ -1263,6 +1260,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get overview => '概览';
 
   @override
+  String get verifiedHistory => '已核实病史';
+
+  @override
+  String get activeClinicalEvents => '当前临床事件';
+
+  @override
+  String get activeRecoveryPlan => '当前康复计划';
+
+  @override
+  String get currentMedications => '目前用药';
+
+  @override
   String get overviewSummary => '患者摘要与当前临床事件背景';
 
   @override
@@ -1300,6 +1309,18 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get searchPatients => '搜索患者';
+
+  @override
+  String get collapsePatientList => '收起患者列表';
+
+  @override
+  String get expandPatientList => '展开患者列表';
+
+  @override
+  String get collapseSectionNavigation => '收起分区导航';
+
+  @override
+  String get expandSectionNavigation => '展开分区导航';
 
   @override
   String get namePatientId => '姓名或患者 ID';
@@ -2307,4 +2328,494 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get doctorFallbackName => '医生';
+
+  @override
+  String get resources => '医疗资源';
+
+  @override
+  String get medicalResources => '医疗资源';
+
+  @override
+  String get medicalResourcesSubtitle => '检索经审核的临床资料，核验来源，并保存以便后续查阅。';
+
+  @override
+  String get resourceCatalogPreviewTitle => '权威来源目录';
+
+  @override
+  String get resourceCatalogPreviewBody =>
+      '以下为 200 项世界卫生组织实况报道，均配对官方中文和英文页面。在商业使用权利和医学审核完成前，不存储全文，也不用于 AI 检索。';
+
+  @override
+  String get resourceSearchHint => '用中文或英文搜索医疗资源';
+
+  @override
+  String get resourceSearchTab => '搜索';
+
+  @override
+  String get savedResourcesTab => '已保存';
+
+  @override
+  String get recentUpdatesTab => '近期更新';
+
+  @override
+  String get sourceRegistryTab => '来源登记';
+
+  @override
+  String get resourceFilters => '筛选条件';
+
+  @override
+  String get showFilters => '显示筛选';
+
+  @override
+  String get hideFilters => '收起筛选';
+
+  @override
+  String get clearFilters => '清除筛选';
+
+  @override
+  String get allOptions => '全部';
+
+  @override
+  String get topicFilter => '主题';
+
+  @override
+  String get documentTypeFilter => '文档类型';
+
+  @override
+  String get organizationFilter => '机构';
+
+  @override
+  String get jurisdictionFilter => '适用地区';
+
+  @override
+  String get originalLanguageFilter => '原始语言';
+
+  @override
+  String get intendedAudienceFilter => '适用对象';
+
+  @override
+  String get publicationReviewDateFilter => '发布／目录日期';
+
+  @override
+  String get versionStatusFilter => '现行／已被取代';
+
+  @override
+  String get topicRespiratoryCare => '呼吸系统照护';
+
+  @override
+  String get topicCardiovascularCare => '心血管照护';
+
+  @override
+  String get topicDiabetesCare => '糖尿病照护';
+
+  @override
+  String get topicRehabilitation => '康复';
+
+  @override
+  String get documentClinicalGuide => '临床指南';
+
+  @override
+  String get documentCarePathway => '照护路径';
+
+  @override
+  String get documentSafetyBulletin => '安全通报';
+
+  @override
+  String get documentPatientEducation => '患者教育';
+
+  @override
+  String get organizationPrimaryCareCouncil => '基层照护审核委员会';
+
+  @override
+  String get organizationMedicinesSafetyCenter => '药物安全审核中心';
+
+  @override
+  String get organizationRehabilitationCollaborative => '连续照护与康复协作组';
+
+  @override
+  String get jurisdictionMainlandChina => '中国大陆';
+
+  @override
+  String get jurisdictionInternational => '国际';
+
+  @override
+  String get jurisdictionChina => '中国';
+
+  @override
+  String get audienceDoctors => '医生';
+
+  @override
+  String get audienceDoctorsAndPatients => '医生与患者';
+
+  @override
+  String get dateAny => '不限日期';
+
+  @override
+  String get datePast12Months => '近 12 个月';
+
+  @override
+  String get datePast24Months => '近 24 个月';
+
+  @override
+  String get statusCurrent => '现行';
+
+  @override
+  String get statusSuperseded => '已被取代';
+
+  @override
+  String get searchSuggestions => '建议搜索';
+
+  @override
+  String get resourceSuggestionOne => '高血压随访';
+
+  @override
+  String get resourceSuggestionTwo => '呼吸道感染用药安全';
+
+  @override
+  String get resourceSuggestionThree => '糖尿病生病期间健康教育';
+
+  @override
+  String resourceResultCount(int count) {
+    return '$count 项资源';
+  }
+
+  @override
+  String get currentAndReviewed => '现行且已审核';
+
+  @override
+  String get supersededDoNotRely => '已被取代——请勿作为现行指导依据';
+
+  @override
+  String get rightsLimitedLinkOnly => '权利受限——仅提供链接／不存储全文';
+
+  @override
+  String get doctorOnlyResource => '仅限医生';
+
+  @override
+  String get patientEducationApproved => '已批准用于患者教育';
+
+  @override
+  String get patientUseNotApproved => '未批准用于患者';
+
+  @override
+  String get publisherLabel => '发布机构';
+
+  @override
+  String get sourceTypeLabel => '来源类型';
+
+  @override
+  String get publishedLabel => '发布日期';
+
+  @override
+  String get lastMedicalReviewLabel => '最近医学审核';
+
+  @override
+  String get openSourceDetails => '查看来源详情';
+
+  @override
+  String get saveResource => '保存资源';
+
+  @override
+  String get removeSavedResource => '取消保存';
+
+  @override
+  String get resourceSavedConfirmation => '资源已保存。';
+
+  @override
+  String get resourceRemovedConfirmation => '已取消保存资源。';
+
+  @override
+  String get officialLocator => '原始来源定位';
+
+  @override
+  String get provenance => '来源与流转记录';
+
+  @override
+  String get provenanceBody =>
+      '于 2026 年 7 月 14 日从世界卫生组织官方中英文实况报道索引配对采集。仅存储标题和定位信息，正文仍保留在世卫组织网站。';
+
+  @override
+  String get versionHistory => '版本历史';
+
+  @override
+  String get versionCurrentEntry => '当前已审核版本 · 在本目录中有效';
+
+  @override
+  String get versionSupersededEntry => '历史版本 · 仅为追溯而保留';
+
+  @override
+  String get relevantPassages => '相关段落';
+
+  @override
+  String get relatedSources => '相关来源';
+
+  @override
+  String get stableInternalReference => '稳定内部引用';
+
+  @override
+  String get copyCitation => '复制引用';
+
+  @override
+  String get citationCopied => '引用已复制。';
+
+  @override
+  String get copyOfficialLocator => '复制原始来源定位';
+
+  @override
+  String get officialLocatorCopied => '原始来源定位已复制。';
+
+  @override
+  String resourceCitation(
+    String title,
+    String publisher,
+    String year,
+    String locator,
+  ) {
+    return '$title。$publisher。$year。$locator';
+  }
+
+  @override
+  String get noResourceResultsTitle => '未找到匹配资源';
+
+  @override
+  String get noResourceResultsBody => '请尝试其他关键词，或清除一个或多个筛选条件。';
+
+  @override
+  String get noSavedResourcesTitle => '暂无已保存资源';
+
+  @override
+  String get noSavedResourcesBody => '可在“搜索”中保存来源，之后在此快速查阅。';
+
+  @override
+  String get noRecentUpdatesTitle => '暂无近期更新';
+
+  @override
+  String get noRecentUpdatesBody => '经审核的来源更新会在可用时显示在这里。';
+
+  @override
+  String get sourceRegistrySubtitle => '当前本地目录中收录的机构。';
+
+  @override
+  String get viewOrganizationSources => '查看来源';
+
+  @override
+  String reviewedSourceCount(int count) {
+    return '$count 个目录来源';
+  }
+
+  @override
+  String get loadingMedicalResources => '正在加载医疗资源';
+
+  @override
+  String get resourceOfflineTitle => '离线状态下无法使用医疗资源';
+
+  @override
+  String get resourceOfflineBody => '请重新联网以核实现行来源状态。已保存的引用仍会列出，但不会缓存全文。';
+
+  @override
+  String get resourceServiceFailureTitle => '无法加载医疗资源';
+
+  @override
+  String get resourceServiceFailureBody => '来源服务未响应。未发送任何患者信息或查询内容。';
+
+  @override
+  String get resourcePartialIndexTitle => '部分已审核来源暂时不可用';
+
+  @override
+  String get resourcePartialIndexBody => '在恢复当前来源索引期间，搜索结果可能不完整。';
+
+  @override
+  String get resourceRetry => '重试';
+
+  @override
+  String resourceUpdatedLabel(String date) {
+    return '目录核验于 $date';
+  }
+
+  @override
+  String get resourceTitleRespiratory => '单纯呼吸道症状的安全抗菌药物决策';
+
+  @override
+  String get resourcePassageRespiratory =>
+      '考虑抗菌治疗前，应核查症状持续时间、严重程度、危险信号及可能的病毒感染特征。';
+
+  @override
+  String get resourcePassageRespiratoryDetail =>
+      '如暂不需要立即使用抗菌药物，应记录临床依据，并向患者说明明确的复诊阈值。';
+
+  @override
+  String get resourceTitleHypertension => '稳定期高血压基层随访路径';
+
+  @override
+  String get resourcePassageHypertension =>
+      '应采用一致的血压测量方法，复核依从性和不良反应，并共同确定可行的随访间隔。';
+
+  @override
+  String get resourcePassageHypertensionDetail =>
+      '当血压严重升高并伴有警示症状或急性器官损伤证据时，应及时升级处置。';
+
+  @override
+  String get resourceTitleDiabetes => '2 型糖尿病成人生病期间的安全教育';
+
+  @override
+  String get resourcePassageDiabetes => '说明补充水分、监测、危险信号及何时联系医生，不应擅自更改已开具的药物。';
+
+  @override
+  String get resourcePassageDiabetesDetail => '面向患者的表述应与现行处方及已连接医生的指导进行核对。';
+
+  @override
+  String get resourceTitleStroke => '卒中康复出院后的照护衔接清单';
+
+  @override
+  String get resourcePassageStroke => '此早期清单涵盖药物核对、行动支持、照护者沟通及随访责任。';
+
+  @override
+  String get resourcePassageStrokeDetail => '该版本已由更新的衔接标准取代，仅应保留用于理解既往记录。';
+
+  @override
+  String get resourceOfficialMetadataStatus => '官方目录元数据';
+
+  @override
+  String get rightsReviewPending => '权利审核待完成——仅提供官方链接';
+
+  @override
+  String get resourceCatalogMetadataNote =>
+      '请打开任一世界卫生组织官方语言页面阅读原文。Dr. AI 仅存储配对后的标题和定位信息；目前不得用于摘录、向量化或 AI 检索。';
+
+  @override
+  String get catalogVerifiedLabel => '目录核验日期';
+
+  @override
+  String get documentFactSheet => '实况报道';
+
+  @override
+  String get documentClinicalGuideline => '临床诊疗指南';
+
+  @override
+  String get documentClinicalProtocol => '诊疗方案与技术规范';
+
+  @override
+  String get documentPracticeGuideline => '实践指南';
+
+  @override
+  String get documentGuidance => '工作指导';
+
+  @override
+  String get organizationWorldHealthOrganization => '世界卫生组织';
+
+  @override
+  String get topicInfectiousDisease => '传染病';
+
+  @override
+  String get topicChronicDisease => '慢性病';
+
+  @override
+  String get topicMaternalChildHealth => '妇幼健康';
+
+  @override
+  String get topicMentalHealth => '心理健康和精神卫生';
+
+  @override
+  String get topicInjuryEmergency => '伤害与急救';
+
+  @override
+  String get topicEnvironmentalHealth => '环境健康';
+
+  @override
+  String get topicNutritionLifestyle => '营养与生活方式';
+
+  @override
+  String get topicHealthSystems => '卫生系统与安全';
+
+  @override
+  String get showMoreResources => '再显示 20 项资源';
+
+  @override
+  String get catalogUseStatus => '目录与检索状态';
+
+  @override
+  String get bilingualChineseEnglish => '双语：中文与英文';
+
+  @override
+  String get languageChinese => '中文';
+
+  @override
+  String get languageEnglish => '英文';
+
+  @override
+  String get organizationNationalHealthCommission => '中华人民共和国国家卫生健康委员会';
+
+  @override
+  String get chineseOfficialSource => '官方中文页面';
+
+  @override
+  String get englishOfficialSource => '官方英文页面';
+
+  @override
+  String get copyEnglishOfficialLocator => '复制英文官方定位';
+
+  @override
+  String get englishOfficialLocatorCopied => '英文官方定位已复制。';
+
+  @override
+  String get close => '关闭';
+
+  @override
+  String get readOriginalText => '阅读原文';
+
+  @override
+  String get openOfficialSource => '打开官方来源';
+
+  @override
+  String get originalEnglish => '英文原文';
+
+  @override
+  String get backToResources => '返回资源库';
+
+  @override
+  String get resourceReaderTitle => '原始文档';
+
+  @override
+  String get resourceReaderReviewPending => '医学审核待完成';
+
+  @override
+  String get resourceReaderReviewApproved => '医学审核已通过';
+
+  @override
+  String get resourceReaderNotice =>
+      '此处展示发布方英文原文，仅供医生参考。该境外资料当前不用于 AI 检索或面向患者的回答。';
+
+  @override
+  String get resourceReaderUnavailableTitle => '暂无可阅读的原文';
+
+  @override
+  String get resourceReaderUnavailableBody => '该来源当前没有已获准展示的存储原文。请查看发布方官方来源。';
+
+  @override
+  String get resourceReaderLoadFailedTitle => '无法加载原始文档';
+
+  @override
+  String get resourceReaderLoadFailedBody => '请检查网络后重试。未发送任何患者信息。';
+
+  @override
+  String get resourceReaderRetry => '重试';
+
+  @override
+  String get publicationDateLabel => '发布日期';
+
+  @override
+  String get captureDateLabel => '采集日期';
+
+  @override
+  String get rightsAndAttribution => '权利与署名';
+
+  @override
+  String get copyDocumentCitation => '复制文档引用';
+
+  @override
+  String get reviewedChineseTranslation => '已审核中文译文';
+
+  @override
+  String get unofficialAiTranslationNotice =>
+      '这是经医学与中文审核的非官方 AI 生成中文译文。权威核验请以发布方英文原文为准。译文审核与检索准入仍为独立门槛。';
 }
