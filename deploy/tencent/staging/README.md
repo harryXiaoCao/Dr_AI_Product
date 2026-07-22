@@ -3,8 +3,9 @@
 This directory is the reproducible staging handoff for the approved Dr. AI
 architecture: an immutable FastAPI container on an existing Tencent Cloud
 compute host, Flutter web static files served by Caddy from the same origin,
-Caddy-managed HTTPS, and an existing TencentDB for PostgreSQL instance. It does
-not create billable resources or change account-wide settings.
+Caddy-managed HTTPS, an immutable internal retrieval-model service, and an
+existing TencentDB for PostgreSQL instance. It does not create billable
+resources or change account-wide settings.
 
 ## Required existing resources
 
@@ -20,25 +21,31 @@ Populate `.env` from `.env.example` on the host with mode `0600`.
 
 ## Release sequence
 
-1. Build `services/api/Dockerfile` and push an immutable digest to the existing
+1. Create and validate host-only backups of `.env`, Compose/Caddy configuration,
+   the current web bundle, knowledge release artifacts, and a PostgreSQL
+   custom-format dump. Do not mutate the live release until these checks pass.
+2. Build `services/api/Dockerfile` and push an immutable digest to the existing
    Tencent Container Registry repository.
-2. Set `DR_AI_IMAGE` to that digest and configure the approved staging
+3. Set `DR_AI_IMAGE` to that digest and configure the approved staging
    hostname/database values in the host-only `.env`.
-3. Run migrations as a one-off task:
+4. Keep `DR_AI_RETRIEVAL_IMAGE` pinned to a validated immutable digest; replace
+   it only when the retrieval validation artifact and image are released
+   together.
+5. Run migrations as a one-off task:
 
    ```bash
    docker compose run --rm api uv run --no-sync alembic upgrade head
    ```
 
-4. Seed the clearly synthetic demonstration accounts:
+6. Seed the clearly synthetic demonstration accounts:
 
    ```bash
    docker compose run --rm api uv run --no-sync python -m app.seed
    ```
 
-5. Run the seed command a second time and confirm every `*_created` count is
+7. Run the seed command a second time and confirm every `*_created` count is
    zero.
-6. Build the Flutter web app for the approved staging origin:
+8. Build the Flutter web app for the approved staging origin:
 
    ```bash
    cd ../../apps/dr_ai_app
@@ -52,17 +59,17 @@ Populate `.env` from `.env.example` on the host with mode `0600`.
    Tencent origin. This avoids a blank or heavily delayed first render when
    Google-hosted CanvasKit resources are slow or unavailable in China.
 
-7. Copy the generated `apps/dr_ai_app/build/web` contents to the host-side
+9. Copy the generated `apps/dr_ai_app/build/web` contents to the host-side
    `web/` directory beside `compose.yaml`. Back up any existing `web/`
    directory first.
 
-8. Start or refresh the service:
+10. Start or refresh the service:
 
    ```bash
    docker compose up -d
    ```
 
-9. Verify `https://$DR_AI_STAGING_HOST/health`, root web,
+11. Verify `https://$DR_AI_STAGING_HOST/health`, root web,
    `/beta-support`, database status, login, refresh rotation, logout, and
    neutral cross-patient access.
 
