@@ -2,6 +2,7 @@
 .env
 .env.*
 !.env.example
+services/api/knowledge_base/online_artifacts/
 *.pem
 *.key
 Dr_AI_Credentials.xlsx
@@ -20,6 +21,7 @@ __pycache__/
 .ruff_cache/
 .venv/
 venv/
+services/retrieval_inference/.model-cache/
 htmlcov/
 .coverage
 

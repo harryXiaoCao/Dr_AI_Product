@@ -1,6 +1,7 @@
 import 'package:dr_ai_app/app/routing/app_role.dart';
 import 'package:dr_ai_app/core/api/api_error.dart';
 import 'package:dr_ai_app/design_system/dr_ai_tokens.dart';
+import 'package:dr_ai_app/features/care_cost/presentation/care_cost_screens.dart';
 import 'package:dr_ai_app/features/patient/application/patient_care_providers.dart';
 import 'package:dr_ai_app/features/patient/domain/patient_care_data.dart';
 import 'package:dr_ai_app/l10n/l10n.dart';
@@ -147,6 +148,7 @@ enum _DoctorPatientSection {
   medicationPrescriptions(icon: Icons.medication_outlined),
   recoveryPlans(icon: Icons.assignment_turned_in_outlined),
   imaging(icon: Icons.image_search_outlined),
+  careCosts(icon: Icons.receipt_long_outlined),
   consultationActivity(icon: Icons.edit_note_outlined);
 
   const _DoctorPatientSection({required this.icon});
@@ -164,6 +166,10 @@ extension _LocalizedDoctorPatientSection on _DoctorPatientSection {
       context.l10n.medicationsPrescriptions,
     _DoctorPatientSection.recoveryPlans => context.l10n.recoveryPlans,
     _DoctorPatientSection.imaging => context.l10n.imaging,
+    _DoctorPatientSection.careCosts =>
+      Localizations.localeOf(context).languageCode == 'zh'
+          ? '诊疗与费用'
+          : 'Care & costs',
     _DoctorPatientSection.consultationActivity =>
       context.l10n.consultationActivity,
   };
@@ -177,6 +183,10 @@ extension _LocalizedDoctorPatientSection on _DoctorPatientSection {
       context.l10n.medicationsSummary,
     _DoctorPatientSection.recoveryPlans => context.l10n.recoveryPlansSummary,
     _DoctorPatientSection.imaging => context.l10n.imagingSummary,
+    _DoctorPatientSection.careCosts =>
+      Localizations.localeOf(context).languageCode == 'zh'
+          ? '记录临床事件下的服务、实际费用与支付申请。'
+          : 'Record event services, actual costs, and payer requests.',
     _DoctorPatientSection.consultationActivity =>
       context.l10n.consultationActivitySummary,
   };
@@ -1032,6 +1042,10 @@ class _WorkspaceSectionContent extends StatelessWidget {
       _DoctorPatientSection.imaging => _ImagingSection(
         bundle: bundle,
         selectedEvent: selectedEvent,
+      ),
+      _DoctorPatientSection.careCosts => DoctorCareCostEditor(
+        patientId: bundle.patient.patientId,
+        clinicalEventId: selectedEvent?.id,
       ),
       _DoctorPatientSection.consultationActivity =>
         _ConsultationActivitySection(

@@ -1,0 +1,44 @@
+{
+  "schema_version": "1.0",
+  "terminology_set_id": "dr-ai-slice9a-reviewed-terms-v1",
+  "review_basis_suite_id": "dr-ai-slice9a-retrieval-v2",
+  "terms": [
+    {
+      "stable_id": "KBT-HBA1C",
+      "preferred_zh": "糖化血红蛋白",
+      "preferred_en": "Hemoglobin A1C",
+      "aliases": [
+        "HbA1c",
+        "HbA1C",
+        "A1C",
+        "糖基化血红蛋白"
+      ],
+      "concept_type": "laboratory_test",
+      "disambiguation_notes": "A1C is a reviewed synonym for the HbA1c blood test, not a synonym for every diabetes test.",
+      "provenance_source_ids": [
+        "KBS-MEDLINEPLUS-HEMOGLOBIN-A1C-HBA1C-TEST",
+        "KBS-MEDLINEPLUS-DIABETES-TYPE-2"
+      ],
+      "prohibited_expansions": [
+        "血红蛋白检查"
+      ]
+    },
+    {
+      "stable_id": "KBT-SCREENING",
+      "preferred_zh": "筛查",
+      "preferred_en": "screening",
+      "aliases": [
+        "筛检"
+      ],
+      "concept_type": "preventive_service",
+      "disambiguation_notes": "筛查 and 筛检 are regional Chinese terms for screening; a screening result is not a diagnosis.",
+      "provenance_source_ids": [
+        "KBS-HPA-0056A212694651D10A59",
+        "KBS-MYHEALTHFINDER-GET-SCREENED"
+      ],
+      "prohibited_expansions": [
+        "诊断"
+      ]
+    }
+  ]
+}

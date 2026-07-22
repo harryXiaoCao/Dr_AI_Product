@@ -117,6 +117,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 customHospital: _customHospital,
               )
             : null,
+        payerProfile: _selectedRole == AppRole.payer
+            ? PayerSignupProfile(
+                displayName: displayName,
+                organizationName: _hospitalController.text,
+              )
+            : null,
       );
     } else {
       await controller.login(_loginAccount(), _passwordController.text);
@@ -311,6 +317,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     bool desktop,
   ) {
     final isDoctor = _selectedRole == AppRole.doctor;
+    final isPayer = _selectedRole == AppRole.payer;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
@@ -326,6 +333,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   Text(
                     isDoctor
                         ? context.l10n.doctorRegistration
+                        : isPayer
+                        ? context.l10n.payerRegistration
                         : context.l10n.createAccount,
                     textAlign: desktop ? TextAlign.start : TextAlign.center,
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
@@ -337,6 +346,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   Text(
                     isDoctor
                         ? context.l10n.createAccountDoctorDescription
+                        : isPayer
+                        ? context.l10n.createAccountPayerDescription
                         : context.l10n.createAccountPatientDescription,
                     textAlign: desktop ? TextAlign.start : TextAlign.center,
                     style: const TextStyle(color: DrAiColors.inkSecondary),
@@ -370,19 +381,33 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           icon: Icons.badge_outlined,
           children: <Widget>[
             _nameFields(desktop),
-            const SizedBox(height: DrAiSpacing.md),
-            _responsivePair(desktop, _birthDateField(), _genderField()),
+            if (!isPayer) ...<Widget>[
+              const SizedBox(height: DrAiSpacing.md),
+              _responsivePair(desktop, _birthDateField(), _genderField()),
+            ],
           ],
         ),
         const SizedBox(height: DrAiSpacing.lg),
         _formSection(
-          title: isDoctor
+          title: isPayer
+              ? context.l10n.organizationInformation
+              : isDoctor
               ? context.l10n.hospitalInformation
               : context.l10n.homeAddress,
-          icon: isDoctor ? Icons.local_hospital_outlined : Icons.home_outlined,
+          icon: isDoctor || isPayer
+              ? Icons.apartment_outlined
+              : Icons.home_outlined,
           children: <Widget>[
-            _locationFields(desktop),
-            if (!isDoctor) ...<Widget>[
+            if (isPayer)
+              _textField(
+                controller: _hospitalController,
+                label: context.l10n.organizationName,
+                keyName: 'signup-payer-organization-field',
+                required: true,
+              )
+            else
+              _locationFields(desktop),
+            if (!isDoctor && !isPayer) ...<Widget>[
               const SizedBox(height: DrAiSpacing.md),
               _textField(
                 controller: _homeAddressController,
@@ -739,6 +764,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           value: AppRole.doctor,
           icon: const Icon(Icons.medical_services_outlined),
           label: Text(context.l10n.doctor),
+        ),
+        ButtonSegment<AppRole>(
+          value: AppRole.payer,
+          icon: const Icon(Icons.account_balance_outlined),
+          label: Text(context.l10n.payer),
         ),
       ],
       selected: <AppRole>{_selectedRole},

@@ -27,6 +27,7 @@ class Base(DeclarativeBase):
 class UserRole(enum.StrEnum):
     doctor = "doctor"
     patient = "patient"
+    payer = "payer"
     specialist = "specialist"
     admin = "admin"
 
@@ -50,6 +51,9 @@ class User(Base):
         back_populates="user", cascade="all, delete-orphan"
     )
     patient_profile: Mapped["PatientProfile | None"] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+    payer_memberships: Mapped[list["PayerMembership"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
     refresh_sessions: Mapped[list["RefreshSession"]] = relationship(
@@ -161,6 +165,10 @@ class PatientProfile(Base):
     lifestyle_notes: Mapped[str | None] = mapped_column(Text)
     pregnancy_status: Mapped[str | None] = mapped_column(String(40))
     medical_history_setup_completed: Mapped[bool] = mapped_column(Boolean, default=False)
+    context_recorded_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    measurements_recorded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     user: Mapped[User] = relationship(back_populates="patient_profile")
     care_relationships: Mapped[list["CareRelationship"]] = relationship(back_populates="patient")
@@ -236,6 +244,43 @@ class CareRelationship(Base):
     patient: Mapped[PatientProfile] = relationship(back_populates="care_relationships")
 
 
+class PayerOrganization(Base):
+    __tablename__ = "payer_organizations"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name: Mapped[str] = mapped_column(String(180), unique=True, index=True)
+    organization_type: Mapped[str] = mapped_column(String(40), default="public_payer")
+    jurisdiction_code: Mapped[str] = mapped_column(String(40), default="CN")
+    verification_status: Mapped[str] = mapped_column(String(40), default="synthetic_only")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    memberships: Mapped[list["PayerMembership"]] = relationship(
+        back_populates="organization", cascade="all, delete-orphan"
+    )
+
+
+class PayerMembership(Base):
+    __tablename__ = "payer_memberships"
+    __table_args__ = (
+        UniqueConstraint("payer_organization_id", "user_id", name="uq_payer_membership_user"),
+        Index("ix_payer_membership_user_status", "user_id", "status"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    payer_organization_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("payer_organizations.id", ondelete="CASCADE")
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    display_name: Mapped[str] = mapped_column(String(120))
+    title: Mapped[str] = mapped_column(String(120), default="Reviewer")
+    status: Mapped[str] = mapped_column(String(40), default="active")
+    scope: Mapped[str] = mapped_column(String(80), default="synthetic_review")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    organization: Mapped[PayerOrganization] = relationship(back_populates="memberships")
+    user: Mapped[User] = relationship(back_populates="payer_memberships")
+
+
 class ClinicalEvent(Base):
     __tablename__ = "clinical_events"
     __table_args__ = (
@@ -283,6 +328,142 @@ class ClinicalEvent(Base):
     patient_updates: Mapped[list["ClinicalEventUpdate"]] = relationship(
         back_populates="clinical_event", cascade="all, delete-orphan"
     )
+    care_cost_items: Mapped[list["CareCostItem"]] = relationship(
+        back_populates="clinical_event", cascade="all, delete-orphan"
+    )
+    payer_requests: Mapped[list["PayerRequest"]] = relationship(
+        back_populates="clinical_event", cascade="all, delete-orphan"
+    )
+
+
+class CareCostItem(Base):
+    __tablename__ = "care_cost_items"
+    __table_args__ = (
+        Index("ix_care_cost_items_event_service_date", "clinical_event_id", "service_date"),
+        Index("ix_care_cost_items_patient_created", "patient_id", "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    patient_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("patient_profiles.id", ondelete="CASCADE")
+    )
+    clinical_event_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("clinical_events.id", ondelete="CASCADE")
+    )
+    created_by_user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE")
+    )
+    item_type: Mapped[str] = mapped_column(String(60))
+    label: Mapped[str] = mapped_column(String(200))
+    service_date: Mapped[date] = mapped_column(Date)
+    status: Mapped[str] = mapped_column(String(40), default="planned")
+    quantity: Mapped[int] = mapped_column(Integer, default=1)
+    currency: Mapped[str] = mapped_column(String(3), default="CNY")
+    actual_cost_minor: Mapped[int] = mapped_column(Integer, default=0)
+    payer_requested_minor: Mapped[int] = mapped_column(Integer, default=0)
+    patient_responsibility_minor: Mapped[int] = mapped_column(Integer, default=0)
+    ai_review_score: Mapped[int | None] = mapped_column(Integer)
+    ai_review_status: Mapped[str] = mapped_column(String(40), default="not_evaluated")
+    ai_review_summary: Mapped[str | None] = mapped_column(Text)
+    notes: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    clinical_event: Mapped[ClinicalEvent] = relationship(back_populates="care_cost_items")
+    created_by: Mapped[User] = relationship()
+
+
+class PayerRequest(Base):
+    __tablename__ = "payer_requests"
+    __table_args__ = (
+        Index("ix_payer_requests_organization_status", "payer_organization_id", "status"),
+        Index("ix_payer_requests_doctor_created", "doctor_id", "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    clinical_event_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("clinical_events.id", ondelete="CASCADE")
+    )
+    patient_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("patient_profiles.id", ondelete="CASCADE")
+    )
+    doctor_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("doctor_profiles.id", ondelete="CASCADE")
+    )
+    payer_organization_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("payer_organizations.id", ondelete="RESTRICT")
+    )
+    status: Mapped[str] = mapped_column(String(40), default="submitted")
+    currency: Mapped[str] = mapped_column(String(3), default="CNY")
+    requested_total_minor: Mapped[int] = mapped_column(Integer)
+    doctor_summary: Mapped[str] = mapped_column(Text)
+    ai_review_status: Mapped[str] = mapped_column(String(40), default="not_evaluated")
+    ai_review_score: Mapped[int | None] = mapped_column(Integer)
+    ai_review_summary: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    clinical_event: Mapped[ClinicalEvent] = relationship(back_populates="payer_requests")
+    patient: Mapped[PatientProfile] = relationship()
+    doctor: Mapped[DoctorProfile] = relationship()
+    payer_organization: Mapped[PayerOrganization] = relationship()
+    lines: Mapped[list["PayerRequestLine"]] = relationship(
+        back_populates="payer_request", cascade="all, delete-orphan"
+    )
+    reviews: Mapped[list["PayerReview"]] = relationship(
+        back_populates="payer_request", cascade="all, delete-orphan"
+    )
+
+
+class PayerRequestLine(Base):
+    __tablename__ = "payer_request_lines"
+    __table_args__ = (
+        UniqueConstraint("payer_request_id", "care_cost_item_id", name="uq_payer_request_item"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    payer_request_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("payer_requests.id", ondelete="CASCADE")
+    )
+    care_cost_item_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("care_cost_items.id", ondelete="SET NULL")
+    )
+    item_type: Mapped[str] = mapped_column(String(60))
+    label: Mapped[str] = mapped_column(String(200))
+    service_date: Mapped[date] = mapped_column(Date)
+    currency: Mapped[str] = mapped_column(String(3))
+    actual_cost_minor: Mapped[int] = mapped_column(Integer)
+    requested_minor: Mapped[int] = mapped_column(Integer)
+    patient_responsibility_minor: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    payer_request: Mapped[PayerRequest] = relationship(back_populates="lines")
+    care_cost_item: Mapped[CareCostItem | None] = relationship()
+
+
+class PayerReview(Base):
+    __tablename__ = "payer_reviews"
+    __table_args__ = (Index("ix_payer_reviews_request_created", "payer_request_id", "created_at"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    payer_request_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("payer_requests.id", ondelete="CASCADE")
+    )
+    payer_membership_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("payer_memberships.id", ondelete="RESTRICT")
+    )
+    action: Mapped[str] = mapped_column(String(40))
+    reason_code: Mapped[str] = mapped_column(String(80))
+    note: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    payer_request: Mapped[PayerRequest] = relationship(back_populates="reviews")
+    payer_membership: Mapped[PayerMembership] = relationship()
 
 
 class ClinicalEventUpdate(Base):
@@ -784,6 +965,7 @@ class ChatThread(Base):
     title: Mapped[str] = mapped_column(String(160))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     last_message_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    retention_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
 
     patient: Mapped[PatientProfile] = relationship(back_populates="chat_threads")
     created_by: Mapped[User] = relationship()
@@ -801,7 +983,9 @@ class ChatMessage(Base):
     patient_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("patient_profiles.id", ondelete="CASCADE")
     )
-    actor_user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    actor_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE")
+    )
     role: Mapped[str] = mapped_column(String(40))
     content: Mapped[str | None] = mapped_column(Text)
     prompt_hash: Mapped[str | None] = mapped_column(String(64))
@@ -814,7 +998,7 @@ class ChatMessage(Base):
 
     thread: Mapped[ChatThread] = relationship(back_populates="messages")
     patient: Mapped[PatientProfile] = relationship()
-    actor: Mapped[User] = relationship()
+    actor: Mapped[User | None] = relationship()
 
 
 class ChatRateLimit(Base):
@@ -1435,6 +1619,40 @@ class KbRightsRecord(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class KbSourceFamily(Base):
+    __tablename__ = "kb_source_families"
+    __table_args__ = (Index("ix_kb_source_families_status_due", "status", "next_check_at"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    stable_id: Mapped[str] = mapped_column(String(120), unique=True, index=True)
+    publisher_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("kb_publishers.id", ondelete="RESTRICT"), index=True
+    )
+    name: Mapped[str] = mapped_column(String(240))
+    jurisdiction: Mapped[str] = mapped_column(String(40))
+    seed_locators_json: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    allowed_domains_json: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    allowed_path_prefixes_json: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    content_classes_json: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    parser_version: Mapped[str] = mapped_column(String(120))
+    fetch_interval_minutes: Mapped[int] = mapped_column(Integer)
+    max_response_bytes: Mapped[int] = mapped_column(Integer)
+    capture_policy: Mapped[str] = mapped_column(String(40), default="metadata_only")
+    rights_gate_status: Mapped[str] = mapped_column(String(40), default="pending")
+    status: Mapped[str] = mapped_column(String(40), default="disabled")
+    last_checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_success_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    next_check_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    consecutive_failures: Mapped[int] = mapped_column(Integer, default=0)
+    killed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    killed_by: Mapped[str | None] = mapped_column(String(120))
+    kill_reason_code: Mapped[str | None] = mapped_column(String(120))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
 class KbSource(Base):
     __tablename__ = "kb_sources"
     __table_args__ = (
@@ -1449,6 +1667,9 @@ class KbSource(Base):
     )
     rights_record_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("kb_rights_records.id", ondelete="RESTRICT")
+    )
+    source_family_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("kb_source_families.id", ondelete="SET NULL"), index=True
     )
     title: Mapped[str] = mapped_column(String(500))
     canonical_locator: Mapped[str] = mapped_column(Text, unique=True)
@@ -1480,6 +1701,78 @@ class KbSource(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
+
+
+class KbSourceFetchRun(Base):
+    __tablename__ = "kb_source_fetch_runs"
+    __table_args__ = (
+        Index("ix_kb_source_fetch_runs_family_started", "source_family_id", "started_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    stable_id: Mapped[str] = mapped_column(String(160), unique=True, index=True)
+    source_family_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("kb_source_families.id", ondelete="CASCADE"), index=True
+    )
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    status: Mapped[str] = mapped_column(String(40), default="running")
+    attempted_count: Mapped[int] = mapped_column(Integer, default=0)
+    unchanged_count: Mapped[int] = mapped_column(Integer, default=0)
+    changed_count: Mapped[int] = mapped_column(Integer, default=0)
+    quarantined_count: Mapped[int] = mapped_column(Integer, default=0)
+    discovered_locator_count: Mapped[int] = mapped_column(Integer, default=0)
+    error_code: Mapped[str | None] = mapped_column(String(120))
+    metadata_json: Mapped[dict[str, object]] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class KbSourceCandidate(Base):
+    __tablename__ = "kb_source_candidates"
+    __table_args__ = (
+        UniqueConstraint(
+            "source_family_id",
+            "canonical_locator",
+            "body_checksum",
+            name="uq_kb_source_candidate_capture",
+        ),
+        Index(
+            "ix_kb_source_candidates_review_queue",
+            "source_family_id",
+            "quarantine_status",
+            "captured_at",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    stable_id: Mapped[str] = mapped_column(String(180), unique=True, index=True)
+    source_family_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("kb_source_families.id", ondelete="CASCADE"), index=True
+    )
+    fetch_run_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("kb_source_fetch_runs.id", ondelete="CASCADE"), index=True
+    )
+    source_version_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("kb_source_versions.id", ondelete="SET NULL"), index=True
+    )
+    canonical_locator: Mapped[str] = mapped_column(Text)
+    content_class: Mapped[str] = mapped_column(String(80))
+    discovered_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    captured_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    http_status: Mapped[int] = mapped_column(Integer)
+    content_type: Mapped[str] = mapped_column(String(160))
+    etag: Mapped[str | None] = mapped_column(String(500))
+    last_modified: Mapped[str | None] = mapped_column(String(200))
+    body_checksum: Mapped[str] = mapped_column(String(64))
+    body_bytes: Mapped[int] = mapped_column(Integer)
+    raw_artifact_locator: Mapped[str | None] = mapped_column(Text)
+    normalized_artifact_locator: Mapped[str | None] = mapped_column(Text)
+    parser_version: Mapped[str] = mapped_column(String(120))
+    change_state: Mapped[str] = mapped_column(String(40))
+    quarantine_status: Mapped[str] = mapped_column(String(40), default="quarantined")
+    quarantine_reason_code: Mapped[str | None] = mapped_column(String(120))
+    review_gates_json: Mapped[dict[str, str]] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class KbSourceVersion(Base):
@@ -1562,6 +1855,7 @@ class KbPassage(Base):
     lexical_eligible: Mapped[bool] = mapped_column(Boolean, default=False)
     vector_eligible: Mapped[bool] = mapped_column(Boolean, default=False)
     embedding_json: Mapped[list[float] | None] = mapped_column(JSONB)
+    embedding_model_version: Mapped[str | None] = mapped_column(String(160))
     content_checksum: Mapped[str] = mapped_column(String(64))
     conflict_group_key: Mapped[str | None] = mapped_column(String(160), index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -1692,6 +1986,8 @@ class KbIndexReleasePassage(Base):
     passage_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("kb_passages.id", ondelete="RESTRICT"), primary_key=True, index=True
     )
+    embedding_json: Mapped[list[float] | None] = mapped_column(JSONB(none_as_null=True))
+    embedding_model_version: Mapped[str | None] = mapped_column(String(160))
 
 
 class KbRetrievalEvent(Base):
@@ -1714,6 +2010,50 @@ class KbRetrievalEvent(Base):
     latency_ms: Mapped[int] = mapped_column(Integer)
     evidence_decision: Mapped[str] = mapped_column(String(80))
     fallback_code: Mapped[str | None] = mapped_column(String(80))
+    occurred_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
+class ChatbotEvent(Base):
+    """Content-free patient-chat telemetry; conversation text is never persisted here."""
+
+    __tablename__ = "chatbot_events"
+    __table_args__ = (Index("ix_chatbot_events_occurred", "occurred_at"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    request_id: Mapped[str] = mapped_column(String(120), unique=True, index=True)
+    actor_role: Mapped[str] = mapped_column(String(40))
+    workflow: Mapped[str] = mapped_column(String(80))
+    query_sha256: Mapped[str] = mapped_column(String(64))
+    query_length: Mapped[int] = mapped_column(Integer)
+    index_release_id: Mapped[str | None] = mapped_column(String(160))
+    retrieved_source_ids_json: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    retrieved_passage_ids_json: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    evidence_decision: Mapped[str | None] = mapped_column(String(80))
+    model_version: Mapped[str | None] = mapped_column(String(160))
+    policy_version: Mapped[str] = mapped_column(String(120))
+    tool_schema_version: Mapped[str] = mapped_column(String(120))
+    safety_code: Mapped[str] = mapped_column(String(80))
+    fallback_code: Mapped[str | None] = mapped_column(String(80))
+    latency_ms: Mapped[int] = mapped_column(Integer)
+    provider_input_tokens: Mapped[int | None] = mapped_column(Integer)
+    provider_output_tokens: Mapped[int | None] = mapped_column(Integer)
+    provider_error_code: Mapped[str | None] = mapped_column(String(120))
+    provider_attempt_count: Mapped[int | None] = mapped_column(Integer)
+    provider_cost_microunits: Mapped[int | None] = mapped_column(Integer)
+    rescue_trigger: Mapped[str | None] = mapped_column(String(80))
+    rescue_attempted: Mapped[bool] = mapped_column(Boolean, default=False)
+    rescue_outcome: Mapped[str | None] = mapped_column(String(80))
+    rescue_planner_model: Mapped[str | None] = mapped_column(String(160))
+    rescue_input_tokens: Mapped[int | None] = mapped_column(Integer)
+    rescue_output_tokens: Mapped[int | None] = mapped_column(Integer)
+    rescue_cache_hit_tokens: Mapped[int | None] = mapped_column(Integer)
+    rescue_cache_miss_tokens: Mapped[int | None] = mapped_column(Integer)
+    rescue_latency_ms: Mapped[int | None] = mapped_column(Integer)
+    rescue_cost_microunits: Mapped[int | None] = mapped_column(Integer)
+    rescue_retrieval_delta: Mapped[float | None] = mapped_column(Float)
+    rescue_retry_request_id: Mapped[str | None] = mapped_column(String(120))
     occurred_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

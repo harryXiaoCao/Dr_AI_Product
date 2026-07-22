@@ -561,6 +561,84 @@ void main() {
     expect(find.byKey(const Key('group-contact-placeholder')), findsOneWidget);
   });
 
+  testWidgets('patient AI chat keeps the conversation in the current session', (
+    tester,
+  ) async {
+    setViewport(tester, const Size(412, 917));
+    final repository = FakeDrAiRepository(
+      restoredSession: patientSession,
+      loginSession: patientSession,
+      dashboard: patientDashboard,
+    );
+    await pumpApp(tester, repository);
+
+    await tester.tap(find.text('Contacts'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('dr-ai-contact')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('patient-ai-input')), findsOneWidget);
+    await tester.enterText(
+      find.byKey(const Key('patient-ai-input')),
+      'What should I understand about recording blood pressure?',
+    );
+    await tester.tap(find.byKey(const Key('patient-ai-send')));
+    await tester.pumpAndSettle();
+
+    expect(repository.chatMessagesSent, 1);
+    expect(find.byKey(const Key('patient-ai-message-list')), findsOneWidget);
+    expect(find.textContaining('Prepare questions'), findsOneWidget);
+    expect(find.text('Personalized with your records'), findsOneWidget);
+    expect(
+      find.textContaining('Health measurements · Your profile records'),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('patient-ai-uncertainty')), findsOneWidget);
+    expect(find.text('Important uncertainty'), findsOneWidget);
+  });
+
+  test(
+    'patient RAG response parses reviewed source cards and fallback state',
+    () {
+      final result = ChatMessageResult.fromJson(<String, dynamic>{
+        'request_id': 'req-test',
+        'session_id': 'session-test',
+        'answer_sections': <String>['Reviewed educational answer.'],
+        'safety_code': 'permitted_education',
+        'emergency': false,
+        'fallback_code': null,
+        'model_version': 'deepseek-v4-flash',
+        'limitation': 'Educational only.',
+        'next_action_code': 'contact_connected_doctor',
+        'sources': <Map<String, dynamic>>[
+          <String, dynamic>{
+            'number': 1,
+            'passage_id': 'passage-1',
+            'title': 'Reviewed source',
+            'publisher': 'Health authority',
+            'official_locator': 'https://example.invalid/source',
+            'publication_date': '2026-01-01',
+            'last_medical_review_date': '2026-07-16',
+          },
+        ],
+        'context_used': <Map<String, dynamic>>[
+          <String, dynamic>{
+            'category': 'measurements',
+            'provenance': 'patient_profile',
+            'recorded_on': '2026-07-16',
+          },
+        ],
+        'uncertainties': <String>['Important context is missing.'],
+      });
+
+      expect(result.content, 'Reviewed educational answer.');
+      expect(result.sources.single.title, 'Reviewed source');
+      expect(result.contextUsed.single.category, 'measurements');
+      expect(result.nextActionCode, 'contact_connected_doctor');
+      expect(result.uncertainties, <String>['Important context is missing.']);
+    },
+  );
+
   testWidgets('legal pages return to the registration page', (tester) async {
     final router = createRouter(null, initialLocation: '/terms');
     addTearDown(router.dispose);
@@ -1613,10 +1691,10 @@ void main() {
       );
 
       await tester.ensureVisible(
-        find.byKey(const Key('payment-disabled-control')),
+        find.byKey(const Key('open-care-costs-button')),
       );
       await tester.pumpAndSettle();
-      expect(find.bySemanticsLabel('Pay now unavailable'), findsOneWidget);
+      expect(find.text('View full care and cost details'), findsOneWidget);
       expect(find.text('My Account'), findsOneWidget);
       await tester.tap(find.text('My Account'));
       await tester.pumpAndSettle();

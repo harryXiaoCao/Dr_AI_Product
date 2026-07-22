@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:dr_ai_app/app/routing/app_role.dart';
 import 'package:dr_ai_app/core/api/api_error.dart';
 import 'package:dr_ai_app/features/auth/domain/auth_models.dart';
+import 'package:dr_ai_app/features/care_cost/domain/care_cost_data.dart';
 import 'package:dr_ai_app/features/dashboard/domain/dashboard_data.dart';
 import 'package:dr_ai_app/features/doctor/domain/doctor_profile.dart';
 import 'package:dr_ai_app/features/doctor/domain/medical_resource_fixture.dart';
@@ -32,6 +33,7 @@ abstract interface class DrAiRepository {
     required bool termsAccepted,
     PatientSignupProfile? patientProfile,
     DoctorSignupProfile? doctorProfile,
+    PayerSignupProfile? payerProfile,
   });
   Future<void> logout();
   Future<DashboardData> loadDashboard(AppRole role);
@@ -252,9 +254,12 @@ abstract interface class DrAiRepository {
     List<RecoveryTaskItem> tasks,
   );
   Future<ChatMessageResult> sendEducationalChatMessage({
-    required String threadId,
+    String? threadId,
     required String message,
+    String language = 'zh-Hans',
   });
+  Future<List<PatientChatThreadSummary>> loadEducationalChatThreads();
+  Future<PatientChatHistory> loadEducationalChatThread(String threadId);
   Future<ConsultationListData> loadConsultations();
   Future<ConsultationRequestItem> createConsultation({
     required String patientId,
@@ -262,6 +267,46 @@ abstract interface class DrAiRepository {
     required String specialty,
     required String questionSummary,
     required String priority,
+  });
+  Future<CareCostLedgerData> loadOwnCareCosts();
+  Future<CareCostLedgerData> loadPatientCareCosts(String patientId);
+  Future<CareCostItemData> saveCareCostItem({
+    required String patientId,
+    required String clinicalEventId,
+    String? itemId,
+    required String itemType,
+    required String label,
+    required DateTime serviceDate,
+    required String status,
+    required int quantity,
+    required int actualCostMinor,
+    required int payerRequestedMinor,
+    required int patientResponsibilityMinor,
+    String? notes,
+  });
+  Future<void> deleteCareCostItem({
+    required String patientId,
+    required String clinicalEventId,
+    required String itemId,
+  });
+  Future<List<PayerOrganizationData>> loadPayerOrganizations();
+  Future<PayerRequestData> createPayerRequest({
+    required String patientId,
+    required String clinicalEventId,
+    required String payerOrganizationId,
+    required List<String> careCostItemIds,
+    required String doctorSummary,
+  });
+  Future<List<PayerRequestData>> loadDoctorPayerRequests();
+  Future<List<PayerRequestData>> loadOwnPatientPayerRequests();
+  Future<PayerDashboardData> loadPayerDashboard();
+  Future<PayerProfileData> loadPayerProfile();
+  Future<List<PayerRequestData>> loadPayerRequests();
+  Future<PayerRequestData> reviewPayerRequest({
+    required String requestId,
+    required String action,
+    required String reasonCode,
+    String? note,
   });
 }
 
@@ -331,6 +376,27 @@ class DoctorSignupProfile {
     if (city.trim().isNotEmpty) 'city': city.trim(),
     if (hospitalName.trim().isNotEmpty) 'hospital_name': hospitalName.trim(),
     'custom_hospital': customHospital,
+  };
+}
+
+class PayerSignupProfile {
+  const PayerSignupProfile({
+    required this.displayName,
+    required this.organizationName,
+    this.title = 'Reviewer',
+    this.organizationType = 'public_payer',
+  });
+
+  final String displayName;
+  final String organizationName;
+  final String title;
+  final String organizationType;
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    'display_name': displayName.trim(),
+    'organization_name': organizationName.trim(),
+    'title': title.trim(),
+    'organization_type': organizationType,
   };
 }
 
@@ -436,6 +502,7 @@ class DioDrAiRepository implements DrAiRepository {
     required bool termsAccepted,
     PatientSignupProfile? patientProfile,
     DoctorSignupProfile? doctorProfile,
+    PayerSignupProfile? payerProfile,
   }) async {
     final trimmedEmail = email.trim();
     final data = <String, dynamic>{
@@ -453,6 +520,9 @@ class DioDrAiRepository implements DrAiRepository {
     }
     if (doctorProfile != null) {
       data['doctor_profile'] = doctorProfile.toJson();
+    }
+    if (payerProfile != null) {
+      data['payer_profile'] = payerProfile.toJson();
     }
     try {
       final response = await client.post<Map<String, dynamic>>(
@@ -1324,14 +1394,38 @@ class DioDrAiRepository implements DrAiRepository {
 
   @override
   Future<ChatMessageResult> sendEducationalChatMessage({
-    required String threadId,
+    String? threadId,
     required String message,
+    String language = 'zh-Hans',
   }) async {
     final response = await _authorizedPost(
-      '/api/v1/chat/threads/$threadId/messages',
-      data: <String, dynamic>{'message': message, 'stream': true},
+      '/api/v1/patient/chat/messages',
+      data: <String, dynamic>{
+        'message': message,
+        'language': language,
+        'session_id': ?threadId,
+      },
     );
     return ChatMessageResult.fromJson(response);
+  }
+
+  @override
+  Future<List<PatientChatThreadSummary>> loadEducationalChatThreads() async {
+    final response = await _authorizedGet('/api/v1/patient/chat/threads');
+    return (response['items'] as List)
+        .map(
+          (item) =>
+              PatientChatThreadSummary.fromJson(item as Map<String, dynamic>),
+        )
+        .toList();
+  }
+
+  @override
+  Future<PatientChatHistory> loadEducationalChatThread(String threadId) async {
+    final response = await _authorizedGet(
+      '/api/v1/patient/chat/threads/$threadId',
+    );
+    return PatientChatHistory.fromJson(response);
   }
 
   @override
@@ -1359,6 +1453,149 @@ class DioDrAiRepository implements DrAiRepository {
     }
     final response = await _authorizedPost('/api/v1/consultations', data: data);
     return ConsultationRequestItem.fromJson(response);
+  }
+
+  @override
+  Future<CareCostLedgerData> loadOwnCareCosts() async {
+    return CareCostLedgerData.fromJson(
+      await _authorizedGet('/api/v1/patient/me/care-costs'),
+    );
+  }
+
+  @override
+  Future<CareCostLedgerData> loadPatientCareCosts(String patientId) async {
+    return CareCostLedgerData.fromJson(
+      await _authorizedGet('/api/v1/patients/$patientId/care-costs'),
+    );
+  }
+
+  @override
+  Future<CareCostItemData> saveCareCostItem({
+    required String patientId,
+    required String clinicalEventId,
+    String? itemId,
+    required String itemType,
+    required String label,
+    required DateTime serviceDate,
+    required String status,
+    required int quantity,
+    required int actualCostMinor,
+    required int payerRequestedMinor,
+    required int patientResponsibilityMinor,
+    String? notes,
+  }) async {
+    final path =
+        '/api/v1/patients/$patientId/clinical-events/$clinicalEventId/care-items'
+        '${itemId == null ? '' : '/$itemId'}';
+    final data = <String, dynamic>{
+      'item_type': itemType,
+      'label': label,
+      'service_date': serviceDate.toIso8601String().split('T').first,
+      'status': status,
+      'quantity': quantity,
+      'currency': 'CNY',
+      'actual_cost_minor': actualCostMinor,
+      'payer_requested_minor': payerRequestedMinor,
+      'patient_responsibility_minor': patientResponsibilityMinor,
+      'notes': notes,
+    };
+    final response = itemId == null
+        ? await _authorizedPost(path, data: data)
+        : await _authorizedPut(path, data: data);
+    return CareCostItemData.fromJson(response);
+  }
+
+  @override
+  Future<void> deleteCareCostItem({
+    required String patientId,
+    required String clinicalEventId,
+    required String itemId,
+  }) {
+    return _authorizedDeleteVoid(
+      '/api/v1/patients/$patientId/clinical-events/$clinicalEventId/care-items/$itemId',
+    );
+  }
+
+  @override
+  Future<List<PayerOrganizationData>> loadPayerOrganizations() async {
+    final response = await _authorizedGetList('/api/v1/payer-organizations');
+    return response.map(PayerOrganizationData.fromJson).toList();
+  }
+
+  @override
+  Future<PayerRequestData> createPayerRequest({
+    required String patientId,
+    required String clinicalEventId,
+    required String payerOrganizationId,
+    required List<String> careCostItemIds,
+    required String doctorSummary,
+  }) async {
+    final response = await _authorizedPost(
+      '/api/v1/patients/$patientId/clinical-events/$clinicalEventId/payer-requests',
+      data: <String, dynamic>{
+        'payer_organization_id': payerOrganizationId,
+        'care_cost_item_ids': careCostItemIds,
+        'doctor_summary': doctorSummary,
+      },
+    );
+    return PayerRequestData.fromJson(response);
+  }
+
+  @override
+  Future<List<PayerRequestData>> loadDoctorPayerRequests() async {
+    return _payerRequestList('/api/v1/doctor/me/payer-requests');
+  }
+
+  @override
+  Future<List<PayerRequestData>> loadOwnPatientPayerRequests() async {
+    return _payerRequestList('/api/v1/patient/me/payer-requests');
+  }
+
+  @override
+  Future<PayerDashboardData> loadPayerDashboard() async {
+    return PayerDashboardData.fromJson(
+      await _authorizedGet('/api/v1/payer/me/dashboard'),
+    );
+  }
+
+  @override
+  Future<PayerProfileData> loadPayerProfile() async {
+    return PayerProfileData.fromJson(
+      await _authorizedGet('/api/v1/payer/me/profile'),
+    );
+  }
+
+  @override
+  Future<List<PayerRequestData>> loadPayerRequests() async {
+    return _payerRequestList('/api/v1/payer/me/requests');
+  }
+
+  Future<List<PayerRequestData>> _payerRequestList(String path) async {
+    final response = await _authorizedGet(path);
+    return (response['items'] as List<dynamic>)
+        .map(
+          (item) =>
+              PayerRequestData.fromJson(Map<String, dynamic>.from(item as Map)),
+        )
+        .toList();
+  }
+
+  @override
+  Future<PayerRequestData> reviewPayerRequest({
+    required String requestId,
+    required String action,
+    required String reasonCode,
+    String? note,
+  }) async {
+    final response = await _authorizedPost(
+      '/api/v1/payer/me/requests/$requestId/reviews',
+      data: <String, dynamic>{
+        'action': action,
+        'reason_code': reasonCode,
+        'note': note,
+      },
+    );
+    return PayerRequestData.fromJson(response);
   }
 
   Map<String, dynamic> _recoveryPlanPayload({
@@ -1411,6 +1648,40 @@ class DioDrAiRepository implements DrAiRepository {
           queryParameters: queryParameters,
           allowRefresh: false,
         );
+      }
+      throw apiError;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> _authorizedGetList(
+    String path, {
+    bool allowRefresh = true,
+  }) async {
+    final session = _session;
+    if (session == null) {
+      throw const ApiError(
+        code: 'unauthenticated',
+        message: 'Your session has ended. Please sign in again.',
+        statusCode: 401,
+      );
+    }
+    try {
+      final response = await client.get<List<dynamic>>(
+        path,
+        options: Options(
+          headers: <String, String>{
+            'Authorization': 'Bearer ${session.accessToken}',
+          },
+        ),
+      );
+      return response.data!
+          .map((item) => Map<String, dynamic>.from(item as Map))
+          .toList();
+    } on DioException catch (error) {
+      final apiError = _toApiError(error);
+      if (apiError.statusCode == 401 && allowRefresh && _session != null) {
+        await _refresh(_session!.refreshToken);
+        return _authorizedGetList(path, allowRefresh: false);
       }
       throw apiError;
     }
@@ -1578,6 +1849,37 @@ class DioDrAiRepository implements DrAiRepository {
       if (apiError.statusCode == 401 && allowRefresh && _session != null) {
         await _refresh(_session!.refreshToken);
         return _authorizedDelete(path, allowRefresh: false);
+      }
+      throw apiError;
+    }
+  }
+
+  Future<void> _authorizedDeleteVoid(
+    String path, {
+    bool allowRefresh = true,
+  }) async {
+    final session = _session;
+    if (session == null) {
+      throw const ApiError(
+        code: 'unauthenticated',
+        message: 'Your session has ended. Please sign in again.',
+        statusCode: 401,
+      );
+    }
+    try {
+      await client.delete<void>(
+        path,
+        options: Options(
+          headers: <String, String>{
+            'Authorization': 'Bearer ${session.accessToken}',
+          },
+        ),
+      );
+    } on DioException catch (error) {
+      final apiError = _toApiError(error);
+      if (apiError.statusCode == 401 && allowRefresh && _session != null) {
+        await _refresh(_session!.refreshToken);
+        return _authorizedDeleteVoid(path, allowRefresh: false);
       }
       throw apiError;
     }

@@ -1,0 +1,80 @@
+{
+  "schema_version": "1.0",
+  "families": [
+    {
+      "stable_id": "KBF-NHC-NORMATIVE",
+      "publisher": {
+        "stable_id": "KBP-NHC",
+        "official_name_zh": "中华人民共和国国家卫生健康委员会",
+        "official_name_en": "National Health Commission of the People's Republic of China",
+        "organization_type": "national_health_authority",
+        "authority_basis": "Official national health authority normative-document publication channel.",
+        "authority_evidence_locator": "https://www.nhc.gov.cn/wjw/gfxwjj/list.shtml",
+        "jurisdiction": "CN",
+        "allowed_content_classes": [
+          "normative_document",
+          "official_explanation",
+          "health_standard"
+        ]
+      },
+      "name": "国家卫生健康委员会规范性文件",
+      "jurisdiction": "CN",
+      "seed_locators": [
+        "https://www.nhc.gov.cn/wjw/gfxwjj/list.shtml"
+      ],
+      "allowed_domains": [
+        "www.nhc.gov.cn"
+      ],
+      "allowed_path_prefixes": [
+        "/wjw/gfxwjj/"
+      ],
+      "content_classes": [
+        "normative_document"
+      ],
+      "fetch_interval_minutes": 360,
+      "max_response_bytes": 2000000,
+      "capture_policy": "metadata_only",
+      "rights_gate_status": "pending",
+      "status": "active",
+      "max_discovered_fetches_per_run": 8
+    },
+    {
+      "stable_id": "KBF-CHINA-CDC-HEALTH-EDUCATION",
+      "publisher": {
+        "stable_id": "KBP-CHINA-CDC",
+        "official_name_zh": "中国疾病预防控制中心",
+        "official_name_en": "Chinese Center for Disease Control and Prevention",
+        "organization_type": "national_public_health_authority",
+        "authority_basis": "Official national public-health authority health-education publication channel.",
+        "authority_evidence_locator": "https://www.chinacdc.cn/jkkp/",
+        "jurisdiction": "CN",
+        "allowed_content_classes": [
+          "health_education",
+          "surveillance_report",
+          "risk_assessment",
+          "public_health_notice"
+        ]
+      },
+      "name": "中国疾控中心健康科普",
+      "jurisdiction": "CN",
+      "seed_locators": [
+        "https://www.chinacdc.cn/jkkp/"
+      ],
+      "allowed_domains": [
+        "www.chinacdc.cn"
+      ],
+      "allowed_path_prefixes": [
+        "/jkkp/"
+      ],
+      "content_classes": [
+        "health_education"
+      ],
+      "fetch_interval_minutes": 360,
+      "max_response_bytes": 2000000,
+      "capture_policy": "metadata_only",
+      "rights_gate_status": "pending",
+      "status": "active",
+      "max_discovered_fetches_per_run": 8
+    }
+  ]
+}

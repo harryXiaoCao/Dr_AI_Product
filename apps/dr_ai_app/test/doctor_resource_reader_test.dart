@@ -72,6 +72,45 @@ final bilingualDetail = MedicalResourceDetail(
   ],
 );
 
+final hpaDetail = MedicalResourceDetail(
+  resource: MedicalResourceFixture(
+    id: 'KBV-HPA-TEST-1',
+    stableReference: 'KBV-HPA-TEST-1',
+    title: '喝水可以预防慢性病吗？',
+    catalogSummary: '国民健康署保健辟谣问答。',
+    searchKeywords: const <String>['喝水'],
+    officialLocator: 'https://data.gov.tw/dataset/43338',
+    documentType: MedicalDocumentType.factSheet,
+    organization: MedicalOrganization.healthPromotionAdministration,
+    jurisdiction: MedicalJurisdiction.taiwan,
+    language: MedicalResourceLanguage.chinese,
+    topic: MedicalResourceTopic.chronicDisease,
+    catalogVerifiedAt: DateTime(2026, 7, 17),
+    licenseName: '政府资料开放授权条款第1版',
+    rightsStatus: MedicalRightsStatus.storedTextApproved,
+  ),
+  publisherName: '卫生福利部国民健康署',
+  originalLanguage: 'zh-Hant',
+  medicalReviewStatus: 'pending',
+  sections: const <MedicalResourceSection>[
+    MedicalResourceSection(heading: '喝水可以預防慢性病嗎？', originalText: '這是繁體中文原文。'),
+  ],
+  translations: const <MedicalResourceTranslation>[
+    MedicalResourceTranslation(
+      language: 'zh-Hans',
+      title: '喝水可以预防慢性病吗？',
+      translationType: 'deterministic_script_conversion',
+      reviewStatus: 'pending_medical_and_native_simplified_chinese_review',
+      sections: <MedicalResourceSection>[
+        MedicalResourceSection(
+          heading: '喝水可以预防慢性病吗？',
+          originalText: '这是简体中文内容。',
+        ),
+      ],
+    ),
+  ],
+);
+
 final skipReaderGoldenOnCi =
     Platform.environment['CI'] == 'true' ||
     Directory.current.path.contains('dr_ai_flutter_verify');
@@ -179,6 +218,26 @@ void main() {
       expect(find.byKey(const Key('resource-reader-document')), findsNothing);
       expect(find.text('Original text is not available'), findsOneWidget);
       expect(find.byKey(const Key('open-official-source')), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'doctor reader exposes HPA Simplified-Chinese Q&A with provenance',
+    (tester) async {
+      await pumpReader(tester, resourceDetail: hpaDetail);
+
+      expect(find.text('卫生福利部国民健康署'), findsOneWidget);
+      expect(
+        find.text('Simplified Chinese conversion (review pending)'),
+        findsWidgets,
+      );
+      expect(find.text('这是简体中文内容。'), findsOneWidget);
+      expect(find.text('Taiwan'), findsOneWidget);
+      expect(
+        find.textContaining('deterministic Simplified-Chinese'),
+        findsOneWidget,
+      );
+      expect(find.text('这是繁体中文原文。'), findsNothing);
     },
   );
 

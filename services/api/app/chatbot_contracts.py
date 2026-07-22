@@ -1,8 +1,9 @@
 from datetime import date, datetime
 from enum import StrEnum
 from typing import Annotated, Literal
+from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class AuthorityTier(StrEnum):
@@ -48,6 +49,7 @@ class EvidenceDecision(StrEnum):
 
 class SafetyCode(StrEnum):
     permitted_education = "permitted_education"
+    permitted_symptom_guidance = "permitted_symptom_guidance"
     emergency = "emergency"
     prohibited_diagnosis = "prohibited_diagnosis"
     prohibited_medication_change = "prohibited_medication_change"
@@ -78,6 +80,28 @@ class NextActionCode(StrEnum):
     seek_local_care = "seek_local_care"
     call_120 = "call_120"
     ask_clarifying_question = "ask_clarifying_question"
+    review_measurement_guidance = "review_measurement_guidance"
+    track_measurements = "track_measurements"
+    prepare_doctor_questions = "prepare_doctor_questions"
+    prepare_symptom_summary = "prepare_symptom_summary"
+
+
+class PatientContextCategory(StrEnum):
+    profile = "profile"
+    measurements = "measurements"
+    conditions = "conditions"
+    medications = "medications"
+    clinical_events = "clinical_events"
+    recovery_plan = "recovery_plan"
+
+
+class PatientContextProvenance(StrEnum):
+    patient_profile = "patient_profile"
+    patient_reported = "patient_reported"
+    doctor_record = "doctor_record"
+    current_prescription = "current_prescription"
+    medication_schedule = "medication_schedule"
+    recovery_plan = "recovery_plan"
 
 
 class RefusalCode(StrEnum):
@@ -251,6 +275,28 @@ class ModelAnswerSection(BaseModel):
 
     text: str = Field(min_length=1, max_length=1200)
     supporting_passage_ids: list[str] = Field(min_length=1, max_length=8)
+    supporting_context_ids: list[str] = Field(default_factory=list, max_length=8)
+
+
+class PatientContextItem(BaseModel):
+    """A bounded, question-selected record fragment sent to the model."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    context_id: str = Field(min_length=1, max_length=160)
+    category: PatientContextCategory
+    field_name: str = Field(min_length=1, max_length=80)
+    value: str = Field(min_length=1, max_length=500)
+    provenance: PatientContextProvenance
+    attribution_phrase: str = Field(min_length=1, max_length=120)
+    recorded_on: date
+    resource_id: str = Field(min_length=1, max_length=80)
+
+
+class PatientContextBundle(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    items: list[PatientContextItem] = Field(default_factory=list, max_length=16)
 
 
 class StructuredModelOutput(BaseModel):
@@ -260,15 +306,151 @@ class StructuredModelOutput(BaseModel):
     answer_sections: list[ModelAnswerSection] = Field(min_length=1, max_length=6)
     uses_patient_context: bool
     patient_context_attribution: str | None = Field(default=None, max_length=240)
+    used_patient_context_ids: list[str] = Field(default_factory=list, max_length=8)
     uncertainties: list[str] = Field(default_factory=list, max_length=8)
     next_action_code: NextActionCode = NextActionCode.none
     refusal_code: RefusalCode | None = None
 
     @model_validator(mode="after")
     def require_context_attribution(self) -> "StructuredModelOutput":
-        if self.uses_patient_context != (self.patient_context_attribution is not None):
-            raise ValueError("Patient-context use and attribution must agree.")
+        has_attribution = self.patient_context_attribution is not None
+        has_context_ids = bool(self.used_patient_context_ids)
+        if (
+            self.uses_patient_context != has_attribution
+            or self.uses_patient_context != has_context_ids
+        ):
+            raise ValueError("Patient-context use, attribution, and context IDs must agree.")
+        section_context_ids = {
+            context_id
+            for section in self.answer_sections
+            for context_id in section.supporting_context_ids
+        }
+        if section_context_ids != set(self.used_patient_context_ids):
+            raise ValueError("Used patient-context IDs must match answer-section context IDs.")
         return self
+
+
+class PatientChatRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    message: str = Field(min_length=2, max_length=800)
+    language: Literal["zh-Hans", "en"] = "zh-Hans"
+    session_id: str | None = Field(default=None, min_length=8, max_length=120)
+
+
+class RetrievalQueryPlan(BaseModel):
+    """Bounded query understanding only; it cannot direct safety or evidence selection."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    concepts: list[str] = Field(min_length=1, max_length=8)
+    synonyms: list[str] = Field(default_factory=list, max_length=12)
+    language: Literal["zh-Hans", "en"]
+    jurisdiction: Literal["CN"] = "CN"
+    excluded_content_classes: list[
+        Literal[
+            "clinical_guideline_doctor_only",
+            "raw_clinical_record",
+            "prescriber_only_medicine_content",
+        ]
+    ] = Field(default_factory=list, max_length=3)
+    candidate_queries: list[str] = Field(min_length=1, max_length=2)
+    clarification_needed: bool = False
+
+    @field_validator("concepts", "synonyms")
+    @classmethod
+    def bounded_terms(cls, values: list[str]) -> list[str]:
+        if any(not value or len(value) > 80 for value in values):
+            raise ValueError("Planner concepts and synonyms must be short non-empty strings.")
+        return list(dict.fromkeys(values))
+
+    @field_validator("candidate_queries")
+    @classmethod
+    def bounded_queries(cls, values: list[str]) -> list[str]:
+        if any(len(value) < 2 or len(value) > 300 for value in values):
+            raise ValueError("Candidate queries must contain 2 to 300 characters.")
+        return list(dict.fromkeys(values))
+
+
+class PatientChatSourceCard(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    number: int = Field(ge=1, le=8)
+    passage_id: str
+    title: str
+    publisher: str
+    publication_date: date | None
+    last_medical_review_date: date
+    official_locator: str
+
+
+class PatientChatContextCard(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    category: PatientContextCategory
+    provenance: PatientContextProvenance
+    recorded_on: date
+
+
+class PatientChatResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    request_id: str
+    session_id: str
+    answer_language: Literal["zh-Hans", "en"]
+    answer_sections: list[str] = Field(min_length=1, max_length=6)
+    sources: list[PatientChatSourceCard] = Field(default_factory=list, max_length=8)
+    context_used: list[PatientChatContextCard] = Field(default_factory=list, max_length=6)
+    uncertainties: list[str] = Field(default_factory=list, max_length=8)
+    limitation: str
+    next_action_code: NextActionCode
+    safety_code: SafetyCode
+    urgency_route: Literal[
+        "emergency_120",
+        "urgent_same_day",
+        "clinician_contact",
+        "routine_education",
+        "prohibited_medication_change",
+    ] | None = None
+    evidence_decision: EvidenceDecision | None = None
+    fallback_code: FallbackCode | None = None
+    model_version: str | None = None
+    emergency: bool = False
+    suggested_action_codes: list[NextActionCode] = Field(default_factory=list, max_length=4)
+    follow_up_question: str | None = Field(default=None, max_length=240)
+
+
+class PatientChatThreadSummary(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    thread_id: UUID
+    title: str
+    created_at: datetime
+    last_message_at: datetime
+    retention_until: datetime
+
+
+class PatientChatThreadList(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    items: list[PatientChatThreadSummary]
+
+
+class PatientChatHistoryMessage(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    message_id: UUID
+    role: Literal["user", "assistant"]
+    content: str
+    created_at: datetime
+    response: PatientChatResponse | None = None
+
+
+class PatientChatHistory(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    thread: PatientChatThreadSummary
+    messages: list[PatientChatHistoryMessage]
 
 
 class ToolContract(BaseModel):
@@ -375,7 +557,41 @@ class ChatbotTelemetryEvent(BaseModel):
     latency_ms: int = Field(ge=0)
     provider_input_tokens: int | None = Field(default=None, ge=0)
     provider_output_tokens: int | None = Field(default=None, ge=0)
+    provider_error_code: str | None = Field(default=None, max_length=120)
+    provider_attempt_count: int | None = Field(default=None, ge=1, le=2)
     provider_cost_microunits: int | None = Field(default=None, ge=0)
+    rescue_trigger: (
+        Literal["short_reference", "colloquial", "ambiguous", "weak_initial_retrieval"] | None
+    ) = None
+    rescue_attempted: bool = False
+    rescue_outcome: (
+        Literal[
+            "not_triggered",
+            "disabled",
+            "improved",
+            "clarification_needed",
+            "planner_timeout",
+            "planner_quota",
+            "planner_unavailable",
+            "malformed",
+            "meaning_drift",
+            "retry_unavailable",
+            "no_improvement",
+            "latency_exceeded",
+            "cost_exceeded",
+            "budget_exceeded",
+        ]
+        | None
+    ) = None
+    rescue_planner_model: str | None = Field(default=None, max_length=160)
+    rescue_input_tokens: int | None = Field(default=None, ge=0)
+    rescue_output_tokens: int | None = Field(default=None, ge=0)
+    rescue_cache_hit_tokens: int | None = Field(default=None, ge=0)
+    rescue_cache_miss_tokens: int | None = Field(default=None, ge=0)
+    rescue_latency_ms: int | None = Field(default=None, ge=0)
+    rescue_cost_microunits: int | None = Field(default=None, ge=0)
+    rescue_retrieval_delta: float | None = None
+    rescue_retry_request_id: str | None = Field(default=None, max_length=120)
     occurred_at: datetime
 
 
@@ -419,5 +635,5 @@ DEVELOPMENT_PROVIDER_POLICY = ExternalProviderTransmissionPolicy(
     data_region="mainland_china",
 )
 
-CHATBOT_POLICY_VERSION = "phase3-slice1-2026-07-13"
+CHATBOT_POLICY_VERSION = "phase3-slice9-practical-guidance-v1-2026-07-17"
 CHATBOT_TOOL_SCHEMA_VERSION = "phase3-slice1-2026-07-13"

@@ -2,7 +2,7 @@ from datetime import date, datetime
 
 from fastapi import APIRouter, Query
 from pydantic import BaseModel, ConfigDict
-from sqlalchemy import Text, cast, exists, func, or_, select
+from sqlalchemy import Text, cast, exists, or_, select
 
 from app.dependencies import CurrentUser, DbSession
 from app.errors import ApiError
@@ -94,6 +94,22 @@ def _original_text_display_allowed(rights: KbRightsRecord) -> bool:
     )
 
 
+def _translation_display_allowed(
+    source: KbSource,
+    translation: KbTranslationArtifact | None,
+) -> bool:
+    if translation is None:
+        return False
+    if translation.status == "approved":
+        return True
+    return (
+        source.stable_id.startswith("KBS-HPA-")
+        and translation.provider == "opencc"
+        and translation.prompt_policy_version == "deterministic-zh-hant-to-zh-hans-v1"
+        and translation.status == "generated_pending_review"
+    )
+
+
 def _latest_translation(
     db: DbSession,
     version: KbSourceVersion | None,
@@ -123,19 +139,19 @@ def _catalog_language_fields(
         ),
         None,
     )
-    approved_generated = (
+    displayable_translation = (
         generated_translation
-        if generated_translation is not None and generated_translation.status == "approved"
+        if _translation_display_allowed(source, generated_translation)
         else None
     )
     languages = [source.original_language]
     languages.extend(translation["language"] for translation in source.official_translations_json)
-    if approved_generated is not None:
-        languages.append(approved_generated.target_language)
+    if displayable_translation is not None:
+        languages.append(displayable_translation.target_language)
     languages = list(dict.fromkeys(languages))
     title = (
-        approved_generated.translated_title
-        if approved_generated is not None and source.original_language == "en"
+        displayable_translation.translated_title
+        if displayable_translation is not None and source.original_language in {"en", "zh-Hant"}
         else source.title
     )
     title_en = (
@@ -203,18 +219,41 @@ def list_doctor_resource_catalog(
         .join(KbRightsRecord, KbRightsRecord.id == KbSource.rights_record_id)
         .where(*conditions)
     )
-    total = db.scalar(select(func.count()).select_from(joined.order_by(None).subquery())) or 0
-    rows = db.execute(
-        joined.order_by(KbSource.title, KbSource.stable_id).offset(offset).limit(limit)
-    ).all()
-    items: list[KnowledgeCatalogItem] = []
-    for source, publisher, rights in rows:
-        latest_version = db.scalar(
+    source_rows = db.execute(joined.order_by(KbSource.title, KbSource.stable_id)).all()
+    source_ids = [source.id for source, _, _ in source_rows]
+    versions_by_source: dict[object, list[KbSourceVersion]] = {}
+    if source_ids:
+        all_versions = db.scalars(
             select(KbSourceVersion)
-            .where(KbSourceVersion.source_id == source.id)
-            .order_by(KbSourceVersion.captured_at.desc())
-            .limit(1)
-        )
+            .where(KbSourceVersion.source_id.in_(source_ids))
+            .order_by(KbSourceVersion.valid_from, KbSourceVersion.stable_id)
+        ).all()
+        for version in all_versions:
+            versions_by_source.setdefault(version.source_id, []).append(version)
+    rows: list[tuple[KbSource, KbPublisher, KbRightsRecord, KbSourceVersion | None]] = []
+    for source, publisher, rights in source_rows:
+        versions = versions_by_source.get(source.id, [])
+        if publisher.stable_id == "KBP-TW-HPA":
+            rows.extend((source, publisher, rights, version) for version in versions)
+        else:
+            rows.append((source, publisher, rights, versions[-1] if versions else None))
+    total = len(rows)
+    rows = rows[offset : offset + limit]
+    version_ids = [version.id for _, _, _, version in rows if version is not None]
+    translations_by_version: dict[object, KbTranslationArtifact] = {}
+    if version_ids:
+        page_translations = db.scalars(
+            select(KbTranslationArtifact)
+            .where(
+                KbTranslationArtifact.source_version_id.in_(version_ids),
+                KbTranslationArtifact.target_language == "zh-Hans",
+            )
+            .order_by(KbTranslationArtifact.generated_at)
+        ).all()
+        for translation in page_translations:
+            translations_by_version[translation.source_version_id] = translation
+    items: list[KnowledgeCatalogItem] = []
+    for source, publisher, rights, latest_version in rows:
         english = next(
             (
                 translation
@@ -223,13 +262,19 @@ def list_doctor_resource_catalog(
             ),
             None,
         )
-        generated_translation = _latest_translation(db, latest_version)
+        generated_translation = (
+            translations_by_version.get(latest_version.id) if latest_version is not None else None
+        )
         title, title_en, languages, is_bilingual, translation_status = _catalog_language_fields(
             source, generated_translation
         )
         items.append(
             KnowledgeCatalogItem(
-                source_id=source.stable_id,
+                source_id=(
+                    latest_version.stable_id
+                    if publisher.stable_id == "KBP-TW-HPA" and latest_version is not None
+                    else source.stable_id
+                ),
                 title=title,
                 title_en=title_en,
                 catalog_summary=source.catalog_summary,
@@ -251,7 +296,13 @@ def list_doctor_resource_catalog(
                 jurisdiction=source.jurisdiction,
                 original_language=source.original_language,
                 authority_tier=source.authority_tier,
-                publication_date=source.publication_date,
+                publication_date=(
+                    latest_version.valid_from.date()
+                    if publisher.stable_id == "KBP-TW-HPA"
+                    and latest_version is not None
+                    and latest_version.valid_from is not None
+                    else source.publication_date
+                ),
                 catalog_verified_at=source.catalog_verified_at,
                 lifecycle_state=source.lifecycle_state,
                 medical_review_status=source.medical_review_status,
@@ -286,12 +337,17 @@ def get_doctor_resource(
 ) -> KnowledgeResourceDetail:
     if user.role != UserRole.doctor or user.doctor_profile is None:
         raise ApiError(403, "forbidden", "This resource is not available.")
+    requested_version = db.scalar(
+        select(KbSourceVersion).where(KbSourceVersion.stable_id == source_id)
+    )
     row = db.execute(
         select(KbSource, KbPublisher, KbRightsRecord)
         .join(KbPublisher, KbPublisher.id == KbSource.publisher_id)
         .join(KbRightsRecord, KbRightsRecord.id == KbSource.rights_record_id)
         .where(
-            KbSource.stable_id == source_id,
+            KbSource.id == requested_version.source_id
+            if requested_version is not None
+            else KbSource.stable_id == source_id,
             KbSource.catalog_visible.is_(True),
             KbSource.status == "current",
         )
@@ -299,7 +355,7 @@ def get_doctor_resource(
     if row is None:
         raise ApiError(404, "resource_not_found", "The resource was not found.")
     source, publisher, rights = row
-    version = db.scalar(
+    version = requested_version or db.scalar(
         select(KbSourceVersion)
         .where(KbSourceVersion.source_id == source.id)
         .order_by(KbSourceVersion.captured_at.desc())
@@ -308,7 +364,7 @@ def get_doctor_resource(
     sections: list[KnowledgeResourceSection] = []
     if (
         version
-        and version.capture_mode == "publisher_original_text"
+        and version.capture_mode in {"publisher_original_text", "licensed_dataset_original_text"}
         and _original_text_display_allowed(rights)
     ):
         section_rows = db.execute(
@@ -337,7 +393,8 @@ def get_doctor_resource(
         source, generated_translation
     )
     translations: list[KnowledgeResourceTranslation] = []
-    if generated_translation is not None and generated_translation.status == "approved":
+    if _translation_display_allowed(source, generated_translation):
+        assert generated_translation is not None
         translated_sections = db.scalars(
             select(KbTranslationSection)
             .where(KbTranslationSection.artifact_id == generated_translation.id)
@@ -347,8 +404,16 @@ def get_doctor_resource(
             KnowledgeResourceTranslation(
                 language=generated_translation.target_language,
                 title=generated_translation.translated_title,
-                translation_type="ai_generated_unofficial",
-                review_status="medical_and_native_chinese_approved",
+                translation_type=(
+                    "deterministic_script_conversion"
+                    if generated_translation.provider == "opencc"
+                    else "ai_generated_unofficial"
+                ),
+                review_status=(
+                    "medical_and_native_chinese_approved"
+                    if generated_translation.status == "approved"
+                    else "pending_medical_and_native_simplified_chinese_review"
+                ),
                 sections=[
                     KnowledgeResourceSection(
                         heading=section.translated_heading,
@@ -359,7 +424,7 @@ def get_doctor_resource(
             )
         )
     return KnowledgeResourceDetail(
-        source_id=source.stable_id,
+        source_id=source_id,
         title=title,
         title_en=title_en,
         catalog_summary=source.catalog_summary,
@@ -381,7 +446,13 @@ def get_doctor_resource(
         jurisdiction=source.jurisdiction,
         original_language=source.original_language,
         authority_tier=source.authority_tier,
-        publication_date=source.publication_date,
+        publication_date=(
+            version.valid_from.date()
+            if publisher.stable_id == "KBP-TW-HPA"
+            and version is not None
+            and version.valid_from is not None
+            else source.publication_date
+        ),
         catalog_verified_at=source.catalog_verified_at,
         lifecycle_state=source.lifecycle_state,
         medical_review_status=source.medical_review_status,

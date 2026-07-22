@@ -1,0 +1,221 @@
+{
+  "schema_version": "1.1",
+  "generated_at": "2026-07-21T00:00:00Z",
+  "capture_policy": "Publisher-authored MedlinePlus health-topic summaries and one NHS patient-education page only; no linked works, images, video, logos, Medical Encyclopedia content, generated summary, or translation.",
+  "jurisdiction_note": "Foreign-jurisdiction evidence pending medical, native-Simplified-Chinese, patient-readability, and Mainland-China applicability review. Applicable Chinese authority controls China-facing answers in any conflict.",
+  "expected_collection_counts": {
+    "medlineplus_health_topic": 5,
+    "nhs_patient_education": 1
+  },
+  "publishers": [
+    {
+      "stable_id": "KBP-MEDLINEPLUS",
+      "name": "MedlinePlus, U.S. National Library of Medicine",
+      "authority_url": "https://medlineplus.gov/about/general/aboutmedlineplus/",
+      "rights_url": "https://medlineplus.gov/about/using/usingcontent/",
+      "rights_name": "U.S. Government public domain (specified MedlinePlus content classes)",
+      "attribution": "Credit MedlinePlus, U.S. National Library of Medicine, and link to the original page.",
+      "key": "medlineplus",
+      "rights_evidence": {
+        "checksum": "83193490e0a0b8bd89d7e37bbd8e690e8fd8b0a549b204ddc2c33688b300dac1",
+        "captured_at": "2026-07-15T00:00:00Z"
+      }
+    },
+    {
+      "key": "nhs",
+      "stable_id": "KBP-NHS-UK",
+      "name": "NHS website (England)",
+      "authority_url": "https://www.nhs.uk/our-policies/content-policy/",
+      "rights_url": "https://www.nhs.uk/our-policies/terms-and-conditions/",
+      "rights_name": "Open Government Licence v3.0 with NHS website terms",
+      "attribution": "For adapted, translated, or non-refreshed content use: Contains public sector information licensed under the Open Government Licence v3.0. Do not attribute the adapted text to the NHS website, imply NHS endorsement, or carry forward formal clinical approval. Preserve internal provenance to the original page.",
+      "rights_evidence": {
+        "checksum": "fb41bae2a381daabd035637cab0499183e8cd2c570e3974645450ed125178d7b",
+        "captured_at": "2026-07-21T00:00:00Z",
+        "supporting_locators": [
+          "https://www.nhs.uk/our-policies/terms-and-conditions/",
+          "https://www.nhs.uk/our-policies/terms-and-conditions/content-not-licensed-for-re-use/"
+        ],
+        "evidence_scope": "NHS terms sections 3.3-3.7 plus the content-exclusions page; text only. Logos, images, videos, linked third-party works, personal data, and medical devices are excluded."
+      },
+      "rights_stable_id": "KBR-NHS-UK-OGL-V3",
+      "jurisdiction": "GB-ENG",
+      "organization_type": "foreign_national_health_service",
+      "authority_basis": "Official NHS website patient education for England; foreign-jurisdiction evidence pending Mainland-China clinical applicability review.",
+      "allowed_content_classes": [
+        "official_patient_education_text"
+      ],
+      "rights_scope": "publisher_content_class",
+      "permission_reference": "Applies only to NHS-authored text on non-excluded nhs.uk pages under OGL v3.0 and NHS website terms. Translation is an adaptation, loses any transferable formal clinical-approval claim, requires OGL attribution, and must not imply NHS endorsement.",
+      "rights_decision_status": "approved",
+      "rights_permissions": {
+        "commercial_use_allowed": true,
+        "storage_allowed": true,
+        "transformation_allowed": true,
+        "translation_allowed": true,
+        "embedding_allowed": true,
+        "excerpt_display_allowed": true,
+        "model_provider_transmission_allowed": true,
+        "redistribution_allowed": true,
+        "prior_version_retention_allowed": true
+      }
+    }
+  ],
+  "documents": [
+    {
+      "stable_id": "KBS-MEDLINEPLUS-LOW-BLOOD-PRESSURE",
+      "publisher_key": "medlineplus",
+      "collection": "medlineplus_health_topic",
+      "title": "Low Blood Pressure",
+      "canonical_locator": "https://medlineplus.gov/lowbloodpressure.html",
+      "source_type": "health_topic_summary",
+      "topic": "Low Blood Pressure",
+      "original_language": "en",
+      "publisher_summary": null,
+      "publisher_date_text": "Date created: 04/18/2000",
+      "publication_date": "2000-04-18",
+      "captured_at": "2026-07-21T00:00:00Z",
+      "raw_checksum": "e6776125758a534e9e7e2671c9de7d6c3c1d5ce93f4aef4b6c7ae7575bed0e7a",
+      "normalized_checksum": "fb6c9f9d95ba655a60e47a90904309733d4c8e21287c211a91b2f1e4c05e2428",
+      "sections": [
+        {
+          "heading": "Low Blood Pressure",
+          "text": "You've probably heard that high blood pressure is a problem. Sometimes blood pressure that is too low can also cause problems. Blood pressure is the force of your blood pushing against the walls of your arteries. Each time your heart beats, it pumps out blood into the arteries. Your blood pressure is highest when your heart beats, pumping the blood. This is called systolic pressure. When your heart is at rest, between beats, your blood pressure falls. This is the diastolic pressure. Your blood pressure reading uses these two numbers. Usually they're written one above or before the other, such as 120/80. If your blood pressure reading is 90/60 or lower, you have low blood pressure. Some people have low blood pressure all the time. They have no symptoms and their low readings are normal for them. In other people, blood pressure drops below normal because of a medical condition or certain medicines. Some people may have symptoms of low blood pressure when standing up too quickly. Low blood pressure is a problem only if it causes dizziness , fainting or in extreme cases, shock . NIH: National Heart, Lung, and Blood Institute"
+        }
+      ]
+    },
+    {
+      "stable_id": "KBS-MEDLINEPLUS-DIZZINESS-AND-VERTIGO",
+      "publisher_key": "medlineplus",
+      "collection": "medlineplus_health_topic",
+      "title": "Dizziness and Vertigo",
+      "canonical_locator": "https://medlineplus.gov/dizzinessandvertigo.html",
+      "source_type": "health_topic_summary",
+      "topic": "Dizziness and Vertigo",
+      "original_language": "en",
+      "publisher_summary": null,
+      "publisher_date_text": "Date created: 09/02/1999",
+      "publication_date": "1999-09-02",
+      "captured_at": "2026-07-21T00:00:00Z",
+      "raw_checksum": "d8069c93d457b12685b3c320ab9604e35a83799383d9d8ef794325d42080d510",
+      "normalized_checksum": "261660d16ef0c41542351a7b0bc7056916340adb899de78b039966f291a9761d",
+      "sections": [
+        {
+          "heading": "Dizziness and Vertigo",
+          "text": "When you're dizzy, you may feel lightheaded, woozy, or disoriented. If you feel like you or the room are spinning, you have vertigo. These feelings may make you lose your balance . Dizziness can have many different causes. A sudden drop in blood pressure or being dehydrated can make you dizzy. Many people feel lightheaded if they get up too quickly from sitting or lying down. Certain medicines and problems with your inner ear may cause dizziness. So can motion sickness . Sometimes dizziness can be a symptom of other disorders. As people get older, they may have more health problems and take more medicines. This makes them more likely to have problems with dizziness and balance. Dizziness usually gets better by itself or is easily treated. If you are dizzy often, you should see your health care provider to find the cause. NIH: National Institutes of Health"
+        }
+      ]
+    },
+    {
+      "stable_id": "KBS-MEDLINEPLUS-ARRHYTHMIA",
+      "publisher_key": "medlineplus",
+      "collection": "medlineplus_health_topic",
+      "title": "Arrhythmia",
+      "canonical_locator": "https://medlineplus.gov/arrhythmia.html",
+      "source_type": "health_topic_summary",
+      "topic": "Arrhythmia",
+      "original_language": "en",
+      "publisher_summary": null,
+      "publisher_date_text": "Date created: 07/08/1999",
+      "publication_date": "1999-07-08",
+      "captured_at": "2026-07-21T00:00:00Z",
+      "raw_checksum": "941ce221e11ccbb0b96ba68107e277c67200b7536d3351eff8a8ecf44ebee20b",
+      "normalized_checksum": "8ad328aa8794d4480902310279730479d84072aa5c37ea5ac2ac05338011a8f7",
+      "sections": [
+        {
+          "heading": "Arrhythmia",
+          "text": "What is an arrhythmia? An arrhythmia is a problem with the rate or rhythm of your heartbeat. Your heart beats too quickly, too slowly, or with an irregular pattern. Changes in the electrical signals that control your heartbeat cause arrhythmias. When your heart beats faster than normal, it's called tachycardia . When your heart beats too slowly, it's called bradycardia . When the signal to beat comes too early, it's called a premature or extra heartbeat . It may feel like your heart skipped a beat. There are many types of arrhythmias. Arrhythmias may affect the upper or lower chamber of your heart. The most common type of arrhythmia is atrial fibrillation , which causes an irregular and fast heartbeat. Some arrhythmias are harmless, such as when your heart rate speeds up during exercise and slows down when you sleep. But if you have a frequent irregular rhythm, it may mean your heart isn't pumping enough blood into your body. Getting treatment and following a heart-healthy lifestyle can help control arrhythmias. It may also help prevent heart damage that can trigger some heart arrhythmias. What causes an arrhythmia? Many factors can affect your heart's rhythm, such as having had a heart attack , smoking , congenital heart defects , and stress. Other factors that could increase your risk for some types of arrhythmias could include if you: Have a family history of arrhythmias. Have certain health conditions, which can include heart and blood vessel diseases , lung diseases , kidney diseases , obesity , and sleep apnea . Are an older adult. Have had recent surgery for your heart, lungs, or throat. Take certain medicines for other health conditions. Use illegal drugs . If you have risk factors, some situations that make your heart work harder, raise your blood pressure, or cause strong emotional stress may trigger an arrhythmia. What are the symptoms of an arrhythmia? You may not have any noticeable symptoms of an arrhythmia. Your provider may find an arrhythmia during your routine checkup . Symptoms of an arrhythmia can include: Fast or slow heartbeat Skipping, fluttering, or pounding heartbeats Chest pain or discomfort Dizziness or fainting Shortness of breath Sweating Tiredness or weakness Seek emergency medical care if you have chest pain, shortness of breath, or think you are having a heart attack. How is an arrhythmia diagnosed? To find out if you have an arrhythmia, your health care provider may order an electrocardiogram (EKG). This test records your heart's electrical activity and is the most common for finding an arrhythmia. Your provider may also: Ask about your medical history, including your symptoms and lifestyle habits. Do a physical exam, which includes checking your heartbeat and pulse. Order blood tests and other heart tests . Check your legs or feet for swelling. Look for signs of other health conditions that could cause an arrythmia, such as thyroid disease . What are the treatments for an arrhythmia? Treatment may include medicines, an implantable cardioverter-defibrillator (ICD) or pacemaker , or sometimes surgery. Your provider may also recommend avoiding activities that may trigger your arrhythmia. The goal of treatment is to restore a normal heart rhythm. If not treated, arrhythmias can damage your heart, brain, and other organs and could be life-threatening. Can arrhythmias be prevented? To help prevent an arrhythmia, your provider may suggest that you make heart-healthy lifestyle changes and treat health conditions that may cause arrhythmias. NIH: National Heart, Lung, and Blood Institute"
+        }
+      ]
+    },
+    {
+      "stable_id": "KBS-MEDLINEPLUS-PESTICIDES",
+      "publisher_key": "medlineplus",
+      "collection": "medlineplus_health_topic",
+      "title": "Pesticides",
+      "canonical_locator": "https://medlineplus.gov/pesticides.html",
+      "source_type": "health_topic_summary",
+      "topic": "Pesticides",
+      "original_language": "en",
+      "publisher_summary": null,
+      "publisher_date_text": "Date created: 11/23/1999",
+      "publication_date": "1999-11-23",
+      "captured_at": "2026-07-21T00:00:00Z",
+      "raw_checksum": "31c59afa06935cffcfb0b68439533d1030b6ae401ac37acecf5f0a20a7cdefed",
+      "normalized_checksum": "f70535dd141b1a85de0a2682ea8a5b2d6dadf5a6515bc76b70aff1bc7cfd89d3",
+      "sections": [
+        {
+          "heading": "Pesticides",
+          "text": "Pests live where they are not wanted or cause harm to crops, people, or animals. Pesticides can help get rid of them. Pesticides are not just insect killers. They also include chemicals to control weeds, rodents, mildew, germs, and more. Many household products contain pesticides. Pesticides can protect your health by killing germs, animals, or plants that could hurt you. However, they can also be harmful to people or pets. You might want to try non-chemical methods first. If you do need a pesticide, use it correctly. Be especially careful around children and pets. Proper disposal of pesticides is also important - it can help protect the environment. Biologically-based pesticides are becoming more popular. They often are safer than traditional pesticides. Environmental Protection Agency"
+        }
+      ]
+    },
+    {
+      "stable_id": "KBS-MEDLINEPLUS-SKIN-CONDITIONS",
+      "publisher_key": "medlineplus",
+      "collection": "medlineplus_health_topic",
+      "title": "Skin Conditions",
+      "canonical_locator": "https://medlineplus.gov/skinconditions.html",
+      "source_type": "health_topic_summary",
+      "topic": "Skin Conditions",
+      "original_language": "en",
+      "publisher_summary": null,
+      "publisher_date_text": "Date created: 10/07/1999",
+      "publication_date": "1999-10-07",
+      "captured_at": "2026-07-21T00:00:00Z",
+      "raw_checksum": "aab511941b027586b1c812a81831a7c0e98a39e64b498024e80e25a19e7f0e11",
+      "normalized_checksum": "da8195aaab36b9c540ffca3e5678e2d7f7f4fcaab9c95ad9f5ce65bda332f2a2",
+      "sections": [
+        {
+          "heading": "Skin Conditions",
+          "text": "What does your skin do? Your skin is your body's largest organ. It covers the entire outside of your body. There are many ways that your skin protects your body and helps keep you healthy. For example, it: Holds body fluids in, which helps prevent you from getting dehydrated Keeps out harmful germs, which helps prevent infections Helps you feel things like heat, cold, and pain Helps control your body temperature Makes vitamin D when the sun shines on it Shields your body against heat and light What problems and conditions can affect your skin? There are many different problems and conditions which can affect your skin. Some of them can cause uncomfortable symptoms, such as itching , burning, redness, and rashes . They might also affect your appearance. Some of the more common skin conditions include: Acne , which causes pimples when hair follicles under your skin get clogged up Burns Cuts and scrapes Dandruff , flaking of the skin on your scalp (the top of your head) Eczema (atopic dermatitis), which causes inflammation, redness, and irritation of the skin Hives , which are red and sometimes itchy bumps on your skin Insect bites Psoriasis , which causes itchy, scaly red patches Skin cancer Skin infections How can I keep my skin healthy? Since your skin protects your body in many ways, it's important to try to keep your skin healthy. For example, you can: Wear the right protective equipment, like gloves, long sleeves, knee and elbow pads, or helmets to protect against cuts, bumps and scrapes. If you do get a cut or scrape, clean it right away with soap and warm water. Put on a bandage to protect it while it heals. When you are spending time outdoors, wear long sleeves and pants and use insect repellant to prevent insect bites. Prevent sunburn by covering up and using sunscreen when outdoors. Wash your hands often with soap and water. When you take a shower or bath, use warm (not hot) water. Use mild cleansers and wash gently (don't scrub). Use moisturizers, like lotions, creams, or ointments, to prevent dry skin. NIH: National Institute of Arthritis and Musculoskeletal and Skin Diseases"
+        }
+      ]
+    },
+    {
+      "stable_id": "KBS-NHS-BABY-MOVEMENTS",
+      "publisher_key": "nhs",
+      "collection": "nhs_patient_education",
+      "title": "Your baby's movements",
+      "canonical_locator": "https://www.nhs.uk/pregnancy/keeping-well/your-babys-movements/",
+      "source_type": "patient_education",
+      "topic": "Reduced fetal movement",
+      "original_language": "en",
+      "publisher_summary": "Find out what to do if your baby's movements slow down, change or stop (reduced foetal movement) during pregnancy",
+      "publisher_date_text": "Page last reviewed: 2024-07-08; next review due: 2027-07-08",
+      "publication_date": null,
+      "review_due_date": "2027-07-08",
+      "jurisdiction": "GB-ENG",
+      "population": "pregnant_people",
+      "captured_at": "2026-07-21T00:00:00Z",
+      "raw_checksum": "234319f5951f6b7ded402b5828ff9a8f5e316389334d6e3585a82080cac20ed5",
+      "normalized_checksum": "79d238c80b0d756fd09773bb1710705d6aef7f8857ac2869dbc170913a151e72",
+      "sections": [
+        {
+          "heading": "When you'll feel your baby move",
+          "text": "You should start to feel your baby move between 16 to 24 weeks of pregnancy. If this is your first baby, you might not feel movements until after 20 weeks.\n\nIf you have not felt your baby move by 24 weeks, tell your midwife. They'll check your baby's heartbeat and movements.\n\nYou should feel your baby move right up to and during labour."
+        },
+        {
+          "heading": "What your baby's movements feel like",
+          "text": "The movements can feel like a gentle swirling or fluttering. As your pregnancy progresses, you may feel kicks and jerky movements."
+        },
+        {
+          "heading": "Urgent advice: Call your midwife or maternity unit immediately if:",
+          "text": "• your baby is moving less than usual\n\n• you cannot feel your baby moving anymore\n\n• there is a change to your baby's usual pattern of movements\n\nThey'll need to check your baby's movements and heartbeat.\n\nDo not wait until the next day – call immediately, even if it's the middle of the night."
+        },
+        {
+          "heading": "How often should your baby move?",
+          "text": "There's no set number of movements you should feel each day – every baby is different.\n\nYou do not need to count the number of kicks or movements you feel each day.\n\nThe important thing is to get to know your baby's usual pattern of movements from day to day."
+        },
+        {
+          "heading": "Important",
+          "text": "Do not use a home doppler (heartbeat listening kit) to try to check the baby's heartbeat yourself. This is not a reliable way to check your baby's health. Even if you hear a heartbeat, this does not mean your baby is well."
+        },
+        {
+          "heading": "Why your baby's movements are important",
+          "text": "If your baby is not well, they may be less active than usual. Less movement can be a sign of a problem.\n\nThe sooner this is found out the better, so you and your baby can be given the right treatment and care.\n\nThis could save your baby's life."
+        }
+      ]
+    }
+  ]
+}

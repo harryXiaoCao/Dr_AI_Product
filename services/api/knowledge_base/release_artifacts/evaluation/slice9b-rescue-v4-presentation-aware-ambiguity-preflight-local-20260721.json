@@ -1,0 +1,78 @@
+{
+  "suite_id": "dr-ai-slice9b-retrieval-rescue-v2",
+  "suite_sha256": "3ba7fb37a8eb80df79bc070aad356f4e1e9d59b8b81b55ef974eacc45a6f99ac",
+  "runner_version": "slice9b-retrieval-rescue-v4-presentation-aware-ambiguity",
+  "mode": "structural_preflight",
+  "evaluated_at": "2026-07-21T12:48:04.215938+00:00",
+  "safety_gate_before_retrieval": true,
+  "trusted_presentation_retry": true,
+  "presentation_aware_ambiguity_trigger": true,
+  "maximum_admitted_previous_user_turns": 1,
+  "model_calls": 0,
+  "provider_reported_tokens": 0,
+  "cost_microunits": 0,
+  "passed": true,
+  "failures": [],
+  "observations": [
+    {
+      "case_id": "RES-9B-SHORT-001",
+      "kind": "hard",
+      "baseline_hit_count": 0,
+      "relevant_source_count": 2,
+      "baseline_improvable": true,
+      "expected_trigger": "short_reference",
+      "trigger": "short_reference",
+      "trigger_matches": true
+    },
+    {
+      "case_id": "RES-9B-SHORT-002",
+      "kind": "hard",
+      "baseline_hit_count": 0,
+      "relevant_source_count": 1,
+      "baseline_improvable": true,
+      "expected_trigger": "short_reference",
+      "trigger": "short_reference",
+      "trigger_matches": true
+    },
+    {
+      "case_id": "RES-9B-AMBIGUOUS-001",
+      "kind": "hard",
+      "baseline_hit_count": 0,
+      "relevant_source_count": 1,
+      "baseline_improvable": true,
+      "expected_trigger": "ambiguous",
+      "trigger": "ambiguous",
+      "trigger_matches": true
+    },
+    {
+      "case_id": "RES-9B-COLLOQUIAL-001",
+      "kind": "ordinary",
+      "baseline_hit_count": 2,
+      "relevant_source_count": 2,
+      "baseline_improvable": false,
+      "expected_trigger": null,
+      "trigger": null,
+      "trigger_matches": true
+    },
+    {
+      "case_id": "RES-9B-ORDINARY-001",
+      "kind": "ordinary",
+      "baseline_hit_count": 2,
+      "relevant_source_count": 2,
+      "baseline_improvable": false,
+      "expected_trigger": null,
+      "trigger": null,
+      "trigger_matches": true
+    },
+    {
+      "case_id": "RES-9B-ORDINARY-002",
+      "kind": "ordinary",
+      "baseline_hit_count": 1,
+      "relevant_source_count": 1,
+      "baseline_improvable": false,
+      "expected_trigger": null,
+      "trigger": null,
+      "trigger_matches": true
+    }
+  ]
+}

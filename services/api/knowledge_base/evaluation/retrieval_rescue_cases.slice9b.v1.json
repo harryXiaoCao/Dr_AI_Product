@@ -1,0 +1,77 @@
+{
+  "schema_version": "1.0",
+  "suite_id": "dr-ai-slice9b-retrieval-rescue-v1",
+  "frozen_at": "2026-07-18T00:00:00Z",
+  "answer_evaluation_material_used": false,
+  "review": {
+    "status": "approved",
+    "reviewer_id": "Harry Cao",
+    "reviewer_role": "product_owner",
+    "reviewed_at": "2026-07-18",
+    "corrections_required": false,
+    "findings": "No corrections required.",
+    "clinical_reviewer_qualification_verified": true,
+    "clinical_reviewer_id": "Hou Jin",
+    "clinical_reviewer_role": "Doctor, Beijing Hospital",
+    "clinical_reviewed_at": "2026-07-18",
+    "native_chinese_review_verified": true,
+    "native_chinese_reviewer_id": "Hou Jin",
+    "native_chinese_reviewed_at": "2026-07-18"
+  },
+  "thresholds": {
+    "minimum_hard_query_improvement_rate": 0.8,
+    "minimum_ordinary_non_degradation_rate": 1.0,
+    "maximum_rescue_latency_p95_ms": 2500,
+    "maximum_average_rescue_cost_microunits": 500
+  },
+  "cases": [
+    {
+      "case_id": "RES-9B-SHORT-001",
+      "kind": "hard",
+      "category": "short_reference",
+      "recent_user_messages": ["高血压为什么需要定期测量血压？"],
+      "query": "这个呢？",
+      "relevant_source_ids": ["KBS-MEDLINEPLUS-MEASURING-BLOOD-PRESSURE", "KBS-MYHEALTHFINDER-BLOOD-PRESSURE"]
+    },
+    {
+      "case_id": "RES-9B-SHORT-002",
+      "kind": "hard",
+      "category": "short_reference",
+      "recent_user_messages": ["HbA1c 糖化血红蛋白检查是什么意思？"],
+      "query": "那个检查呢？",
+      "relevant_source_ids": ["KBS-MEDLINEPLUS-HEMOGLOBIN-A1C-HBA1C-TEST"]
+    },
+    {
+      "case_id": "RES-9B-COLLOQUIAL-001",
+      "kind": "hard",
+      "category": "colloquial_chinese",
+      "recent_user_messages": [],
+      "query": "血压老飙一点该咋记？",
+      "relevant_source_ids": ["KBS-MEDLINEPLUS-MEASURING-BLOOD-PRESSURE", "KBS-MYHEALTHFINDER-BLOOD-PRESSURE"]
+    },
+    {
+      "case_id": "RES-9B-AMBIGUOUS-001",
+      "kind": "hard",
+      "category": "ambiguous_chinese",
+      "recent_user_messages": ["我想了解在家测量血压"],
+      "query": "怎样才算测得对？",
+      "relevant_source_ids": ["KBS-MEDLINEPLUS-MEASURING-BLOOD-PRESSURE"]
+    },
+    {
+      "case_id": "RES-9B-ORDINARY-001",
+      "kind": "ordinary",
+      "category": "clear_question",
+      "recent_user_messages": [],
+      "query": "高血压为什么需要定期测量血压？",
+      "relevant_source_ids": ["KBS-MEDLINEPLUS-MEASURING-BLOOD-PRESSURE", "KBS-MYHEALTHFINDER-BLOOD-PRESSURE"]
+    },
+    {
+      "case_id": "RES-9B-ORDINARY-002",
+      "kind": "ordinary",
+      "category": "clear_bilingual_question",
+      "recent_user_messages": [],
+      "query": "HbA1c 糖化血红蛋白检查是什么意思？",
+      "relevant_source_ids": ["KBS-MEDLINEPLUS-HEMOGLOBIN-A1C-HBA1C-TEST"]
+    }
+  ]
+}

@@ -1,0 +1,104 @@
+{
+  "suite_id": "dr-ai-slice9b-retrieval-rescue-v1",
+  "evaluated_at": "2026-07-19T04:04:29.021935+00:00",
+  "review": {
+    "status": "approved",
+    "reviewer_id": "Harry Cao",
+    "reviewer_role": "product_owner",
+    "reviewed_at": "2026-07-18",
+    "corrections_required": false,
+    "findings": "No corrections required.",
+    "clinical_reviewer_qualification_verified": true,
+    "clinical_reviewer_id": "Hou Jin",
+    "clinical_reviewer_role": "Doctor, Beijing Hospital",
+    "clinical_reviewed_at": "2026-07-18",
+    "native_chinese_review_verified": true,
+    "native_chinese_reviewer_id": "Hou Jin",
+    "native_chinese_reviewed_at": "2026-07-18"
+  },
+  "metrics": {
+    "hard_query_improvement_rate": 0.0,
+    "ordinary_non_degradation_rate": 1.0,
+    "rescue_latency_p95_ms": 2586,
+    "average_rescue_cost_microunits": 88.0
+  },
+  "failures": [
+    "hard_query_improvement_rate",
+    "rescue_latency_p95_ms"
+  ],
+  "passed": false,
+  "observations": [
+    {
+      "case_id": "RES-9B-SHORT-001",
+      "kind": "hard",
+      "baseline_hit_count": 0,
+      "rescued_hit_count": 0,
+      "non_degraded": true,
+      "improved": false,
+      "trigger": "short_reference",
+      "outcome": "budget_exceeded",
+      "latency_ms": 2586,
+      "cost_microunits": 87
+    },
+    {
+      "case_id": "RES-9B-SHORT-002",
+      "kind": "hard",
+      "baseline_hit_count": 0,
+      "rescued_hit_count": 0,
+      "non_degraded": true,
+      "improved": false,
+      "trigger": null,
+      "outcome": "not_triggered",
+      "latency_ms": 0,
+      "cost_microunits": null
+    },
+    {
+      "case_id": "RES-9B-COLLOQUIAL-001",
+      "kind": "hard",
+      "baseline_hit_count": 2,
+      "rescued_hit_count": 2,
+      "non_degraded": true,
+      "improved": false,
+      "trigger": null,
+      "outcome": "not_triggered",
+      "latency_ms": 0,
+      "cost_microunits": null
+    },
+    {
+      "case_id": "RES-9B-AMBIGUOUS-001",
+      "kind": "hard",
+      "baseline_hit_count": 0,
+      "rescued_hit_count": 0,
+      "non_degraded": true,
+      "improved": false,
+      "trigger": "weak_initial_retrieval",
+      "outcome": "no_improvement",
+      "latency_ms": 2281,
+      "cost_microunits": 89
+    },
+    {
+      "case_id": "RES-9B-ORDINARY-001",
+      "kind": "ordinary",
+      "baseline_hit_count": 1,
+      "rescued_hit_count": 1,
+      "non_degraded": true,
+      "improved": false,
+      "trigger": null,
+      "outcome": "not_triggered",
+      "latency_ms": 0,
+      "cost_microunits": null
+    },
+    {
+      "case_id": "RES-9B-ORDINARY-002",
+      "kind": "ordinary",
+      "baseline_hit_count": 1,
+      "rescued_hit_count": 1,
+      "non_degraded": true,
+      "improved": false,
+      "trigger": null,
+      "outcome": "not_triggered",
+      "latency_ms": 0,
+      "cost_microunits": null
+    }
+  ]
+}

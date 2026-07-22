@@ -14,6 +14,7 @@ class UnauthorizedScreen extends StatelessWidget {
     final dashboardPath = switch (role) {
       AppRole.doctor => '/doctor',
       AppRole.patient => '/patient',
+      AppRole.payer => '/payer',
       AppRole.unsupported || null => null,
     };
     return Scaffold(

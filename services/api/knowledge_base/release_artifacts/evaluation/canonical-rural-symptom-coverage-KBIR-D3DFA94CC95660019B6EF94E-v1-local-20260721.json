@@ -1,0 +1,1387 @@
+{
+  "auditor_version": "canonical-active-release-coverage-v1",
+  "audited_at": "2026-07-21T06:53:40.274477+00:00",
+  "contract_id": "dr-ai-rural-symptom-first-canonical-v1",
+  "contract_sha256": "ecb2d0291e29daff98652682d759798c7093cc380f45ecd51f0883d2e704dce3",
+  "contract_status": "candidate_pending_clinical_native_chinese_and_product_review",
+  "active_release_ids": [
+    "KBIR-D3DFA94CC95660019B6EF94E"
+  ],
+  "provider_calls": 0,
+  "paid_usage_usd": 0,
+  "case_count": 100,
+  "decision_counts": {
+    "no_eligible_evidence": 8,
+    "not_applicable_pre_safety": 47,
+    "sufficient": 45
+  },
+  "limitations": [
+    "A retrieval hit is only a candidate and is not a claim of case-specific clinical support.",
+    "Relevant source IDs stay empty until named case-by-case clinical review is recorded.",
+    "This audit does not evaluate answer generation or claim-to-citation support."
+  ],
+  "observations": [
+    {
+      "case_id": "RCQ-001",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-HPA-36F6256F33A4C1381683",
+        "KBS-HPA-AB73A7926E1F4100020A"
+      ],
+      "candidate_jurisdictions": [
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-002",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-HPA-AB73A7926E1F4100020A",
+        "KBS-HPA-36F6256F33A4C1381683"
+      ],
+      "candidate_jurisdictions": [
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-003",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-MEDLINEPLUS-FLU",
+        "KBS-MEDLINEPLUS-PNEUMONIA",
+        "KBS-MEDLINEPLUS-TUBERCULOSIS",
+        "KBS-HPA-50BB104AC35D2C50F047",
+        "KBS-MEDLINEPLUS-COPD",
+        "KBS-MEDLINEPLUS-HEMOGLOBIN-A1C-HBA1C-TEST"
+      ],
+      "candidate_jurisdictions": [
+        "US",
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-004",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-MEDLINEPLUS-BLOOD-IN-URINE",
+        "KBS-MEDLINEPLUS-ASTHMA",
+        "KBS-MEDLINEPLUS-COPD",
+        "KBS-MEDLINEPLUS-SLEEP-DISORDERS",
+        "KBS-MEDLINEPLUS-PNEUMONIA",
+        "KBS-MEDLINEPLUS-BLOOD-GLUCOSE-TEST"
+      ],
+      "candidate_jurisdictions": [
+        "US"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-005",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-HPA-16B32924EDF9F3669915",
+        "KBS-HPA-60B55635F6379A2B9EE5",
+        "KBS-HPA-58FCD0171764DA09CD68",
+        "KBS-HPA-D4EFE32352BBF27E91AF",
+        "KBS-HPA-95D54C698D5194C666C2",
+        "KBS-HPA-32EB6F6D941F1C09F1D4"
+      ],
+      "candidate_jurisdictions": [
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-006",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-MEDLINEPLUS-DEPRESSION",
+        "KBS-MEDLINEPLUS-COPD",
+        "KBS-MEDLINEPLUS-STROKE",
+        "KBS-MEDLINEPLUS-BREAST-CANCER",
+        "KBS-MEDLINEPLUS-TUBERCULOSIS",
+        "KBS-MEDLINEPLUS-CHOLESTEROL-LEVELS"
+      ],
+      "candidate_jurisdictions": [
+        "US"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-007",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-HPA-411B0344C368B599734F",
+        "KBS-HPA-58FCD0171764DA09CD68",
+        "KBS-HPA-50BB104AC35D2C50F047",
+        "KBS-HPA-32EB6F6D941F1C09F1D4",
+        "KBS-HPA-16B32924EDF9F3669915",
+        "KBS-HPA-60B55635F6379A2B9EE5"
+      ],
+      "candidate_jurisdictions": [
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-008",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-MEDLINEPLUS-TUBERCULOSIS",
+        "KBS-MYHEALTHFINDER-HEART-HEALTHY",
+        "KBS-MEDLINEPLUS-LIVER-FUNCTION-TESTS",
+        "KBS-HPA-B64E5D9F82EB34DA1A4A"
+      ],
+      "candidate_jurisdictions": [
+        "US",
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-009",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-010",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-011",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-MEDLINEPLUS-COPD"
+      ],
+      "candidate_jurisdictions": [
+        "US"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-012",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-013",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-MEDLINEPLUS-MEASURING-BLOOD-PRESSURE",
+        "KBS-HPA-500977897356173DBDE3",
+        "KBS-HPA-1CC6C9BAE2A7D28BA325",
+        "KBS-HPA-5553DEC49F38D77546A0"
+      ],
+      "candidate_jurisdictions": [
+        "US",
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-014",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-HPA-0CAFB46860FFB1EF12C7",
+        "KBS-HPA-0056A212694651D10A59",
+        "KBS-HPA-3D2F4884ED3765CC7236"
+      ],
+      "candidate_jurisdictions": [
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-015",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-HPA-0056A212694651D10A59",
+        "KBS-HPA-E42E8307AF675CB4F57F",
+        "KBS-HPA-0CAFB46860FFB1EF12C7",
+        "KBS-MEDLINEPLUS-COLORECTAL-CANCER",
+        "KBS-HPA-9381E5431582F6586B34",
+        "KBS-MEDLINEPLUS-HEPATITIS-B"
+      ],
+      "candidate_jurisdictions": [
+        "TW",
+        "US"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-016",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-MEDLINEPLUS-SLEEP-DISORDERS",
+        "KBS-HPA-2644D61734A8C40AE831",
+        "KBS-MEDLINEPLUS-DEPRESSION",
+        "KBS-HPA-5CBCDDCA57CA22773D59",
+        "KBS-HPA-9CBCF1A66800926C84B0",
+        "KBS-HPA-D70284CB3EB376FB3443"
+      ],
+      "candidate_jurisdictions": [
+        "US",
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-017",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-018",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-HPA-076CC030142DC553C952",
+        "KBS-HPA-8E5CA4DB1251BCE552A1",
+        "KBS-HPA-9DD35209B4D5BA1BEB00",
+        "KBS-MEDLINEPLUS-TUBERCULOSIS",
+        "KBS-MYHEALTHFINDER-PREVENT-TYPE-2-DIABETES",
+        "KBS-HPA-179A5B16C64E7D11B4D0"
+      ],
+      "candidate_jurisdictions": [
+        "TW",
+        "US"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-019",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-020",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-021",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-022",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-023",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-024",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-025",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-MYHEALTHFINDER-GET-SCREENED",
+        "KBS-HPA-9EC0FCC0FAA49B9AF334",
+        "KBS-MEDLINEPLUS-HEART-DISEASES",
+        "KBS-MEDLINEPLUS-EXERCISE-AND-PHYSICAL-FITNESS",
+        "KBS-HPA-01FD4CD243E22DF77D3C",
+        "KBS-MEDLINEPLUS-HEALTHY-AGING"
+      ],
+      "candidate_jurisdictions": [
+        "US",
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-026",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-027",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-MEDLINEPLUS-BLOOD-IN-URINE",
+        "KBS-MEDLINEPLUS-COPD",
+        "KBS-MEDLINEPLUS-PNEUMONIA",
+        "KBS-MEDLINEPLUS-FLU",
+        "KBS-NIMH-UNDERSTANDING-PSYCHOSIS",
+        "KBS-MEDLINEPLUS-ASTHMA"
+      ],
+      "candidate_jurisdictions": [
+        "US"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-028",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-HPA-6382D03A842EA5FE0ACF",
+        "KBS-HPA-03CE307C22044CE6C61E",
+        "KBS-MEDLINEPLUS-HEALTHY-AGING",
+        "KBS-HPA-3161E504DE43D85A60BD",
+        "KBS-NIMH-GENERALIZED-ANXIETY-DISORDER",
+        "KBS-HPA-357AD1B8C355444511EB"
+      ],
+      "candidate_jurisdictions": [
+        "TW",
+        "US"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-029",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-030",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-HPA-36F6256F33A4C1381683",
+        "KBS-HPA-AB73A7926E1F4100020A"
+      ],
+      "candidate_jurisdictions": [
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-031",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-HPA-0702FF64003A2BE51273",
+        "KBS-HPA-4D13A0AD8877D87E3E1B"
+      ],
+      "candidate_jurisdictions": [
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-032",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-033",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-MEDLINEPLUS-DIABETES-TYPE-2",
+        "KBS-MEDLINEPLUS-HEMOGLOBIN-A1C-HBA1C-TEST",
+        "KBS-MEDLINEPLUS-BLOOD-GLUCOSE-TEST",
+        "KBS-MYHEALTHFINDER-PREVENT-TYPE-2-DIABETES",
+        "KBS-HPA-31BF6C1C795A46F4DF20",
+        "KBS-HPA-06119BBE3CF63F6D1870"
+      ],
+      "candidate_jurisdictions": [
+        "US",
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-034",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-035",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-HPA-0CAFB46860FFB1EF12C7",
+        "KBS-HPA-3D2F4884ED3765CC7236"
+      ],
+      "candidate_jurisdictions": [
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-036",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-037",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-MEDLINEPLUS-MEASURING-BLOOD-PRESSURE",
+        "KBS-HPA-2B2A4278294927E0EE61",
+        "KBS-MYHEALTHFINDER-BLOOD-PRESSURE",
+        "KBS-MEDLINEPLUS-HIGH-BLOOD-PRESSURE"
+      ],
+      "candidate_jurisdictions": [
+        "US",
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-038",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-039",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-040",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-041",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-MEDLINEPLUS-DEPRESSION",
+        "KBS-MYHEALTHFINDER-HEART-HEALTHY",
+        "KBS-MEDLINEPLUS-MEASURING-BLOOD-PRESSURE",
+        "KBS-MYHEALTHFINDER-ENOUGH-SLEEP",
+        "KBS-MEDLINEPLUS-CHOLESTEROL-LEVELS",
+        "KBS-MEDLINEPLUS-HEMOGLOBIN-A1C-HBA1C-TEST"
+      ],
+      "candidate_jurisdictions": [
+        "US"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-042",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-043",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-HPA-CC0D0E46EE89A59122AB"
+      ],
+      "candidate_jurisdictions": [
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-044",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-HPA-58FCD0171764DA09CD68",
+        "KBS-HPA-32EB6F6D941F1C09F1D4",
+        "KBS-HPA-16B32924EDF9F3669915",
+        "KBS-HPA-95D54C698D5194C666C2",
+        "KBS-HPA-60B55635F6379A2B9EE5",
+        "KBS-HPA-411B0344C368B599734F"
+      ],
+      "candidate_jurisdictions": [
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-045",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-046",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-MEDLINEPLUS-BLOOD-GLUCOSE-TEST",
+        "KBS-MEDLINEPLUS-DIABETES-TYPE-2",
+        "KBS-MEDLINEPLUS-HEMOGLOBIN-A1C-HBA1C-TEST",
+        "KBS-HPA-7D468E3FDA58E7D029B0",
+        "KBS-HPA-45D8C87A61DD7551C858",
+        "KBS-HPA-0CD1AE328816EB8E3AE2"
+      ],
+      "candidate_jurisdictions": [
+        "US",
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-047",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-048",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-049",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-HPA-971ED5168645B82E3A86",
+        "KBS-HPA-9CF1ADD7B51387A37CC5",
+        "KBS-HPA-8C9C187BEEBEE7BA39EF",
+        "KBS-HPA-410D2C33067144404C96",
+        "KBS-MYHEALTHFINDER-PREVENT-TYPE-2-DIABETES",
+        "KBS-HPA-211E51C7492997DF2323"
+      ],
+      "candidate_jurisdictions": [
+        "TW",
+        "US"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-050",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-051",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-NCI-CANCER-DIAGNOSIS",
+        "KBS-HPA-9C925B444DEF9E2F59A7",
+        "KBS-MEDLINEPLUS-LUNG-CANCER",
+        "KBS-MEDLINEPLUS-PREGNANCY",
+        "KBS-HPA-F54D03433EF80DC3CDAA",
+        "KBS-MEDLINEPLUS-COLORECTAL-CANCER"
+      ],
+      "candidate_jurisdictions": [
+        "US",
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-052",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-HPA-971ED5168645B82E3A86",
+        "KBS-HPA-45D8C87A61DD7551C858",
+        "KBS-MYHEALTHFINDER-PREVENT-TYPE-2-DIABETES",
+        "KBS-HPA-088F768E453435F03721",
+        "KBS-HPA-AD2098A1508E7E857868",
+        "KBS-HPA-3B7E9149C977B2821BE2"
+      ],
+      "candidate_jurisdictions": [
+        "TW",
+        "US"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-053",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-HPA-45D8C87A61DD7551C858",
+        "KBS-HPA-046E6EBCE7314359C194",
+        "KBS-MEDLINEPLUS-HEMOGLOBIN-A1C-HBA1C-TEST",
+        "KBS-MEDLINEPLUS-DIABETES-TYPE-2",
+        "KBS-HPA-6297A509B9F61208EC06",
+        "KBS-MEDLINEPLUS-BLOOD-GLUCOSE-TEST"
+      ],
+      "candidate_jurisdictions": [
+        "TW",
+        "US"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-054",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-MEDLINEPLUS-BLOOD-GLUCOSE-TEST",
+        "KBS-HPA-8C9C187BEEBEE7BA39EF",
+        "KBS-MEDLINEPLUS-DIABETES-TYPE-2",
+        "KBS-HPA-EC4E79AD5AE70E3D2783",
+        "KBS-HPA-088F768E453435F03721",
+        "KBS-HPA-6297A509B9F61208EC06"
+      ],
+      "candidate_jurisdictions": [
+        "US",
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-055",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-HPA-16B32924EDF9F3669915",
+        "KBS-HPA-95D54C698D5194C666C2",
+        "KBS-HPA-50BB104AC35D2C50F047",
+        "KBS-HPA-60B55635F6379A2B9EE5",
+        "KBS-HPA-411B0344C368B599734F",
+        "KBS-HPA-32EB6F6D941F1C09F1D4"
+      ],
+      "candidate_jurisdictions": [
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-056",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-057",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-MEDLINEPLUS-DIABETES-TYPE-2",
+        "KBS-HPA-7D468E3FDA58E7D029B0",
+        "KBS-NCI-CANCER-PROGNOSIS",
+        "KBS-MYHEALTHFINDER-HEART-HEALTHY",
+        "KBS-MEDLINEPLUS-SLEEP-DISORDERS",
+        "KBS-MYHEALTHFINDER-BLOOD-PRESSURE"
+      ],
+      "candidate_jurisdictions": [
+        "US",
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-058",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-MEDLINEPLUS-HEPATITIS-B",
+        "KBS-MEDLINEPLUS-LIVER-FUNCTION-TESTS",
+        "KBS-MEDLINEPLUS-CREATININE-TEST",
+        "KBS-MEDLINEPLUS-BLOOD-IN-URINE",
+        "KBS-HPA-7CA3791391F03EEDA1DC",
+        "KBS-MEDLINEPLUS-DIABETES-TYPE-2"
+      ],
+      "candidate_jurisdictions": [
+        "US",
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-059",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-060",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-NCI-CANCER-PREVENTION-OVERVIEW",
+        "KBS-HPA-2F88ED40259515491ED8",
+        "KBS-HPA-D2EBCA5A1045FE598B65",
+        "KBS-HPA-076CC030142DC553C952",
+        "KBS-HPA-E5069A7FB0652685730C"
+      ],
+      "candidate_jurisdictions": [
+        "US",
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-061",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-062",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-HPA-0CAFB46860FFB1EF12C7",
+        "KBS-HPA-3D2F4884ED3765CC7236"
+      ],
+      "candidate_jurisdictions": [
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-063",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-064",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-MEDLINEPLUS-BLOOD-GLUCOSE-TEST",
+        "KBS-MEDLINEPLUS-DEPRESSION",
+        "KBS-MEDLINEPLUS-STROKE",
+        "KBS-MEDLINEPLUS-HEPATITIS-B",
+        "KBS-HPA-BB3AF942ED1FF24C7D89",
+        "KBS-MEDLINEPLUS-LIVER-FUNCTION-TESTS"
+      ],
+      "candidate_jurisdictions": [
+        "US",
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-065",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-066",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-067",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-HPA-36F6256F33A4C1381683",
+        "KBS-HPA-AB73A7926E1F4100020A"
+      ],
+      "candidate_jurisdictions": [
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-068",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-069",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-HPA-0CAFB46860FFB1EF12C7",
+        "KBS-HPA-3D2F4884ED3765CC7236"
+      ],
+      "candidate_jurisdictions": [
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-070",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-071",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-MEDLINEPLUS-TSH-THYROID-STIMULATING-HORMONE-TEST",
+        "KBS-MEDLINEPLUS-HEPATITIS-B",
+        "KBS-NCI-WHAT-IS-CANCER",
+        "KBS-HPA-30923A728BFC8919E492",
+        "KBS-MEDLINEPLUS-PNEUMONIA",
+        "KBS-HPA-F9095EB7C0726E3154E3"
+      ],
+      "candidate_jurisdictions": [
+        "US",
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-072",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-073",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-MEDLINEPLUS-MEASURING-BLOOD-PRESSURE",
+        "KBS-HPA-045B4E16CD87A091BBC0",
+        "KBS-HPA-F2165B467C2C9EAFFCDD",
+        "KBS-HPA-E15D36810DC107F7EC9B",
+        "KBS-MEDLINEPLUS-COPD"
+      ],
+      "candidate_jurisdictions": [
+        "US",
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-074",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-HPA-759944ABED77062D4060",
+        "KBS-HPA-3C60809A62C3698B330A",
+        "KBS-HPA-AB73A7926E1F4100020A",
+        "KBS-HPA-36F6256F33A4C1381683"
+      ],
+      "candidate_jurisdictions": [
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-075",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-MEDLINEPLUS-COLORECTAL-CANCER",
+        "KBS-MEDLINEPLUS-CHILDREN-S-HEALTH",
+        "KBS-HPA-EFB0492E75C08753BFDB",
+        "KBS-MYHEALTHFINDER-PREVENT-TYPE-2-DIABETES",
+        "KBS-MEDLINEPLUS-TSH-THYROID-STIMULATING-HORMONE-TEST",
+        "KBS-MEDLINEPLUS-BREAST-CANCER"
+      ],
+      "candidate_jurisdictions": [
+        "US",
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-076",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-077",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-078",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-079",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-080",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-081",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-082",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-083",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-MEDLINEPLUS-SLEEP-DISORDERS",
+        "KBS-MEDLINEPLUS-STROKE",
+        "KBS-MEDLINEPLUS-ANXIETY",
+        "KBS-MEDLINEPLUS-PNEUMONIA"
+      ],
+      "candidate_jurisdictions": [
+        "US"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-084",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-085",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-HPA-85C4F996147F23154A89"
+      ],
+      "candidate_jurisdictions": [
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-086",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-087",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-088",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-089",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-090",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-091",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-092",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-093",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-094",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-095",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-096",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-097",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-098",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-099",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    },
+    {
+      "case_id": "RCQ-100",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending"
+    }
+  ]
+}

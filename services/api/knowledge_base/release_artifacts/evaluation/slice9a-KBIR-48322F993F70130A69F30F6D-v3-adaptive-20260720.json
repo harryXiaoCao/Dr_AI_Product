@@ -1,0 +1,211 @@
+{
+  "evaluator_version": "slice9a-source-deduplicated-v2",
+  "suite_id": "dr-ai-slice9a-retrieval-v2",
+  "evaluated_at": "2026-07-20T18:05:53.586624+00:00",
+  "review": {
+    "status": "approved",
+    "reviewer_id": "Hou Jin",
+    "reviewer_role": "Doctor, Beijing Hospital",
+    "reviewed_at": "2026-07-18",
+    "findings": "All frozen Slice 9A cases, relevance labels, expected decisions, forbidden-source labels, and language/jurisdiction expectations were clinically reviewed. No corrections were required. Those unchanged clinical labels are carried forward from v1."
+  },
+  "release": {
+    "release_id": "1f9075e5-b9d9-413b-aeac-03d7f7dcca68",
+    "stable_id": "KBIR-48322F993F70130A69F30F6D",
+    "embedding_model": "Alibaba-NLP/gte-multilingual-base@9bbca17d9273",
+    "reranker_model": "Alibaba-NLP/gte-multilingual-reranker-base@8215cf04918b",
+    "permanently_activated": false,
+    "original_active_release_id": null
+  },
+  "metrics": {
+    "case_count": 8,
+    "recall_at_6": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_6": 0.9605529895854055,
+    "decision_accuracy": 0.875,
+    "forbidden_source_hits": 0,
+    "source_diversity_pass_rate": 1.0,
+    "jurisdiction_pass_rate": 0.875,
+    "language_pass_rate": 1.0,
+    "latency_p95_ms": 2292,
+    "latency_max_ms": 2292,
+    "no_evidence_precision": 1.0
+  },
+  "failures": [
+    "decision_accuracy",
+    "jurisdiction_pass_rate"
+  ],
+  "passed": false,
+  "observations": [
+    {
+      "case_id": "RET-9A-ZH-COLLOQUIAL-001",
+      "source_ids": [
+        "KBS-MEDLINEPLUS-MEASURING-BLOOD-PRESSURE",
+        "KBS-HPA-CC599A774747A545E303",
+        "KBS-MEDLINEPLUS-BLOOD-GLUCOSE-TEST",
+        "KBS-MEDLINEPLUS-HEMOGLOBIN-A1C-HBA1C-TEST",
+        "KBS-MYHEALTHFINDER-BLOOD-PRESSURE",
+        "KBS-HPA-2B2A4278294927E0EE61"
+      ],
+      "decision": "sufficient",
+      "source_jurisdictions": [
+        "US",
+        "TW",
+        "US",
+        "US",
+        "US",
+        "TW"
+      ],
+      "source_applicable_jurisdictions": [
+        [],
+        [
+          "CN"
+        ],
+        [],
+        [],
+        [],
+        [
+          "CN"
+        ]
+      ],
+      "passage_languages": [
+        "zh-Hans",
+        "zh-Hans",
+        "zh-Hans",
+        "zh-Hans",
+        "zh-Hans",
+        "zh-Hans"
+      ],
+      "latency_ms": 2110
+    },
+    {
+      "case_id": "RET-9A-BILINGUAL-001",
+      "source_ids": [
+        "KBS-MEDLINEPLUS-HEMOGLOBIN-A1C-HBA1C-TEST",
+        "KBS-MEDLINEPLUS-BLOOD-GLUCOSE-TEST",
+        "KBS-NCI-CANCER-DIAGNOSIS",
+        "KBS-MEDLINEPLUS-COMPLETE-BLOOD-COUNT-CBC",
+        "KBS-MEDLINEPLUS-COMPREHENSIVE-METABOLIC-PANEL-CMP",
+        "KBS-MEDLINEPLUS-DIABETES-TYPE-2"
+      ],
+      "decision": "sufficient",
+      "source_jurisdictions": [
+        "US",
+        "US",
+        "US",
+        "US",
+        "US",
+        "US"
+      ],
+      "source_applicable_jurisdictions": [
+        [],
+        [],
+        [],
+        [],
+        [],
+        []
+      ],
+      "passage_languages": [
+        "zh-Hans",
+        "zh-Hans",
+        "zh-Hans",
+        "zh-Hans",
+        "zh-Hans",
+        "zh-Hans"
+      ],
+      "latency_ms": 1584
+    },
+    {
+      "case_id": "RET-9A-FOLLOWUP-001",
+      "source_ids": [
+        "KBS-MEDLINEPLUS-MEASURING-BLOOD-PRESSURE",
+        "KBS-MYHEALTHFINDER-BLOOD-PRESSURE",
+        "KBS-MEDLINEPLUS-BLOOD-GLUCOSE-TEST",
+        "KBS-MEDLINEPLUS-HEMOGLOBIN-A1C-HBA1C-TEST",
+        "KBS-MEDLINEPLUS-COMPLETE-BLOOD-COUNT-CBC",
+        "KBS-MEDLINEPLUS-CHOLESTEROL-LEVELS"
+      ],
+      "decision": "sufficient",
+      "source_jurisdictions": [
+        "US",
+        "US",
+        "US",
+        "US",
+        "US",
+        "US"
+      ],
+      "source_applicable_jurisdictions": [
+        [],
+        [],
+        [],
+        [],
+        [],
+        []
+      ],
+      "passage_languages": [
+        "zh-Hans",
+        "zh-Hans",
+        "zh-Hans",
+        "zh-Hans",
+        "zh-Hans",
+        "zh-Hans"
+      ],
+      "latency_ms": 2292
+    },
+    {
+      "case_id": "RET-9A-SYMPTOM-001",
+      "source_ids": [],
+      "decision": "no_eligible_evidence",
+      "source_jurisdictions": [],
+      "source_applicable_jurisdictions": [],
+      "passage_languages": [],
+      "latency_ms": 804
+    },
+    {
+      "case_id": "RET-9A-MEDICATION-001",
+      "source_ids": [
+        "KBS-HPA-076CC030142DC553C952"
+      ],
+      "decision": "sufficient",
+      "source_jurisdictions": [
+        "TW"
+      ],
+      "source_applicable_jurisdictions": [
+        [
+          "CN"
+        ]
+      ],
+      "passage_languages": [
+        "zh-Hans"
+      ],
+      "latency_ms": 982
+    },
+    {
+      "case_id": "RET-9A-STALE-001",
+      "source_ids": [],
+      "decision": "stale_or_superseded_only",
+      "source_jurisdictions": [],
+      "source_applicable_jurisdictions": [],
+      "passage_languages": [],
+      "latency_ms": 1933
+    },
+    {
+      "case_id": "RET-9A-CONFLICT-001",
+      "source_ids": [],
+      "decision": "conflicting",
+      "source_jurisdictions": [],
+      "source_applicable_jurisdictions": [],
+      "passage_languages": [],
+      "latency_ms": 1853
+    },
+    {
+      "case_id": "RET-9A-NO-EVIDENCE-001",
+      "source_ids": [],
+      "decision": "no_eligible_evidence",
+      "source_jurisdictions": [],
+      "source_applicable_jurisdictions": [],
+      "passage_languages": [],
+      "latency_ms": 798
+    }
+  ]
+}

@@ -8,6 +8,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.cors import CORSMiddleware
 
 from app.auth import router as auth_router
+from app.care_cost import router as care_cost_router
 from app.config import get_settings
 from app.dashboard import router as dashboard_router
 from app.database import engine
@@ -20,6 +21,7 @@ from app.errors import (
 )
 from app.knowledge_catalog import router as knowledge_catalog_router
 from app.knowledge_retrieval import router as knowledge_retrieval_router
+from app.patient_chat import router as patient_chat_router
 from app.support import router as support_router
 
 
@@ -29,8 +31,9 @@ def create_app() -> FastAPI:
         title=settings.app_name,
         version="1.0.0",
         description=(
-            "Authentication and synthetic dashboard API for the Dr. AI invited beta. "
-            "Not intended for clinical use or real patient data."
+            "Role-based care, cost-transparency, and educational-support API for Dr. AI. "
+            "Synthetic or de-identified validation data only. Not intended for clinical use "
+            "or reimbursement decisions."
         ),
     )
 
@@ -73,9 +76,11 @@ def create_app() -> FastAPI:
         }
 
     app.include_router(auth_router)
+    app.include_router(care_cost_router)
     app.include_router(dashboard_router)
     app.include_router(knowledge_catalog_router)
     app.include_router(knowledge_retrieval_router)
+    app.include_router(patient_chat_router)
     app.include_router(support_router)
     return app
 

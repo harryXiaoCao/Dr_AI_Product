@@ -55,6 +55,36 @@ Future<void> pumpResources(
 }
 
 void main() {
+  test('HPA API records keep Taiwan publisher and jurisdiction provenance', () {
+    final resource = MedicalResourceFixture.fromApiJson(<String, dynamic>{
+      'source_id': 'KBV-HPA-TEST-1',
+      'title': '保健辟谣测试',
+      'title_en': null,
+      'catalog_summary': '国民健康署官方问答。',
+      'search_keywords': <String>['保健辟谣'],
+      'official_locator': 'https://data.gov.tw/dataset/43338',
+      'english_official_locator': null,
+      'available_languages': <String>['zh-Hant', 'zh-Hans'],
+      'publisher_id': 'KBP-TW-HPA',
+      'source_type': 'health_myth_qa',
+      'topic': 'health_education',
+      'jurisdiction': 'TW',
+      'catalog_verified_at': '2026-07-17T00:00:00Z',
+      'publisher_date_text': '17-Jul-26',
+      'license_name': '政府资料开放授权条款第1版',
+      'rights_evidence_locator': 'https://data.gov.tw/license',
+      'attribution_requirements': '注明来源。',
+      'rights_mode': 'stored_text',
+    });
+
+    expect(
+      resource.organization,
+      MedicalOrganization.healthPromotionAdministration,
+    );
+    expect(resource.jurisdiction, MedicalJurisdiction.taiwan);
+    expect(resource.language, MedicalResourceLanguage.chinese);
+  });
+
   testWidgets('doctor resources visually lists rights-cleared API records', (
     tester,
   ) async {

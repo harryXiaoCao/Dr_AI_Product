@@ -16,6 +16,7 @@ import 'package:dr_ai_app/shared/widgets/sign_out_button.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 class PatientDashboardScreen extends ConsumerWidget {
   const PatientDashboardScreen({super.key});
@@ -45,7 +46,7 @@ class PatientAccountScreen extends ConsumerWidget {
     final care = ref.watch(ownPatientCareProvider);
     return ResponsiveAppShell(
       role: AppRole.patient,
-      selectedIndex: 3,
+      selectedIndex: 4,
       child: ColoredBox(
         color: DrAiColors.pageBackground,
         child: Center(
@@ -76,7 +77,7 @@ class PatientRecoveryPlanScreen extends ConsumerWidget {
     final today = ref.watch(patientTodayProvider);
     return ResponsiveAppShell(
       role: AppRole.patient,
-      selectedIndex: 2,
+      selectedIndex: 3,
       child: ColoredBox(
         color: DrAiColors.pageBackground,
         child: Center(
@@ -3139,46 +3140,14 @@ class _MedicalFee extends StatelessWidget {
             },
           ),
           const Spacer(),
-          Semantics(
-            key: const Key('payment-disabled-control'),
-            container: true,
-            excludeSemantics: true,
-            button: true,
-            enabled: false,
-            label: context.l10n.payNowUnavailable,
-            child: Container(
-              constraints: const BoxConstraints(minHeight: 42),
-              padding: const EdgeInsets.symmetric(
-                horizontal: DrAiSpacing.md,
-                vertical: 9,
-              ),
-              decoration: BoxDecoration(
-                color: const Color(0xFFE1E3E8),
-                borderRadius: BorderRadius.circular(DrAiRadii.md),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
-                  Icon(
-                    Icons.lock_outline,
-                    size: 17,
-                    color: DrAiColors.inkSecondary,
-                  ),
-                  SizedBox(width: 7),
-                  Flexible(
-                    child: Text(
-                      context.l10n.paymentUnavailable,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: DrAiColors.inkSecondary,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+          FilledButton.icon(
+            key: const Key('open-care-costs-button'),
+            onPressed: () => context.go('/patient/care-costs'),
+            icon: const Icon(Icons.receipt_long_outlined),
+            label: Text(
+              Localizations.localeOf(context).languageCode == 'zh'
+                  ? '查看完整诊疗与费用明细'
+                  : 'View full care and cost details',
             ),
           ),
           const SizedBox(height: 5),

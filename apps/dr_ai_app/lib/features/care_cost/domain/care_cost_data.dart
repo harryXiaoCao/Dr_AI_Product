@@ -1,0 +1,372 @@
+class CareCostItemData {
+  const CareCostItemData({
+    required this.id,
+    required this.clinicalEventId,
+    required this.itemType,
+    required this.label,
+    required this.serviceDate,
+    required this.status,
+    required this.quantity,
+    required this.currency,
+    required this.actualCostMinor,
+    required this.payerRequestedMinor,
+    required this.patientResponsibilityMinor,
+    required this.aiReviewStatus,
+    required this.createdAt,
+    required this.updatedAt,
+    this.aiReviewScore,
+    this.aiReviewSummary,
+    this.notes,
+  });
+
+  factory CareCostItemData.fromJson(Map<String, dynamic> json) {
+    return CareCostItemData(
+      id: json['id'] as String,
+      clinicalEventId: json['clinical_event_id'] as String,
+      itemType: json['item_type'] as String,
+      label: json['label'] as String,
+      serviceDate: DateTime.parse(json['service_date'] as String),
+      status: json['status'] as String,
+      quantity: json['quantity'] as int,
+      currency: json['currency'] as String,
+      actualCostMinor: json['actual_cost_minor'] as int,
+      payerRequestedMinor: json['payer_requested_minor'] as int,
+      patientResponsibilityMinor: json['patient_responsibility_minor'] as int,
+      aiReviewScore: json['ai_review_score'] as int?,
+      aiReviewStatus: json['ai_review_status'] as String,
+      aiReviewSummary: json['ai_review_summary'] as String?,
+      notes: json['notes'] as String?,
+      createdAt: DateTime.parse(json['created_at'] as String),
+      updatedAt: DateTime.parse(json['updated_at'] as String),
+    );
+  }
+
+  final String id;
+  final String clinicalEventId;
+  final String itemType;
+  final String label;
+  final DateTime serviceDate;
+  final String status;
+  final int quantity;
+  final String currency;
+  final int actualCostMinor;
+  final int payerRequestedMinor;
+  final int patientResponsibilityMinor;
+  final int? aiReviewScore;
+  final String aiReviewStatus;
+  final String? aiReviewSummary;
+  final String? notes;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+}
+
+class CareCostEventData {
+  const CareCostEventData({
+    required this.clinicalEventId,
+    required this.title,
+    required this.status,
+    required this.actualTotalMinor,
+    required this.payerRequestedTotalMinor,
+    required this.patientResponsibilityTotalMinor,
+    required this.currency,
+    required this.items,
+  });
+
+  factory CareCostEventData.fromJson(Map<String, dynamic> json) {
+    return CareCostEventData(
+      clinicalEventId: json['clinical_event_id'] as String,
+      title: json['title'] as String,
+      status: json['status'] as String,
+      actualTotalMinor: json['actual_total_minor'] as int,
+      payerRequestedTotalMinor: json['payer_requested_total_minor'] as int,
+      patientResponsibilityTotalMinor:
+          json['patient_responsibility_total_minor'] as int,
+      currency: json['currency'] as String,
+      items: (json['items'] as List<dynamic>)
+          .map(
+            (item) => CareCostItemData.fromJson(
+              Map<String, dynamic>.from(item as Map),
+            ),
+          )
+          .toList(),
+    );
+  }
+
+  final String clinicalEventId;
+  final String title;
+  final String status;
+  final int actualTotalMinor;
+  final int payerRequestedTotalMinor;
+  final int patientResponsibilityTotalMinor;
+  final String currency;
+  final List<CareCostItemData> items;
+}
+
+class CareCostLedgerData {
+  const CareCostLedgerData({
+    required this.patientId,
+    required this.patientDisplayName,
+    required this.actualTotalMinor,
+    required this.payerRequestedTotalMinor,
+    required this.patientResponsibilityTotalMinor,
+    required this.currency,
+    required this.events,
+  });
+
+  factory CareCostLedgerData.fromJson(Map<String, dynamic> json) {
+    return CareCostLedgerData(
+      patientId: json['patient_id'] as String,
+      patientDisplayName: json['patient_display_name'] as String,
+      actualTotalMinor: json['actual_total_minor'] as int,
+      payerRequestedTotalMinor: json['payer_requested_total_minor'] as int,
+      patientResponsibilityTotalMinor:
+          json['patient_responsibility_total_minor'] as int,
+      currency: json['currency'] as String,
+      events: (json['events'] as List<dynamic>)
+          .map(
+            (item) => CareCostEventData.fromJson(
+              Map<String, dynamic>.from(item as Map),
+            ),
+          )
+          .toList(),
+    );
+  }
+
+  final String patientId;
+  final String patientDisplayName;
+  final int actualTotalMinor;
+  final int payerRequestedTotalMinor;
+  final int patientResponsibilityTotalMinor;
+  final String currency;
+  final List<CareCostEventData> events;
+}
+
+class PayerOrganizationData {
+  const PayerOrganizationData({
+    required this.id,
+    required this.name,
+    required this.organizationType,
+    required this.jurisdictionCode,
+    required this.verificationStatus,
+  });
+
+  factory PayerOrganizationData.fromJson(Map<String, dynamic> json) {
+    return PayerOrganizationData(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      organizationType: json['organization_type'] as String,
+      jurisdictionCode: json['jurisdiction_code'] as String,
+      verificationStatus: json['verification_status'] as String,
+    );
+  }
+
+  final String id;
+  final String name;
+  final String organizationType;
+  final String jurisdictionCode;
+  final String verificationStatus;
+}
+
+class PayerRequestLineData {
+  const PayerRequestLineData({
+    required this.id,
+    required this.itemType,
+    required this.label,
+    required this.serviceDate,
+    required this.currency,
+    required this.actualCostMinor,
+    required this.requestedMinor,
+    required this.patientResponsibilityMinor,
+  });
+
+  factory PayerRequestLineData.fromJson(Map<String, dynamic> json) {
+    return PayerRequestLineData(
+      id: json['id'] as String,
+      itemType: json['item_type'] as String,
+      label: json['label'] as String,
+      serviceDate: DateTime.parse(json['service_date'] as String),
+      currency: json['currency'] as String,
+      actualCostMinor: json['actual_cost_minor'] as int,
+      requestedMinor: json['requested_minor'] as int,
+      patientResponsibilityMinor: json['patient_responsibility_minor'] as int,
+    );
+  }
+
+  final String id;
+  final String itemType;
+  final String label;
+  final DateTime serviceDate;
+  final String currency;
+  final int actualCostMinor;
+  final int requestedMinor;
+  final int patientResponsibilityMinor;
+}
+
+class PayerReviewData {
+  const PayerReviewData({
+    required this.id,
+    required this.action,
+    required this.reasonCode,
+    required this.createdAt,
+    this.note,
+  });
+
+  factory PayerReviewData.fromJson(Map<String, dynamic> json) {
+    return PayerReviewData(
+      id: json['id'] as String,
+      action: json['action'] as String,
+      reasonCode: json['reason_code'] as String,
+      note: json['note'] as String?,
+      createdAt: DateTime.parse(json['created_at'] as String),
+    );
+  }
+
+  final String id;
+  final String action;
+  final String reasonCode;
+  final String? note;
+  final DateTime createdAt;
+}
+
+class PayerRequestData {
+  const PayerRequestData({
+    required this.id,
+    required this.clinicalEventId,
+    required this.clinicalEventTitle,
+    required this.patientId,
+    required this.patientDisplayName,
+    required this.doctorDisplayName,
+    required this.payerOrganization,
+    required this.status,
+    required this.currency,
+    required this.requestedTotalMinor,
+    required this.doctorSummary,
+    required this.aiReviewStatus,
+    required this.createdAt,
+    required this.lines,
+    required this.reviews,
+    this.aiReviewScore,
+    this.aiReviewSummary,
+    this.reviewedAt,
+  });
+
+  factory PayerRequestData.fromJson(Map<String, dynamic> json) {
+    return PayerRequestData(
+      id: json['id'] as String,
+      clinicalEventId: json['clinical_event_id'] as String,
+      clinicalEventTitle: json['clinical_event_title'] as String,
+      patientId: json['patient_id'] as String,
+      patientDisplayName: json['patient_display_name'] as String,
+      doctorDisplayName: json['doctor_display_name'] as String,
+      payerOrganization: PayerOrganizationData.fromJson(
+        Map<String, dynamic>.from(json['payer_organization'] as Map),
+      ),
+      status: json['status'] as String,
+      currency: json['currency'] as String,
+      requestedTotalMinor: json['requested_total_minor'] as int,
+      doctorSummary: json['doctor_summary'] as String,
+      aiReviewStatus: json['ai_review_status'] as String,
+      aiReviewScore: json['ai_review_score'] as int?,
+      aiReviewSummary: json['ai_review_summary'] as String?,
+      createdAt: DateTime.parse(json['created_at'] as String),
+      reviewedAt: json['reviewed_at'] == null
+          ? null
+          : DateTime.parse(json['reviewed_at'] as String),
+      lines: (json['lines'] as List<dynamic>)
+          .map(
+            (item) => PayerRequestLineData.fromJson(
+              Map<String, dynamic>.from(item as Map),
+            ),
+          )
+          .toList(),
+      reviews: (json['reviews'] as List<dynamic>)
+          .map(
+            (item) => PayerReviewData.fromJson(
+              Map<String, dynamic>.from(item as Map),
+            ),
+          )
+          .toList(),
+    );
+  }
+
+  final String id;
+  final String clinicalEventId;
+  final String clinicalEventTitle;
+  final String patientId;
+  final String patientDisplayName;
+  final String doctorDisplayName;
+  final PayerOrganizationData payerOrganization;
+  final String status;
+  final String currency;
+  final int requestedTotalMinor;
+  final String doctorSummary;
+  final String aiReviewStatus;
+  final int? aiReviewScore;
+  final String? aiReviewSummary;
+  final DateTime createdAt;
+  final DateTime? reviewedAt;
+  final List<PayerRequestLineData> lines;
+  final List<PayerReviewData> reviews;
+}
+
+class PayerProfileData {
+  const PayerProfileData({
+    required this.membershipId,
+    required this.displayName,
+    required this.title,
+    required this.status,
+    required this.scope,
+    required this.organization,
+  });
+
+  factory PayerProfileData.fromJson(Map<String, dynamic> json) {
+    return PayerProfileData(
+      membershipId: json['membership_id'] as String,
+      displayName: json['display_name'] as String,
+      title: json['title'] as String,
+      status: json['status'] as String,
+      scope: json['scope'] as String,
+      organization: PayerOrganizationData.fromJson(
+        Map<String, dynamic>.from(json['organization'] as Map),
+      ),
+    );
+  }
+
+  final String membershipId;
+  final String displayName;
+  final String title;
+  final String status;
+  final String scope;
+  final PayerOrganizationData organization;
+}
+
+class PayerDashboardData {
+  const PayerDashboardData({
+    required this.profile,
+    required this.openRequests,
+    required this.clarificationRequests,
+    required this.completedReviews,
+    required this.pendingRequestedTotalMinor,
+    required this.currency,
+  });
+
+  factory PayerDashboardData.fromJson(Map<String, dynamic> json) {
+    return PayerDashboardData(
+      profile: PayerProfileData.fromJson(
+        Map<String, dynamic>.from(json['profile'] as Map),
+      ),
+      openRequests: json['open_requests'] as int,
+      clarificationRequests: json['clarification_requests'] as int,
+      completedReviews: json['completed_reviews'] as int,
+      pendingRequestedTotalMinor: json['pending_requested_total_minor'] as int,
+      currency: json['currency'] as String,
+    );
+  }
+
+  final PayerProfileData profile;
+  final int openRequests;
+  final int clarificationRequests;
+  final int completedReviews;
+  final int pendingRequestedTotalMinor;
+  final String currency;
+}

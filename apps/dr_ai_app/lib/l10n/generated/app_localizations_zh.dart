@@ -194,7 +194,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get returnToDashboard => '返回首页';
 
   @override
-  String get unauthorized => '当前角色无法访问此页面。';
+  String get unauthorized => '当前身份无法访问此页面。';
 
   @override
   String get tryAgain => '重试';
@@ -257,10 +257,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get doctorRegistration => '医生注册';
 
   @override
+  String get payerRegistration => '支付方注册';
+
+  @override
   String get createAccount => '创建账户';
 
   @override
   String get createAccountDoctorDescription => '创建账户并加入 Dr. AI';
+
+  @override
+  String get createAccountPayerDescription => '创建授权审核账户，用于透明的诊疗与费用审核';
 
   @override
   String get createAccountPatientDescription => '设置账户后继续填写健康资料。';
@@ -321,6 +327,15 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get doctor => '医生';
+
+  @override
+  String get payer => '支付方';
+
+  @override
+  String get organizationInformation => '机构信息';
+
+  @override
+  String get organizationName => '机构名称';
 
   @override
   String get firstName => '名';
@@ -413,7 +428,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get loadContactsFailed => '无法加载联系人，请重试。';
 
   @override
-  String get contactsDescription => '您的照护团队和 Dr. AI 服务都集中在这里。';
+  String get contactsDescription => '您的医疗团队和 Dr. AI 服务都集中在这里。';
 
   @override
   String get services => '服务';
@@ -422,7 +437,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get system => '系统';
 
   @override
-  String get systemContactDescription => '接收照护计划、用药、费用和账户提醒';
+  String get systemContactDescription => '接收康复计划、用药、费用和账户提醒';
 
   @override
   String get official => '官方';
@@ -2304,6 +2319,121 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aiPlaceholderNotice => '在安全工作完成前，医生和患者均可访问此统一的 AI 入口。';
+
+  @override
+  String get aiChatSubtitle => '基于经审核资料，提供实用、可核实的健康指引。';
+
+  @override
+  String get aiChatSafetyNotice =>
+      'Dr. AI 是 AI 助手，可能会出错。重要信息请通过权威来源或医生核实。它不能确认诊断、替代急救或更改药物。';
+
+  @override
+  String get aiChatWelcome => '今天想一起理清什么问题？';
+
+  @override
+  String get aiChatInputHint => '可询问症状、检查、药物或照护问题';
+
+  @override
+  String get aiChatSendFailed => '无法完成安全对话请求，请重试。';
+
+  @override
+  String get aiChatHistory => '对话记录';
+
+  @override
+  String get aiNewChat => '新对话';
+
+  @override
+  String get aiPreviousChats => '之前的对话';
+
+  @override
+  String get aiNoPreviousChats => '发出第一个问题后，你的健康对话会显示在这里。';
+
+  @override
+  String get aiHistoryRetentionNotice => '每个对话至少保留 60 天，且仅在你的账户中可见。';
+
+  @override
+  String get aiFollowUpQuestion => '补充一个信息会更有帮助';
+
+  @override
+  String get aiReviewMeasurementGuidance => '正确测量';
+
+  @override
+  String get aiTrackMeasurements => '记录读数';
+
+  @override
+  String get aiPrepareDoctorQuestions => '整理问医生的问题';
+
+  @override
+  String get aiPrepareSymptomSummary => '整理我的症状';
+
+  @override
+  String get aiPrepareSymptomSummaryPrompt => '请帮我整理症状、出现时间、变化情况，以及要问医生的重点。';
+
+  @override
+  String get aiMeasurementGuidancePrompt => '怎样才能正确测量？';
+
+  @override
+  String get aiTrackMeasurementsPrompt => '请帮我做一个简单的记录计划。';
+
+  @override
+  String get aiSuggestionEducation => '记录血压有什么作用？';
+
+  @override
+  String get aiSuggestionSymptoms => '我最近头晕，可能有哪些原因？什么情况需要及时就医？';
+
+  @override
+  String get aiSuggestionMedication => '我应该向医生询问哪些处方药问题？';
+
+  @override
+  String get aiSuggestionDoctor => '帮我整理下次看医生时要问的问题。';
+
+  @override
+  String get aiSources => '经审核来源';
+
+  @override
+  String get aiImportantUncertainty => '需要注意的不确定性';
+
+  @override
+  String get aiContextUsed => '已结合你的记录进行说明';
+
+  @override
+  String get aiContextProfile => '个人资料';
+
+  @override
+  String get aiContextMeasurements => '健康测量';
+
+  @override
+  String get aiContextConditions => '已记录病情';
+
+  @override
+  String get aiContextMedications => '用药信息';
+
+  @override
+  String get aiContextClinicalEvents => '当前就诊事件';
+
+  @override
+  String get aiContextRecoveryPlan => '康复计划';
+
+  @override
+  String get aiContextFromProfile => '你的个人资料';
+
+  @override
+  String get aiContextPatientReported => '你报告的病史';
+
+  @override
+  String get aiContextDoctorRecord => '医生记录';
+
+  @override
+  String get aiContextCurrentPrescription => '当前处方';
+
+  @override
+  String get aiContextMedicationSchedule => '当前用药安排';
+
+  @override
+  String get aiContextCurrentRecoveryPlan => '当前康复计划';
+
+  @override
+  String get aiContactDoctor => '联系我的医生';
 
   @override
   String get privateCareConversation => '私密照护对话';

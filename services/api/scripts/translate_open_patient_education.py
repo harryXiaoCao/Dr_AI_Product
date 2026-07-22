@@ -1,4 +1,4 @@
-"""Create resumable DeepSeek Simplified-Chinese translations for the 55-source corpus."""
+"""Create resumable DeepSeek Simplified-Chinese translations for a governed corpus."""
 
 from __future__ import annotations
 
@@ -16,7 +16,6 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_valida
 
 from app.config import get_settings
 from app.knowledge_translation import (
-    EXPECTED_OPEN_DOCUMENT_COUNT,
     TRANSLATION_PROMPT_POLICY_VERSION,
     TRANSLATION_SCHEMA_VERSION,
     TranslationCorpusArtifact,
@@ -69,11 +68,12 @@ class GeneratedDocument(BaseModel):
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Translate the governed 55-document English corpus into Simplified Chinese. "
+            "Translate a governed English corpus into Simplified Chinese. "
             "Validated results are append-only and resumable."
         )
     )
     parser.add_argument("command", choices=("dry-run", "run", "finalize"))
+    parser.add_argument("--source-path", type=Path, default=SOURCE_PATH)
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--max-cost-usd", type=float, default=1.0)
     parser.add_argument("--timeout-seconds", type=float, default=180.0)
@@ -85,10 +85,24 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
+    if args.source_path != SOURCE_PATH and (
+        args.work_path == WORK_PATH or args.output_path == OUTPUT_PATH
+    ):
+        raise SystemExit(
+            "A supplementary source corpus requires explicit --work-path and --output-path."
+        )
     settings = get_settings()
-    source_bytes = SOURCE_PATH.read_bytes()
-    source = load_open_content_catalog(SOURCE_PATH)
+    source_bytes = args.source_path.read_bytes()
+    source = load_open_content_catalog(args.source_path)
+    expected_document_count = len(source.documents)
     existing = load_completed(args.work_path)
+    source_ids = {item.stable_id for item in source.documents}
+    unexpected_completed = sorted(set(existing) - source_ids)
+    if unexpected_completed:
+        raise SystemExit(
+            "The resumable work file belongs to a different source corpus: "
+            f"unexpected={unexpected_completed[:3]}."
+        )
     key = _deepseek_key()
     total_characters = sum(
         len(section.text) for document in source.documents for section in document.sections
@@ -133,6 +147,8 @@ def main() -> None:
             completed=existing,
             model=settings.deepseek_model,
             output_path=args.output_path,
+            source_path=args.source_path,
+            expected_document_count=expected_document_count,
         )
         return
     if not key:
@@ -188,17 +204,19 @@ def main() -> None:
         if index < len(remaining) and args.delay_seconds > 0:
             time.sleep(args.delay_seconds)
 
-    if len(existing) == EXPECTED_OPEN_DOCUMENT_COUNT:
+    if len(existing) == expected_document_count:
         finalize_artifact(
             source=source,
             source_checksum=hashlib.sha256(source_bytes).hexdigest(),
             completed=existing,
             model=settings.deepseek_model,
             output_path=args.output_path,
+            source_path=args.source_path,
+            expected_document_count=expected_document_count,
         )
     else:
         print(
-            f"Resumable state saved: {len(existing)}/{EXPECTED_OPEN_DOCUMENT_COUNT} documents; "
+            f"Resumable state saved: {len(existing)}/{expected_document_count} documents; "
             "the final import artifact is created only when all documents validate."
         )
 
@@ -336,6 +354,8 @@ def finalize_artifact(
     completed: dict[str, TranslationDocumentArtifact],
     model: str,
     output_path: Path,
+    source_path: Path,
+    expected_document_count: int,
 ) -> None:
     missing = [item.stable_id for item in source.documents if item.stable_id not in completed]
     extras = sorted(set(completed) - {item.stable_id for item in source.documents})
@@ -344,9 +364,10 @@ def finalize_artifact(
             f"Cannot finalize: missing={len(missing)} unexpected={len(extras)}. Resume run first."
         )
     artifact = TranslationCorpusArtifact(
-        schema_version=TRANSLATION_SCHEMA_VERSION,
-        source_corpus_locator=str(SOURCE_PATH),
+        schema_version=(TRANSLATION_SCHEMA_VERSION if source_path == SOURCE_PATH else "1.1"),
         source_corpus_checksum=source_checksum,
+        source_corpus_locator=str(source_path),
+        expected_document_count=(None if source_path == SOURCE_PATH else expected_document_count),
         target_language="zh-Hans",
         provider=PROVIDER,
         model=model,

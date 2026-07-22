@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
+from pydantic import ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -16,6 +17,7 @@ from app.knowledge_translation import (
     TranslationUsage,
     _canonical_translation_document,
     import_translation_corpus,
+    load_translation_corpus,
     record_translation_review,
     sha256_text,
 )
@@ -31,6 +33,10 @@ from app.seed import seed_database
 from tests.helpers import auth_header, login
 
 SOURCE_PATH = Path("knowledge_base/catalog/open_patient_education.v1.json")
+SUPPLEMENTARY_SOURCE_PATH = Path("knowledge_base/catalog/open_symptom_presentations.v1.json")
+SUPPLEMENTARY_TRANSLATION_PATH = Path(
+    "knowledge_base/translations/open_symptom_presentations.zh-Hans.deepseek-v4-flash.v1.json"
+)
 
 
 def test_translation_validation_accepts_untranslated_reference_citations() -> None:
@@ -49,6 +55,33 @@ def test_translation_validation_accepts_untranslated_reference_citations() -> No
     )
 
     assert section.translated_heading == "参考文献"
+
+
+def test_translation_schema_1_1_binds_a_supplementary_corpus_count() -> None:
+    document = _translation_corpus().documents[0]
+    payload = {
+        "schema_version": "1.1",
+        "source_corpus_locator": "knowledge_base/catalog/supplement.json",
+        "source_corpus_checksum": "0" * 64,
+        "expected_document_count": 1,
+        "target_language": "zh-Hans",
+        "provider": "deepseek",
+        "model": "deepseek-v4-flash",
+        "prompt_policy_version": TRANSLATION_PROMPT_POLICY_VERSION,
+        "completed_at": datetime(2026, 7, 21, tzinfo=UTC),
+        "documents": [document],
+    }
+
+    artifact = TranslationCorpusArtifact.model_validate(payload)
+    assert artifact.expected_document_count == 1
+    with pytest.raises(ValidationError, match="exactly 2"):
+        TranslationCorpusArtifact.model_validate({**payload, "expected_document_count": 2})
+    without_count = dict(payload)
+    without_count.pop("expected_document_count")
+    with pytest.raises(ValidationError, match="requires expected_document_count"):
+        TranslationCorpusArtifact.model_validate(without_count)
+    with pytest.raises(ValidationError, match="schema 1.0 must use the frozen"):
+        TranslationCorpusArtifact.model_validate({**payload, "schema_version": "1.0"})
 
 
 def _translation_corpus() -> TranslationCorpusArtifact:
@@ -141,6 +174,44 @@ def test_translation_import_is_idempotent_and_never_adds_sources() -> None:
         assert (
             db.scalar(select(func.count()).select_from(KbPassage).where(KbPassage.vector_eligible))
             == 0
+        )
+
+
+def test_supplementary_translation_artifact_imports_only_as_pending_review() -> None:
+    source = load_open_content_catalog(SUPPLEMENTARY_SOURCE_PATH)
+    corpus = load_translation_corpus(SUPPLEMENTARY_TRANSLATION_PATH)
+    with Session(engine) as db:
+        import_open_content_catalog(
+            db,
+            source,
+            artifact_locator=str(SUPPLEMENTARY_SOURCE_PATH),
+        )
+        first = import_translation_corpus(
+            db,
+            corpus,
+            artifact_locator=str(SUPPLEMENTARY_TRANSLATION_PATH),
+        )
+        second = import_translation_corpus(
+            db,
+            corpus,
+            artifact_locator=str(SUPPLEMENTARY_TRANSLATION_PATH),
+        )
+        db.commit()
+
+        assert corpus.schema_version == "1.1"
+        assert corpus.expected_document_count == 6
+        assert first == (6, 11)
+        assert second == (0, 0)
+        artifacts = db.scalars(select(KbTranslationArtifact)).all()
+        assert len(artifacts) == 6
+        assert all(artifact.status == "generated_pending_review" for artifact in artifacts)
+        assert all(artifact.medical_review_status == "pending" for artifact in artifacts)
+        assert all(artifact.native_language_review_status == "pending" for artifact in artifacts)
+        assert not db.scalar(
+            select(func.count()).select_from(KbPassage).where(KbPassage.lexical_eligible)
+        )
+        assert not db.scalar(
+            select(func.count()).select_from(KbPassage).where(KbPassage.vector_eligible)
         )
 
 

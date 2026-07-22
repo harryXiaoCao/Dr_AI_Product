@@ -1,7 +1,10 @@
+import json
 from collections import Counter
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
+from pydantic import ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -9,6 +12,7 @@ from app.database import engine
 from app.models import KbPassage, KbRightsRecord, KbSource, KbSourceVersion
 from app.open_content_ingestion import (
     EXPECTED_COLLECTION_COUNTS,
+    OpenContentCatalog,
     import_open_content_catalog,
     load_open_content_catalog,
 )
@@ -16,6 +20,7 @@ from app.seed import seed_database
 from tests.helpers import auth_header, login
 
 CORPUS_PATH = Path("knowledge_base/catalog/open_patient_education.v1.json")
+SUPPLEMENTARY_CORPUS_PATH = Path("knowledge_base/catalog/open_symptom_presentations.v1.json")
 
 
 def test_open_corpus_has_exact_agreed_selection_and_original_text_only() -> None:
@@ -72,6 +77,105 @@ def test_open_corpus_import_is_idempotent_and_retrieval_stays_closed() -> None:
             db.scalar(select(func.count()).select_from(KbPassage).where(KbPassage.vector_eligible))
             == 0
         )
+
+
+def test_supplementary_symptom_corpus_inherits_rights_and_stays_review_pending() -> None:
+    base = load_open_content_catalog(CORPUS_PATH)
+    supplement = load_open_content_catalog(SUPPLEMENTARY_CORPUS_PATH)
+    expected_ids = {
+        "KBS-MEDLINEPLUS-LOW-BLOOD-PRESSURE",
+        "KBS-MEDLINEPLUS-DIZZINESS-AND-VERTIGO",
+        "KBS-MEDLINEPLUS-ARRHYTHMIA",
+        "KBS-MEDLINEPLUS-PESTICIDES",
+        "KBS-MEDLINEPLUS-SKIN-CONDITIONS",
+        "KBS-NHS-BABY-MOVEMENTS",
+    }
+
+    assert supplement.schema_version == "1.1"
+    assert supplement.expected_collection_counts == {
+        "medlineplus_health_topic": 5,
+        "nhs_patient_education": 1,
+    }
+    assert {item.stable_id for item in supplement.documents} == expected_ids
+    assert expected_ids.isdisjoint({item.stable_id for item in base.documents})
+    assert {publisher.key for publisher in supplement.publishers} == {"medlineplus", "nhs"}
+    assert next(item for item in supplement.publishers if item.key == "medlineplus") == next(
+        item for item in base.publishers if item.key == "medlineplus"
+    )
+    nhs = next(item for item in supplement.publishers if item.key == "nhs")
+    assert nhs.rights_stable_id == "KBR-NHS-UK-OGL-V3"
+    assert nhs.rights_name.startswith("Open Government Licence v3.0")
+    assert nhs.jurisdiction == "GB-ENG"
+    assert nhs.rights_permissions.translation_allowed
+    assert nhs.rights_permissions.model_provider_transmission_allowed
+    assert len(nhs.rights_evidence.supporting_locators) == 2
+    serialized_catalog = SUPPLEMENTARY_CORPUS_PATH.read_text(encoding="utf-8")
+    assert "RCQ-" not in serialized_catalog
+    nhs_document = next(
+        document
+        for document in supplement.documents
+        if document.stable_id == "KBS-NHS-BABY-MOVEMENTS"
+    )
+    nhs_text = "\n".join(section.text for section in nhs_document.sections)
+    assert "moving less than usual" in nhs_text
+    assert "Do not wait until the next day" in nhs_text
+    assert "Tommy" not in nhs_text
+    assert "Royal College" not in nhs_text
+
+    base_payload = json.loads(CORPUS_PATH.read_text(encoding="utf-8"))
+    base_payload["expected_collection_counts"] = EXPECTED_COLLECTION_COUNTS
+    with pytest.raises(ValidationError, match="schema 1.0 must use the frozen"):
+        OpenContentCatalog.model_validate(base_payload)
+
+    supplement_payload = json.loads(SUPPLEMENTARY_CORPUS_PATH.read_text(encoding="utf-8"))
+    supplement_payload.pop("expected_collection_counts")
+    with pytest.raises(ValidationError, match="schema 1.1 requires"):
+        OpenContentCatalog.model_validate(supplement_payload)
+
+    with Session(engine) as db:
+        import_open_content_catalog(db, base)
+        first = import_open_content_catalog(
+            db,
+            supplement,
+            artifact_locator=str(SUPPLEMENTARY_CORPUS_PATH),
+        )
+        second = import_open_content_catalog(
+            db,
+            supplement,
+            artifact_locator=str(SUPPLEMENTARY_CORPUS_PATH),
+        )
+        db.commit()
+
+        assert first == (1, 1, 6, 11)
+        assert second == (0, 0, 0, 0)
+        sources = db.scalars(select(KbSource).where(KbSource.stable_id.in_(expected_ids))).all()
+        assert len(sources) == 6
+        assert all(source.lifecycle_state == "rights_cleared_review_pending" for source in sources)
+        assert all(not source.patient_eligible and not source.doctor_eligible for source in sources)
+        versions = db.scalars(
+            select(KbSourceVersion).where(
+                KbSourceVersion.source_id.in_(source.id for source in sources)
+            )
+        ).all()
+        assert len(versions) == 6
+        assert all(
+            version.normalized_artifact_locator.startswith(f"{SUPPLEMENTARY_CORPUS_PATH}#")
+            for version in versions
+        )
+        nhs_source = next(
+            source for source in sources if source.stable_id == "KBS-NHS-BABY-MOVEMENTS"
+        )
+        assert nhs_source.jurisdiction == "GB-ENG"
+        assert nhs_source.population == "pregnant_people"
+        assert nhs_source.review_due_date.isoformat() == "2027-07-08"
+        nhs_rights = db.scalar(
+            select(KbRightsRecord).where(KbRightsRecord.stable_id == "KBR-NHS-UK-OGL-V3")
+        )
+        assert nhs_rights is not None
+        assert nhs_rights.decision_status == "approved"
+        assert nhs_rights.translation_allowed
+        assert nhs_rights.model_provider_transmission_allowed
+        assert "must not imply NHS endorsement" in nhs_rights.permission_reference
 
 
 def test_doctor_can_read_original_with_provenance_but_patient_cannot(

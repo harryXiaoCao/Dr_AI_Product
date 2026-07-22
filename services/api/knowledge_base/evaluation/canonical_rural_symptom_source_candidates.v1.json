@@ -1,0 +1,806 @@
+{
+  "schema_version": "1.1.0",
+  "queue_id": "dr-ai-rural-symptom-source-candidates-v1",
+  "status": "candidate_rights_clinical_native_chinese_and_product_review_pending",
+  "verified_at": "2026-07-21T10:28:06Z",
+  "separation_policy": {
+    "evaluation_only": true,
+    "retrieval_corpus": false,
+    "training_data": false,
+    "raw_content_stored": false,
+    "provider_transmission_allowed": false,
+    "activation_allowed": false
+  },
+  "rights_policy": {
+    "finding": "Public access, official-government publication, and authority status are not treated as commercial storage, transformation, embedding, excerpt-display, or model-provider-transmission permission. Each publisher and content class requires source-specific rights evidence.",
+    "required_next_step": "Obtain and record source-specific reuse permission or replace the candidate with a source whose compatible license is evidenced before capture or transformation."
+  },
+  "review_policy": {
+    "authority": "Verify the publisher, publication channel, date, and current status at the canonical locator.",
+    "rights": "Record source-specific permission for storage, transformation, embedding, excerpt display, commercial use, and bounded provider transmission; public availability alone is insufficient.",
+    "clinical": "A named clinician must approve the exact case and variant coverage claims, exclusions, urgency implications, and section boundaries.",
+    "language_and_readability": "A named native Simplified-Chinese reviewer must approve patient-facing wording after any transformation.",
+    "retrieval": "Only approved sections may enter a candidate release; the frozen retrieval and complete-answer gates must then be rerun before activation."
+  },
+  "allowed_authority_domains": [
+    "www.nhc.gov.cn",
+    "www.ndcpa.gov.cn",
+    "www.chinacdc.cn",
+    "www.fuzhou.gov.cn",
+    "www.hlj.gov.cn",
+    "wjw.beijing.gov.cn",
+    "wjw.fujian.gov.cn",
+    "wjw.baoji.gov.cn",
+    "wjw.hubei.gov.cn",
+    "wsjkw.gxzf.gov.cn",
+    "ynswsjkw.yn.gov.cn",
+    "www.yantai.gov.cn"
+  ],
+  "coverage_snapshot": {
+    "audited_at": "2026-07-21T10:17:30.762595+00:00",
+    "contract_sha256": "fde06922c3d5151d08560dbc7955743e24e9f02fdd6b5a97397904e4ced01129",
+    "active_release_id": "KBIR-D3DFA94CC95660019B6EF94E",
+    "coverage_artifact": "canonical-rural-symptom-coverage-KBIR-D3DFA94CC95660019B6EF94E-v8-centrality-local-20260721.json",
+    "canonical_no_evidence_case_ids": [
+      "RCQ-011", "RCQ-012", "RCQ-013", "RCQ-016", "RCQ-018", "RCQ-021",
+      "RCQ-024", "RCQ-025", "RCQ-027", "RCQ-028", "RCQ-029", "RCQ-030",
+      "RCQ-031", "RCQ-033", "RCQ-035", "RCQ-041", "RCQ-043", "RCQ-048",
+      "RCQ-051", "RCQ-054", "RCQ-058", "RCQ-060", "RCQ-062", "RCQ-064",
+      "RCQ-067", "RCQ-069", "RCQ-071", "RCQ-073", "RCQ-074", "RCQ-075",
+      "RCQ-078", "RCQ-083", "RCQ-085"
+    ],
+    "canonical_candidate_mapped_case_ids": [
+      "RCQ-011", "RCQ-012", "RCQ-013", "RCQ-016", "RCQ-018", "RCQ-021",
+      "RCQ-024", "RCQ-025", "RCQ-027", "RCQ-028", "RCQ-029", "RCQ-030",
+      "RCQ-031", "RCQ-033", "RCQ-035", "RCQ-041", "RCQ-043", "RCQ-048",
+      "RCQ-051", "RCQ-054", "RCQ-058", "RCQ-060", "RCQ-062", "RCQ-064",
+      "RCQ-067", "RCQ-069", "RCQ-071", "RCQ-073", "RCQ-074", "RCQ-075",
+      "RCQ-078", "RCQ-083", "RCQ-085"
+    ],
+    "canonical_candidate_unmapped_case_ids": [],
+    "variant_no_evidence_ids": [
+      "RCQ-011-V01", "RCQ-012-V01", "RCQ-013-V01", "RCQ-014-V01",
+      "RCQ-014-V02", "RCQ-018-V01", "RCQ-021-V01", "RCQ-021-V02",
+      "RCQ-024-V01", "RCQ-027-V01", "RCQ-028-V01", "RCQ-028-V02",
+      "RCQ-031-V01", "RCQ-033-V01", "RCQ-041-V01", "RCQ-043-V01",
+      "RCQ-043-V02", "RCQ-048-V01", "RCQ-048-V02", "RCQ-051-V01",
+      "RCQ-058-V01", "RCQ-064-V01", "RCQ-064-V02", "RCQ-083-V01",
+      "RCQ-085-V01"
+    ],
+    "variant_candidate_mapped_ids": [
+      "RCQ-011-V01", "RCQ-012-V01", "RCQ-013-V01", "RCQ-014-V01",
+      "RCQ-014-V02", "RCQ-018-V01", "RCQ-021-V01", "RCQ-021-V02",
+      "RCQ-024-V01", "RCQ-027-V01", "RCQ-028-V01", "RCQ-028-V02",
+      "RCQ-031-V01", "RCQ-033-V01", "RCQ-041-V01", "RCQ-043-V01",
+      "RCQ-043-V02", "RCQ-048-V01", "RCQ-048-V02", "RCQ-051-V01",
+      "RCQ-058-V01", "RCQ-064-V01", "RCQ-064-V02", "RCQ-083-V01",
+      "RCQ-085-V01"
+    ],
+    "variant_candidate_unmapped_ids": [],
+    "interpretation": "Link-only source candidates are research leads, not eligible evidence or approved clinical support."
+  },
+  "sources": [
+    {
+      "candidate_id": "KBSC-NHC-FOODBORNE-ILLNESS-2013",
+      "publisher": "中华人民共和国国家卫生健康委员会",
+      "title": "震后食物中毒防治要点",
+      "canonical_locator": "https://www.nhc.gov.cn/sps/c100087/201304/56b9fa7fdab34d808f1d729531d2cbe0.shtml",
+      "jurisdiction": "CN",
+      "language": "zh-Hans",
+      "content_class": "patient_facing_public_health_guidance",
+      "intended_case_ids": ["RCQ-012"],
+      "intended_variant_ids": ["RCQ-012-V01"],
+      "candidate_coverage": [
+        "vomiting and diarrhea after a suspected food exposure",
+        "stop consuming the suspected food and seek care",
+        "preserve suspected food and related material for investigation"
+      ],
+      "known_limitations": ["Disaster context; dehydration assessment needs a second source."],
+      "rights_decision": "link_only_pending",
+      "clinical_review": "pending",
+      "native_simplified_chinese_review": "pending",
+      "patient_readability_review": "pending"
+    },
+    {
+      "candidate_id": "KBSC-NHC-DIARRHEA-DEHYDRATION-2025",
+      "publisher": "中华人民共和国国家卫生健康委员会",
+      "title": "国家卫生健康委员会2025年6月20日新闻发布会文字实录",
+      "canonical_locator": "https://www.nhc.gov.cn/xcs/c100122/202506/c37dc2993bb74653994d0199787d1daa.shtml",
+      "jurisdiction": "CN",
+      "language": "zh-Hans",
+      "content_class": "patient_facing_expert_briefing",
+      "intended_case_ids": ["RCQ-012", "RCQ-013", "RCQ-025"],
+      "intended_variant_ids": ["RCQ-012-V01", "RCQ-013-V01"],
+      "candidate_coverage": [
+        "infectious and non-infectious diarrhea categories",
+        "dehydration warning signs and timely care",
+        "food and water hygiene",
+        "older-adult fatigue, poor appetite, and increased sleepiness warrant physical assessment before a single cause is assumed",
+        "mental-health assessment may be relevant only after physical illness and medication effects are considered"
+      ],
+      "known_limitations": [
+        "Does not identify the toxin in a particular preserved food.",
+        "Broad mixed-topic press-conference transcript; only reviewed sections may be selected for a future corpus.",
+        "The source does not support attributing fatigue, poor appetite, or sleepiness to depression or any single cause."
+      ],
+      "rights_decision": "link_only_pending",
+      "clinical_review": "pending",
+      "native_simplified_chinese_review": "pending",
+      "patient_readability_review": "pending"
+    },
+    {
+      "candidate_id": "KBSC-NHC-ORTHOSTATIC-SYNCOPE-2026",
+      "publisher": "中华人民共和国国家卫生健康委员会",
+      "title": "国家卫生健康委员会2026年1月13日新闻发布会文字实录",
+      "canonical_locator": "https://www.nhc.gov.cn/xcs/c100122/202601/b805b5cc607941f1a4445a8b297bf4e9.shtml",
+      "jurisdiction": "CN",
+      "language": "zh-Hans",
+      "content_class": "patient_facing_expert_briefing",
+      "intended_case_ids": ["RCQ-021"],
+      "intended_variant_ids": ["RCQ-021-V01", "RCQ-021-V02"],
+      "candidate_coverage": [
+        "dizziness or fainting after rising from a squat",
+        "possible orthostatic, dehydration, medication, cardiac, and neurologic categories",
+        "fall prevention and care-seeking"
+      ],
+      "known_limitations": ["The canonical case reports presyncope rather than confirmed loss of consciousness."],
+      "rights_decision": "link_only_pending",
+      "clinical_review": "pending",
+      "native_simplified_chinese_review": "pending",
+      "patient_readability_review": "pending"
+    },
+    {
+      "candidate_id": "KBSC-FUJIAN-WJW-HEADACHE-RED-FLAGS-2026",
+      "publisher": "福建省卫生健康委员会",
+      "title": "多数头痛都问题不大，但这些情况要格外警惕，尽快就医！",
+      "canonical_locator": "https://wjw.fujian.gov.cn/ztzl/jkjy/jksh/202606/t20260626_7168302.htm",
+      "jurisdiction": "CN",
+      "language": "zh-Hans",
+      "content_class": "patient_facing_health_education",
+      "intended_case_ids": ["RCQ-024"],
+      "intended_variant_ids": ["RCQ-024-V01"],
+      "candidate_coverage": [
+        "one-sided or recurrent headache categories",
+        "photophobia, nausea, visual aura, and blurred vision",
+        "neurologic danger signs requiring urgent care"
+      ],
+      "known_limitations": ["Requires review of how monocular visual change alters urgency."],
+      "rights_decision": "link_only_pending",
+      "clinical_review": "pending",
+      "native_simplified_chinese_review": "pending",
+      "patient_readability_review": "pending"
+    },
+    {
+      "candidate_id": "KBSC-NHC-TETANUS-WOUND-2025",
+      "publisher": "中华人民共和国国家卫生健康委员会",
+      "title": "国家卫生健康委员会2025年4月30日新闻发布会文字实录",
+      "canonical_locator": "https://www.nhc.gov.cn/xcs/c100122/202504/80f50b1ccb894533a2326c7c89978433.shtml",
+      "jurisdiction": "CN",
+      "language": "zh-Hans",
+      "content_class": "patient_facing_expert_briefing",
+      "intended_case_ids": ["RCQ-029"],
+      "intended_variant_ids": [],
+      "candidate_coverage": [
+        "tetanus risk after small cuts and puncture wounds",
+        "importance of wound assessment and vaccination history",
+        "clinician-directed booster decision"
+      ],
+      "known_limitations": ["Must be reconciled with the current national post-exposure guideline before patient release."],
+      "rights_decision": "link_only_pending",
+      "clinical_review": "pending",
+      "native_simplified_chinese_review": "pending",
+      "patient_readability_review": "pending"
+    },
+    {
+      "candidate_id": "KBSC-NHC-PESTICIDE-OCCUPATIONAL-2011",
+      "publisher": "中华人民共和国国家卫生健康委员会",
+      "title": "职业病防治基本知识",
+      "canonical_locator": "https://www.nhc.gov.cn/wjw/zyws/201104/b9b93f26b4c94d8bb9e0feebcb3887ab.shtml",
+      "jurisdiction": "CN",
+      "language": "zh-Hans",
+      "content_class": "public_occupational_health_guidance",
+      "intended_case_ids": ["RCQ-031", "RCQ-076", "RCQ-078"],
+      "intended_variant_ids": ["RCQ-031-V01"],
+      "candidate_coverage": [
+        "pesticide exposure prevention and decontamination",
+        "remove contaminated clothing and wash exposed skin",
+        "eye irritation and need for medical assessment"
+      ],
+      "known_limitations": [
+        "Not sufficient alone to distinguish contact dermatitis from systemic poisoning.",
+        "Does not provide a pesticide-specific eye-irrigation duration."
+      ],
+      "rights_decision": "link_only_pending",
+      "clinical_review": "pending",
+      "native_simplified_chinese_review": "pending",
+      "patient_readability_review": "pending"
+    },
+    {
+      "candidate_id": "KBSC-NHC-CHEMICAL-EYE-FIRST-AID-STANDARD",
+      "publisher": "中华人民共和国国家卫生健康委员会",
+      "title": "职业性化学性眼灼伤的诊断（卫生行业标准）",
+      "canonical_locator": "https://www.nhc.gov.cn/wjw/pyl/201710/34244e5c67d5450a8537b48acb28e434/files/1739779758443_25860.pdf",
+      "jurisdiction": "CN",
+      "language": "zh-Hans",
+      "content_class": "professional_standard_not_patient_facing",
+      "intended_case_ids": ["RCQ-078"],
+      "intended_variant_ids": [],
+      "candidate_coverage": [
+        "immediate on-site water irrigation after direct chemical eye contact",
+        "do not delay irrigation for transport"
+      ],
+      "known_limitations": [
+        "Professional standard, not patient-facing.",
+        "A reviewed pesticide-product or poison-control source is still needed for duration and product-label precedence."
+      ],
+      "rights_decision": "link_only_pending",
+      "clinical_review": "pending",
+      "native_simplified_chinese_review": "pending",
+      "patient_readability_review": "not_applicable_until_transformed"
+    },
+    {
+      "candidate_id": "KBSC-NHC-HYPOGLYCEMIA-2025",
+      "publisher": "中华人民共和国国家卫生健康委员会",
+      "title": "国家卫生健康委员会2025年11月6日新闻发布会文字实录",
+      "canonical_locator": "https://www.nhc.gov.cn/xcs/c100122/202511/913504c02cb24d67bb94cba79c2281a3.shtml",
+      "jurisdiction": "CN",
+      "language": "zh-Hans",
+      "content_class": "patient_facing_expert_briefing",
+      "intended_case_ids": ["RCQ-048", "RCQ-049", "RCQ-054"],
+      "intended_variant_ids": ["RCQ-048-V01", "RCQ-048-V02"],
+      "candidate_coverage": [
+        "low-blood-sugar symptoms including dizziness, palpitations, sweating, confusion, and coma",
+        "severity and urgency"
+      ],
+      "known_limitations": ["Insulin-specific immediate self-care still requires a reviewed source."],
+      "rights_decision": "link_only_pending",
+      "clinical_review": "pending",
+      "native_simplified_chinese_review": "pending",
+      "patient_readability_review": "pending"
+    },
+    {
+      "candidate_id": "KBSC-NHC-PREGNANCY-FETAL-MOVEMENT-2023",
+      "publisher": "中华人民共和国国家卫生健康委员会",
+      "title": "辟谣！感染新冠病毒影响生殖系统健康？孕妇感染后会把病毒传染给胎儿？证据不足！",
+      "canonical_locator": "https://www.nhc.gov.cn/xcs/kpzs/202302/c4382b08a96e47e69235ca3a4e4814a7.shtml",
+      "jurisdiction": "CN",
+      "language": "zh-Hans",
+      "content_class": "patient_facing_health_education",
+      "intended_case_ids": ["RCQ-064"],
+      "intended_variant_ids": ["RCQ-064-V01", "RCQ-064-V02"],
+      "candidate_coverage": [
+        "late-pregnancy fetal-movement monitoring",
+        "abnormal fetal movement requires prompt contact with the obstetric facility"
+      ],
+      "known_limitations": ["COVID-era framing; the fetal-movement instruction requires current obstetric review outside that context."],
+      "rights_decision": "link_only_pending",
+      "clinical_review": "pending",
+      "native_simplified_chinese_review": "pending",
+      "patient_readability_review": "pending"
+    },
+    {
+      "candidate_id": "KBSC-YANTAI-MASTITIS-2024",
+      "publisher": "烟台市人民政府（栖霞市妇幼保健机构供稿）",
+      "title": "哺乳期妈妈必看——哺乳期乳腺炎到底该咋办？",
+      "canonical_locator": "https://www.yantai.gov.cn/art/2024/10/28/art_86842_3225318.html",
+      "jurisdiction": "CN",
+      "language": "zh-Hans",
+      "content_class": "patient_facing_health_education",
+      "intended_case_ids": ["RCQ-067"],
+      "intended_variant_ids": [],
+      "candidate_coverage": [
+        "breast redness, heat, pain, fever, and systemic symptoms",
+        "continued breastfeeding with professional guidance",
+        "medical assessment and safe milk-removal technique"
+      ],
+      "known_limitations": ["Local-government source; clinical authority and currency require review."],
+      "rights_decision": "link_only_pending",
+      "clinical_review": "pending",
+      "native_simplified_chinese_review": "pending",
+      "patient_readability_review": "pending"
+    },
+    {
+      "candidate_id": "KBSC-NHC-POSTMENOPAUSAL-BLEEDING-2026",
+      "publisher": "中华人民共和国国家卫生健康委员会",
+      "title": "国家卫生健康委员会2026年4月23日新闻发布会文字实录",
+      "canonical_locator": "https://www.nhc.gov.cn/xcs/c100122/202604/e3fe2ad7805c49d5b55eea744ecf0ae0.shtml",
+      "jurisdiction": "CN",
+      "language": "zh-Hans",
+      "content_class": "patient_facing_expert_briefing",
+      "intended_case_ids": ["RCQ-069"],
+      "intended_variant_ids": [],
+      "candidate_coverage": [
+        "bleeding after menopause as an important warning sign",
+        "need for prompt targeted gynecologic assessment"
+      ],
+      "known_limitations": ["Must not be presented as confirmation of cancer."],
+      "rights_decision": "link_only_pending",
+      "clinical_review": "pending",
+      "native_simplified_chinese_review": "pending",
+      "patient_readability_review": "pending"
+    },
+    {
+      "candidate_id": "KBSC-NHC-FROSTBITE-FIRST-AID-2014",
+      "publisher": "中华人民共和国国家卫生健康委员会",
+      "title": "节日纪念日：冻伤预防与处置",
+      "canonical_locator": "https://www.nhc.gov.cn/jnr/fzjzrzsxx/201405/702e447592a843cb9608feaf2b3966c6.shtml",
+      "jurisdiction": "CN",
+      "language": "zh-Hans",
+      "content_class": "patient_facing_first_aid_guidance",
+      "intended_case_ids": ["RCQ-085"],
+      "intended_variant_ids": ["RCQ-085-V01"],
+      "candidate_coverage": [
+        "white, hard, numb skin after cold exposure",
+        "move to warmth and use comfortable warm water rather than hot water",
+        "avoid rubbing, direct heat, and walking on an injured foot",
+        "seek medical care and check for hypothermia"
+      ],
+      "known_limitations": ["Older page; currency and wording require review."],
+      "rights_decision": "link_only_pending",
+      "clinical_review": "pending",
+      "native_simplified_chinese_review": "pending",
+      "patient_readability_review": "pending"
+    },
+    {
+      "candidate_id": "KBSC-BEIJING-WJW-GALLBLADDER-2024",
+      "publisher": "北京市卫生健康委员会（北京清华长庚医院供稿）",
+      "title": "别让胆囊‘受苦’",
+      "canonical_locator": "https://wjw.beijing.gov.cn/bmfw_20143/jkzs/jksh/202401/t20240115_3535458.html",
+      "jurisdiction": "CN",
+      "language": "zh-Hans",
+      "content_class": "patient_facing_health_education",
+      "intended_case_ids": ["RCQ-018"],
+      "intended_variant_ids": ["RCQ-018-V01"],
+      "candidate_coverage": [
+        "right-upper-abdominal pain or discomfort after a fatty meal",
+        "possible biliary categories without treating symptoms as a diagnosis",
+        "persistent, recurrent, or severe pain and associated jaundice or vomiting require medical assessment"
+      ],
+      "known_limitations": [
+        "A symptom pattern cannot confirm a gallstone or distinguish gallbladder, gastric, hepatic, pancreatic, cardiac, and other causes.",
+        "Any dietary or treatment detail must be section-selected and clinically reviewed before patient use."
+      ],
+      "rights_decision": "link_only_pending",
+      "clinical_review": "pending",
+      "native_simplified_chinese_review": "pending",
+      "patient_readability_review": "pending"
+    },
+    {
+      "candidate_id": "KBSC-BAOJI-WJW-INSECT-BITE-INFECTION-2025",
+      "publisher": "宝鸡市卫生健康委员会",
+      "title": "护佑妇幼健康丨儿童夏季常见虫咬皮炎的防治",
+      "canonical_locator": "https://wjw.baoji.gov.cn/col2224/col2283/202506/t20250624_1160976.html",
+      "jurisdiction": "CN",
+      "language": "zh-Hans",
+      "content_class": "patient_facing_health_education",
+      "intended_case_ids": ["RCQ-028"],
+      "intended_variant_ids": ["RCQ-028-V01", "RCQ-028-V02"],
+      "candidate_coverage": [
+        "redness, swelling, heat, pain, drainage, or spreading change after an insect bite",
+        "secondary infection and severe allergic-reaction categories",
+        "worsening or extensive findings require in-person assessment"
+      ],
+      "known_limitations": [
+        "Pediatric framing does not by itself establish adult applicability.",
+        "Embedded medication suggestions must be excluded unless separately reviewed and must never support autonomous medication changes.",
+        "The whole-leg extent in the canonical case requires independent urgency review."
+      ],
+      "rights_decision": "link_only_pending",
+      "clinical_review": "pending",
+      "native_simplified_chinese_review": "pending",
+      "patient_readability_review": "pending"
+    },
+    {
+      "candidate_id": "KBSC-NDCPA-RABIES-EXPOSURE-STANDARD-2023",
+      "publisher": "国家疾病预防控制局、国家卫生健康委员会",
+      "title": "关于印发狂犬病暴露预防处置工作规范（2023年版）的通知",
+      "canonical_locator": "https://www.ndcpa.gov.cn/jbkzzx/c100012/common/content/content_1706568784078565376.html",
+      "jurisdiction": "CN",
+      "language": "zh-Hans",
+      "content_class": "national_normative_exposure_guidance",
+      "intended_case_ids": ["RCQ-035"],
+      "intended_variant_ids": [],
+      "candidate_coverage": [
+        "exposure classification for a skin-breaking dog bite with bleeding",
+        "prompt wound management and clinician-directed vaccine or passive-immunization decisions",
+        "the animal's vaccination history does not replace formal human exposure assessment"
+      ],
+      "known_limitations": [
+        "Normative professional guidance requires a patient-facing transformation and readability review.",
+        "The product must not calculate or prescribe a vaccination or immunoglobulin regimen autonomously."
+      ],
+      "rights_decision": "link_only_pending",
+      "clinical_review": "pending",
+      "native_simplified_chinese_review": "pending",
+      "patient_readability_review": "not_applicable_until_transformed"
+    },
+    {
+      "candidate_id": "KBSC-BEIJING-WJW-PALPITATION-ECG-2024",
+      "publisher": "北京市卫生健康委员会（中国中医科学院眼科医院供稿）",
+      "title": "心脏跳得厉害，怎么办？",
+      "canonical_locator": "https://wjw.beijing.gov.cn/bmfw_20143/jkzs/jksh/202404/t20240425_3637903.html",
+      "jurisdiction": "CN",
+      "language": "zh-Hans",
+      "content_class": "patient_facing_health_education",
+      "intended_case_ids": ["RCQ-043"],
+      "intended_variant_ids": ["RCQ-043-V01", "RCQ-043-V02"],
+      "candidate_coverage": [
+        "sudden fast heartbeat or irregular rhythm with chest tightness",
+        "multiple possible cardiac and non-cardiac categories without diagnosis",
+        "electrocardiographic and in-person assessment"
+      ],
+      "known_limitations": [
+        "Urgency depends on duration, hemodynamic symptoms, chest pain, breathing difficulty, fainting, and medical history.",
+        "The source's disease-specific discussion must not turn symptom orientation into an autonomous diagnosis."
+      ],
+      "rights_decision": "link_only_pending",
+      "clinical_review": "pending",
+      "native_simplified_chinese_review": "pending",
+      "patient_readability_review": "pending"
+    },
+    {
+      "candidate_id": "KBSC-CHINA-CDC-VACCINE-REACTIONS-2026",
+      "publisher": "中国疾病预防控制中心",
+      "title": "疑似预防接种异常反应知识问答",
+      "canonical_locator": "https://www.chinacdc.cn/jkyj/mygh02/yfjzfw/blfyjcycz/202606/t20260617_1836822.html",
+      "jurisdiction": "CN",
+      "language": "zh-Hans",
+      "content_class": "patient_facing_public_health_guidance",
+      "intended_case_ids": ["RCQ-074"],
+      "intended_variant_ids": [],
+      "candidate_coverage": [
+        "common mild transient fever and fatigue after vaccination",
+        "expected one-to-three-day trajectory",
+        "persistent fever, associated symptoms, or poor infant behavior requiring consultation or assessment"
+      ],
+      "known_limitations": [
+        "Threshold and timing advice must be reconciled with the specific vaccine, age, measurement method, and current national guidance.",
+        "Medication advice is outside the autonomous chatbot boundary."
+      ],
+      "rights_decision": "link_only_pending",
+      "clinical_review": "pending",
+      "native_simplified_chinese_review": "pending",
+      "patient_readability_review": "pending"
+    },
+    {
+      "candidate_id": "KBSC-YUNNAN-WJW-LUMBAR-NERVE-SYMPTOMS-2025",
+      "publisher": "云南省卫生健康委员会",
+      "title": "腰椎间盘突出防治指南",
+      "canonical_locator": "https://ynswsjkw.yn.gov.cn/html/2025/xuanchuankejiao_0512/4023218.html",
+      "jurisdiction": "CN",
+      "language": "zh-Hans",
+      "content_class": "patient_facing_health_education",
+      "intended_case_ids": ["RCQ-083"],
+      "intended_variant_ids": ["RCQ-083-V01"],
+      "candidate_coverage": [
+        "heavy lifting as a back-injury context",
+        "leg numbness, weakness, or worsening pain as signs needing medical assessment",
+        "safe lifting prevention advice"
+      ],
+      "known_limitations": [
+        "The canonical presentation is acute and cannot be diagnosed as disc herniation from symptoms alone.",
+        "A second reviewed source is needed for cauda-equina, progressive weakness, trauma, infection, and cancer red flags."
+      ],
+      "rights_decision": "link_only_pending",
+      "clinical_review": "pending",
+      "native_simplified_chinese_review": "pending",
+      "patient_readability_review": "pending"
+    },
+    {
+      "candidate_id": "KBSC-BEIJING-WJW-APPENDICITIS-2026",
+      "publisher": "北京市卫生健康委员会（北京小汤山医院供稿）",
+      "title": "〖汤医科普〗儿童阑尾炎：家长必知的急腹症",
+      "canonical_locator": "https://wjw.beijing.gov.cn/bmfw_20143/jkzs/jbzs/202605/t20260525_4664017.html",
+      "jurisdiction": "CN",
+      "language": "zh-Hans",
+      "content_class": "patient_facing_health_education",
+      "intended_case_ids": ["RCQ-011"],
+      "intended_variant_ids": ["RCQ-011-V01"],
+      "candidate_coverage": [
+        "abdominal pain beginning around the navel or upper abdomen and moving to the right lower abdomen",
+        "progressive focal pain as a presentation requiring timely in-person assessment",
+        "possible appendiceal and other acute-abdominal categories without confirming a diagnosis"
+      ],
+      "known_limitations": [
+        "Pediatric framing does not by itself establish applicability to every adult presentation.",
+        "The symptom pattern cannot confirm appendicitis or exclude other urgent abdominal causes."
+      ],
+      "rights_decision": "link_only_pending",
+      "clinical_review": "pending",
+      "native_simplified_chinese_review": "pending",
+      "patient_readability_review": "pending"
+    },
+    {
+      "candidate_id": "KBSC-BEIJING-WJW-GERD-2025",
+      "publisher": "北京市卫生健康委员会（北京市垂杨柳医院供稿）",
+      "title": "〖杨柳科普〗“逆流而上”的胃酸：重新认识胃食管反流病",
+      "canonical_locator": "https://wjw.beijing.gov.cn/bmfw_20143/jkzs/jbzs/202507/t20250704_4142001.html",
+      "jurisdiction": "CN",
+      "language": "zh-Hans",
+      "content_class": "patient_facing_health_education",
+      "intended_case_ids": ["RCQ-016"],
+      "intended_variant_ids": [],
+      "candidate_coverage": [
+        "post-meal upper-abdominal or retrosternal burning and acid regurgitation",
+        "symptoms becoming more apparent when lying down",
+        "clinician-directed assessment and possible diagnostic testing when indicated"
+      ],
+      "known_limitations": [
+        "The source's disease label must not be used to diagnose the presentation remotely.",
+        "Medication and procedure details require separate clinical review and cannot support autonomous treatment changes."
+      ],
+      "rights_decision": "link_only_pending",
+      "clinical_review": "pending",
+      "native_simplified_chinese_review": "pending",
+      "patient_readability_review": "pending"
+    },
+    {
+      "candidate_id": "KBSC-YANTAI-WJW-POSITIONAL-VERTIGO-2025",
+      "publisher": "烟台市卫生健康系统（芝罘区东山街道社区卫生服务中心供稿）",
+      "title": "〖健康科普〗头晕当心耳石症",
+      "canonical_locator": "https://www.yantai.gov.cn/art/2025/8/22/art_91447_3283841.html",
+      "jurisdiction": "CN",
+      "language": "zh-Hans",
+      "content_class": "patient_facing_health_education",
+      "intended_case_ids": ["RCQ-027"],
+      "intended_variant_ids": ["RCQ-027-V01"],
+      "candidate_coverage": [
+        "brief spinning triggered by turning in bed, lying down, sitting up, or another head-position change",
+        "inner-ear and other possible categories without diagnosing benign positional vertigo",
+        "need for examination and attention to neurologic or other central danger signs"
+      ],
+      "known_limitations": [
+        "The symptom pattern cannot establish benign paroxysmal positional vertigo without examination.",
+        "Central neurologic red flags and fall risk require independent urgency review."
+      ],
+      "rights_decision": "link_only_pending",
+      "clinical_review": "pending",
+      "native_simplified_chinese_review": "pending",
+      "patient_readability_review": "pending"
+    },
+    {
+      "candidate_id": "KBSC-BEIJING-WJW-WOUND-INFECTION-2026",
+      "publisher": "北京市卫生健康委员会（北京小汤山医院供稿）",
+      "title": "〖汤医科普〗伤口护理常识",
+      "canonical_locator": "https://wjw.beijing.gov.cn/bmfw_20143/jkzs/jksh/202602/t20260210_4505416.html",
+      "jurisdiction": "CN",
+      "language": "zh-Hans",
+      "content_class": "patient_facing_health_education",
+      "intended_case_ids": ["RCQ-030"],
+      "intended_variant_ids": [],
+      "candidate_coverage": [
+        "purulent drainage, worsening local change, or failure to heal as possible wound-infection findings",
+        "need for timely professional wound assessment",
+        "professional cleaning or debridement for contaminated or infected wounds rather than home procedures"
+      ],
+      "known_limitations": [
+        "Foul odor, wound depth, tissue damage, circulation, diabetes, and systemic signs require independent urgency review.",
+        "The source must not be used to instruct home debridement or unsupervised medication use."
+      ],
+      "rights_decision": "link_only_pending",
+      "clinical_review": "pending",
+      "native_simplified_chinese_review": "pending",
+      "patient_readability_review": "pending"
+    },
+    {
+      "candidate_id": "KBSC-YANTAI-WJW-DIABETIC-FOOT-2023",
+      "publisher": "烟台市卫生健康系统（龙口市中医医院供稿）",
+      "title": "〖常见疾病〗从“足”做起—糖尿病足的预防",
+      "canonical_locator": "https://www.yantai.gov.cn/art/2023/10/17/art_93842_3151641.html",
+      "jurisdiction": "CN",
+      "language": "zh-Hans",
+      "content_class": "patient_facing_health_education",
+      "intended_case_ids": ["RCQ-033", "RCQ-051"],
+      "intended_variant_ids": ["RCQ-033-V01", "RCQ-051-V01"],
+      "candidate_coverage": [
+        "diabetes-related reduced foot sensation and unnoticed heat or trauma injury",
+        "delayed healing and infection risk in a diabetic foot wound or burn",
+        "foot inspection, injury prevention, and timely professional assessment"
+      ],
+      "known_limitations": [
+        "One prevention-focused source spans two related cases but does not define every wound or burn urgency threshold.",
+        "The source must not support home cutting, debridement, soaking, or autonomous medication changes."
+      ],
+      "rights_decision": "link_only_pending",
+      "clinical_review": "pending",
+      "native_simplified_chinese_review": "pending",
+      "patient_readability_review": "pending"
+    },
+    {
+      "candidate_id": "KBSC-NHC-EXERTIONAL-CHEST-PAIN-2024",
+      "publisher": "中华人民共和国国家卫生健康委员会",
+      "title": "国家卫生健康委员会2024年11月21日新闻发布会文字实录",
+      "canonical_locator": "https://www.nhc.gov.cn/xcs/c100122/202411/81a60171b43d43ff98cc6110d65a4136.shtml",
+      "jurisdiction": "CN",
+      "language": "zh-Hans",
+      "content_class": "patient_facing_expert_briefing",
+      "intended_case_ids": ["RCQ-041"],
+      "intended_variant_ids": ["RCQ-041-V01"],
+      "candidate_coverage": [
+        "chest tightness, pressure, or burning triggered by activity and relieved by rest",
+        "stop exertion and obtain timely hospital assessment",
+        "call 120 for persistent, severe, or otherwise life-threatening associated symptoms"
+      ],
+      "known_limitations": [
+        "Broad mixed-topic press-conference transcript; only reviewed sections may be selected for a future corpus.",
+        "The presentation cannot be diagnosed remotely, and its exact urgency route remains subject to clinical review.",
+        "Medication instructions are excluded from autonomous chatbot behavior."
+      ],
+      "rights_decision": "link_only_pending",
+      "clinical_review": "pending",
+      "native_simplified_chinese_review": "pending",
+      "patient_readability_review": "pending"
+    },
+    {
+      "candidate_id": "KBSC-FUZHOU-WJW-JAUNDICE-2026",
+      "publisher": "福州市卫生健康委员会（福州市第一总医院供稿）",
+      "title": "乱吃镇痛药　男子成“小黄人”",
+      "canonical_locator": "https://www.fuzhou.gov.cn/zgfzzt/swjw/fzwj/jkkp/202605/t20260519_5323651.htm",
+      "jurisdiction": "CN",
+      "language": "zh-Hans",
+      "content_class": "patient_facing_case_based_health_education",
+      "intended_case_ids": ["RCQ-058"],
+      "intended_variant_ids": ["RCQ-058-V01"],
+      "candidate_coverage": [
+        "yellow skin or sclera with tea-colored urine as a jaundice presentation",
+        "possible hepatobiliary or liver-injury categories requiring medical assessment",
+        "avoid assuming a benign explanation from symptoms alone"
+      ],
+      "known_limitations": [
+        "The page is a medication-related case report and must not be used to infer the same cause for another patient.",
+        "A broader current jaundice source and clinical review are needed before release.",
+        "Drug names and dosage details must be excluded from autonomous advice."
+      ],
+      "rights_decision": "link_only_pending",
+      "clinical_review": "pending",
+      "native_simplified_chinese_review": "pending",
+      "patient_readability_review": "pending"
+    },
+    {
+      "candidate_id": "KBSC-HEILONGJIANG-OLDER-MEDICATION-SAFETY-2026",
+      "publisher": "黑龙江省人民政府（健康中国转载）",
+      "title": "辨症状、识风险，用药有方才安全丨全国老年健康宣传周",
+      "canonical_locator": "https://www.hlj.gov.cn/hljapp/c116063/202606/c00_31952522.shtml",
+      "jurisdiction": "CN",
+      "language": "zh-Hans",
+      "content_class": "patient_facing_republished_public_health_guidance",
+      "intended_case_ids": ["RCQ-060"],
+      "intended_variant_ids": [],
+      "candidate_coverage": [
+        "older adults taking multiple medicines have increased adverse-effect and interaction risk",
+        "dizziness, fatigue, sleepiness, or unsteadiness can warrant medication review and fall-risk assessment",
+        "do not stop, add, or change doses without professional review"
+      ],
+      "known_limitations": [
+        "This is a provincial-government republication of Healthy China material; publisher lineage, rights, and current status require source-specific review.",
+        "Symptoms alone do not prove a medication interaction or identify a causal medicine."
+      ],
+      "rights_decision": "link_only_pending",
+      "clinical_review": "pending",
+      "native_simplified_chinese_review": "pending",
+      "patient_readability_review": "pending"
+    },
+    {
+      "candidate_id": "KBSC-GUANGXI-WJW-EARLY-PREGNANCY-BLEEDING-2017",
+      "publisher": "广西壮族自治区卫生健康委员会",
+      "title": "孕早期，发生出血怎么办？",
+      "canonical_locator": "https://wsjkw.gxzf.gov.cn/xxgk_49493/fdzdgk/ggws/jkkp/ysyy/t5700066.shtml",
+      "jurisdiction": "CN",
+      "language": "zh-Hans",
+      "content_class": "patient_facing_health_education",
+      "intended_case_ids": ["RCQ-062"],
+      "intended_variant_ids": [],
+      "candidate_coverage": [
+        "vaginal bleeding during the first trimester has multiple possible causes",
+        "dangerous causes cannot be excluded from bleeding amount alone",
+        "timely obstetric assessment and clinician-directed ultrasound or other evaluation"
+      ],
+      "known_limitations": [
+        "Older 2017 material requires reconciliation with current obstetric guidance.",
+        "The source cannot determine the cause or pregnancy viability remotely."
+      ],
+      "rights_decision": "link_only_pending",
+      "clinical_review": "pending",
+      "native_simplified_chinese_review": "pending",
+      "patient_readability_review": "pending"
+    },
+    {
+      "candidate_id": "KBSC-HUBEI-WJW-NEONATAL-JAUNDICE-2019",
+      "publisher": "湖北省卫生健康委员会",
+      "title": "十个宝宝八个黄 如何打好退黄战役？",
+      "canonical_locator": "https://wjw.hubei.gov.cn/bmdt/jkhb/jkkp/201910/t20191030_153053.shtml",
+      "jurisdiction": "CN",
+      "language": "zh-Hans",
+      "content_class": "patient_facing_health_education",
+      "intended_case_ids": ["RCQ-071"],
+      "intended_variant_ids": [],
+      "candidate_coverage": [
+        "jaundice extending to the palms or soles as a severe distribution sign",
+        "timing, feeding, alertness, and progression as important neonatal context",
+        "professional bilirubin measurement and medical assessment rather than visual estimation alone"
+      ],
+      "known_limitations": [
+        "Older or republished material requires current neonatal-guidance reconciliation and exact urgency review.",
+        "Any unsafe sunlight or home-treatment suggestion must be excluded from a future patient corpus."
+      ],
+      "rights_decision": "link_only_pending",
+      "clinical_review": "pending",
+      "native_simplified_chinese_review": "pending",
+      "patient_readability_review": "pending"
+    },
+    {
+      "candidate_id": "KBSC-BEIJING-WJW-COIN-INGESTION-2021",
+      "publisher": "北京市卫生健康委员会（北京急救中心供稿）",
+      "title": "每周急救话题：救治误服纽扣患儿",
+      "canonical_locator": "https://wjw.beijing.gov.cn/bmfw_20143/jkzs/jzjj/202112/t20211213_2559738.html",
+      "jurisdiction": "CN",
+      "language": "zh-Hans",
+      "content_class": "patient_facing_first_aid_guidance",
+      "intended_case_ids": ["RCQ-073"],
+      "intended_variant_ids": [],
+      "candidate_coverage": [
+        "a swallowed metallic coin or similar object requires hospital assessment and imaging even when the child can speak",
+        "differentiate a currently patent airway from complete airway obstruction",
+        "avoid blind finger sweeps, induced vomiting, or delay for symptoms to appear"
+      ],
+      "known_limitations": [
+        "The title describes a button, although the body also discusses coin ingestion; current foreign-body guidance is required before release.",
+        "A speaking child must remain distinct from a child with complete airway obstruction in safety routing."
+      ],
+      "rights_decision": "link_only_pending",
+      "clinical_review": "pending",
+      "native_simplified_chinese_review": "pending",
+      "patient_readability_review": "pending"
+    },
+    {
+      "candidate_id": "KBSC-NHC-INFANT-GROWTH-ASSESSMENT-2025",
+      "publisher": "中华人民共和国国家卫生健康委员会",
+      "title": "国家卫生健康委办公厅关于印发婴幼儿营养喂养评估服务指南（试行）的通知",
+      "canonical_locator": "https://www.nhc.gov.cn/fys/c100078/202502/19903ff647694f3a85ed6fe332380b34.shtml",
+      "jurisdiction": "CN",
+      "language": "zh-Hans",
+      "content_class": "national_professional_service_guidance",
+      "intended_case_ids": ["RCQ-075"],
+      "intended_variant_ids": [],
+      "candidate_coverage": [
+        "weight faltering may precede slowed linear growth",
+        "formal serial weight and length or height measurement against age-appropriate standards",
+        "feeding, nutrition, development, and possible chronic-disease assessment with referral when indicated"
+      ],
+      "known_limitations": [
+        "The guideline covers children from birth to age three, while the canonical question does not specify age.",
+        "An age-appropriate source is still needed for older children.",
+        "Professional guidance requires a patient-facing transformation and readability review."
+      ],
+      "rights_decision": "link_only_pending",
+      "clinical_review": "pending",
+      "native_simplified_chinese_review": "pending",
+      "patient_readability_review": "not_applicable_until_transformed"
+    },
+    {
+      "candidate_id": "KBSC-BEIJING-WJW-BLACK-STOOL-2024",
+      "publisher": "北京市卫生健康委员会（北京市垂杨柳医院供稿）",
+      "title": "〖垂医科普〗黑便就是消化道出血吗？",
+      "canonical_locator": "https://wjw.beijing.gov.cn/bmfw_20143/jkzs/jksh/202403/t20240305_3580335.html",
+      "jurisdiction": "CN",
+      "language": "zh-Hans",
+      "content_class": "patient_facing_health_education",
+      "intended_case_ids": ["RCQ-014"],
+      "intended_variant_ids": ["RCQ-014-V01", "RCQ-014-V02"],
+      "candidate_coverage": [
+        "black or tar-like stool as a possible upper-gastrointestinal bleeding presentation",
+        "non-bleeding food and medication causes remain possible",
+        "timely professional assessment and clinician-directed testing"
+      ],
+      "known_limitations": [
+        "The source cannot distinguish bleeding from non-bleeding causes remotely.",
+        "Shock or other emergency signs require separate deterministic safety handling.",
+        "Medication details must be excluded from autonomous advice."
+      ],
+      "rights_decision": "link_only_pending",
+      "clinical_review": "pending",
+      "native_simplified_chinese_review": "pending",
+      "patient_readability_review": "pending"
+    }
+  ]
+}

@@ -54,6 +54,10 @@ class ResponsiveAppShell extends ConsumerWidget {
           label: context.l10n.contacts,
         ),
         NavigationDestination(
+          icon: Icon(Icons.receipt_long_outlined),
+          label: _copy(context, 'Care & costs', '诊疗费用'),
+        ),
+        NavigationDestination(
           icon: Icon(Icons.assignment_outlined),
           label: context.l10n.recoveryPlan,
         ),
@@ -63,12 +67,32 @@ class ResponsiveAppShell extends ConsumerWidget {
         ),
       ];
 
+  List<NavigationDestination> _payerDestinations(BuildContext context) =>
+      <NavigationDestination>[
+        NavigationDestination(
+          icon: const Icon(Icons.dashboard_outlined),
+          selectedIcon: const Icon(Icons.dashboard),
+          label: context.l10n.dashboard,
+        ),
+        NavigationDestination(
+          icon: const Icon(Icons.fact_check_outlined),
+          label: _copy(context, 'Review queue', '审核队列'),
+        ),
+        NavigationDestination(
+          icon: const Icon(Icons.manage_accounts_outlined),
+          label: context.l10n.account,
+        ),
+      ];
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final width = MediaQuery.sizeOf(context).width;
-    final destinations = role == AppRole.doctor
-        ? _doctorDestinations(context)
-        : _patientDestinations(context);
+    final destinations = switch (role) {
+      AppRole.doctor => _doctorDestinations(context),
+      AppRole.patient => _patientDestinations(context),
+      AppRole.payer => _payerDestinations(context),
+      AppRole.unsupported => const <NavigationDestination>[],
+    };
 
     if (width < DrAiBreakpoints.mobile) {
       return Scaffold(
@@ -99,7 +123,7 @@ class ResponsiveAppShell extends ConsumerWidget {
       );
     }
 
-    if (width < DrAiBreakpoints.desktop || role == AppRole.patient) {
+    if (width < DrAiBreakpoints.desktop || role != AppRole.doctor) {
       return Scaffold(
         body: SafeArea(
           child: Row(
@@ -213,12 +237,16 @@ class ResponsiveAppShell extends ConsumerWidget {
                 if (!compact) ...<Widget>[
                   const SizedBox(width: DrAiSpacing.md),
                   Flexible(
-                    child: Text(
-                      role == AppRole.doctor
-                          ? context.l10n.doctorWorkspace
-                          : context.l10n.patientWorkspace,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                    child: Text(switch (role) {
+                      AppRole.doctor => context.l10n.doctorWorkspace,
+                      AppRole.patient => context.l10n.patientWorkspace,
+                      AppRole.payer => _copy(
+                        context,
+                        'Payer workspace',
+                        '支付方工作台',
+                      ),
+                      AppRole.unsupported => context.l10n.appName,
+                    }, overflow: TextOverflow.ellipsis),
                   ),
                 ],
               ],
@@ -318,15 +346,32 @@ class ResponsiveAppShell extends ConsumerWidget {
       context.go('/doctor');
       return;
     }
+    if (role == AppRole.payer) {
+      switch (index) {
+        case 1:
+          context.go('/payer/requests');
+        case 2:
+          context.go('/payer/account');
+        default:
+          context.go('/payer');
+      }
+      return;
+    }
     switch (index) {
       case 1:
         context.go('/patient/contact');
       case 2:
-        context.go('/patient/recovery-plan');
+        context.go('/patient/care-costs');
       case 3:
+        context.go('/patient/recovery-plan');
+      case 4:
         context.go('/patient/account');
       default:
         context.go('/patient');
     }
   }
+}
+
+String _copy(BuildContext context, String en, String zh) {
+  return Localizations.localeOf(context).languageCode == 'zh' ? zh : en;
 }

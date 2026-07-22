@@ -4,6 +4,7 @@ import 'package:dr_ai_app/app/routing/app_role.dart';
 import 'package:dr_ai_app/core/api/api_error.dart';
 import 'package:dr_ai_app/features/auth/data/dr_ai_repository.dart';
 import 'package:dr_ai_app/features/auth/domain/auth_models.dart';
+import 'package:dr_ai_app/features/care_cost/domain/care_cost_data.dart';
 import 'package:dr_ai_app/features/dashboard/domain/dashboard_data.dart';
 import 'package:dr_ai_app/features/doctor/domain/doctor_profile.dart';
 import 'package:dr_ai_app/features/doctor/domain/medical_resource_fixture.dart';
@@ -21,6 +22,13 @@ const patientUser = SessionUser(
   email: 'patient.demo@example.com',
   role: AppRole.patient,
   displayName: 'Riley Demo Patient',
+);
+
+const payerUser = SessionUser(
+  id: 'payer-test-id',
+  email: 'payer.demo@example.com',
+  role: AppRole.payer,
+  displayName: 'Lin Reviewer',
 );
 
 const unsupportedRoleUser = SessionUser(
@@ -56,6 +64,12 @@ const patientSession = AuthSession(
   accessToken: 'test-access',
   refreshToken: 'test-refresh',
   user: patientUser,
+);
+
+const payerSession = AuthSession(
+  accessToken: 'test-access',
+  refreshToken: 'test-refresh',
+  user: payerUser,
 );
 
 const unsupportedRoleSession = AuthSession(
@@ -696,6 +710,16 @@ final demoChatResult = ChatMessageResult(
   isRedFlag: false,
   model: 'deepseek-v4-flash',
   createdAt: DateTime(2026, 7, 5, 12),
+  contextUsed: const <ChatContextCard>[
+    ChatContextCard(
+      category: 'measurements',
+      provenance: 'patient_profile',
+      recordedOn: '2026-07-16',
+    ),
+  ],
+  uncertainties: const <String>[
+    'The available information cannot confirm a diagnosis.',
+  ],
 );
 
 final demoConsultation = ConsultationRequestItem(
@@ -873,6 +897,7 @@ class FakeDrAiRepository implements DrAiRepository {
     required bool termsAccepted,
     PatientSignupProfile? patientProfile,
     DoctorSignupProfile? doctorProfile,
+    PayerSignupProfile? payerProfile,
   }) async {
     registerCalled = true;
     return AuthSession(
@@ -882,9 +907,12 @@ class FakeDrAiRepository implements DrAiRepository {
         id: 'registered-user-id',
         email: email.isEmpty ? phoneNumber : email,
         role: role,
-        displayName: role == AppRole.doctor
-            ? 'Invited Doctor'
-            : 'Invited Patient',
+        displayName: switch (role) {
+          AppRole.doctor => 'Invited Doctor',
+          AppRole.patient => 'Invited Patient',
+          AppRole.payer => 'Invited Reviewer',
+          AppRole.unsupported => 'Unsupported User',
+        },
       ),
     );
   }
@@ -1857,8 +1885,9 @@ class FakeDrAiRepository implements DrAiRepository {
 
   @override
   Future<ChatMessageResult> sendEducationalChatMessage({
-    required String threadId,
+    String? threadId,
     required String message,
+    String language = 'zh-Hans',
   }) async {
     if (chatError != null) {
       throw chatError!;
@@ -1866,6 +1895,16 @@ class FakeDrAiRepository implements DrAiRepository {
     chatMessagesSent += 1;
     lastChatMessage = message;
     return demoChatResult;
+  }
+
+  @override
+  Future<List<PatientChatThreadSummary>> loadEducationalChatThreads() async {
+    return const <PatientChatThreadSummary>[];
+  }
+
+  @override
+  Future<PatientChatHistory> loadEducationalChatThread(String threadId) async {
+    throw StateError('No fake chat history for $threadId.');
   }
 
   @override
@@ -1904,6 +1943,206 @@ class FakeDrAiRepository implements DrAiRepository {
       items: <ConsultationRequestItem>[request, ...consultations.items],
     );
     return request;
+  }
+
+  @override
+  Future<CareCostLedgerData> loadOwnCareCosts() async => _fakeLedger();
+
+  @override
+  Future<CareCostLedgerData> loadPatientCareCosts(String patientId) async {
+    return _fakeLedger(patientId: patientId);
+  }
+
+  @override
+  Future<CareCostItemData> saveCareCostItem({
+    required String patientId,
+    required String clinicalEventId,
+    String? itemId,
+    required String itemType,
+    required String label,
+    required DateTime serviceDate,
+    required String status,
+    required int quantity,
+    required int actualCostMinor,
+    required int payerRequestedMinor,
+    required int patientResponsibilityMinor,
+    String? notes,
+  }) async {
+    return CareCostItemData(
+      id: itemId ?? 'care-cost-item-test-id',
+      clinicalEventId: clinicalEventId,
+      itemType: itemType,
+      label: label,
+      serviceDate: serviceDate,
+      status: status,
+      quantity: quantity,
+      currency: 'CNY',
+      actualCostMinor: actualCostMinor,
+      payerRequestedMinor: payerRequestedMinor,
+      patientResponsibilityMinor: patientResponsibilityMinor,
+      aiReviewStatus: 'not_evaluated',
+      notes: notes,
+      createdAt: DateTime(2026, 7, 23),
+      updatedAt: DateTime(2026, 7, 23),
+    );
+  }
+
+  @override
+  Future<void> deleteCareCostItem({
+    required String patientId,
+    required String clinicalEventId,
+    required String itemId,
+  }) async {}
+
+  @override
+  Future<List<PayerOrganizationData>> loadPayerOrganizations() async {
+    return <PayerOrganizationData>[_fakeOrganization()];
+  }
+
+  @override
+  Future<PayerRequestData> createPayerRequest({
+    required String patientId,
+    required String clinicalEventId,
+    required String payerOrganizationId,
+    required List<String> careCostItemIds,
+    required String doctorSummary,
+  }) async {
+    return _fakePayerRequest(patientId: patientId, summary: doctorSummary);
+  }
+
+  @override
+  Future<List<PayerRequestData>> loadDoctorPayerRequests() async {
+    return <PayerRequestData>[_fakePayerRequest()];
+  }
+
+  @override
+  Future<List<PayerRequestData>> loadOwnPatientPayerRequests() async {
+    return <PayerRequestData>[_fakePayerRequest()];
+  }
+
+  @override
+  Future<PayerDashboardData> loadPayerDashboard() async {
+    return PayerDashboardData(
+      profile: await loadPayerProfile(),
+      openRequests: 1,
+      clarificationRequests: 0,
+      completedReviews: 2,
+      pendingRequestedTotalMinor: 50000,
+      currency: 'CNY',
+    );
+  }
+
+  @override
+  Future<PayerProfileData> loadPayerProfile() async {
+    return PayerProfileData(
+      membershipId: 'payer-membership-test-id',
+      displayName: 'Lin Reviewer',
+      title: 'Medical expenditure reviewer',
+      status: 'active',
+      scope: 'synthetic_review',
+      organization: _fakeOrganization(),
+    );
+  }
+
+  @override
+  Future<List<PayerRequestData>> loadPayerRequests() async {
+    return <PayerRequestData>[_fakePayerRequest()];
+  }
+
+  @override
+  Future<PayerRequestData> reviewPayerRequest({
+    required String requestId,
+    required String action,
+    required String reasonCode,
+    String? note,
+  }) async {
+    return _fakePayerRequest(status: action == 'accept' ? 'accepted' : action);
+  }
+
+  CareCostLedgerData _fakeLedger({
+    String patientId = 'patient-profile-test-id',
+  }) {
+    final item = CareCostItemData(
+      id: 'care-cost-item-test-id',
+      clinicalEventId: 'clinical-event-test-id',
+      itemType: 'imaging',
+      label: 'Chest CT review',
+      serviceDate: DateTime(2026, 7, 23),
+      status: 'completed',
+      quantity: 1,
+      currency: 'CNY',
+      actualCostMinor: 68000,
+      payerRequestedMinor: 50000,
+      patientResponsibilityMinor: 18000,
+      aiReviewStatus: 'not_evaluated',
+      createdAt: DateTime(2026, 7, 23),
+      updatedAt: DateTime(2026, 7, 23),
+    );
+    return CareCostLedgerData(
+      patientId: patientId,
+      patientDisplayName: 'Riley Demo Patient',
+      actualTotalMinor: 68000,
+      payerRequestedTotalMinor: 50000,
+      patientResponsibilityTotalMinor: 18000,
+      currency: 'CNY',
+      events: <CareCostEventData>[
+        CareCostEventData(
+          clinicalEventId: 'clinical-event-test-id',
+          title: 'Respiratory follow-up',
+          status: 'active',
+          actualTotalMinor: 68000,
+          payerRequestedTotalMinor: 50000,
+          patientResponsibilityTotalMinor: 18000,
+          currency: 'CNY',
+          items: <CareCostItemData>[item],
+        ),
+      ],
+    );
+  }
+
+  PayerOrganizationData _fakeOrganization() {
+    return const PayerOrganizationData(
+      id: 'payer-organization-test-id',
+      name: 'Synthetic Municipal Medical Insurance',
+      organizationType: 'public_payer',
+      jurisdictionCode: 'CN',
+      verificationStatus: 'synthetic_only',
+    );
+  }
+
+  PayerRequestData _fakePayerRequest({
+    String patientId = 'patient-profile-test-id',
+    String summary = 'Clinician-reviewed synthetic care request.',
+    String status = 'submitted',
+  }) {
+    return PayerRequestData(
+      id: 'payer-request-test-id',
+      clinicalEventId: 'clinical-event-test-id',
+      clinicalEventTitle: 'Respiratory follow-up',
+      patientId: patientId,
+      patientDisplayName: 'Riley Demo Patient',
+      doctorDisplayName: 'Dr. Avery Demo',
+      payerOrganization: _fakeOrganization(),
+      status: status,
+      currency: 'CNY',
+      requestedTotalMinor: 50000,
+      doctorSummary: summary,
+      aiReviewStatus: 'not_evaluated',
+      createdAt: DateTime(2026, 7, 23),
+      lines: <PayerRequestLineData>[
+        PayerRequestLineData(
+          id: 'payer-request-line-test-id',
+          itemType: 'imaging',
+          label: 'Chest CT review',
+          serviceDate: DateTime(2026, 7, 23),
+          currency: 'CNY',
+          actualCostMinor: 68000,
+          requestedMinor: 50000,
+          patientResponsibilityMinor: 18000,
+        ),
+      ],
+      reviews: const <PayerReviewData>[],
+    );
   }
 
   RecoveryPlanData _planFromInput({

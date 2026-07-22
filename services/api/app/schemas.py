@@ -41,6 +41,15 @@ class DoctorSignupProfileRequest(BaseModel):
     preferred_language: str | None = Field(default=None, min_length=2, max_length=80)
 
 
+class PayerSignupProfileRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    display_name: str = Field(min_length=1, max_length=120)
+    organization_name: str = Field(min_length=2, max_length=180)
+    title: str = Field(default="Reviewer", min_length=2, max_length=120)
+    organization_type: Literal["public_payer", "commercial_payer", "observer"] = "public_payer"
+
+
 class RegisterRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
@@ -52,6 +61,7 @@ class RegisterRequest(BaseModel):
     terms_accepted: bool
     patient_profile: PatientSignupProfileRequest | None = None
     doctor_profile: DoctorSignupProfileRequest | None = None
+    payer_profile: PayerSignupProfileRequest | None = None
 
     @model_validator(mode="after")
     def validate_registration(self) -> "RegisterRequest":
@@ -59,6 +69,8 @@ class RegisterRequest(BaseModel):
             raise ValueError("Provide a phone number.")
         if not self.terms_accepted:
             raise ValueError("Privacy and terms must be accepted.")
+        if self.role == UserRole.payer and self.payer_profile is None:
+            raise ValueError("Payer organization details are required.")
         return self
 
 

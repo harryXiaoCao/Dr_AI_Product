@@ -12,6 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field, HttpUrl, model_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.knowledge_rights import provider_transmission_allowed
 from app.models import (
     KbActiveIndexRelease,
     KbIndexRelease,
@@ -21,7 +22,9 @@ from app.models import (
     KbReview,
     KbRightsRecord,
     KbSource,
+    KbSourceFamily,
     KbSourceVersion,
+    KbTerm,
 )
 
 CATALOG_SCHEMA_VERSION = "1.0"
@@ -371,6 +374,8 @@ def build_index_release(
     lexical_analyzer_version: str,
     reranker_version: str,
     approver_ids: list[str],
+    passage_embeddings: dict[uuid.UUID, list[float]] | None = None,
+    historical_markers: list[dict[str, object]] | None = None,
 ) -> KbIndexRelease:
     if not version_ids or not approver_ids:
         raise ValueError("An index release needs at least one version and one approver.")
@@ -383,13 +388,33 @@ def build_index_release(
     )
     if len(versions) != len(set(version_ids)):
         raise ValueError("One or more requested source versions do not exist.")
-    manifest_versions: list[dict[str, str]] = []
-    manifest_passages: list[dict[str, str]] = []
+    approved_terms = [
+        {
+            "stable_id": term.stable_id,
+            "preferred_zh": term.preferred_zh,
+            "preferred_en": term.preferred_en,
+            "aliases": term.aliases_json,
+            "prohibited_expansions": term.prohibited_expansions_json,
+        }
+        for term in db.scalars(
+            select(KbTerm)
+            .where(KbTerm.review_status == "approved")
+            .order_by(KbTerm.stable_id)
+        )
+    ]
+    manifest_versions: list[dict[str, object]] = []
+    manifest_passages: list[dict[str, str | None]] = []
     passage_ids: list[uuid.UUID] = []
     source_ids: set[uuid.UUID] = set()
+    source_applicable_jurisdictions: dict[str, list[str]] = {}
     for version in versions:
         source = db.get(KbSource, version.source_id)
         rights = db.get(KbRightsRecord, source.rights_record_id) if source else None
+        source_family = (
+            db.get(KbSourceFamily, source.source_family_id)
+            if source and source.source_family_id
+            else None
+        )
         eligible = (
             source.patient_eligible
             if audience == "patient" and source
@@ -400,11 +425,13 @@ def build_index_release(
         if (
             source is None
             or rights is None
+            or (source_family is not None and source_family.status != "active")
             or not eligible
             or source.status != "current"
             or version.review_decision != "approved"
             or rights.decision_status != "approved"
             or not rights.embedding_allowed
+            or (audience == "patient" and not provider_transmission_allowed(rights, source))
         ):
             raise ValueError(f"Version {version.stable_id} is not eligible for {audience} release.")
         medical_review = db.scalar(
@@ -423,38 +450,60 @@ def build_index_release(
         )
         if medical_review is None or (audience == "patient" and native_review is None):
             raise ValueError(f"Version {version.stable_id} is missing required review lineage.")
+        jurisdiction_review = db.scalar(
+            select(KbReview).where(
+                KbReview.target_stable_id.in_([source.stable_id, version.stable_id]),
+                KbReview.review_type == "jurisdiction_applicability",
+                KbReview.decision == "approved",
+            )
+        )
+        applicable_jurisdictions = ["CN"] if jurisdiction_review is not None else []
+        if applicable_jurisdictions:
+            source_applicable_jurisdictions[source.stable_id] = applicable_jurisdictions
         source_ids.add(source.id)
         manifest_versions.append(
             {
                 "source_id": source.stable_id,
                 "version_id": version.stable_id,
                 "normalized_checksum": version.normalized_checksum,
+                "applicable_jurisdictions": applicable_jurisdictions,
             }
         )
-        passages = list(
-            db.scalars(
-                select(KbPassage)
-                .where(
-                    KbPassage.version_id == version.id,
-                    KbPassage.lexical_eligible.is_(True),
-                    KbPassage.vector_eligible.is_(True),
+        eligibility = [
+            KbPassage.version_id == version.id,
+            KbPassage.lexical_eligible.is_(True),
+            KbPassage.vector_eligible.is_(True),
+        ]
+        if passage_embeddings is None:
+            eligibility.extend(
+                [
                     KbPassage.embedding_json.is_not(None),
-                )
-                .order_by(KbPassage.stable_id)
+                    KbPassage.embedding_model_version == embedding_model_version,
+                ]
             )
+        passages = list(
+            db.scalars(select(KbPassage).where(*eligibility).order_by(KbPassage.stable_id))
         )
         for passage in passages:
             if audience not in passage.audience_json:
                 continue
             if audience == "patient" and passage.patient_readability_review_status != "approved":
                 continue
+            if passage_embeddings is not None and passage.id not in passage_embeddings:
+                raise ValueError(f"A release embedding is missing for {passage.stable_id}.")
             passage_ids.append(passage.id)
             manifest_passages.append(
                 {
                     "passage_id": passage.stable_id,
                     "content_checksum": passage.content_checksum,
+                    "conflict_group_key": passage.conflict_group_key,
                 }
             )
+    if audience == "patient" and not passage_ids:
+        raise ValueError(
+            f"No passages use embedding model {embedding_model_version} "
+            f"for this {audience} release."
+        )
     manifest = {
         "schema_version": CATALOG_SCHEMA_VERSION,
         "audience": audience,
@@ -463,6 +512,9 @@ def build_index_release(
         "embedding_model_version": embedding_model_version,
         "lexical_analyzer_version": lexical_analyzer_version,
         "reranker_version": reranker_version,
+        "terminology": approved_terms,
+        "historical_markers": historical_markers or [],
+        "provider_transmission_rights_rechecked": audience == "patient",
     }
     payload = json.dumps(
         manifest, ensure_ascii=False, sort_keys=True, separators=(",", ":")
@@ -481,14 +533,30 @@ def build_index_release(
         embedding_model_version=embedding_model_version,
         lexical_analyzer_version=lexical_analyzer_version,
         reranker_version=reranker_version,
-        build_results_json={"deterministic_manifest": True, "audience": audience},
+        build_results_json={
+            "deterministic_manifest": True,
+            "audience": audience,
+            "terminology": approved_terms,
+            "historical_markers": historical_markers or [],
+            "source_applicable_jurisdictions": source_applicable_jurisdictions,
+            "provider_transmission_rights_rechecked": audience == "patient",
+        },
         approver_ids_json=approver_ids,
         status="built",
     )
     db.add(release)
     db.flush()
     db.add_all(
-        KbIndexReleasePassage(release_id=release.id, passage_id=passage_id)
+        KbIndexReleasePassage(
+            release_id=release.id,
+            passage_id=passage_id,
+            embedding_json=(
+                passage_embeddings[passage_id] if passage_embeddings is not None else None
+            ),
+            embedding_model_version=(
+                embedding_model_version if passage_embeddings is not None else None
+            ),
+        )
         for passage_id in passage_ids
     )
     return release

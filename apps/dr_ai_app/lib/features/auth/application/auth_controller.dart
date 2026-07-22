@@ -63,6 +63,7 @@ class AuthController extends AsyncNotifier<AuthState> {
     required bool termsAccepted,
     PatientSignupProfile? patientProfile,
     DoctorSignupProfile? doctorProfile,
+    PayerSignupProfile? payerProfile,
   }) async {
     state = const AsyncLoading();
     try {
@@ -77,6 +78,7 @@ class AuthController extends AsyncNotifier<AuthState> {
             termsAccepted: termsAccepted,
             patientProfile: patientProfile,
             doctorProfile: doctorProfile,
+            payerProfile: payerProfile,
           );
       state = AsyncData(AuthState.signedIn(session.user));
     } on ApiError catch (error) {

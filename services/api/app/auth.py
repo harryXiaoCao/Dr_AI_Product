@@ -15,6 +15,8 @@ from app.models import (
     DoctorProfile,
     Hospital,
     PatientProfile,
+    PayerMembership,
+    PayerOrganization,
     PhoneVerificationChallenge,
     RefreshSession,
     User,
@@ -68,6 +70,8 @@ def _display_name(user: User) -> str:
         return user.doctor_profile.display_name
     if user.role == UserRole.patient and user.patient_profile:
         return user.patient_profile.display_name
+    if user.role == UserRole.payer and user.payer_memberships:
+        return user.payer_memberships[0].display_name
     return "Dr. AI user"
 
 
@@ -129,7 +133,7 @@ def register(
     db: DbSession,
     settings: AppSettings,
 ) -> AuthTokenResponse:
-    if body.role not in (UserRole.doctor, UserRole.patient):
+    if body.role not in (UserRole.doctor, UserRole.patient, UserRole.payer):
         raise ApiError(403, "forbidden", "Registration is not available for this role.")
 
     email = _normalize_email(str(body.email)) if body.email is not None else None
@@ -231,7 +235,7 @@ def register(
                     },
                 )
             )
-        else:
+        elif body.role == UserRole.patient:
             patient_profile = body.patient_profile
             birth_date = patient_profile.birth_date if patient_profile else None
             gender = patient_profile.gender if patient_profile else None
@@ -257,6 +261,28 @@ def register(
                     height_cm=patient_profile.height_cm if patient_profile else None,
                     weight_kg=patient_profile.weight_kg if patient_profile else None,
                     medical_history_setup_completed=False,
+                )
+            )
+        else:
+            payer_profile = body.payer_profile
+            if payer_profile is None:
+                raise ApiError(422, "validation_failed", "Payer organization details are required.")
+            organization = PayerOrganization(
+                name=payer_profile.organization_name,
+                organization_type=payer_profile.organization_type,
+                jurisdiction_code="CN",
+                verification_status="synthetic_only",
+            )
+            db.add(organization)
+            db.flush()
+            db.add(
+                PayerMembership(
+                    payer_organization_id=organization.id,
+                    user_id=user.id,
+                    display_name=payer_profile.display_name,
+                    title=payer_profile.title,
+                    status="active",
+                    scope="synthetic_review",
                 )
             )
         db.commit()
@@ -512,9 +538,7 @@ def update_account_email(
         return _user_response(user)
     patient_id = user.patient_profile.id if user.patient_profile else None
     if email is not None:
-        existing_user_id = db.scalar(
-            select(User.id).where(User.email == email, User.id != user.id)
-        )
+        existing_user_id = db.scalar(select(User.id).where(User.email == email, User.id != user.id))
         if existing_user_id is not None:
             raise ApiError(
                 409,

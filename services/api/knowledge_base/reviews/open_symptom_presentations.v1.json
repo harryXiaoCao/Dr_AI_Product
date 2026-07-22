@@ -1,0 +1,269 @@
+{
+  "schema_version": "1.0",
+  "review_id": "KBRM-OPEN-SYMPTOM-PRESENTATIONS-V1",
+  "status": "review_pending",
+  "generated_at": "2026-07-21T13:05:19.445446Z",
+  "source_catalog": {
+    "locator": "knowledge_base/catalog/open_symptom_presentations.v1.json",
+    "sha256": "9608dfaaf63c3cd33dfe1bc48663b495299fdaa7fdd6cc1b951e899587e589ac"
+  },
+  "translation_artifact": {
+    "locator": "knowledge_base/translations/open_symptom_presentations.zh-Hans.deepseek-v4-flash.v1.json",
+    "sha256": "d637fd3cf159d9e6e93a8e881992ef3d3fa4c2a893df763fa13966c812116574"
+  },
+  "expected_source_count": 6,
+  "separation_policy": {
+    "retrieval_corpus": true,
+    "evaluation_contract": false,
+    "training_data": false,
+    "raw_patient_queries_included": false,
+    "activation_allowed_while_pending": false,
+    "model_generation_may_close_review": false
+  },
+  "sources": [
+    {
+      "source_id": "KBS-MEDLINEPLUS-LOW-BLOOD-PRESSURE",
+      "source_version_id": "KBV-MEDLINEPLUS-LOW-BLOOD-PRESSURE-E6776125758A",
+      "source_normalized_checksum": "fb6c9f9d95ba655a60e47a90904309733d4c8e21287c211a91b2f1e4c05e2428",
+      "translation_response_checksum": "a235e691287225c73423f4a0bda55e2466a741aba12264024451d38ca14f35fb",
+      "rights_record_stable_id": "KBR-MEDLINEPLUS-PUBLIC-DOMAIN",
+      "rights_state": "license_evidence_captured_review_pending",
+      "proposed_presentation_concepts": [
+        "orthostatic_lightheadedness",
+        "transient_visual_dimming_on_standing",
+        "blood_pressure_measurement"
+      ],
+      "known_evidence_limitations": [
+        "The source discusses low blood pressure generally and cannot determine the cause of an individual episode.",
+        "Patient-facing use must preserve uncertainty and avoid treating one threshold as a diagnosis."
+      ],
+      "source_reviews": {
+        "rights": {"status": "pending"},
+        "medical": {"status": "pending"},
+        "patient_readability": {"status": "pending"},
+        "mainland_applicability": {"status": "pending"},
+        "product": {"status": "pending"}
+      },
+      "translation_reviews": {
+        "medical": {"status": "pending"},
+        "native_zh_hans": {"status": "pending"},
+        "patient_readability": {"status": "pending"},
+        "mainland_applicability": {"status": "pending"},
+        "product": {"status": "pending"}
+      },
+      "blocking_findings": [
+        {
+          "finding_id": "KBF-LOW-BP-DIAGNOSTIC-WORDING",
+          "severity": "blocking",
+          "status": "open",
+          "scope": "translation",
+          "description": "The generated sentence around 90/60 uses definitive diagnostic wording and needs clinician-reviewed, patient-safe Chinese before admission."
+        }
+      ]
+    },
+    {
+      "source_id": "KBS-MEDLINEPLUS-DIZZINESS-AND-VERTIGO",
+      "source_version_id": "KBV-MEDLINEPLUS-DIZZINESS-AND-VERTIGO-D8069C93D457",
+      "source_normalized_checksum": "261660d16ef0c41542351a7b0bc7056916340adb899de78b039966f291a9761d",
+      "translation_response_checksum": "5aa1036daf13e5ec64d521d3f7241bf510dc0a0dc32265f5c1b122932097f2b4",
+      "rights_record_stable_id": "KBR-MEDLINEPLUS-PUBLIC-DOMAIN",
+      "rights_state": "license_evidence_captured_review_pending",
+      "proposed_presentation_concepts": [
+        "spinning_dizziness",
+        "positional_trigger",
+        "balance_disturbance"
+      ],
+      "known_evidence_limitations": [
+        "The summary mentions inner-ear and blood-pressure causes but is not specific evidence for a benign positional vertigo diagnosis.",
+        "It does not by itself cover the neurologic danger-signal assessment needed for patient advice."
+      ],
+      "source_reviews": {
+        "rights": {"status": "pending"},
+        "medical": {"status": "pending"},
+        "patient_readability": {"status": "pending"},
+        "mainland_applicability": {"status": "pending"},
+        "product": {"status": "pending"}
+      },
+      "translation_reviews": {
+        "medical": {"status": "pending"},
+        "native_zh_hans": {"status": "pending"},
+        "patient_readability": {"status": "pending"},
+        "mainland_applicability": {"status": "pending"},
+        "product": {"status": "pending"}
+      },
+      "blocking_findings": [
+        {
+          "finding_id": "KBF-DIZZINESS-SCOPE-LIMIT",
+          "severity": "blocking",
+          "status": "open",
+          "scope": "patient_use",
+          "description": "A more specific reviewed source or explicitly limited answer scope is required before this summary can support positional-vertigo guidance."
+        }
+      ]
+    },
+    {
+      "source_id": "KBS-MEDLINEPLUS-ARRHYTHMIA",
+      "source_version_id": "KBV-MEDLINEPLUS-ARRHYTHMIA-941CE221E11C",
+      "source_normalized_checksum": "8ad328aa8794d4480902310279730479d84072aa5c37ea5ac2ac05338011a8f7",
+      "translation_response_checksum": "f7cac024000f030b8bf6074e198040776a3612dcfb042a941b0090846f7b1f85",
+      "rights_record_stable_id": "KBR-MEDLINEPLUS-PUBLIC-DOMAIN",
+      "rights_state": "license_evidence_captured_review_pending",
+      "proposed_presentation_concepts": [
+        "palpitations",
+        "rapid_heartbeat",
+        "irregular_heartbeat",
+        "chest_discomfort",
+        "dyspnea"
+      ],
+      "known_evidence_limitations": [
+        "The source describes arrhythmias and their symptoms but cannot establish that palpitations are caused by an arrhythmia.",
+        "Emergency escalation must remain deterministic and occur before this evidence is considered."
+      ],
+      "source_reviews": {
+        "rights": {"status": "pending"},
+        "medical": {"status": "pending"},
+        "patient_readability": {"status": "pending"},
+        "mainland_applicability": {"status": "pending"},
+        "product": {"status": "pending"}
+      },
+      "translation_reviews": {
+        "medical": {"status": "pending"},
+        "native_zh_hans": {"status": "pending"},
+        "patient_readability": {"status": "pending"},
+        "mainland_applicability": {"status": "pending"},
+        "product": {"status": "pending"}
+      },
+      "blocking_findings": []
+    },
+    {
+      "source_id": "KBS-MEDLINEPLUS-PESTICIDES",
+      "source_version_id": "KBV-MEDLINEPLUS-PESTICIDES-31C59AFA0693",
+      "source_normalized_checksum": "f70535dd141b1a85de0a2682ea8a5b2d6dadf5a6515bc76b70aff1bc7cfd89d3",
+      "translation_response_checksum": "b1c00de8351e79ecc798b9d33b18ad2471f7d1610c964417d66a5e269d314585",
+      "rights_record_stable_id": "KBR-MEDLINEPLUS-PUBLIC-DOMAIN",
+      "rights_state": "license_evidence_captured_review_pending",
+      "proposed_presentation_concepts": [
+        "pesticide_exposure",
+        "skin_exposure",
+        "chemical_safety"
+      ],
+      "known_evidence_limitations": [
+        "The summary gives general pesticide-safety information and does not establish the cause or severity of a rash.",
+        "It does not supply complete decontamination or poisoning first-aid instructions for every pesticide class."
+      ],
+      "source_reviews": {
+        "rights": {"status": "pending"},
+        "medical": {"status": "pending"},
+        "patient_readability": {"status": "pending"},
+        "mainland_applicability": {"status": "pending"},
+        "product": {"status": "pending"}
+      },
+      "translation_reviews": {
+        "medical": {"status": "pending"},
+        "native_zh_hans": {"status": "pending"},
+        "patient_readability": {"status": "pending"},
+        "mainland_applicability": {"status": "pending"},
+        "product": {"status": "pending"}
+      },
+      "blocking_findings": [
+        {
+          "finding_id": "KBF-PESTICIDE-TERM-NARROWING",
+          "severity": "blocking",
+          "status": "open",
+          "scope": "translation",
+          "description": "The generated Chinese repeatedly narrows the broader term 'pesticides' to 'insecticides'; Mainland patient wording should use a reviewed term such as '农药' where appropriate."
+        }
+      ]
+    },
+    {
+      "source_id": "KBS-MEDLINEPLUS-SKIN-CONDITIONS",
+      "source_version_id": "KBV-MEDLINEPLUS-SKIN-CONDITIONS-AAB511941B02",
+      "source_normalized_checksum": "da8195aaab36b9c540ffca3e5678e2d7f7f4fcaab9c95ad9f5ce65bda332f2a2",
+      "translation_response_checksum": "d0c0244b85e4fe6025af60fbef4fec88088dc563ebff8cb0916dad965a9ba5b6",
+      "rights_record_stable_id": "KBR-MEDLINEPLUS-PUBLIC-DOMAIN",
+      "rights_state": "license_evidence_captured_review_pending",
+      "proposed_presentation_concepts": [
+        "itchy_rash",
+        "skin_redness",
+        "contact_skin_symptoms",
+        "skin_infection_signs"
+      ],
+      "known_evidence_limitations": [
+        "The source is a broad skin-health summary and does not identify pesticide exposure as the cause of a rash.",
+        "It cannot distinguish contact dermatitis, systemic poisoning, infection, or anaphylaxis."
+      ],
+      "source_reviews": {
+        "rights": {"status": "pending"},
+        "medical": {"status": "pending"},
+        "patient_readability": {"status": "pending"},
+        "mainland_applicability": {"status": "pending"},
+        "product": {"status": "pending"}
+      },
+      "translation_reviews": {
+        "medical": {"status": "pending"},
+        "native_zh_hans": {"status": "pending"},
+        "patient_readability": {"status": "pending"},
+        "mainland_applicability": {"status": "pending"},
+        "product": {"status": "pending"}
+      },
+      "blocking_findings": [
+        {
+          "finding_id": "KBF-SKIN-SOURCE-CENTRALITY",
+          "severity": "blocking",
+          "status": "open",
+          "scope": "patient_use",
+          "description": "This broad source may only be admitted if review confirms centrality for the intended presentation or a more specific reviewed source is paired with it."
+        }
+      ]
+    },
+    {
+      "source_id": "KBS-NHS-BABY-MOVEMENTS",
+      "source_version_id": "KBV-NHS-BABY-MOVEMENTS-234319F5951F",
+      "source_normalized_checksum": "79d238c80b0d756fd09773bb1710705d6aef7f8857ac2869dbc170913a151e72",
+      "translation_response_checksum": "bc5b9b37ddd91720eb17a6f716fda30ab4f7b7429e47a2112be04d3855601ea0",
+      "rights_record_stable_id": "KBR-NHS-UK-OGL-V3",
+      "rights_state": "license_evidence_captured_review_pending",
+      "proposed_presentation_concepts": [
+        "pregnancy",
+        "decreased_fetal_movement",
+        "changed_fetal_movement_pattern",
+        "urgent_maternity_assessment"
+      ],
+      "known_evidence_limitations": [
+        "The source is written for England and names midwives and maternity units rather than a reviewed Mainland-China care pathway.",
+        "Its translated or otherwise adapted text cannot retain the source page's formal clinical-approval status or imply NHS endorsement.",
+        "It supports urgent assessment for changed or reduced movement but cannot determine fetal wellbeing for an individual pregnancy."
+      ],
+      "source_reviews": {
+        "rights": {"status": "pending"},
+        "medical": {"status": "pending"},
+        "patient_readability": {"status": "pending"},
+        "mainland_applicability": {"status": "pending"},
+        "product": {"status": "pending"}
+      },
+      "translation_reviews": {
+        "medical": {"status": "pending"},
+        "native_zh_hans": {"status": "pending"},
+        "patient_readability": {"status": "pending"},
+        "mainland_applicability": {"status": "pending"},
+        "product": {"status": "pending"}
+      },
+      "blocking_findings": [
+        {
+          "finding_id": "KBF-NHS-MATERNITY-PATHWAY-LOCALIZATION",
+          "severity": "blocking",
+          "status": "open",
+          "scope": "patient_use",
+          "description": "England-specific midwife and maternity-unit directions require clinician-reviewed Mainland-China localization without weakening the instruction to seek immediate assessment."
+        },
+        {
+          "finding_id": "KBF-NHS-ADAPTATION-ATTRIBUTION",
+          "severity": "blocking",
+          "status": "open",
+          "scope": "translation",
+          "description": "Patient display must use the OGL adaptation attribution, must not attribute the translated wording to the NHS website, and must not carry forward or imply NHS clinical approval or endorsement."
+        }
+      ]
+    }
+  ]
+}

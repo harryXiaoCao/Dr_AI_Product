@@ -1,13 +1,30 @@
 # Dr. AI v1.0 Database ERD
 
-Status: working data-integrity map
-Last updated: 2026-07-14
-Source: `services/api/app/models.py` and Alembic migrations through `20260714_0023`
+Status: implemented-schema map plus planned production-ready care-and-cost target
+Last updated: 2026-07-23
+Implemented source: `services/api/app/models.py` and current Alembic migrations
+Planned source: `Dr_AI_Product_Requirements_Document_v1.0.md` and
+`docs/Dr_AI_v1.0_Implementation_Plan.md`
 
-This file is a field-level ERD for implementation reviews. It is intentionally
-more detailed than a product overview because Dr. AI depends on one consistent
-source of truth for account identity, patient profile data, doctor profile
-data, Clinical Event context, and future commercial/admin foundations.
+This file has three deliberately separate layers:
+
+1. **Implemented foundation:** the existing patient/doctor, clinical,
+   messaging, knowledge, billing-foundation, and administration tables. The
+   full field-level diagram below must not be read as proof that every table has
+   a finished product surface.
+2. **Implemented first care-and-cost slice:** payer organizations and
+   memberships, Clinical Event-linked cost items, submitted request snapshots,
+   and membership-attributed human reviews added by migrations
+   `20260723_0035` and `20260723_0036`.
+3. **Planned production-ready v1.0 target:** the additive, multi-scenario payer,
+   encounter, claim, expected-care-envelope, variance-review,
+   clinician-rationale, and human-review domain specified later in this
+   document. These planned entities do not exist until a migration and
+   implementation evidence say they do.
+
+This separation preserves the real schema while making the new three-party
+product direction implementable without pretending that planned payer features
+are already available.
 
 ## Legend
 
@@ -452,13 +469,14 @@ erDiagram
     varchar_160 title
     datetime_tz created_at
     datetime_tz last_message_at "nullable"
+    datetime_tz retention_until "nullable; AI threads keep at least 60 days from latest exchange"
   }
 
   CHAT_MESSAGES {
     uuid id PK
     uuid thread_id FK
     uuid patient_id FK
-    uuid actor_user_id FK
+    uuid actor_user_id FK "nullable for AI assistant messages"
     varchar_40 role
     text content "nullable"
     varchar_64 prompt_hash "nullable"
@@ -765,6 +783,492 @@ erDiagram
   CLINICS ||--o{ REVENUE_SUMMARIES : summarizes
 ```
 
+## Implemented 2026-07-23 Care-And-Cost Vertical Slice
+
+This thin slice establishes a real three-party workflow without pretending to
+be a claims-adjudication or AI decision system. `care_cost_items` are editable
+doctor-authored rows under an existing Clinical Event. Submission creates a
+`payer_request` and immutable `payer_request_lines` snapshot so later item edits
+do not rewrite what was reviewed. Payer actions are human-authored through an
+active organization membership. AI fields default to `not_evaluated`/`null`.
+
+```mermaid
+erDiagram
+  USERS ||--o{ PAYER_MEMBERSHIPS : holds
+  PAYER_ORGANIZATIONS ||--o{ PAYER_MEMBERSHIPS : authorizes
+  PATIENT_PROFILES ||--o{ CARE_COST_ITEMS : owns
+  CLINICAL_EVENTS ||--o{ CARE_COST_ITEMS : groups
+  USERS ||--o{ CARE_COST_ITEMS : creates
+  CLINICAL_EVENTS ||--o{ PAYER_REQUESTS : packages
+  PATIENT_PROFILES ||--o{ PAYER_REQUESTS : concerns
+  DOCTOR_PROFILES ||--o{ PAYER_REQUESTS : submits
+  PAYER_ORGANIZATIONS ||--o{ PAYER_REQUESTS : receives
+  PAYER_REQUESTS ||--|{ PAYER_REQUEST_LINES : snapshots
+  CARE_COST_ITEMS o|--o{ PAYER_REQUEST_LINES : sourced_from
+  PAYER_REQUESTS ||--o{ PAYER_REVIEWS : receives
+  PAYER_MEMBERSHIPS ||--o{ PAYER_REVIEWS : authors
+
+  PAYER_ORGANIZATIONS {
+    uuid id PK
+    varchar name UK
+    varchar organization_type
+    varchar jurisdiction_code
+    varchar verification_status
+    datetime_tz created_at
+  }
+
+  PAYER_MEMBERSHIPS {
+    uuid id PK
+    uuid payer_organization_id FK
+    uuid user_id FK
+    varchar display_name
+    varchar title
+    varchar status
+    varchar scope
+    datetime_tz created_at
+  }
+
+  CARE_COST_ITEMS {
+    uuid id PK
+    uuid patient_id FK
+    uuid clinical_event_id FK
+    uuid created_by_user_id FK
+    varchar item_type
+    varchar label
+    date service_date
+    varchar status
+    int quantity
+    varchar currency
+    int actual_cost_minor
+    int payer_requested_minor
+    int patient_responsibility_minor
+    int ai_review_score "nullable"
+    varchar ai_review_status
+    text ai_review_summary "nullable"
+    text notes "nullable"
+  }
+
+  PAYER_REQUESTS {
+    uuid id PK
+    uuid clinical_event_id FK
+    uuid patient_id FK
+    uuid doctor_id FK
+    uuid payer_organization_id FK
+    varchar status
+    varchar currency
+    int requested_total_minor
+    text doctor_summary
+    varchar ai_review_status
+    int ai_review_score "nullable"
+    text ai_review_summary "nullable"
+    datetime_tz reviewed_at "nullable"
+  }
+
+  PAYER_REQUEST_LINES {
+    uuid id PK
+    uuid payer_request_id FK
+    uuid care_cost_item_id FK "nullable"
+    varchar item_type
+    varchar label
+    date service_date
+    varchar currency
+    int actual_cost_minor
+    int requested_minor
+    int patient_responsibility_minor
+  }
+
+  PAYER_REVIEWS {
+    uuid id PK
+    uuid payer_request_id FK
+    uuid payer_membership_id FK
+    varchar action
+    varchar reason_code
+    text note "nullable reviewer-only"
+    datetime_tz created_at
+  }
+```
+
+`payer_requests` are review packages, not formal claims. The current slice has
+no coverage decision, allowed/paid amount, reference price, expected-care
+envelope, deterministic variance alert, appeal, or autonomous AI action.
+
+## Planned Production-Ready v1.0 Care-And-Cost Review Target
+
+The following broader schema is the approved multi-scenario production target.
+Some foundation names now exist in the thin slice above, but the expanded
+fields, coverage/claim semantics, references, envelopes, alerts, rationales,
+transitions, and appeals remain **planned, not implemented**.
+Synthetic/de-identified data should exercise the same contracts until live-data
+gates close. Exact column lengths and
+indexes should be finalized with the API contract and migration, but the entity
+boundaries and provenance requirements are normative.
+
+```mermaid
+erDiagram
+  PAYER_ORGANIZATIONS {
+    uuid id PK
+    varchar_160 name
+    varchar_40 organization_type "public_payer, commercial_payer, demo"
+    varchar_40 jurisdiction_code
+    varchar_40 status
+    boolean is_synthetic
+    datetime_tz created_at
+    datetime_tz updated_at
+  }
+
+  PAYER_MEMBERSHIPS {
+    uuid id PK
+    uuid payer_organization_id FK
+    uuid user_id FK
+    varchar_40 reviewer_role
+    varchar_40 status
+    uuid assigned_by_user_id FK "nullable"
+    datetime_tz created_at
+    datetime_tz revoked_at "nullable"
+  }
+
+  COVERAGE_ENROLLMENTS {
+    uuid id PK
+    uuid patient_id FK
+    uuid payer_organization_id FK
+    varchar_80 member_reference_token "synthetic or protected"
+    varchar_120 plan_label
+    varchar_40 jurisdiction_code
+    varchar_40 status
+    boolean is_synthetic
+    date effective_from
+    date effective_to "nullable"
+    datetime_tz created_at
+    datetime_tz updated_at
+  }
+
+  CARE_ENCOUNTERS {
+    uuid id PK
+    uuid patient_id FK
+    uuid clinical_event_id FK
+    uuid clinic_id FK "nullable"
+    uuid responsible_doctor_id FK
+    varchar_40 encounter_type
+    varchar_40 jurisdiction_code
+    varchar_40 status
+    boolean is_synthetic
+    datetime_tz started_at
+    datetime_tz ended_at "nullable"
+    datetime_tz created_at
+    datetime_tz updated_at
+  }
+
+  CARE_PLAN_ITEMS {
+    uuid id PK
+    uuid encounter_id FK
+    uuid authored_by_user_id FK
+    varchar_40 item_type
+    varchar_40 code_system "nullable"
+    varchar_80 service_code "nullable"
+    varchar_200 label
+    decimal quantity
+    varchar_40 unit
+    varchar_40 status
+    text clinical_rationale "nullable"
+    datetime_tz planned_for "nullable"
+    datetime_tz created_at
+  }
+
+  CARE_SCENARIO_DEFINITIONS {
+    uuid id PK
+    varchar_80 scenario_family_code
+    varchar_160 title
+    varchar_40 jurisdiction_code
+    varchar_80 encounter_type
+    varchar_80 version
+    jsonb applicability_json
+    jsonb required_input_schema_json
+    varchar_40 review_status
+    varchar_40 activation_status
+    date effective_from
+    date effective_to "nullable"
+    varchar_64 content_checksum
+    datetime_tz created_at
+  }
+
+  CARE_COST_REVIEW_CASES {
+    uuid id PK
+    uuid encounter_id FK
+    uuid patient_id FK
+    uuid responsible_doctor_id FK
+    uuid payer_organization_id FK
+    uuid coverage_enrollment_id FK "nullable"
+    uuid care_scenario_definition_id FK
+    varchar_40 jurisdiction_code
+    varchar_3 currency
+    varchar_40 status
+    boolean is_synthetic
+    datetime_tz opened_at
+    datetime_tz closed_at "nullable"
+    datetime_tz created_at
+    datetime_tz updated_at
+  }
+
+  CLAIMS {
+    uuid id PK
+    uuid review_case_id FK
+    integer submission_version
+    varchar_80 external_reference "nullable synthetic"
+    varchar_40 status
+    varchar_3 currency
+    bigint billed_minor
+    bigint allowed_minor "nullable"
+    bigint payer_paid_minor "nullable"
+    bigint patient_responsibility_minor "nullable"
+    varchar_64 lines_checksum
+    datetime_tz submitted_at "nullable"
+    datetime_tz created_at
+  }
+
+  CLAIM_LINES {
+    uuid id PK
+    uuid claim_id FK
+    uuid care_plan_item_id FK "nullable"
+    varchar_40 service_code_system
+    varchar_80 service_code
+    varchar_200 service_label
+    decimal quantity
+    varchar_40 unit
+    date service_date
+    varchar_3 currency
+    bigint unit_price_minor
+    bigint billed_minor
+    bigint allowed_minor "nullable"
+    bigint payer_paid_minor "nullable"
+    bigint patient_responsibility_minor "nullable"
+    varchar_80 provenance_type
+    datetime_tz created_at
+  }
+
+  PRICING_REFERENCE_SETS {
+    uuid id PK
+    varchar_160 name
+    varchar_40 jurisdiction_code
+    varchar_80 geography_code "nullable"
+    varchar_80 facility_level "nullable"
+    varchar_3 currency
+    varchar_80 version
+    varchar_40 review_status
+    varchar_40 activation_status
+    text source_locator
+    date effective_from
+    date effective_to "nullable"
+    varchar_64 content_checksum
+    datetime_tz created_at
+  }
+
+  PRICING_REFERENCE_ITEMS {
+    uuid id PK
+    uuid pricing_reference_set_id FK
+    varchar_40 service_code_system
+    varchar_80 service_code
+    varchar_200 label
+    varchar_40 unit
+    bigint low_minor
+    bigint high_minor
+    jsonb applicability_json
+    datetime_tz created_at
+  }
+
+  UTILIZATION_RULE_SETS {
+    uuid id PK
+    varchar_160 name
+    varchar_40 jurisdiction_code
+    varchar_80 version
+    varchar_40 review_status
+    varchar_40 activation_status
+    text source_locator
+    date effective_from
+    date effective_to "nullable"
+    varchar_64 content_checksum
+    datetime_tz created_at
+  }
+
+  UTILIZATION_RULES {
+    uuid id PK
+    uuid utilization_rule_set_id FK
+    varchar_80 rule_code
+    varchar_80 reason_code
+    varchar_40 comparison_type
+    jsonb parameters_json
+    text explanation_template
+    varchar_40 severity
+    datetime_tz created_at
+  }
+
+  EXPECTED_CARE_ENVELOPES {
+    uuid id PK
+    uuid review_case_id FK
+    integer version
+    uuid pricing_reference_set_id FK
+    uuid utilization_rule_set_id FK
+    uuid reviewed_by_doctor_id FK "nullable"
+    varchar_40 origin "rules, ai_assisted, manual"
+    varchar_120 model_version "nullable"
+    varchar_120 prompt_policy_version "nullable"
+    varchar_40 jurisdiction_code
+    varchar_3 currency
+    bigint estimated_low_minor
+    bigint estimated_high_minor
+    varchar_40 confidence_band
+    jsonb assumptions_json
+    jsonb missing_information_json
+    jsonb cited_source_ids_json
+    varchar_40 review_status
+    varchar_64 input_checksum
+    datetime_tz created_at
+    datetime_tz reviewed_at "nullable"
+  }
+
+  EXPECTED_CARE_ENVELOPE_ITEMS {
+    uuid id PK
+    uuid expected_care_envelope_id FK
+    uuid care_plan_item_id FK "nullable"
+    varchar_40 item_type
+    varchar_40 service_code_system "nullable"
+    varchar_80 service_code "nullable"
+    varchar_200 label
+    decimal expected_quantity_low "nullable"
+    decimal expected_quantity_high "nullable"
+    varchar_40 unit "nullable"
+    bigint estimated_low_minor
+    bigint estimated_high_minor
+    jsonb cited_rule_ids_json
+    jsonb cited_price_item_ids_json
+    datetime_tz created_at
+  }
+
+  VARIANCE_ALERTS {
+    uuid id PK
+    uuid review_case_id FK
+    uuid claim_id FK
+    uuid claim_line_id FK "nullable"
+    uuid expected_care_envelope_id FK
+    uuid utilization_rule_id FK "nullable"
+    varchar_80 reason_code
+    varchar_40 semantic_status "review_recommended"
+    varchar_40 severity
+    bigint compared_actual_minor "nullable"
+    bigint compared_low_minor "nullable"
+    bigint compared_high_minor "nullable"
+    jsonb comparison_facts_json
+    varchar_64 input_checksum
+    datetime_tz created_at
+    datetime_tz resolved_at "nullable"
+  }
+
+  CLINICIAN_RATIONALES {
+    uuid id PK
+    uuid review_case_id FK
+    uuid variance_alert_id FK "nullable"
+    uuid doctor_id FK
+    integer version
+    varchar_80 rationale_code
+    text explanation
+    jsonb supporting_reference_ids_json
+    datetime_tz created_at
+    datetime_tz superseded_at "nullable"
+  }
+
+  PAYER_REVIEWS {
+    uuid id PK
+    uuid review_case_id FK
+    uuid payer_membership_id FK
+    uuid clinician_rationale_id FK "nullable"
+    varchar_40 action
+    varchar_80 reason_code
+    text reviewer_note "nullable reviewer-only"
+    varchar_40 decision_origin "human"
+    datetime_tz created_at
+  }
+
+  REVIEW_STATE_TRANSITIONS {
+    uuid id PK
+    uuid review_case_id FK
+    uuid actor_user_id FK "nullable system actor"
+    varchar_40 from_status
+    varchar_40 to_status
+    varchar_80 reason_code
+    varchar_80 origin
+    datetime_tz created_at
+  }
+
+  PAYER_ORGANIZATIONS ||--o{ PAYER_MEMBERSHIPS : authorizes
+  USERS ||--o{ PAYER_MEMBERSHIPS : receives
+  PAYER_ORGANIZATIONS ||--o{ COVERAGE_ENROLLMENTS : provides
+  PATIENT_PROFILES ||--o{ COVERAGE_ENROLLMENTS : holds
+  PATIENT_PROFILES ||--o{ CARE_ENCOUNTERS : attends
+  CLINICAL_EVENTS ||--o{ CARE_ENCOUNTERS : contextualizes
+  CLINICS ||--o{ CARE_ENCOUNTERS : hosts
+  DOCTOR_PROFILES ||--o{ CARE_ENCOUNTERS : leads
+  CARE_ENCOUNTERS ||--o{ CARE_PLAN_ITEMS : plans
+  USERS ||--o{ CARE_PLAN_ITEMS : authors
+  CARE_ENCOUNTERS ||--o{ CARE_COST_REVIEW_CASES : reviewed_as
+  CARE_SCENARIO_DEFINITIONS ||--o{ CARE_COST_REVIEW_CASES : classifies
+  PATIENT_PROFILES ||--o{ CARE_COST_REVIEW_CASES : owns
+  DOCTOR_PROFILES ||--o{ CARE_COST_REVIEW_CASES : responsible_for
+  PAYER_ORGANIZATIONS ||--o{ CARE_COST_REVIEW_CASES : reviews
+  COVERAGE_ENROLLMENTS ||--o{ CARE_COST_REVIEW_CASES : scopes
+  CARE_COST_REVIEW_CASES ||--o{ CLAIMS : receives
+  CLAIMS ||--|{ CLAIM_LINES : contains
+  CARE_PLAN_ITEMS ||--o{ CLAIM_LINES : may_correspond_to
+  PRICING_REFERENCE_SETS ||--|{ PRICING_REFERENCE_ITEMS : contains
+  UTILIZATION_RULE_SETS ||--|{ UTILIZATION_RULES : contains
+  CARE_COST_REVIEW_CASES ||--o{ EXPECTED_CARE_ENVELOPES : estimates
+  PRICING_REFERENCE_SETS ||--o{ EXPECTED_CARE_ENVELOPES : prices
+  UTILIZATION_RULE_SETS ||--o{ EXPECTED_CARE_ENVELOPES : constrains
+  DOCTOR_PROFILES ||--o{ EXPECTED_CARE_ENVELOPES : reviews
+  EXPECTED_CARE_ENVELOPES ||--|{ EXPECTED_CARE_ENVELOPE_ITEMS : contains
+  CARE_PLAN_ITEMS ||--o{ EXPECTED_CARE_ENVELOPE_ITEMS : may_reference
+  CARE_COST_REVIEW_CASES ||--o{ VARIANCE_ALERTS : flags
+  CLAIMS ||--o{ VARIANCE_ALERTS : compared
+  CLAIM_LINES ||--o{ VARIANCE_ALERTS : may_flag
+  EXPECTED_CARE_ENVELOPES ||--o{ VARIANCE_ALERTS : benchmarks
+  UTILIZATION_RULES ||--o{ VARIANCE_ALERTS : explains
+  CARE_COST_REVIEW_CASES ||--o{ CLINICIAN_RATIONALES : receives
+  VARIANCE_ALERTS ||--o{ CLINICIAN_RATIONALES : may_explain
+  DOCTOR_PROFILES ||--o{ CLINICIAN_RATIONALES : authors
+  CARE_COST_REVIEW_CASES ||--o{ PAYER_REVIEWS : has
+  PAYER_MEMBERSHIPS ||--o{ PAYER_REVIEWS : performs
+  CLINICIAN_RATIONALES ||--o{ PAYER_REVIEWS : considers
+  CARE_COST_REVIEW_CASES ||--o{ REVIEW_STATE_TRANSITIONS : records
+  USERS ||--o{ REVIEW_STATE_TRANSITIONS : acts
+```
+
+### Planned Entity Semantics
+
+- `care_scenario_definitions` are versioned, jurisdiction-specific,
+  clinician-reviewed configuration. The first implemented scenario is a
+  vertical slice, not a schema boundary; additional admitted scenario families
+  reuse the same workflow, authorization, claim, envelope, alert, and review
+  contracts.
+- `care_cost_review_cases` is the authorization and workflow aggregate. It
+  links one encounter, scenario-definition version, payer organization, and
+  currency; it is not a clinical record and cannot rewrite the Clinical Event.
+- `claims` and `claim_lines` preserve each submission version. Planned,
+  delivered, billed, allowed, paid, and patient-responsibility values remain
+  semantically distinct.
+- `pricing_reference_sets` and `utilization_rule_sets` are immutable,
+  jurisdiction-specific releases with review, activation, rollback, rights,
+  source, and effective-date evidence.
+- `expected_care_envelopes` are suggestions expressed as ranges. Doctor review
+  does not transform them into clinical truth or a binding reimbursement
+  amount.
+- `variance_alerts` contain reproducible comparison facts and always mean
+  `review_recommended`; they cannot encode `fraud`, `abuse_detected`, automatic
+  denial, or punitive action.
+- `clinician_rationales` are append-only versions so a justified exception is
+  preserved without mutating the original claim, alert, or envelope.
+- `payer_reviews` record a human action through an authorized membership. AI
+  may help explain a case but cannot be the decision origin.
+- `review_state_transitions` provide immutable workflow history. Audit events
+  still record the associated sensitive access/action metadata.
+
 ## Entity Groups
 
 ### Identity And Access
@@ -806,20 +1310,59 @@ erDiagram
 - `chat_threads`, `chat_messages`, and `chat_rate_limits`: educational-chat
   safety state plus text-only private conversations between actively connected
   doctors and patients. Private threads carry both participant profile IDs;
-  system chat remains read-only and group chat has no persistence yet.
+  patient AI threads store patient-readable continuity separately from
+  content-free `chatbot_events`, renew `retention_until` to at least 60 days
+  after every exchange, and remain visible only to their owning patient. System
+  chat remains read-only and group chat has no persistence yet. Chatbot events
+  may record a content-free, field-specific provider diagnostic subtype and
+  one- or two-attempt count for schema-guided structured-output repair, but
+  never raw provider output or validation input values. Slice 9B adds only
+  content-free rescue trigger/outcome, planner model, token/cache counts,
+  latency, configured-price cost, retrieval delta, and retry request ID. It
+  does not store query-planner inputs or output, including rewrites, concepts,
+  synonyms, or recent conversation.
 - `consultation_requests`: specialist consultation request/status foundation.
 - `audit_events`: metadata-only audit record for sensitive workflow actions.
 
-### Commercial And Administration Foundations
+### Preserved Commercial And Administration Foundations
 
 - `hospitals`, `clinics`, `doctor_teams`, and
   `doctor_team_memberships`: future clinic administration and team structure.
 - `clinic_resources`, `equipment`, `appointments`, and `equipment_bookings`:
   future clinic operations and scheduling/resource-management foundation.
 - `invoices`, `payment_statuses`, and `revenue_summaries`: bounded billing and
-  revenue foundation.
+  revenue foundation. These are not the source of truth for the new claim-line
+  or payer-review workflow.
 - `analytics_events`: operational/product analytics events.
 - `support_requests`: support, deletion, and feedback queue foundation.
+
+### Payer And Care-Cost Review
+
+- `payer_organizations` and `payer_memberships` are implemented for the
+  synthetic-only first slice. `coverage_enrollments` and live organization
+  verification remain planned. These boundaries keep public payer, commercial
+  insurer, and observer concepts explicit rather than treating all third
+  parties as one role.
+- `care_cost_items`, `payer_requests`, `payer_request_lines`, and
+  `payer_reviews` are implemented as the first transparent submission/review
+  workflow; they are not substitutes for the planned claim, reference,
+  expected-envelope, alert, or appeal entities below.
+- `care_scenario_definitions`: versioned scenario-family, encounter,
+  applicability, and required-input configuration. This prevents the product
+  from hardcoding one disease or showcase fixture.
+- `care_encounters`, `care_plan_items`, and `care_cost_review_cases`: the bridge
+  from the existing Clinical Event and active scenario definition to a scoped
+  financial/utilization review.
+- `claims` and `claim_lines`: immutable, versioned submitted line items and
+  distinct billed/allowed/paid/patient-responsibility amounts.
+- `pricing_reference_sets/items` and `utilization_rule_sets/rules`: admitted,
+  jurisdiction-specific, effective-dated comparison inputs.
+- `expected_care_envelopes/items`: sourced low/high suggestions with explicit
+  assumptions, missing information, confidence, and doctor-review state.
+- `variance_alerts`: deterministic, reproducible `review_recommended` results.
+- `clinician_rationales` and `review_state_transitions` remain planned. The
+  implemented `payer_reviews` table records append-only human actions but does
+  not yet implement the full production state-transition model.
 
 ### Governed Medical Knowledge And Retrieval
 
@@ -828,7 +1371,9 @@ erDiagram
   immutable source lineage, review status, and audience eligibility.
 - `kb_sections` and `kb_passages`: structured reviewed evidence with source
   offsets, concept tags, language/audience flags, content checksums, and
-  independently controlled lexical/vector eligibility.
+  independently controlled lexical/vector eligibility. Each stored vector also
+  records its exact embedding model version so an immutable release cannot
+  claim a different model lineage.
 - `kb_terms`: reviewed Chinese/English concepts, aliases, provenance, and
   prohibited expansions used for bounded query expansion.
 - `kb_reviews`: medical, native-language, rights, product, and safety review
@@ -886,11 +1431,52 @@ erDiagram
 - Financial, operations, specialist, and admin tables are schema foundations.
   They should remain hidden from production-facing navigation until the matching
   workflows, authorization, validation, empty states, and tests are implemented.
+- Every monetary field in the planned review domain uses integer minor units
+  plus an explicit ISO currency. A case, claim, reference set, envelope, and
+  comparison must use one currency or fail closed; no implicit conversion is
+  allowed.
+- Claim totals must equal the sum of immutable claim lines. Envelope low/high
+  totals must reconcile to their items and satisfy `low <= high` at item and
+  aggregate levels.
+- Clinical Events, plans, delivered services, claims, envelopes, alerts,
+  rationales, and payer reviews are different sources of truth. No workflow may
+  overwrite one with another.
+- Scenario support is release-driven: `care_scenario_definitions` must bind an
+  admitted applicability and required-input contract to compatible evidence,
+  utilization-rule, and pricing-reference releases. Scenario-specific behavior
+  must not be hidden in unversioned prompts or disease-name branches.
+- Payer access requires an active membership in the case's organization and an
+  explicit case-purpose check. Patient/doctor views must exclude reviewer-only
+  notes and any confidential reference fields.
+- Pricing and utilization releases must be immutable after activation and must
+  record jurisdiction, source, rights/review status, effective dates, version,
+  and checksum. Re-evaluation creates new derived records rather than rewriting
+  historical alerts.
+- Expected-care envelopes and alerts cannot trigger care, claim, coverage,
+  payment, clinician-ranking, or punitive state changes. The implemented
+  `payer_reviews` records a human membership; the expanded target must also
+  persist `decision_origin = human` explicitly.
 
 ## Current Caveats
 
 - Some future/commercial tables already exist in the data foundation but do not
   yet have complete product surfaces.
+- The 2026-07-23 thin slice implements the exact entities shown in
+  `Implemented 2026-07-23 Care-And-Cost Vertical Slice`. Expanded versions and
+  every additional entity shown only in the planned target remain migration
+  targets, not current database state.
+- The current `users.role` enum includes `payer`, but that role does not itself
+  establish authorization. Payer routes also require an active
+  `payer_membership` in the request's organization.
+- Current payer registration creates synthetic-only organizations for local
+  workflow testing. Verified institutional onboarding, invitations, assignment,
+  revocation administration, and multi-organization operations remain open.
+- Reviewer notes are returned only to payer views in the implemented API;
+  patient and doctor request readback excludes them.
+- Real Chinese codes, fee schedules, DRG/DIP references, formularies, coverage
+  rules, and U.S. contracted-rate/claim data have not been selected or licensed
+  for this schema. Initial rows must remain synthetic until source-specific
+  rights, scope, version, and clinical/payer review are recorded.
 - `metadata_json` and `audit_metadata_json` are intentionally flexible, but they
   should not become a dumping ground for fields that need filtering, validation,
   editing, or cross-page synchronization.

@@ -77,7 +77,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get english => 'English';
 
   @override
-  String get simplifiedChinese => 'Simplified Chinese';
+  String get simplifiedChinese => '简体中文';
 
   @override
   String get systemLanguage => 'System language';
@@ -267,11 +267,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get doctorRegistration => 'Doctor Registration';
 
   @override
+  String get payerRegistration => 'Payer Registration';
+
+  @override
   String get createAccount => 'Create your account';
 
   @override
   String get createAccountDoctorDescription =>
       'Create your account to join Dr. AI';
+
+  @override
+  String get createAccountPayerDescription =>
+      'Create an authorized reviewer account for transparent care and cost review';
 
   @override
   String get createAccountPatientDescription =>
@@ -334,6 +341,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get doctor => 'Doctor';
+
+  @override
+  String get payer => 'Payer';
+
+  @override
+  String get organizationInformation => 'Organization information';
+
+  @override
+  String get organizationName => 'Organization name';
 
   @override
   String get firstName => 'First name';
@@ -2450,6 +2466,132 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get aiPlaceholderNotice =>
       'This placeholder keeps AI access consistent for doctors and patients while safety work is completed.';
+
+  @override
+  String get aiChatSubtitle =>
+      'Practical health guidance grounded in reviewed sources.';
+
+  @override
+  String get aiChatSafetyNotice =>
+      'Dr. AI is an AI assistant and can make mistakes. Verify important details with authoritative sources or a doctor. It cannot confirm a diagnosis, replace emergency care, or change medication.';
+
+  @override
+  String get aiChatWelcome => 'What can I help you work through?';
+
+  @override
+  String get aiChatInputHint =>
+      'Ask about symptoms, tests, medicines, or your care';
+
+  @override
+  String get aiChatSendFailed =>
+      'The secure chat request could not be completed. Try again.';
+
+  @override
+  String get aiChatHistory => 'Conversation history';
+
+  @override
+  String get aiNewChat => 'New chat';
+
+  @override
+  String get aiPreviousChats => 'Previous chats';
+
+  @override
+  String get aiNoPreviousChats =>
+      'Your health conversations will appear here after you send the first question.';
+
+  @override
+  String get aiHistoryRetentionNotice =>
+      'Each conversation is kept for at least 60 days and is visible only in your account.';
+
+  @override
+  String get aiFollowUpQuestion => 'One detail would help';
+
+  @override
+  String get aiReviewMeasurementGuidance => 'Measure correctly';
+
+  @override
+  String get aiTrackMeasurements => 'Track readings';
+
+  @override
+  String get aiPrepareDoctorQuestions => 'Prepare doctor questions';
+
+  @override
+  String get aiPrepareSymptomSummary => 'Organize my symptoms';
+
+  @override
+  String get aiPrepareSymptomSummaryPrompt =>
+      'Help me organize my symptoms, timeline, and key questions for a clinician.';
+
+  @override
+  String get aiMeasurementGuidancePrompt => 'How can I measure this correctly?';
+
+  @override
+  String get aiTrackMeasurementsPrompt =>
+      'Help me make a simple record-tracking plan.';
+
+  @override
+  String get aiSuggestionEducation =>
+      'What should I understand about recording blood pressure?';
+
+  @override
+  String get aiSuggestionSymptoms =>
+      'I feel dizzy. What could explain it, and when should I seek care?';
+
+  @override
+  String get aiSuggestionMedication =>
+      'What questions should I ask my doctor about a prescribed medicine?';
+
+  @override
+  String get aiSuggestionDoctor =>
+      'Help me prepare questions for my next doctor visit.';
+
+  @override
+  String get aiSources => 'Reviewed sources';
+
+  @override
+  String get aiImportantUncertainty => 'Important uncertainty';
+
+  @override
+  String get aiContextUsed => 'Personalized with your records';
+
+  @override
+  String get aiContextProfile => 'Profile basics';
+
+  @override
+  String get aiContextMeasurements => 'Health measurements';
+
+  @override
+  String get aiContextConditions => 'Recorded conditions';
+
+  @override
+  String get aiContextMedications => 'Medication information';
+
+  @override
+  String get aiContextClinicalEvents => 'Current care episode';
+
+  @override
+  String get aiContextRecoveryPlan => 'Recovery plan';
+
+  @override
+  String get aiContextFromProfile => 'Your profile records';
+
+  @override
+  String get aiContextPatientReported => 'Your reported history';
+
+  @override
+  String get aiContextDoctorRecord => 'Doctor\'s record';
+
+  @override
+  String get aiContextCurrentPrescription => 'Current prescription';
+
+  @override
+  String get aiContextMedicationSchedule => 'Current medication schedule';
+
+  @override
+  String get aiContextCurrentRecoveryPlan => 'Current recovery plan';
+
+  @override
+  String get aiContactDoctor => 'Contact my doctor';
 
   @override
   String get privateCareConversation => 'Private care conversation';

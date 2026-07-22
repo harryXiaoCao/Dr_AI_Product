@@ -1,5 +1,6 @@
 """Import a complete reviewed-shape translation artifact as pending human review."""
 
+import argparse
 from pathlib import Path
 
 from app.database import SessionLocal
@@ -10,13 +11,20 @@ TRANSLATION_PATH = Path(
 )
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--path", type=Path, default=TRANSLATION_PATH)
+    return parser.parse_args()
+
+
 def main() -> None:
-    corpus = load_translation_corpus(TRANSLATION_PATH)
+    path = parse_args().path
+    corpus = load_translation_corpus(path)
     with SessionLocal.begin() as db:
         result = import_translation_corpus(
             db,
             corpus,
-            artifact_locator=str(TRANSLATION_PATH),
+            artifact_locator=str(path),
         )
     print(
         f"Imported translation_artifacts={result[0]} translation_sections={result[1]}; "

@@ -111,6 +111,7 @@ def test_release_manifest_is_deterministic_and_rollback_restores_predecessor(
         rights.commercial_use_allowed = True
         rights.storage_allowed = True
         rights.embedding_allowed = True
+        rights.model_provider_transmission_allowed = True
         rights.excerpt_display_allowed = True
         source.doctor_eligible = True
         source.lifecycle_state = "doctor_approved"

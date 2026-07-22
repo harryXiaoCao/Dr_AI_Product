@@ -1,0 +1,61 @@
+{
+  "schema_version": "1.0.0",
+  "gate_id": "dr-ai-canonical-rural-symptom-retrieval-v1",
+  "status": "candidate_pending_clinical_native_chinese_and_product_review",
+  "contract_binding": {
+    "contract_id": "dr-ai-rural-symptom-first-canonical-v1",
+    "contract_sha256": "fde06922c3d5151d08560dbc7955743e24e9f02fdd6b5a97397904e4ced01129"
+  },
+  "coverage_binding": {
+    "artifact": "canonical-rural-symptom-coverage-KBIR-D3DFA94CC95660019B6EF94E-v9-gate-metrics-local-20260721.json",
+    "auditor_version": "canonical-active-release-coverage-v6-gate-metrics",
+    "active_release_ids": [
+      "KBIR-D3DFA94CC95660019B6EF94E"
+    ]
+  },
+  "scope": {
+    "ranking_unit": "source_id",
+    "top_k": 6,
+    "retrieval_only": true,
+    "answer_generation": false,
+    "retrieval_rescue": false,
+    "model_planner": false,
+    "evaluation_data_is_retrieval_corpus": false,
+    "evaluation_data_is_training_data": false,
+    "candidate_hits_are_clinical_support": false
+  },
+  "label_policy": {
+    "support_expected_when": "relevant_source_ids is non-empty after named review",
+    "no_evidence_expected_when": "coverage_audit.status equals reviewed_no_eligible_evidence",
+    "pending_labels_are_unscored_and_fail_readiness": true,
+    "forbidden_source_ids_are_enforced_for_every_subject": true,
+    "all_retrieval_allowed_subjects_require_reviewed_support": true
+  },
+  "thresholds": {
+    "minimum_support_label_count": 92,
+    "minimum_symptom_only_support_label_count": 8,
+    "minimum_source_label_readiness_rate": 1.0,
+    "minimum_relevant_source_recall_at_6": 0.85,
+    "minimum_mean_reciprocal_rank": 0.85,
+    "minimum_relevant_decision_pass_rate": 1.0,
+    "minimum_symptom_only_relevant_source_recall_at_6": 0.9,
+    "minimum_paired_variant_non_degradation_rate": 1.0,
+    "minimum_paired_variant_comparison_count": 39,
+    "minimum_no_evidence_precision": 0.95,
+    "minimum_pre_safety_zero_retrieval_rate": 1.0,
+    "maximum_forbidden_source_hits": 0,
+    "maximum_retrieval_errors": 0,
+    "maximum_retrieval_latency_p95_ms": 2500,
+    "maximum_single_subject_latency_ms": 8000,
+    "maximum_provider_calls": 0,
+    "maximum_paid_usage_usd": 0
+  },
+  "review": {
+    "clinical_status": "pending",
+    "native_simplified_chinese_status": "pending",
+    "product_status": "pending",
+    "reviewer_ids": [],
+    "reviewed_at": null,
+    "corrections": []
+  }
+}

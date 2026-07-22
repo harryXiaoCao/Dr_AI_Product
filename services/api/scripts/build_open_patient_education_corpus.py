@@ -336,16 +336,21 @@ def parse_html(kind: str, slug: str, url: str, raw: bytes) -> dict[str, object]:
     }
 
 
-def parse_health_topics(raw_zip: bytes) -> list[dict[str, object]]:
+def parse_health_topics(
+    raw_zip: bytes,
+    *,
+    titles: list[str] | None = None,
+) -> list[dict[str, object]]:
     with zipfile.ZipFile(BytesIO(raw_zip)) as archive:
         xml_name = next(name for name in archive.namelist() if name.endswith(".xml"))
         root = ElementTree.fromstring(archive.read(xml_name))
     by_title = {topic.attrib["title"]: topic for topic in root.findall("health-topic")}
-    missing = sorted(set(HEALTH_TOPICS) - set(by_title))
+    selected_titles = titles or HEALTH_TOPICS
+    missing = sorted(set(selected_titles) - set(by_title))
     if missing:
         raise ValueError(f"Missing MedlinePlus health topics: {missing}")
     documents = []
-    for title in HEALTH_TOPICS:
+    for title in selected_titles:
         topic = by_title[title]
         summary_html = topic.findtext("full-summary") or ""
         summary = clean_text(BeautifulSoup(summary_html, "html.parser").get_text(" ", strip=True))

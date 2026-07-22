@@ -233,7 +233,7 @@ abstract class AppLocalizations {
   /// No description provided for @simplifiedChinese.
   ///
   /// In en, this message translates to:
-  /// **'Simplified Chinese'**
+  /// **'简体中文'**
   String get simplifiedChinese;
 
   /// No description provided for @systemLanguage.
@@ -590,6 +590,12 @@ abstract class AppLocalizations {
   /// **'Doctor Registration'**
   String get doctorRegistration;
 
+  /// No description provided for @payerRegistration.
+  ///
+  /// In en, this message translates to:
+  /// **'Payer Registration'**
+  String get payerRegistration;
+
   /// No description provided for @createAccount.
   ///
   /// In en, this message translates to:
@@ -601,6 +607,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Create your account to join Dr. AI'**
   String get createAccountDoctorDescription;
+
+  /// No description provided for @createAccountPayerDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Create an authorized reviewer account for transparent care and cost review'**
+  String get createAccountPayerDescription;
 
   /// No description provided for @createAccountPatientDescription.
   ///
@@ -721,6 +733,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Doctor'**
   String get doctor;
+
+  /// No description provided for @payer.
+  ///
+  /// In en, this message translates to:
+  /// **'Payer'**
+  String get payer;
+
+  /// No description provided for @organizationInformation.
+  ///
+  /// In en, this message translates to:
+  /// **'Organization information'**
+  String get organizationInformation;
+
+  /// No description provided for @organizationName.
+  ///
+  /// In en, this message translates to:
+  /// **'Organization name'**
+  String get organizationName;
 
   /// No description provided for @firstName.
   ///
@@ -4421,6 +4451,234 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This placeholder keeps AI access consistent for doctors and patients while safety work is completed.'**
   String get aiPlaceholderNotice;
+
+  /// No description provided for @aiChatSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Practical health guidance grounded in reviewed sources.'**
+  String get aiChatSubtitle;
+
+  /// No description provided for @aiChatSafetyNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Dr. AI is an AI assistant and can make mistakes. Verify important details with authoritative sources or a doctor. It cannot confirm a diagnosis, replace emergency care, or change medication.'**
+  String get aiChatSafetyNotice;
+
+  /// No description provided for @aiChatWelcome.
+  ///
+  /// In en, this message translates to:
+  /// **'What can I help you work through?'**
+  String get aiChatWelcome;
+
+  /// No description provided for @aiChatInputHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask about symptoms, tests, medicines, or your care'**
+  String get aiChatInputHint;
+
+  /// No description provided for @aiChatSendFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The secure chat request could not be completed. Try again.'**
+  String get aiChatSendFailed;
+
+  /// No description provided for @aiChatHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'Conversation history'**
+  String get aiChatHistory;
+
+  /// No description provided for @aiNewChat.
+  ///
+  /// In en, this message translates to:
+  /// **'New chat'**
+  String get aiNewChat;
+
+  /// No description provided for @aiPreviousChats.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous chats'**
+  String get aiPreviousChats;
+
+  /// No description provided for @aiNoPreviousChats.
+  ///
+  /// In en, this message translates to:
+  /// **'Your health conversations will appear here after you send the first question.'**
+  String get aiNoPreviousChats;
+
+  /// No description provided for @aiHistoryRetentionNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Each conversation is kept for at least 60 days and is visible only in your account.'**
+  String get aiHistoryRetentionNotice;
+
+  /// No description provided for @aiFollowUpQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'One detail would help'**
+  String get aiFollowUpQuestion;
+
+  /// No description provided for @aiReviewMeasurementGuidance.
+  ///
+  /// In en, this message translates to:
+  /// **'Measure correctly'**
+  String get aiReviewMeasurementGuidance;
+
+  /// No description provided for @aiTrackMeasurements.
+  ///
+  /// In en, this message translates to:
+  /// **'Track readings'**
+  String get aiTrackMeasurements;
+
+  /// No description provided for @aiPrepareDoctorQuestions.
+  ///
+  /// In en, this message translates to:
+  /// **'Prepare doctor questions'**
+  String get aiPrepareDoctorQuestions;
+
+  /// No description provided for @aiPrepareSymptomSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Organize my symptoms'**
+  String get aiPrepareSymptomSummary;
+
+  /// No description provided for @aiPrepareSymptomSummaryPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Help me organize my symptoms, timeline, and key questions for a clinician.'**
+  String get aiPrepareSymptomSummaryPrompt;
+
+  /// No description provided for @aiMeasurementGuidancePrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'How can I measure this correctly?'**
+  String get aiMeasurementGuidancePrompt;
+
+  /// No description provided for @aiTrackMeasurementsPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Help me make a simple record-tracking plan.'**
+  String get aiTrackMeasurementsPrompt;
+
+  /// No description provided for @aiSuggestionEducation.
+  ///
+  /// In en, this message translates to:
+  /// **'What should I understand about recording blood pressure?'**
+  String get aiSuggestionEducation;
+
+  /// No description provided for @aiSuggestionSymptoms.
+  ///
+  /// In en, this message translates to:
+  /// **'I feel dizzy. What could explain it, and when should I seek care?'**
+  String get aiSuggestionSymptoms;
+
+  /// No description provided for @aiSuggestionMedication.
+  ///
+  /// In en, this message translates to:
+  /// **'What questions should I ask my doctor about a prescribed medicine?'**
+  String get aiSuggestionMedication;
+
+  /// No description provided for @aiSuggestionDoctor.
+  ///
+  /// In en, this message translates to:
+  /// **'Help me prepare questions for my next doctor visit.'**
+  String get aiSuggestionDoctor;
+
+  /// No description provided for @aiSources.
+  ///
+  /// In en, this message translates to:
+  /// **'Reviewed sources'**
+  String get aiSources;
+
+  /// No description provided for @aiImportantUncertainty.
+  ///
+  /// In en, this message translates to:
+  /// **'Important uncertainty'**
+  String get aiImportantUncertainty;
+
+  /// No description provided for @aiContextUsed.
+  ///
+  /// In en, this message translates to:
+  /// **'Personalized with your records'**
+  String get aiContextUsed;
+
+  /// No description provided for @aiContextProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile basics'**
+  String get aiContextProfile;
+
+  /// No description provided for @aiContextMeasurements.
+  ///
+  /// In en, this message translates to:
+  /// **'Health measurements'**
+  String get aiContextMeasurements;
+
+  /// No description provided for @aiContextConditions.
+  ///
+  /// In en, this message translates to:
+  /// **'Recorded conditions'**
+  String get aiContextConditions;
+
+  /// No description provided for @aiContextMedications.
+  ///
+  /// In en, this message translates to:
+  /// **'Medication information'**
+  String get aiContextMedications;
+
+  /// No description provided for @aiContextClinicalEvents.
+  ///
+  /// In en, this message translates to:
+  /// **'Current care episode'**
+  String get aiContextClinicalEvents;
+
+  /// No description provided for @aiContextRecoveryPlan.
+  ///
+  /// In en, this message translates to:
+  /// **'Recovery plan'**
+  String get aiContextRecoveryPlan;
+
+  /// No description provided for @aiContextFromProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Your profile records'**
+  String get aiContextFromProfile;
+
+  /// No description provided for @aiContextPatientReported.
+  ///
+  /// In en, this message translates to:
+  /// **'Your reported history'**
+  String get aiContextPatientReported;
+
+  /// No description provided for @aiContextDoctorRecord.
+  ///
+  /// In en, this message translates to:
+  /// **'Doctor\'s record'**
+  String get aiContextDoctorRecord;
+
+  /// No description provided for @aiContextCurrentPrescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Current prescription'**
+  String get aiContextCurrentPrescription;
+
+  /// No description provided for @aiContextMedicationSchedule.
+  ///
+  /// In en, this message translates to:
+  /// **'Current medication schedule'**
+  String get aiContextMedicationSchedule;
+
+  /// No description provided for @aiContextCurrentRecoveryPlan.
+  ///
+  /// In en, this message translates to:
+  /// **'Current recovery plan'**
+  String get aiContextCurrentRecoveryPlan;
+
+  /// No description provided for @aiContactDoctor.
+  ///
+  /// In en, this message translates to:
+  /// **'Contact my doctor'**
+  String get aiContactDoctor;
 
   /// No description provided for @privateCareConversation.
   ///

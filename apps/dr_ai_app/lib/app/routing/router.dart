@@ -2,6 +2,7 @@ import 'package:dr_ai_app/app/routing/app_role.dart';
 import 'package:dr_ai_app/features/auth/presentation/legal_placeholder_screen.dart';
 import 'package:dr_ai_app/features/auth/presentation/login_screen.dart';
 import 'package:dr_ai_app/features/beta/presentation/beta_support_screen.dart';
+import 'package:dr_ai_app/features/care_cost/presentation/care_cost_screens.dart';
 import 'package:dr_ai_app/features/chat/presentation/chat_screens.dart';
 import 'package:dr_ai_app/features/doctor/presentation/doctor_contacts_screen.dart';
 import 'package:dr_ai_app/features/doctor/presentation/doctor_dashboard_screen.dart';
@@ -19,6 +20,7 @@ GoRouter createRouter(AppRole? role, {String? initialLocation}) {
   final homePath = switch (role) {
     AppRole.doctor => '/doctor',
     AppRole.patient => '/patient',
+    AppRole.payer => '/payer',
     AppRole.unsupported => '/unauthorized',
     null => '/login',
   };
@@ -51,6 +53,9 @@ GoRouter createRouter(AppRole? role, {String? initialLocation}) {
         return '/unauthorized';
       }
       if (path.startsWith('/patient') && role != AppRole.patient) {
+        return '/unauthorized';
+      }
+      if (path.startsWith('/payer') && role != AppRole.payer) {
         return '/unauthorized';
       }
       return null;
@@ -131,6 +136,11 @@ GoRouter createRouter(AppRole? role, {String? initialLocation}) {
             pageBuilder: (context, state) =>
                 _drAiPage(state, const DoctorAccountScreen()),
           ),
+          GoRoute(
+            path: 'payer-requests',
+            pageBuilder: (context, state) =>
+                _drAiPage(state, const DoctorPayerRequestsScreen()),
+          ),
         ],
       ),
       GoRoute(
@@ -155,13 +165,8 @@ GoRouter createRouter(AppRole? role, {String? initialLocation}) {
               ),
               GoRoute(
                 path: 'ai',
-                pageBuilder: (context, state) => _drAiPage(
-                  state,
-                  const ServiceChatScreen(
-                    role: AppRole.patient,
-                    isSystem: false,
-                  ),
-                ),
+                pageBuilder: (context, state) =>
+                    _drAiPage(state, const PatientAiChatScreen()),
               ),
               GoRoute(
                 path: 'private',
@@ -188,9 +193,31 @@ GoRouter createRouter(AppRole? role, {String? initialLocation}) {
                 _drAiPage(state, const PatientRecoveryPlanScreen()),
           ),
           GoRoute(
+            path: 'care-costs',
+            pageBuilder: (context, state) =>
+                _drAiPage(state, const PatientCareCostScreen()),
+          ),
+          GoRoute(
             path: 'account',
             pageBuilder: (context, state) =>
                 _drAiPage(state, const PatientAccountScreen()),
+          ),
+        ],
+      ),
+      GoRoute(
+        path: '/payer',
+        pageBuilder: (context, state) =>
+            _drAiPage(state, const PayerDashboardScreen()),
+        routes: <RouteBase>[
+          GoRoute(
+            path: 'requests',
+            pageBuilder: (context, state) =>
+                _drAiPage(state, const PayerRequestsScreen()),
+          ),
+          GoRoute(
+            path: 'account',
+            pageBuilder: (context, state) =>
+                _drAiPage(state, const PayerAccountScreen()),
           ),
         ],
       ),

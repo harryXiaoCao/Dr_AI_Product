@@ -123,6 +123,21 @@ def seed_database(db: Session, settings: Settings) -> SeedResult:
     users_created += int(created)
     db.flush()
 
+    # A bounded synthetic record exercises the same personalized-context path
+    # that later accepts patient-entered production records. One reading is an
+    # observation only and is deliberately not paired with a diagnosis.
+    if patient.patient_profile.systolic_blood_pressure is None:
+        patient.patient_profile.birth_year = 1986
+        patient.patient_profile.sex = "female"
+        patient.patient_profile.height_cm = 165.0
+        patient.patient_profile.weight_kg = 64.0
+        patient.patient_profile.systolic_blood_pressure = 138
+        patient.patient_profile.diastolic_blood_pressure = 86
+        patient.patient_profile.context_recorded_at = datetime(2026, 7, 16, 9, 0, tzinfo=UTC)
+        patient.patient_profile.measurements_recorded_at = (
+            patient.patient_profile.context_recorded_at
+        )
+
     active = db.scalar(
         select(CareRelationship).where(
             CareRelationship.doctor_id == doctor.doctor_profile.id,

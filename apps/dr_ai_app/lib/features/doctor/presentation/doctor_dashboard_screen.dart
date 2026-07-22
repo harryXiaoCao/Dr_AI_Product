@@ -14,6 +14,7 @@ import 'package:dr_ai_app/shared/widgets/responsive_app_shell.dart';
 import 'package:dr_ai_app/shared/widgets/sign_out_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 final doctorProfileProvider = FutureProvider<DoctorProfile>((ref) {
   return ref.watch(repositoryProvider).loadOwnDoctorProfile();
@@ -1445,7 +1446,12 @@ class _DoctorMainColumn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final quickAccess = List<String>.from(data['quick_access'] as List);
+    final quickAccess = <String>[
+      ...List<String>.from(data['quick_access'] as List),
+      Localizations.localeOf(context).languageCode == 'zh'
+          ? '支付申请'
+          : 'Payer requests',
+    ];
     return Column(
       children: <Widget>[
         _DoctorPanel(
@@ -1470,40 +1476,48 @@ class _DoctorMainColumn extends StatelessWidget {
                 Icons.assignment_outlined,
                 Icons.monitor_heart_outlined,
                 Icons.medical_services_outlined,
+                Icons.outbox_outlined,
               ];
-              return Container(
-                decoration: BoxDecoration(
-                  color: index.isEven
-                      ? DrAiColors.m3SurfaceContainerHigh
-                      : DrAiColors.patientAccent,
-                  borderRadius: BorderRadius.circular(DrAiRadii.md),
-                  border: Border.all(color: DrAiColors.mutedInk),
-                ),
-                child: Stack(
-                  children: <Widget>[
-                    Positioned(
-                      right: 12,
-                      bottom: 8,
-                      child: Icon(
-                        icons[index],
-                        size: 44,
-                        color: DrAiColors.brand.withValues(alpha: 0.22),
+              final opensPayerRequests = index == quickAccess.length - 1;
+              return InkWell(
+                borderRadius: BorderRadius.circular(DrAiRadii.md),
+                onTap: opensPayerRequests
+                    ? () => context.go('/doctor/payer-requests')
+                    : null,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: index.isEven
+                        ? DrAiColors.m3SurfaceContainerHigh
+                        : DrAiColors.patientAccent,
+                    borderRadius: BorderRadius.circular(DrAiRadii.md),
+                    border: Border.all(color: DrAiColors.mutedInk),
+                  ),
+                  child: Stack(
+                    children: <Widget>[
+                      Positioned(
+                        right: 12,
+                        bottom: 8,
+                        child: Icon(
+                          icons[index],
+                          size: 44,
+                          color: DrAiColors.brand.withValues(alpha: 0.22),
+                        ),
                       ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.all(DrAiSpacing.md),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          context.l10n.stableValue(quickAccess[index]),
-                          style: const TextStyle(
-                            color: DrAiColors.brandDark,
-                            fontWeight: FontWeight.w600,
+                      Padding(
+                        padding: const EdgeInsets.all(DrAiSpacing.md),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            context.l10n.stableValue(quickAccess[index]),
+                            style: const TextStyle(
+                              color: DrAiColors.brandDark,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               );
             },

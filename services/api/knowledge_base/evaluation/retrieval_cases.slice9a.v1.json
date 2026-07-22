@@ -1,0 +1,120 @@
+{
+  "schema_version": "1.0",
+  "suite_id": "dr-ai-slice9a-retrieval-v1",
+  "frozen_at": "2026-07-18T00:00:00Z",
+  "answer_evaluation_material_used": false,
+  "review": {
+    "status": "approved",
+    "reviewer_id": "Hou Jin",
+    "reviewer_role": "Doctor, Beijing Hospital",
+    "reviewed_at": "2026-07-18",
+    "findings": "All frozen Slice 9A cases, relevance labels, expected decisions, forbidden-source labels, and language/jurisdiction expectations were clinically reviewed. No corrections were required."
+  },
+  "thresholds": {
+    "k": 6,
+    "minimum_recall": 0.85,
+    "minimum_ndcg": 0.80,
+    "minimum_mrr": 0.85,
+    "minimum_no_evidence_precision": 0.95,
+    "maximum_latency_p95_ms": 1200
+  },
+  "cases": [
+    {
+      "case_id": "RET-9A-ZH-COLLOQUIAL-001",
+      "category": "colloquial_chinese",
+      "query": "血压老是高一点要怎么记？",
+      "relevant_source_grades": {
+        "KBS-MEDLINEPLUS-MEASURING-BLOOD-PRESSURE": 3,
+        "KBS-MYHEALTHFINDER-BLOOD-PRESSURE": 2
+      },
+      "expected_decision": "sufficient",
+      "forbidden_source_ids": [],
+      "minimum_distinct_sources": 2,
+      "preferred_jurisdiction": "CN",
+      "allowed_languages": ["zh-Hans"]
+    },
+    {
+      "case_id": "RET-9A-BILINGUAL-001",
+      "category": "bilingual_terminology",
+      "query": "HbA1c 糖化血红蛋白检查是什么意思？",
+      "relevant_source_grades": {
+        "KBS-MEDLINEPLUS-HEMOGLOBIN-A1C-HBA1C-TEST": 3,
+        "KBS-MEDLINEPLUS-DIABETES-TYPE-2": 1
+      },
+      "expected_decision": "sufficient",
+      "forbidden_source_ids": [],
+      "minimum_distinct_sources": 1,
+      "preferred_jurisdiction": null,
+      "allowed_languages": ["zh-Hans"]
+    },
+    {
+      "case_id": "RET-9A-FOLLOWUP-001",
+      "category": "short_follow_up",
+      "query": "我在记录血压，那我应该记录多久？",
+      "relevant_source_grades": {
+        "KBS-MEDLINEPLUS-MEASURING-BLOOD-PRESSURE": 3,
+        "KBS-MYHEALTHFINDER-BLOOD-PRESSURE": 2
+      },
+      "expected_decision": "sufficient",
+      "forbidden_source_ids": [],
+      "minimum_distinct_sources": 2,
+      "preferred_jurisdiction": "CN",
+      "allowed_languages": ["zh-Hans"]
+    },
+    {
+      "case_id": "RET-9A-SYMPTOM-001",
+      "category": "symptom_orientation",
+      "query": "最近心慌像漏跳一样，可能和什么有关？",
+      "relevant_source_grades": {},
+      "expected_decision": "no_eligible_evidence",
+      "forbidden_source_ids": [],
+      "minimum_distinct_sources": 0,
+      "preferred_jurisdiction": "CN",
+      "allowed_languages": ["zh-Hans"]
+    },
+    {
+      "case_id": "RET-9A-MEDICATION-001",
+      "category": "medication_education",
+      "query": "降压药通常是怎样帮助控制血压的？",
+      "relevant_source_grades": {},
+      "expected_decision": "no_eligible_evidence",
+      "forbidden_source_ids": ["KBS-DOCTOR-ONLY-PRESCRIBER-CONTENT"],
+      "minimum_distinct_sources": 0,
+      "preferred_jurisdiction": "CN",
+      "allowed_languages": ["zh-Hans"]
+    },
+    {
+      "case_id": "RET-9A-STALE-001",
+      "category": "stale_evidence",
+      "query": "已撤回的旧版筛查时间表是什么？",
+      "relevant_source_grades": {},
+      "expected_decision": "stale_or_superseded_only",
+      "forbidden_source_ids": ["KBS-WITHDRAWN-SCREENING-SCHEDULE"],
+      "minimum_distinct_sources": 0,
+      "preferred_jurisdiction": "CN",
+      "allowed_languages": ["zh-Hans"]
+    },
+    {
+      "case_id": "RET-9A-CONFLICT-001",
+      "category": "conflict",
+      "query": "不同地区筛查建议不一致时应该看哪一个？",
+      "relevant_source_grades": {},
+      "expected_decision": "conflicting",
+      "forbidden_source_ids": [],
+      "minimum_distinct_sources": 0,
+      "preferred_jurisdiction": "CN",
+      "allowed_languages": ["zh-Hans"]
+    },
+    {
+      "case_id": "RET-9A-NO-EVIDENCE-001",
+      "category": "no_evidence",
+      "query": "一种不存在的药物 Zeta-999 能治疗所有癌症吗？",
+      "relevant_source_grades": {},
+      "expected_decision": "no_eligible_evidence",
+      "forbidden_source_ids": [],
+      "minimum_distinct_sources": 0,
+      "preferred_jurisdiction": null,
+      "allowed_languages": ["zh-Hans"]
+    }
+  ]
+}

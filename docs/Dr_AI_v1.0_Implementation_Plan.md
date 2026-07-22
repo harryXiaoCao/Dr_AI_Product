@@ -1,11 +1,11 @@
 ---
 title: "Dr. AI v1.0 Implementation Plan"
-status: "Phase 2 and the Phase 2.5 product-quality gate are complete; Phase 3 Slice 4 retrieval baseline is active"
+status: "2026-07-23 first three-party care-and-cost workflow implemented locally; expanded governed review platform remains in progress"
 created: "2026-07-02"
-last_updated: "2026-07-15T23:48:00+08:00"
+last_updated: "2026-07-23"
 owner: "Harry Cao"
 delivery_window: "Production v1.0 phase after completed beta foundation; implementation schedule to be estimated after Phase 1 planning starts"
-release_target: "Production/commercial v1.0 after beta foundation; invited beta remains historical milestone"
+release_target: "Production-ready China-first multi-scenario platform; stakeholder showcases use synthetic/de-identified data until live-use gates close"
 ---
 
 # Dr. AI v1.0 Implementation Plan
@@ -14,7 +14,11 @@ This file is the durable source of truth for implementing Dr. AI v1.0. Future ch
 
 ## Source Links
 
-- Product requirements: `/Users/Harry-Cao/Downloads/Dr_AI_Product_Requirements_Document_v1.0.docx`
+- Current product requirements:
+  `Dr_AI_Product_Requirements_Document_v1.0.md`
+- Historical source requirements:
+  `/Users/Harry-Cao/Downloads/Dr_AI_Product_Requirements_Document_v1.0.docx`
+- Implemented and planned data boundary: `docs/Dr_AI_v1.0_ERD.md`
 - Research paper: `/Users/Harry-Cao/Desktop/留学规划/科研/Prediction_of_Lung_Cancer_Metastasis_Risk_Based_on_GCAVE-GAN_Data_Augmentation_and_Multimodal_Feature_Fusion.pdf`
 - Figma prototype: https://www.figma.com/proto/8EJikM9M97nVy3R5JLeC0O/Figma-basics?node-id=618-1051&t=gWNIJAQQiMLGLeS6-1
 
@@ -38,13 +42,108 @@ This file is the durable source of truth for implementing Dr. AI v1.0. Future ch
 | 2026-07-11 | Complete connected doctor-patient messaging before Phase 3. | Both roles need one mutual contact model and a reliable human communication path before AI chat expands; system chat stays read-only and group chat stays explicitly empty. |
 | 2026-07-12 | Keep Phase 3 model evaluation isolated from the production chatbot. | The frozen synthetic/public suite may be collected through a thin research runner before production chatbot integration; it must not import application code, expose sealed rubrics/answers, use real patient data, or become a production inference path. |
 | 2026-07-13 | Use one governed medical knowledge platform for bounded patient RAG and doctor evidence search. | The patient chatbot needs a stricter patient-approved retrieval view, while doctors need a dedicated Resources workspace over the broader doctor-approved corpus; both require shared provenance, rights, versioning, review, and rollback controls. |
-| 2026-07-13 | Treat the Phase 3 chatbot as a constrained agentic workflow, not an autonomous medical agent. | DeepSeek-v4-flash is the initial backbone, but deterministic safety, allowlisted tools, evidence sufficiency, citation validation, output policy, and provider-neutral fallbacks remain server-controlled. |
+| 2026-07-13 | Treat the Phase 3 chatbot as a bounded server-controlled workflow, not an autonomous medical agent. | DeepSeek-v4-flash is the initial backbone, but deterministic safety, context selection, retrieval, evidence sufficiency, semantic claim validation, product actions, and provider-neutral fallbacks remain server-controlled. |
+| 2026-07-16 | Admit the manually reviewed 55-entry Chinese corpus to a local patient retrieval release. | The product owner confirmed every entry and document is patient-use approved. The system preserves unspecified reviewer attribution, independently versions the reviewed translations, retains U.S. jurisdiction metadata, and still requires all production and live-provider gates. |
+| 2026-07-16 | Replace the optional Slice 6 retrieval-adapter experiment with governed online-source expansion and freshness. | Expanding reviewed China-relevant evidence is more valuable than custom reranker training at the current baseline. Online content must enter through allowlisted scheduled ingestion, quarantine, rights and medical review, evaluation, and immutable activation; patient answers must never search the unrestricted public web directly. |
+| 2026-07-17 | Make personalized context data-origin neutral and question-bounded. | Synthetic fixtures should exercise the same patient tables and model-input contract that future patient-entered records use. The server selects only relevant fields with provenance and dates; it never sends the whole record or interprets one measurement as a diagnosis. |
+| 2026-07-18 | Use adaptive multi-call RAG rather than calling DeepSeek repeatedly for every input. | Ordinary questions retain retrieval then generation. Only ambiguous, colloquial, short-reference, or weak-retrieval cases may use one schema-constrained query-planner call, followed by server validation and fused original-plus-rewrite retrieval; high-risk claim verification may use an optional bounded pass but never replaces deterministic safety or independent review. |
+| 2026-07-18 | Insert refinement Slices 9A-9E before the final Slice 10 commercialization gate. | Retrieval rights/ranking, adaptive rescue, semantic claim support, real-context privacy/chat lifecycle, and operational evidence are implementation work, while Slice 10 remains final verification and the production/commercialization decision rather than a catch-all build phase. |
+| 2026-07-18 | Accept Hong Kong for the current embedding/reranking stage and defer the final production-region decision. | The API and PostgreSQL already operate in Tencent Hong Kong. Moving only embedding/reranking to Mainland China would add cross-border traffic, latency, failure modes, privacy review, and a second operational environment. Current development/staging may stay coherent in Hong Kong; patient-facing production still requires explicit region, residency, network-performance, provider-rights, privacy/legal, and no-training/no-retention evidence. Mainland hosting becomes mandatory only if the approved China-market/data-governance decision requires it. Slice 9B development may begin while the external Slice 9A production-evidence gate remains open. |
+| 2026-07-21 | Reopen Slice 9A around the 100-question symptom-first rural-China contract and pause new Slice 9B optimization. | The old eight-case 9A suite expected the only symptom-orientation case to have no evidence and the artifact named 9B `v2-final` failed improvement and latency. The new boundary uses a controlled clinical presentation, combination/negation-aware pre-retrieval emergency routing, candidate 120 scene-safety copy, separate variants, and release-bound case-by-case coverage evidence. The candidate contract and copy require named review; retrieval hits are not clinical support. |
+| 2026-07-22 | Pivot v1.0 to a production-ready, China-first, three-party care-and-cost transparency platform, using synthetic/de-identified stakeholder showcases as the first validation and partnership path. | Public clinical deployment and app-store distribution require licenses, institutional partners, validated models, governed data, and regulatory readiness that are not currently available, but those deployment constraints do not require a demo-only architecture. The existing patient/doctor, Clinical Event, governed-knowledge, safety, and audit foundation remains useful. The new v1.0 adds organization-scoped payer review, itemized care/claim transparency, versioned expected-care ranges, explainable variance review, clinician rationale, and human resolution across configurable clinical scenarios. |
+| 2026-07-22 | Keep diagnosis, care, reimbursement, and suspected-abuse decisions human-owned. | An AI estimate is not the correct treatment or price, and a difference is not proof of waste, abuse, fraud, or poor care. Dr. AI may draft a sourced expected-care envelope and explain deterministic comparisons, but it may not automatically diagnose, deny or reduce payment, delay care, label abuse, rank clinicians, or take punitive action. |
+| 2026-07-22 | Make China the first jurisdiction adapter and defer U.S. support. | China and the United States use materially different coding, pricing, coverage, settlement, and review workflows. v1.0 will support a clinician-reviewed matrix of China-first scenario families through configurable releases; the first scenario is an implementation slice, not the product boundary. Any future U.S. adapter must have separate code systems, contracted-rate concepts, rules, rights, and validation. |
 
-## Current Re-scope: Production v1.0
+## 2026-07-22 Product-Direction Amendment
 
-The 2026-07-02 approved one-month plan is now a preserved historical beta plan, not the full definition of Dr. AI v1.0 completion. The completed beta/demo MVP foundation includes authentication/session handling, seeded dashboards, the doctor-led patient care loop, simulated assessment, recovery plan, patient Today tasks, educational chat, consultation request/status, Tencent staging web/API deployment, Android debug access, beta support surfaces, and mark-only logo assets.
+This section supersedes the earlier diagnosis/chatbot-centered definition of
+**production/commercial v1.0** and its 2026-08-12 patient-chatbot
+commercialization deadline. It does **not** replace production readiness with a
+single demo. The current target is a production-quality, multi-scenario
+care-and-cost transparency platform; real clinical/payer operation and public
+distribution remain gated until the necessary external approvals and evidence
+exist. Historical entries remain below as implementation evidence and are not
+permission to discard completed work.
 
-Production/commercial v1.0 is still in progress. v1.0 is complete only when the visible product surfaces are functional production workflows backed by real state, not static cards, demo-only summaries, or partial flows. Existing PRD functionality belongs inside v1.0 production development unless this document explicitly marks it as safety/regulatory gated, technical stretch-gated, or not v1.0.
+### Current v1.0 outcome
+
+Deliver one coherent, bilingual, production-ready China-first platform that:
+
+1. preserves the existing patient and doctor care foundation;
+2. adds organization-scoped payer organizations and authorized payer-reviewer
+   memberships, exercised first with synthetic/de-identified data;
+3. links any supported Clinical Event and encounter to planned care, delivered
+   services, and itemized claim/cost data through configurable scenario and
+   jurisdiction releases rather than disease-specific code;
+4. produces a versioned **expected-care envelope** with plausible care
+   categories, low/high cost estimates, jurisdiction, effective date,
+   references, assumptions, confidence, and missing information;
+5. compares planned, delivered, billed, allowed, paid, and
+   patient-responsibility amounts through deterministic rules and arithmetic;
+6. creates explainable `review_recommended` alerts rather than abuse or fraud
+   determinations;
+7. lets the clinician correct facts and record a versioned clinical rationale;
+8. lets an authorized human payer reviewer request clarification, accept an
+   explanation, escalate, or close the review with a recorded reason; and
+9. gives the patient a plain-language view of planned, actual, covered, and
+   out-of-pocket amounts without exposing reviewer-only notes or confidential
+   rate information.
+
+### Build, validation, and live-deployment boundary
+
+- Use synthetic or appropriately de-identified data until real-data,
+  institutional, privacy, security, clinical, legal, and regulatory gates close.
+- Do not submit a real claim, verify real eligibility, adjudicate coverage,
+  transfer funds, or connect to a live hospital/payer system.
+- Do not present a simulated assessment as a diagnosis or use it to establish
+  medical necessity.
+- Do not present one number as the correct cost. Every estimate is a range with
+  source, version, date, jurisdiction, assumptions, and uncertainty.
+- Do not claim that an alert proves waste, abuse, fraud, over-treatment,
+  incorrect billing, or clinician wrongdoing.
+- Do not claim real savings, reduced abuse, clinical effectiveness, regulatory
+  approval, or authorization for live use from synthetic cases or stakeholder
+  showcases. Product/engineering production readiness must be reported
+  separately from clinical, reimbursement, and regulatory authorization.
+- Preserve deterministic safety, authorization, evidence, arithmetic, and
+  workflow-state control. Generative AI may draft structured candidates and
+  explanations only inside those controls.
+
+### Reuse and change boundary
+
+Preserve authentication, RBAC, patient/doctor profiles, care relationships,
+Clinical Events, prescriptions, medications, imaging, recovery plans,
+consultations, chat, governed knowledge, provenance, model-provider adapters,
+structured output validation, metadata-only telemetry, and audit events.
+
+Preserve the implemented payer organizations/memberships, event-level
+care-cost items, submitted request snapshots, and human payer reviews. Add
+coverage, encounters, planned-care items, formal claims and claim lines,
+configurable scenario definitions,
+pricing-reference and utilization-rule releases, expected-care envelopes and
+items, variance alerts, clinician rationales, payer reviews, and immutable
+review-state transitions. Use synthetic/de-identified rows until live-data
+gates close, but do not design synthetic-only contracts.
+Legacy invoices/payment statuses may remain but are not the claim-review source
+of truth.
+
+## Preserved 2026-07-07 Re-scope: Production v1.0
+
+The section below records the production re-scope adopted on 2026-07-07. It is
+preserved because its completed foundations and quality requirements remain
+valuable, but its public production/commercial release target is superseded by
+the 2026-07-22 Product-Direction Amendment above.
+
+The completed beta/demo MVP foundation includes authentication/session
+handling, seeded dashboards, the doctor-led patient care loop, simulated
+assessment, recovery plan, patient Today tasks, educational chat, consultation
+request/status, Tencent staging web/API deployment, Android debug access, beta
+support surfaces, and mark-only logo assets.
+
+The old diagnosis/chatbot-centered production/commercial checklist remains
+historical backlog. Current v1.0 completion follows the re-scoped production-
+readiness definition of done later in this document. Any old item outside the
+three-party core is preserved but does not block that core.
 
 Current planning rule: every visible doctor, patient, specialist, and admin dashboard card, button, route, and module must either be implemented to the agreed v1.0 level or intentionally removed/disabled in production-facing UI. Placeholder cards must not remain in a production release.
 
@@ -89,14 +188,17 @@ milestone.
 - Imaging list, detail, and review workflow.
 - DICOM viewing and segmentation remain optional later scope unless explicitly needed for the initial commercial release.
 
-#### E. AI diagnostic workflow
+#### E. Preserved AI assessment workflow
 
-- Complete product workflow for AI diagnostic intake, execution, review, and history.
+- Preserve the workflow for AI assessment intake, execution, review, and
+  history as a simulated/research adapter.
 - If the real lung-cancer model is not runnable and validated, use a clearly labeled non-clinical simulated adapter while keeping the workflow production-quality.
 - Preserve the response contract for a future validated model adapter.
 - Include input collection, CT/image reference, clinical variables, optional genomic fields, run status, result history, limitations, audit trail, and doctor review.
 - Do not make clinical claims until model readiness and regulatory gates are cleared.
 - Treat real GCAVE-GAN/AMCM inference as a model-readiness/regulatory gate, not as permission to omit the UI and product workflow.
+- Do not use an assessment result as an authoritative diagnosis, medical-
+  necessity determination, expected price, or reimbursement decision.
 
 #### F. AI recovery plan workflow
 
@@ -140,12 +242,21 @@ milestone.
 - Roles and flows for doctor, specialist, and admin.
 - Availability, booking status, resource state, and conflict handling.
 
-#### K. Billing and analytics
+#### K. Care-and-cost transparency, payer review, and analytics
 
-- Billing remains in v1.0 commercial-readiness scope even if full payments/insurance cannot launch immediately.
-- The v1.0 billing subset must explicitly include invoices, clinic revenue summaries, payment status, and insurance fields if needed.
-- If payments are not launched in v1.0, document exactly which billing subset is included and which payment-account gate remains.
-- Analytics must include disease statistics, referrals, recovery progress, revenue if billing is implemented, AI usage, and operational activity.
+- Make the new three-party review domain the v1.0 product's primary workflow
+  rather than treating insurance as optional invoice metadata.
+- Implement synthetic payer organization/membership and coverage scope.
+- Implement encounters, planned-care items, claims, immutable claim lines,
+  pricing/rule releases, expected-care envelopes, explainable variance alerts,
+  clinician rationale, human review, and patient-facing cost explanations.
+- Keep invoice, payment-status, and revenue-summary tables as preserved legacy
+  foundations; do not treat them as the claim-review source of truth.
+- Keep real claim submission, eligibility, authorization, adjudication,
+  payment, denial, appeal, and negotiated-rate integrations gated.
+- Analytics must separate flagged amount, reviewed amount, accepted
+  explanation, confirmed correction, and hypothetical savings. Never report a
+  synthetic flagged amount as real savings or prevented abuse.
 
 #### L. Administration
 
@@ -157,20 +268,23 @@ milestone.
 - Support, deletion, and feedback request queue.
 - Configuration for registration policy, roles, and clinic metadata.
 
-#### M. Commercial readiness
+#### M. Production and showcase readiness
 
 - Monitoring and alerting.
 - Crash/error tracking.
 - API 5xx, auth, chat, assessment, and upload monitoring.
 - Backup and restore rehearsal.
 - Production/staging separation.
-- Release signing for Android and iOS.
-- TestFlight and Play closed testing when account access exists.
-- Tester onboarding.
+- Reproducible local, controlled-staging, and future production deployment
+  paths, with production activation remaining externally gated.
+- Doctor, NGO, and prospective payer-reviewer walkthrough scripts.
 - Support, feedback, and deletion workflows.
 - Privacy/security documentation.
 - Deployment/recreation runbook.
 - No real patient data until privacy, consent, security, and legal requirements are satisfied.
+- No public store upload, real hospital/payer connection, or production claim
+  until a later product, partnership, legal, security, clinical, and regulatory
+  decision explicitly reopens those gates.
 
 ### Phase 0 Production Scope Decisions
 
@@ -281,7 +395,131 @@ Localization implementation decisions (2026-07-10):
 - Consultation & Activity: doctor notes, specialist review, and activity
   timeline.
 
-### Production v1.0 Milestone Tracker
+### Current v1.0 Production-Readiness Milestone Tracker
+
+- [x] Direction 0: freeze the high-level product boundary
+  - [x] Preserve all completed patient/doctor and Phase 3 work.
+  - [x] Add payer reviewer as the third primary party.
+  - [x] Choose China-first product scope and defer a separate U.S.
+    jurisdiction adapter.
+  - [x] Define expected-care output as a sourced range, not a correct price.
+  - [x] Keep clinical, reimbursement, and suspected-abuse decisions human-owned.
+  - [x] Prohibit automatic denial, care restriction, fraud labeling, clinician
+    ranking, and synthetic-impact claims.
+- [ ] Direction 1: freeze scenario coverage and reference boundaries
+  - [ ] Select the first China-first vertical slice, then define the additional
+    scenario families required for the v1.0 coverage matrix. The first slice
+    must not become a hardcoded product boundary.
+  - [ ] Obtain named clinical review of each supported scenario family's
+    plausible pathways, exceptions, and unsafe under-treatment failure modes.
+  - [ ] Define the patient, clinician, payer reviewer, and NGO observer views.
+  - [ ] Record the allowed code systems, fee/reference sources, geographic and
+    hospital-level scope, currency, effective dates, and rights.
+  - [ ] Freeze a representative synthetic/de-identified multi-scenario suite,
+    expected reviewer labels, and known justified-variance cases before tuning
+    alerts.
+- [ ] Direction 2: payer and cost-review data foundation
+  - [x] Add `payer_organizations` and organization-scoped
+    `payer_memberships`; do not collapse government regulator, public payer,
+    and commercial insurer into one unqualified role. The current registration
+    flow creates synthetic-only organizations and active memberships; live
+    organization verification remains open.
+  - [x] Add the first workflow slice: generic Clinical Event-linked
+    `care_cost_items`, submitted `payer_requests`, immutable
+    `payer_request_lines`, and membership-attributed `payer_reviews`.
+  - [ ] Add production-designed `coverage_enrollments` with jurisdiction and
+    effective dates; populate only synthetic/de-identified fixtures until
+    live-data gates close.
+  - [ ] Add versioned `care_scenario_definitions` and a coverage matrix that
+    bind scenario family, encounter type, population/applicability constraints,
+    jurisdiction, evidence/rule releases, review status, and activation state.
+  - [ ] Add `care_encounters` and `care_plan_items` linked to the existing
+    patient, doctor, clinic, and Clinical Event records.
+  - [ ] Add versioned `claims` and immutable `claim_lines` with explicit code
+    system, quantity/unit, currency, and billed/allowed/paid/patient amounts.
+  - [ ] Add immutable `pricing_reference_sets/items` and
+    `utilization_rule_sets/rules` with provenance, jurisdiction, version,
+    effective dates, review status, and activation/rollback.
+  - [ ] Add `expected_care_envelopes/items`, `variance_alerts`,
+    `clinician_rationales`, `payer_reviews`, and
+    `review_state_transitions`.
+  - [x] Add the first-slice Alembic migration, schemas, synthetic fixtures,
+    fail-closed patient/doctor/payer RBAC, neutral cross-patient denials, and
+    metadata-only audit tests. Broader multi-organization isolation evidence
+    remains part of Direction 6.
+  - [x] Reconcile the API contract for the implemented first slice; keep
+    speculative coverage, claim, pricing, rule, envelope, and appeal endpoints
+    out of the contract until their authorization and state models are fixed.
+- [ ] Direction 3: deterministic review engine
+  - [x] Implement integer-minor-unit arithmetic and request line-to-total
+    reconciliation without floating-point money for the first workflow slice.
+    The future reference/rule comparison engine remains open.
+  - [ ] Implement deterministic duplicate, unusual quantity/duration,
+    price-range, service-mix, and missing-documentation comparisons.
+  - [ ] Bind every result to the exact claim, reference/rule release, input
+    checksum, jurisdiction, and effective date.
+  - [ ] Emit `review_recommended` plus reason codes and compared values; never
+    emit `abuse_detected` or a punitive action.
+  - [ ] Support clinically justified exceptions, missing-information status,
+    alert suppression with reason, and immutable re-evaluation history.
+  - [ ] Fail closed on mixed currencies, unavailable references, invalid
+    ranges, unsupported codes, stale releases, or unreconciled totals.
+- [ ] Direction 4: bounded AI envelope and explanation support
+  - [ ] Define a provider-neutral structured expected-care candidate schema.
+  - [ ] Retrieve only admitted clinical/utilization and pricing references for
+    the active jurisdiction and effective date.
+  - [ ] Require low/high range, assumptions, missing information, confidence,
+    and cited source/rule IDs; reject unsupported codes and amounts.
+  - [ ] Keep deterministic validators and arithmetic authoritative before any
+    AI output is stored or displayed.
+  - [ ] Require doctor review before a candidate envelope can be compared with
+    delivered services or shown as reviewed.
+  - [ ] Generate role-specific explanations from validated facts only; patient
+    copy must not expose reviewer-only notes, confidential rates, or suspicion
+    labels.
+  - [ ] Add fixed fallbacks for missing evidence, provider failure, schema
+    failure, and disagreement; no provider failure may block human care.
+- [ ] Direction 5: multi-scenario three-party user experience
+  - [x] Doctor first slice: Clinical Event-linked care-item CRUD with service
+    date, type, status, quantity, actual/requested/patient amounts, notes, and
+    payer-request submission. Sourced ranges and clinician exception rationale
+    remain open.
+  - [x] Payer reviewer first slice: organization-scoped dashboard, queue,
+    immutable itemized request detail, clarification, acceptance, escalation,
+    closure, and human resolution. Sources, deterministic alerts, and formal
+    appeals remain open.
+  - [x] Patient first slice: Clinical Event-grouped care-and-cost ledger with
+    actual, requested, and patient-responsibility totals and request readback.
+    Coverage determinations, expected ranges, and question prompts remain open.
+  - [ ] Show `AI-generated`, `doctor-reviewed`, `delivered`, `submitted`, and
+    `human-reviewed` as distinct states.
+  - [x] Add bilingual copy plus loading, empty, error, unauthorized, and
+    responsive small-screen states for the first slice. Stale-reference states
+    and evidence/range visualizations remain open.
+- [ ] Direction 6: production-readiness evaluation and stakeholder validation
+  - [ ] Pass 100% arithmetic reconciliation and authorization/isolation tests.
+  - [ ] Measure per-scenario and aggregate alert precision, recall, and
+    false-positive rate on the frozen expert-labeled synthetic/de-identified
+    suite; prevent a strong scenario from hiding failure in another.
+  - [ ] Prove the same APIs, schema, authorization, state machine, arithmetic,
+    and observability work across supported scenarios without condition-specific
+    application-code forks.
+  - [ ] Record clinician override/explanation rates and analyze them as
+    calibration evidence, not clinician misconduct.
+  - [ ] Run moderated task/comprehension reviews with doctors, NGO members, and
+    prospective payer stakeholders.
+  - [ ] Rehearse outage, rollback, stale-reference, conflicting-pathway,
+    exception, and under-treatment-risk cases.
+  - [ ] Produce reproducible stakeholder showcases plus a production-readiness
+    and limitations report. Clearly separate engineering/product readiness from
+    unavailable real-world savings, abuse-reduction, clinical, reimbursement,
+    and regulatory evidence.
+
+### Preserved Historical Production v1.0 Milestone Tracker
+
+The checklist below records completed foundation work and the former product
+backlog. Its unchecked items do not block the current three-party core unless they
+are explicitly referenced by the current tracker above.
 
 - [x] Phase 0: Plan reconciliation and placeholder audit
   - [x] Read the PRD, current implementation plan, API contract, and design-freeze docs.
@@ -605,27 +843,359 @@ Localization implementation decisions (2026-07-10):
     - [ ] Add evidence sufficiency, conflict, jurisdiction, audience,
       freshness, and stale/superseded gates before generation.
     - [ ] Validate retrieval independently before connecting the model.
-  - [ ] Implement the bounded patient-chat orchestrator.
-    - [ ] Enforce deterministic emergency/prohibited-request routing before
+  - [x] Implement the bounded patient-chat orchestrator.
+    - [x] Enforce deterministic emergency/prohibited-request routing before
       retrieval or generation.
-    - [ ] Allow only server-validated read-only knowledge, selected-care-
-      context, question-preparation, navigation, and fixed-escalation tools.
-    - [ ] Integrate `deepseek-v4-flash` through the provider-neutral adapter
+    - [x] Keep knowledge retrieval, selected-care context, question preparation,
+      navigation, and fixed escalation server-controlled. DeepSeek returns only
+      schema-constrained answer or rewrite candidates and cannot select or
+      execute product operations. Selected-care context is question-bounded
+      and provenance-preserving; deployment settings still control which
+      categories may be transmitted.
+    - [x] Integrate `deepseek-v4-flash` through the provider-neutral adapter
       with schema-constrained internal output.
-    - [ ] Require claim-to-passage support, citation rendering, policy
-      validation, and fixed no-evidence/provider/safety fallbacks.
-    - [ ] Keep conversation content session-only and telemetry metadata-only
-      until the frozen storage/privacy boundary is explicitly amended.
-  - [ ] Evaluate a small, replaceable multilingual medical query/reranking
-    adapter only after the non-tuned retrieval baseline is frozen.
-    - [ ] Use rights-cleared, clinician-reviewed Chinese/English query-passage
-      pairs and keep all sealed evaluation cases out of training.
-    - [ ] Do not assume hosted DeepSeek-v4-flash accepts a LoRA adapter; keep
-      the adapter as an independent service unless weight access and provider
-      terms explicitly permit backbone fine-tuning.
-  - [ ] Close retrieval, answer-quality, safety/security, usability,
-    privacy/legal/provider, load, observability, incident-response, rollback,
-    native-Chinese, and medical-review release gates.
+    - [x] Require passage-ID membership, citation rendering, policy validation,
+      and fixed no-evidence/provider/safety fallbacks for the local baseline.
+      Semantic claim-to-passage support beyond ID membership is explicitly
+      deferred to refinement Slice 9C.
+    - [x] Version the answer-depth policy to request 2-4 supported sections
+      (300-600 Chinese characters or 180-350 English words) without changing
+      the normative safety, retrieval, evidence, or validation boundaries.
+    - [x] Keep operational telemetry metadata-only while storing authenticated,
+      patient-owned readable AI threads under the explicitly amended Slice 8
+      history boundary, with bounded model context and at least 60-day
+      retention from the latest exchange.
+    - [x] Activate local patient-approved immutable release
+      `KBIR-8293AC8D815B9715D1B44F42` with 55 reviewed versions and 426
+      Simplified-Chinese passages.
+    - [x] Verify the existing ignored server-side DeepSeek credential and run
+      one live grounded-answer smoke test without exposing or committing it.
+  - [x] Implement governed online-source expansion and freshness outside the
+    patient answer path.
+    - [x] Pilot allowlisted National Health Commission and China CDC source
+      families with source-specific authority, content-class, rights, parser,
+      schedule, and kill-switch policies.
+    - [x] Add scheduled fetch, checksum/version change detection, redirect and
+      format controls, sanitization, prompt-injection scanning, quarantine, and
+      parser-drift monitoring.
+    - [x] Require medical, native-language, patient-readability,
+      jurisdiction/applicability, rights, security, retrieval-evaluation, and
+      explicit activation approvals before a candidate reaches the active
+      patient release.
+    - [x] Preserve immutable release history and keep the last approved release
+      active whenever discovery, fetching, parsing, review, or evaluation
+      fails.
+    - [x] Keep general public-web search, arbitrary URLs, and direct live-page
+      transmission to DeepSeek unavailable in patient chat.
+    - [x] Keep National Medical Products Administration, selected WHO
+      resources, and doctor-only literature discovery excluded until separate
+      governed source-family decisions are approved.
+    - [x] Defer custom retrieval/reranking training unless later evaluation
+      demonstrates a specific unresolved retrieval failure.
+  - [x] Implement the synthetic personalized-context foundation.
+    - [x] Select question-relevant profile, measurement, condition,
+      medication, Clinical Event, and recovery-plan fields server-side instead
+      of transmitting the full patient record.
+    - [x] Preserve stable context IDs, field provenance, source record, and
+      recorded dates through provider input and structured-output validation.
+    - [x] Treat one elevated blood-pressure measurement as a dated observation,
+      not an inferred diagnosis.
+    - [x] Show bilingual category, provenance, and date cards when an answer
+      actually uses patient context.
+    - [x] Exercise the path with a synthetic account while keeping the broker
+      compatible with future patient-entered records in the same tables.
+  - [ ] Complete the symptom-first 100-question Slice 9A reset.
+    - [x] Create candidate contract
+      `dr-ai-rural-symptom-first-canonical-v1` with all 100 canonical questions,
+      85 separate variants: 25 symptom-only, 31 disease-name-removed, eight
+      colloquial, ten abbreviated, and 11 multi-turn. Every variant has its own
+      urgency route, controlled presentation fields, source-policy profile,
+      relevant/forbidden source fields, required answer behavior, and
+      retrieval/model permissions. Structural minimums require every variant
+      kind plus multi-turn coverage of all ten domains and all five routes.
+    - [x] Keep the contract evaluation-only and explicitly excluded from the
+      retrieval corpus, model evidence, and training data.
+    - [x] Add a controlled deterministic presentation covering symptoms,
+      anatomy, onset, duration, trajectory, severity, associated signs,
+      measurements, population, pregnancy, exposures, trauma, danger signals,
+      negated concepts, and hypothetical/not-present concept mentions.
+    - [x] Replace the small emergency-only keyword entry point with
+      combination-, severity-, context-, and negation-aware rules that execute
+      before retrieval or model calls and return candidate 120 plus brief
+      scene-safety copy. The controlled `SafetyAssessment` is now the sole
+      emergency authority: the former overdose/self-harm regex override was
+      removed and those presentations use controlled concepts, negation,
+      hypothetical handling, danger-signal selection, and the same fixed
+      zero-call emergency response path.
+    - [x] Pass the no-cost local candidate safety gate: 37/37 proposed critical
+      canonicals and 45/45 critical variants route to emergency before calls;
+      0/63 other canonicals false-route to emergency. A contract-driven
+      integration test also executes all 82 critical canonical/variant inputs
+      through the real patient-chat entry point. Multi-turn inputs are sent as
+      real sequential requests, with fail-fast retrieval on the turn where the
+      emergency presentation is complete. This is not clinical approval.
+      The unified-authority v6 local artifact also asserts production-shared
+      assessment parity over all 100 canonicals and 85 variants, including
+      affirmed and negated/hypothetical Chinese and English overdose/self-harm
+      inputs; candidate recall remains 37/37 and 45/45 with zero non-emergency
+      false positives.
+    - [x] Add a separate declarative non-emergency care-timing policy over the
+      controlled presentation. The no-cost candidate v5 gate matches all 100
+      canonical route labels and all 85 variant route labels across emergency,
+      medication boundary, same-day, clinician-contact, and routine routes.
+      Multi-turn variants run sequentially through one production-shared,
+      bounded user-turn continuity resolver: emergency follow-ups remain
+      pre-retrieval/model, only the latest needed patient-authored turn can
+      carry, action-only new topics do not inherit old medical context, and the
+      current literal retrieval query stays unchanged. The v5 safety artifact
+      uses the same resolver as the endpoint.
+      The server exposes the route, constrains the model's allowed next action,
+      rejects same-day downgrades and model-selected emergency actions, and
+      preserves `seek_local_care` in evidence/provider fallbacks. The rule table
+      and fixed timing copy remain pending named review and are not approved.
+    - [x] Audit the active local release
+      `KBIR-D3DFA94CC95660019B6EF94E` case by case with zero provider calls:
+      36 candidate-hit cases, 17 `no_eligible_evidence` cases, and 47
+      pre-safety/no-call cases. Candidate source IDs remain unlabelled pending
+      case-specific clinical review and cannot be counted as support.
+      The production-shared sequential-continuity slice includes real endpoint
+      coverage for all five critical multi-turn variants plus urgent,
+      clinician-contact, routine, and medication-boundary sequences. Current
+      verification for the expanded matrix passed all 250 collected API tests
+      in the repository's established 3 + 4 + 243 database-safe partitions,
+      full Ruff, Alembic drift (`No new upgrade operations detected`), and
+      `git diff --check`. Alembic retained the pre-existing cyclic
+      `kb_rights_records`/`kb_sources` foreign-key warning.
+    - [ ] Obtain named clinical, native-Simplified-Chinese, and product review
+      of every urgency label, presentation annotation, variant, relevant/
+      forbidden source label, required behavior, and scene-safety instruction;
+      then freeze a new checksum rather than editing an approved suite in place.
+      A generated review packet now binds the exact contract, v8 coverage
+      artifact, and 31-source intake queue. It exposes all 100 canonical and 85
+      variant annotations, active retrieval candidate IDs, and link-only leads
+      while remaining evaluation-only and content-free. Its fail-closed
+      validator is structurally green but records 949 pending readiness items;
+      named decisions have not been supplied or inferred.
+    - [ ] Fill case-specific clinically relevant and forbidden source IDs,
+      ingest rights-cleared authoritative patient-facing evidence through the
+      governed workflow where gaps remain, and rerun a release-matched retrieval
+      gate with strong symptom-only performance and zero forbidden leakage.
+      A v8 zero-provider local audit now covers all 100 canonicals and all 85
+      variants separately: 20/33/47 canonical candidate/no-evidence/pre-safety
+      decisions and 14/25/46 variant decisions. Presentation centrality now
+      applies to literal as well as generated views, so broad incidental matches
+      previously admitted through generic literal overlap fail closed; multiple
+      pregnancy/exposure/trauma contexts must all be central. Relevance remains
+      unapproved. The versioned Mainland source-candidate queue now maps an
+      explicit official research lead to all 33 canonical and all 25 variant
+      no-evidence presentations. A no-cost validator binds these mappings to
+      the contract and v8 coverage checksums; rejects raw content, unsafe
+      domains, approval drift, or evaluation/retrieval/training-data mixing;
+      and fails closed if a future observed gap lacks a research lead. The v5
+      artifact passes this structural discovery gate with 31 sources, zero
+      provider calls, and no evidence or approval claim.
+      Research-lead mapping is not corpus coverage: all 31 candidate sources
+      remain link-only and activation-blocked because official publication and
+      public access do not establish commercial storage, transformation,
+      embedding, excerpt-display, or provider-transmission rights.
+    - [x] Add a separate canonical retrieval-only policy and scorer rather than
+      treating coverage counts as retrieval quality. The checksum- and active-
+      release-bound v1 policy requires reviewed labels for all 92 retrieval-
+      eligible subjects and explicitly gates recall@6, MRR, relevant-decision
+      correctness, symptom-only recall, paired-variant non-degradation,
+      forbidden leakage, retrieval errors, pre-safety calls, latency, provider
+      calls, and cost. The v9 audit records per-turn production retrieval
+      latency and call counts without making planner/answer-model calls. Its
+      first artifact is structurally valid but fails closed with 101 readiness
+      and seven metric failures because all relevant/forbidden source labels
+      remain pending: candidate sufficiency is 34/92 overall and 3/8 for
+      retrieval-eligible symptom-only variants, not a clinical-support score.
+      The operational diagnostics show 93/93 zero-call pre-safety subjects,
+      zero retrieval errors, 918 ms p95, 1,687 ms maximum, and zero provider
+      calls/cost. Labelled recall and non-degradation remain unscored.
+    - [x] Implement the local multi-view
+      literal/canonical/population-exposure-action retrieval foundation with
+      batched embeddings, unchanged per-view rights/release filters,
+      presentation-central admission for literal and generated patient hits,
+      literal-order preservation among admitted evidence,
+      one literal-query reranker call, and content-free view telemetry. Focused
+      tests prove symptom-only colloquial and heat-exposure recovery from zero
+      literal hits and preserve unrelated-source safeguards. Contextual
+      pregnancy/exposure/trauma queries additionally require that context to be
+      central in source metadata and a reported symptom to appear in the
+      passage. The v8 audit makes each synthetic user turn a separate request,
+      preserves the literal query, runs deterministic safety before every
+      retrieval, and stores a content-free per-turn trace. It made zero provider
+      calls. This is not the reviewed
+      non-degradation/relevance gate: that remains blocked on the case-specific
+      labels and corpus coverage above.
+    - [ ] Evaluate complete answers separately for claim-to-citation support,
+      uncertainty, practical next action, prohibited medication changes, and
+      no autonomous diagnosis before resuming paid Slice 9B work.
+      The versioned contract now includes a separate complete-answer policy and
+      a no-cost preflight/scorer. It requires 100% machine pass, emergency
+      recall and zero-call behavior, medication-gate behavior, claim support,
+      relevant-source use, uncertainty, route/action behavior, provider usage
+      reporting, variant non-degradation, and zero forbidden leakage, plus
+      explicit latency/cost ceilings. Independent human review remains a
+      separate mandatory gate that an AI judge cannot close. The first
+      five-case preflight spans all five route classes, fixes concurrency at
+      one, calculates a worst-case `$0.013496` estimate under a `$0.10` cap,
+      makes zero provider calls, and correctly refuses execution because the
+      candidate contract/critical set are not frozen or approved and all 53
+      model-eligible canonicals plus 39 model-eligible variants still lack
+      approved case-specific source IDs and coverage. The v4 preflight records
+      zero structural and 190 readiness failures. A separate executable
+      rollback-only production-path lane now covers all 93 pre-model subjects:
+      82 emergency canonical/variants and 11 medication-change refusals. Its v2
+      artifact passes 93/93 with exact route/action behavior, exact controlled
+      emergency guidance, zero retrieval/planner/answer calls, zero tokens/cost,
+      11 ms p95 and 29 ms maximum latency, and zero persisted evaluation threads
+      or events. A complementary rollback-only lane now covers all 92
+      post-safety subjects through real active-release retrieval with external
+      planner/answer requests forcibly disabled. Its v2 artifact passes 92/92
+      safe-fallback and route/action behavior with 34 candidate-sufficient and
+      58 no-evidence decisions, 92 retrievals, zero provider requests/tokens/
+      cost, 900 ms p95 and 975 ms maximum latency, and no persisted evaluation
+      data. This is not the retrieval-quality, generated-answer, or human-review
+      gate.
+  - [ ] Complete chatbot refinement Slice 9A: retrieval correctness,
+    transmission rights, and production ranking.
+    - [x] Enforce `model_provider_transmission_allowed`, rights expiry/revocation,
+      audience, review, and active-release admission both during patient-index
+      construction and immediately before external-model transmission.
+    - [x] Add one declared self-hosted production multilingual embedding
+      service and reranker profile, require their exact release lineage in
+      production, and retain the local deterministic path only for development,
+      tests, and recorded degradation fallback. Hong Kong is acceptable for
+      the current stage; final region approval remains evidence-based.
+    - [ ] Replace the active production deployment's local baseline with the
+      declared services after infrastructure deployment and medical evaluation.
+      - [x] Build and locally validate an isolated HTTP inference service for
+        the 4-vCPU/8-GB GTE candidate pair with immutable model/code revisions,
+        a 30-passage rerank cap, 512-token CPU cap, measured peak memory,
+        Chinese ranking smoke, and the main API's real embedding contract.
+      - [ ] Deploy the candidate on the upgraded Linux CVM, measure its actual
+        peak memory/latency there, rebuild the full immutable index, and accept
+        GTE only if every frozen Slice 9A retrieval gate passes.
+    - [x] Freeze retrieval-only candidate cases and implement Recall@k,
+      nDCG/MRR, no-evidence precision, forbidden-source leakage, diversity,
+      latency, and jurisdiction/language gates without using sealed answer
+      cases for tuning. The runner fails closed while clinician review is
+      pending.
+    - [ ] Record clinician approval/corrections and pass every frozen retrieval
+      threshold against the approved production services.
+    - [ ] Reconcile the current Mainland-specific code/config identifiers with
+      the approved Hong Kong-or-Mainland production-region decision before
+      production activation; documentation approval alone does not change the
+      runtime validator.
+  - [ ] Complete chatbot refinement Slice 9B: adaptive multi-call RAG and
+    retrieval rescue.
+    - [x] Keep ordinary questions on original-query retrieval followed by one
+      grounded-generation call; trigger an extra DeepSeek planner call only for
+      server-detected ambiguity, colloquial wording, short references, or weak
+      initial retrieval.
+    - [x] Require a strict bounded query-understanding schema, validate meaning
+      preservation, search both original and candidate queries, fuse and
+      deduplicate results, and retain the same rights/evidence gates. The
+      symptom-first validator now requires controlled-presentation containment
+      and preservation: aliases may normalize reported facts, but added or
+      omitted symptoms, anatomy, timing/duration, severity/trajectory,
+      associated signs, measurements, population/pregnancy/exposure/trauma
+      context, requested actions, danger signals, negation/hypothetical state,
+      or condition labels are rejected before retry retrieval. The planner sees
+      only the prior user turn admitted by deterministic continuity; its output
+      replaces only the trusted presentation's literal query, so retry views
+      and presentation centrality cannot become model-authored.
+    - [x] Make context-resolved retrieval authoritative for referential and
+      ambiguous rescue: exclude original-only candidates, use an original rank
+      only to corroborate an identical checksum, fail closed when resolved-topic
+      evidence is insufficient, and forbid generic utility gains from claiming
+      `improved`.
+    - [x] Permit at most one rewrite call and one retrieval retry; record only
+      content-free trigger, attempt, token/cache, latency, cost, retrieval-
+      delta, and fallback metadata.
+    - [ ] Prove measured improvement on frozen hard queries without degrading
+      ordinary-query quality or exceeding approved latency/cost budgets. The
+      candidate suite and runner are frozen. Product-owner approval by Harry
+      Cao and clinical/native Simplified Chinese approval by Hou Jin, Doctor at
+      Beijing Hospital, are recorded for 2026-07-18 with no corrections; the
+      first live run failed and is preserved as evidence. Corrected v2 trigger,
+      feasibility, planner-use, latency, and cost gates pass no-cost preflight;
+      the v2 live artifact also failed on the local fallback ranking stack.
+      Further paid runs are paused until a new semantic release passes Slice 9A.
+  - [ ] Complete chatbot refinement Slice 9C: semantic claim support, answer
+    verification, and follow-up quality.
+    - [x] Add the first deterministic sentence-level support gate so a valid
+      passage ID is not sufficient by itself. Each displayed sentence is
+      checked only against its cited passages and cited authorized context for
+      numeric expressions, controlled disease/presentation concepts, and
+      topic-bearing semantic overlap; unrelated valid citations fail closed.
+      Cited patient context also requires the server-issued attribution phrase,
+      and controlled provenance language cannot contradict the cited record
+      origin. Unsupported diagnostic subtypes are metadata-only.
+    - [x] Prevent model-generated uncertainty text from introducing unsupported
+      numbers, disease concepts, or clinical-presentation features, while
+      allowing it to restate the patient's reported presentation.
+    - [ ] Extend and clinician-calibrate the gate for thresholds, intervals,
+      causal assertions, monitoring schedules, medication/treatment claims,
+      and subtle contradiction; run the frozen complete-answer evaluation
+      before claiming semantic validation.
+    - [x] Add a separate complete-answer machine scorer and fail-closed
+      preflight with frozen-contract/checksum binding, active-release source
+      label checks, one-provider-at-a-time/concurrency-one execution,
+      deterministic token-cap spend estimation, a five-case initial batch,
+      repeated-provider-failure stop policy, provider-reported usage/cost
+      requirements, variant non-degradation, and an independent human-review
+      gate that remains pending even when every machine metric passes. Evaluator
+      v3 requires exact `initial_batch` or `full_contract` input sets, prevents
+      a partial batch from claiming the full machine gate, applies each
+      variant's own route/permission/source labels, and rejects duplicate IDs,
+      truthy-string booleans, negative call/token/cost values, or duplicate
+      citations.
+    - [ ] Keep deterministic validators mandatory. Treat any optional second
+      DeepSeek verification call as a bounded flagging aid that cannot override
+      deterministic failure or substitute for independent clinical review.
+    - [ ] Add a structured follow-up question, clarification purpose, and
+      missing-information category to the answer contract; reject questions
+      that are unsafe, redundant, repetitive, or already answered.
+  - [ ] Complete chatbot refinement Slice 9D: real-context privacy,
+    adversarial isolation, and chat lifecycle.
+    - [ ] Enforce trusted synthetic/real data origin and keep real context off
+      until consent, field allowlisting, no-training/no-retention, Mainland-
+      China location, privacy, legal, provider, and product approvals are all
+      file-backed and active.
+    - [ ] Test prompt injection in user messages, patient-entered fields,
+      doctor-authored records, conversation history, and retrieved passages;
+      untrusted content must not change safety, authorization, or policy.
+    - [ ] Define minimum and maximum history retention, implement expiry and
+      patient deletion behavior, and verify export/delete/backup/restore and
+      cross-patient/cross-role isolation without retaining deleted content in
+      telemetry.
+  - [ ] Complete chatbot refinement Slice 9E: operational controls and the
+    pre-release evidence package.
+    - [ ] Implement independent model/prompt, retrieval-release,
+      embedding/reranker, corpus, and source-family kill switches and rollback.
+    - [ ] Add provider concurrency budgets, timeouts, retries, circuit breakers,
+      rate limits, pseudonymous cache/tenant isolation, token/cache/latency/
+      provider-cost accounting, and redaction-safe dashboards.
+    - [ ] Run retrieval-rescue, claim-support, personalization, multi-turn,
+      rural/low-bandwidth, safety, adversarial, load, outage, and recovery
+      evaluations; keep AI judging distinct from named medical/native-Chinese
+      human review and keep evaluation data out of retrieval tuning.
+    - [ ] Rehearse rollback, assign monitoring/incident owners, and produce the
+      versioned limitations, evaluation, observability, and rollback package.
+  - [ ] Complete final chatbot Slice 10 production, clinical, and
+    commercialization verification only after Slices 9A-9E are complete.
+    - [ ] Re-run the frozen model, retrieval, semantic-support, privacy,
+      security, usability, load, failure, recovery, and live-workflow gates on
+      the exact release candidate.
+    - [ ] Obtain named medical, native-Chinese, privacy, security, legal,
+      provider-contract, data-location, product, operations, and regulatory
+      signoffs with known limitations and rollback ownership.
+    - [ ] Use a small monitored cohort and verify generation, retrieval,
+      reranker/index, and source-family kill switches before the 2026-08-12
+      production/commercialization decision.
   - [ ] Define stable AI assessment request/response contract.
   - [ ] Implement diagnostic input collection.
   - [ ] Add CT/image reference selection.
@@ -755,18 +1325,27 @@ Localization implementation decisions (2026-07-10):
 
 ### Production v1.0 Deferrals and Gates
 
+This historical heading is retained for link stability. The following gates
+control live clinical/payer operation and public distribution; they do not
+reduce the required engineering and product quality of v1.0.
+
 #### Safety/regulatory gated
 
 - Real clinical claims.
 - Real diagnostic model use for patient care.
 - Real patient data ingestion before privacy, consent, legal, and security readiness.
 - Production clinical deployment.
+- Live payer/hospital integration, real eligibility or claim processing,
+  automated coverage/payment decisions, and any suspected-fraud determination.
+- Any public claim that Dr. AI prevents abuse, saves money, validates treatment,
+  or improves clinical outcomes.
 
 #### Technical stretch gates
 
 - Live voice/video consultation if real-time infrastructure is not ready.
 - Barcode scanning if package/device scope is too large for the production v1.0 release window.
-- Full insurance/payment processing if payment accounts and compliance setup are not ready.
+- Full insurance/payment processing, prior authorization, denial, appeal, or
+  adjudication integration.
 - DICOM viewing/segmentation if not required for the initial commercial release.
 
 #### Not v1.0
@@ -776,22 +1355,46 @@ Localization implementation decisions (2026-07-10):
 - Offline mode if still too large.
 - Disease surveillance or broad predictive public-health analytics unless explicitly added to the v1.0 commercial scope.
 
-### Production v1.0 Definition of Done
+### Current v1.0 Production-Readiness Definition of Done
 
-Production v1.0 is complete only when:
+The current v1.0 product is engineering/product production-ready only when:
 
-- Every visible dashboard item is functional or intentionally removed/disabled.
-- Patient, doctor, specialist, and admin roles each have working production workflows.
-- Patient medical history, medical records, medication management, recovery plans, consultation, AI chat, AI diagnostic workflow, resource management, booking, hospital/doctor/team management, analytics, and support/admin workflows are implemented to the agreed v1.0 level.
+- Every visible v1.0 item is functional or intentionally
+  removed/disabled.
+- Patient, doctor, and payer-reviewer roles complete the frozen representative
+  China-first scenario suite from proposed care through human cost review.
+- Scenario, rule, price-reference, and evidence releases are configurable and
+  versioned; adding an admitted scenario does not require a disease-specific
+  application fork.
+- Existing patient/doctor clinical foundations remain intact; specialist,
+  clinic-operations, admin, legacy billing, and public-release work outside the
+  three-party core may remain hidden and deferred.
 - All data is persisted through migrations and survives restart/deployment.
 - Every major workflow has loading, empty, validation, failure, unauthorized, and success states.
-- Cross-role and cross-patient access is blocked and tested.
+- Cross-role, cross-patient, cross-payer, and reviewer-note access is blocked
+  and tested.
 - Audit logs exist for sensitive operations.
-- Monitoring and backup/restore are verified.
-- Android and iOS release paths are ready, except where blocked by external account access.
-- Tencent staging or production deployment can be recreated from docs.
-- No clinical claims are made unless the model/regulatory gate has been cleared.
-- No placeholder cards remain in production-facing UI.
+- Claim/envelope totals reconcile to immutable line items using integer minor
+  units and explicit currency.
+- Every envelope and alert shows provenance, jurisdiction, version/effective
+  date, uncertainty, and a human next action.
+- A variance cannot automatically change clinical care, claim/payment state,
+  coverage, clinician standing, or an abuse/fraud label.
+- Clinicians can explain exceptional care and authorized payer reviewers can
+  record a human resolution with immutable history.
+- Patient-facing cost explanations distinguish planned, delivered, billed,
+  allowed, paid, and patient-responsibility amounts.
+- The frozen evaluation reports per-scenario and aggregate alert
+  precision/recall and false-positive rate, plus arithmetic, isolation,
+  fallback, exception, and under-treatment-risk evidence.
+- Local, controlled-staging, and future production deployment configurations
+  can be recreated from docs; backup/restore, monitoring, incident response,
+  kill switches, and rollback are verified in proportion to risk.
+- Product/engineering readiness is reported separately from live-use
+  authorization. Until external gates close, every external walkthrough states
+  that the active data are synthetic/de-identified and the product is not yet
+  authorized or validated for clinical diagnosis, reimbursement, fraud
+  detection, real savings, or public production use.
 
 ### Worktree and Branch Maintenance
 
@@ -832,225 +1435,13 @@ Future development should keep the worktree organized as follows:
 
 ---
 
-# Historical Approved Beta Plan
-
-The plan below is preserved as the approved beta/demo MVP plan from 2026-07-02. It documents the completed beta foundation and related closure records, but it is no longer the full definition of production/commercial v1.0 completion.
-
-# Dr. AI v1.0 — One-Month Public Beta Plan
-
-## Summary
-
-Build one responsive Flutter product with:
-
-- Doctor experience optimized for the 1280×832 laptop dashboard.
-- Patient experience optimized for the 412×917 mobile dashboard.
-- FastAPI backend, PostgreSQL, Tencent COS, and DeepSeek chat.
-- One polished “doctor-led care loop”:
-  1. Doctor opens a patient record.
-  2. Reviews clinical information and demo CT image.
-  3. Runs a clearly labeled simulated lung-metastasis assessment.
-  4. Reviews the result and creates a recovery plan.
-  5. Patient receives the plan, medication reminders, and AI-guided education.
-  6. Doctor can submit an asynchronous specialist-consultation request.
-
-The release will be an invited public beta through TestFlight, Android closed testing, and a deployed doctor web application—not a clinically approved product.
-
-Grounding sources: [PRD](/Users/Harry-Cao/Downloads/Dr_AI_Product_Requirements_Document_v1.0.docx), [research paper](/Users/Harry-Cao/Desktop/留学规划/科研/Prediction_of_Lung_Cancer_Metastasis_Risk_Based_on_GCAVE-GAN_Data_Augmentation_and_Multimodal_Feature_Fusion.pdf), and [Figma prototype](https://www.figma.com/proto/8EJikM9M97nVy3R5JLeC0O/Figma-basics?node-id=618-1051).
-
-### Historical beta deferrals
-
-- Real GCAVE-GAN/AMCM inference, clinical claims, or real-patient deployment.
-- DICOM viewing, segmentation, genomic-file processing, and generated CT images.
-- SMS verification, biometric login, video/voice consultations, live annotations.
-- Medication-interaction engine, barcode scanning, billing, appointments, inventory editing, analytics, and offline mode.
-- App Store production launch; v1.0 uses invited beta distribution.
-- Chinese localization; code is localization-ready, but the initial UI follows the English Figma design.
-
-Historical beta note: resource and analytics cards already present in Figma remained read-only demo summaries for the invited beta only; the current production v1.0 scope above supersedes this.
-
-## Technical Design
-
-### Flutter client
-
-Use a single feature-oriented Flutter codebase targeting web, iOS, and Android.
-
-- Navigation: `go_router` with role-protected routes.
-- State and dependency injection: Riverpod.
-- Networking: Dio with authenticated refresh and standardized API errors.
-- Secure tokens: `flutter_secure_storage`.
-- Notifications: `flutter_local_notifications`.
-- Models: generated JSON serialization with immutable request/response types.
-- Responsive shell:
-  - `<600px`: patient bottom navigation.
-  - `600–1023px`: compact rail/tablet layout.
-  - `≥1024px`: doctor navigation and multi-column dashboard.
-- Convert Figma colors, typography, spacing, radii, and reusable cards into central design tokens. Flutter recommends branching layouts by available width instead of device identity. [Flutter adaptive-layout guidance](https://docs.flutter.dev/ui/adaptive-responsive/general)
-
-### Backend and infrastructure
-
-Build a modular FastAPI monolith rather than separate microservices.
-
-- FastAPI container on Tencent Cloud behind HTTPS.
-- TencentDB for PostgreSQL with managed backups.
-- Tencent COS for demo medical images using short-lived signed URLs.
-- Database migrations with Alembic.
-- Argon2 password hashing.
-- Short-lived access JWT plus rotating refresh token.
-- Server-side RBAC and doctor–patient care-relationship checks.
-- Structured audit and application logs without medical content or tokens.
-- Staging and production environments with separate databases and buckets.
-- Redis omitted initially; add it only if distributed rate limiting becomes necessary.
-
-TencentDB handles PostgreSQL installation, replication, storage, and backups, reducing solo-operator work. [TencentDB documentation](https://intl.cloud.tencent.com/document/product/409/4989)
-
-### Core data model
-
-Create these principal entities:
-
-- `User`, `DoctorProfile`, `PatientProfile`, `CareRelationship`
-- `MedicalRecord`, `MedicalAsset`, `Medication`
-- `AIAssessment`, `RecoveryPlan`, `RecoveryTask`, `Reminder`
-- `ChatThread`, `ChatMessage`
-- `ConsultationRequest`
-- `AuditEvent`
-
-Every patient-owned object carries `patient_id`; every clinical mutation records actor, timestamp, action, and affected object.
-
-### API contract
-
-Provide versioned `/api/v1` endpoints for:
-
-- `/auth/register`, `/auth/login`, `/auth/refresh`, `/auth/logout`
-- `/me`
-- `/patients` and `/patients/{id}`
-- `/patients/{id}/records`
-- `/patients/{id}/assets/presign`
-- `/patients/{id}/assessments`
-- `/patients/{id}/recovery-plans`
-- `/patient/me/today`
-- `/medications` and `/reminders`
-- `/chat/threads/{id}/messages`
-- `/consultations`
-- `/audit-events` for authorized administrators only
-
-Important public types:
-
-```text
-UserRole = doctor | patient
-AssessmentMode = simulated | validated_model
-AssessmentStatus = queued | completed | failed
-RiskBand = low | moderate | high
-ConsultationStatus = requested | accepted | completed | cancelled
-RecoveryPlanStatus = draft | active | completed
-```
-
-`AIAssessmentResponse` includes:
-
-```text
-assessment_id
-mode
-risk_band
-demo_score
-input_completeness
-model_version
-limitations[]
-recommended_next_steps[]
-created_at
-```
-
-The UI always renders `mode: simulated` as “Research simulation — not for diagnosis.” The score is deterministic from seeded fixture IDs and must never be presented as genuine model output.
-
-### AI safety
-
-The paper reports strong cross-validation results on 143 patients, but there is no runnable checkpoint or external clinical validation. Therefore, v1.0 must not convert its reported 96.88% accuracy into a clinical product claim.
-
-The future model interface will accept:
-
-- CT asset reference.
-- Pre-treatment clinical variables.
-- Versioned genomic-feature reference.
-- Model/version metadata.
-
-Recurrence and survival outcomes will not be used as v1 prediction inputs because they may introduce outcome leakage.
-
-DeepSeek is called only by FastAPI; API keys never enter Flutter. Use `deepseek-v4-flash` from the outset because legacy model names are scheduled for retirement during the development month. [DeepSeek API documentation](https://api-docs.deepseek.com/)
-
-Chat safeguards:
-
-- Do not send names, contact information, raw records, or images to DeepSeek.
-- Red-flag symptom detection runs before the LLM and returns a fixed emergency message.
-- The model provides education and question preparation, not diagnosis or medication changes.
-- Every answer includes provenance and limitations.
-- Rate limits, output-length limits, timeout handling, and a safe fallback response are mandatory.
-
-Local simulator policy: keep the daily loop on Flutter web, widget tests, and
-CI. Do not load the Android emulator or iOS Simulator for ordinary tasks.
-Reserve local simulators for native runtime checks, platform configuration
-changes, and beta packaging. If disk space is limited, use physical iOS/Android
-devices or CI platform builds as the replacement.
-
-Development storage policy: Android tooling should remain on the PHILIPS-backed
-APFS volume. Flutter is configured to use `/Volumes/AndroidAVD/sdk`; the
-Android AVD home is `/Volumes/AndroidAVD/avd`; and
-`/opt/homebrew/share/android-commandlinetools` is only a compatibility symlink.
-Future phases must not reinstall Android SDK, system images, or AVD data onto
-the internal disk unless this policy is intentionally revised. iOS should stay
-minimal: keep only the simulator/runtime needed for milestone verification and
-prefer physical devices or CI when available.
-
-## Verification and Acceptance Tests
-
-### Automated tests
-
-- Backend unit tests for authorization, recovery-plan state, assessment fixtures, and chat escalation.
-- API integration tests for every golden-flow endpoint.
-- Flutter widget tests for doctor and patient primary states.
-- Golden-image tests at 1280×832 and 412×917.
-- End-to-end test covering doctor assessment → plan activation → patient task completion.
-- Contract test ensuring the simulator and future real model return the same response shape.
-- Migration test from an empty database and from the previous staging revision.
-
-### Security and failure scenarios
-
-- Expired/rotated token, wrong role, and cross-patient access attempts.
-- Oversized, invalid, or malicious upload.
-- DeepSeek timeout, malformed response, quota exhaustion, and unsafe prompt.
-- Duplicate plan activation and duplicate notification scheduling.
-- Interrupted upload and poor mobile connection.
-- Deleted account, revoked care relationship, and stale browser session.
-- Audit events generated for all sensitive operations.
-
-### Historical beta definition of done
-
-The invited beta/demo MVP was considered complete when:
-
-- A first-time tester can complete the golden workflow without developer assistance.
-- The workflow takes under five minutes with seeded data.
-- Doctor and patient layouts match their Figma frames at reference dimensions.
-- No P0/P1 defects remain.
-- Every AI surface is visibly labeled as educational or simulated.
-- No real patient data is required or accepted during beta.
-- TestFlight, Android closed testing, and doctor web deployment are independently usable.
-- A fresh deployment can be recreated from repository documentation and environment templates.
-
-## Assumptions
-
-- One solo developer has approximately 20 focused working days and uses Codex for implementation and QA.
-- The public beta is invitation-based and uses synthetic/de-identified demonstration content only.
-- The same Flutter repository serves doctor web and patient mobile experiences.
-- Existing Figma styling remains authoritative; no visual redesign is planned.
-- English is the v1 interface language, with localization infrastructure added from day one.
-- The research model remains a simulated adapter until source code, weights, preprocessing logic, and independent validation become available.
-- If the schedule slips, specialist consultation is reduced to a single request form before any golden-flow functionality is cut.
-
----
-
 ## Progress and Change Log
 
 Add one row whenever implementation status, scope, architecture, or a major decision changes.
 
 | Date | Status | Change | Evidence / Files | Next Step |
 |---|---|---|---|---|
+| 2026-07-23 | Complete locally - first three-party care-and-cost vertical slice | Reframed the commercial product away from diagnosis and implemented the first transparent workflow across all three parties: payer registration with synthetic-only organization membership; Clinical Event-linked care-cost item CRUD; patient and doctor ledger readback; immutable payer-request snapshots; doctor request tracking; payer dashboard, scoped queue, detail, and human clarification/accept/escalate/close actions; responsive bilingual Flutter surfaces; and metadata-only audit coverage. AI review fields remain explicitly `not_evaluated` and cannot make a diagnosis, payment, abuse, or denial decision. The full backend suite and Ruff pass; Alembic upgrade/drift passes at `0036`; Flutter analysis and all active tests pass; and patient-mobile plus payer-desktop rendered golden inspection passes after correcting the detected material-surface and row-overflow defects. No live organization verification, coverage/claim adjudication, pricing/rule release, expected-care envelope, AI utilization assessment, deployment, push, commit, real patient data, or external account action was performed. | `services/api/app/care_cost.py`, `services/api/app/models.py`, `services/api/app/auth.py`, `services/api/migrations/versions/20260723_0035_care_cost_payer_workflow.py`, `services/api/migrations/versions/20260723_0036_care_cost_schema_parity.py`, `services/api/tests/test_care_cost_workflow.py`, `apps/dr_ai_app/lib/features/care_cost/`, `apps/dr_ai_app/lib/features/auth/`, `apps/dr_ai_app/lib/app/routing/`, `apps/dr_ai_app/test/care_cost_golden_test.dart`, `Dr_AI_Product_Requirements_Document_v1.0.md`, `docs/Dr_AI_v1.0_ERD.md`, `docs/Dr_AI_v1.0_API_Contract.md` | Define the governed China-first coverage/reference and expected-envelope slice before implementing any AI review score. |
 | 2026-07-02 | Approved - Not Started | Approved implementation plan recorded as the project source of truth. | `docs/Dr_AI_v1.0_Implementation_Plan.md` | Begin Week 1 foundation and design-freeze tasks. |
 | 2026-07-02 | In Progress - Week 1 | Implemented Week 1 Days 1-2 foundations: Flutter web/iOS/Android scaffold with role-aware routes and design tokens; FastAPI settings and health endpoint; environment templates; CI; design-freeze inventory and current prototype captures. Figma node metadata remains blocked by the Starter-plan MCP limit, so Week 1 is not complete. | `apps/dr_ai_app/`, `services/api/`, `.github/workflows/ci.yml`, `docs/Dr_AI_v1.0_Design_Freeze.md`, `docs/beta/Week_1_Days_1_2_Foundation_Record.md`, `docs/design-evidence/` | Reconcile exact Figma metadata when the quota resets, then begin Week 1 Days 3-4 authentication and data foundations. |
 | 2026-07-03 | In Progress - Week 1 | Replaced device-mockup screenshots with direct 1x exports of the doctor and patient Figma frames. Confirmed the patient bottom navigation labels and preserved the Figma file by removing temporary export presets. | `docs/design-evidence/doctor-dashboard-618-1051.png`, `docs/design-evidence/patient-dashboard-663-398.png`, `docs/Dr_AI_v1.0_Design_Freeze.md` | Reconcile exact Figma hierarchy and token metadata after the monthly MCP quota resets. |
@@ -1104,3 +1495,25 @@ Add one row whenever implementation status, scope, architecture, or a major deci
 | 2026-07-15 | Complete - Phase 3 Slice 4 retrieval baseline mainline and Tencent staging redeploy | Cleaned `services/api/` by deleting only the proven redundant 55-row generation checkpoint JSONL files and ignored caches while preserving the manually reviewed translation/summary JSON artifacts required by import and regression tests. Completed the governed 353-source knowledge catalog, 55 open-content documents, approved Simplified Chinese translations, approved bilingual summaries, summary-aware doctor Resources search, doctor Resources UI/reader, and Alembic metadata reconciliation through `20260715_0026`. The release gate passed backend Ruff, all `106` backend tests, Alembic upgrade/check with no new operations, lock/dependency checks, Flutter analysis and `55` active widget tests, the staging-configured web release build, and whitespace checks. Committed the release as `0574b1b` on `main` and pushed it to GitHub. Backed up Tencent staging database, host-only environment, and web bundle at `backups/20260715T145939Z`; built and published immutable `linux/amd64` API digest `hkccr.ccs.tencentyun.com/dr-ai/dr-ai-backend@sha256:f48cc3c6b7a31d156d4afa83cc25c9159c9eaefc4947da7355909203df19ee9b`; migrated staging from `0019` through `0026`; confirmed two zero-change seed passes; imported 353 sources, 55 approved translations, and 55 approved bilingual summaries; and deployed the matching Flutter web bundle. Staging Alembic check reports no new upgrade operations, exact database counts are `353` sources, `55` approved translations, and `55` approved summaries, public root/health/privacy-support checks return `200`, unauthenticated `/api/v1/me` returns `401`, both containers are running, and recent API/Caddy logs contain no error indicators. The credentialed smoke suite passed all existing role/auth/care/chat/workflow checks plus a summary-only doctor Resources search for the high-blood-pressure source. This refreshed the existing Tencent staging environment only; no production environment, app-store release, account change, destructive data reset, or real patient data action was performed. | `services/api/`, `apps/dr_ai_app/`, `scripts/run_staging_smoke.py`, `docs/Dr_AI_v1.0_Implementation_Plan.md`, staging URL: <https://dr-ai.43.132.169.195.sslip.io> | Slice 4 staging is current. Continue the next explicitly approved Phase 3 slice without bypassing rights, review, retrieval, citation, or safety gates. |
 | 2026-07-15 | Complete - Tencent blank-first-render correction | Reproduced the reported blank/incomplete Flutter web render in the user's Chrome tab after a cache-bypassing reload. The page eventually rendered and emitted no console errors, while local, Tencent-hosted, and public release assets matched; the cold-start bootstrap was still resolving CanvasKit from Google's CDN and could leave users in China without a visible surface during renderer startup. Rebuilt the same staging release with `--no-web-resources-cdn`, verified `useLocalCanvasKit=true`, added a static accessible Dr. AI loading surface that remains until Flutter's first frame, backed up the pre-fix web bundle at `backups/20260715T152421Z`, synchronized the corrected bundle in place, and force-recreated Caddy without restarting the API. Chrome cache-bypass and fresh-tab checks now render the doctor dashboard without console warnings/errors, public `/health` remains staging/database ok, and both Tencent containers remain running. | `apps/dr_ai_app/web/index.html`, `deploy/tencent/staging/README.md`, `docs/Dr_AI_v1.0_Implementation_Plan.md`, staging URL: <https://dr-ai.43.132.169.195.sslip.io> | Keep Tencent web builds self-contained with `--no-web-resources-cdn`; the loading surface prevents future cold engine starts from appearing blank. |
 | 2026-07-15 | Complete - TencentDB patient-profile save diagnosis and correction | Reproduced the patient-profile save failure in the user's Chrome session and correlated it with the deployed API logs. TencentDB was healthy and correctly enforcing the unique account-email constraint; the API defect was a lazy relationship access that triggered SQLAlchemy autoflush before the existing duplicate-email `IntegrityError` handler, turning the intended conflict into an unhandled server error. Captured the patient audit identifier before mutation, added a preflight duplicate lookup plus race-safe `409 email_already_in_use` handling, and replaced the misleading network message with specific English and Simplified Chinese guidance. Added backend and Flutter regressions plus live staging smoke coverage for a no-op profile database write and non-mutating duplicate-email conflict. All `107` backend tests, Alembic check, Flutter analysis, and `56` active widget tests passed. Backed up Tencent database/environment/web as `backups/20260715T154253Z`, deployed immutable API digest `hkccr.ccs.tencentyun.com/dr-ai/dr-ai-backend@sha256:521706f20f22bbfc0ba94cd36abf2062c6b350f746eb872b4ad91acc08fd9607` and the matching bilingual web build, and passed the complete credentialed staging smoke. Final TencentDB checks confirm a connected read-write primary at migration `0026`, no pending Alembic operations, zero recent matching API/Caddy errors, and both containers running. | `services/api/app/auth.py`, `services/api/tests/test_auth.py`, `apps/dr_ai_app/lib/features/patient/presentation/patient_dashboard_screen.dart`, `apps/dr_ai_app/lib/l10n/`, `apps/dr_ai_app/test/app_test.dart`, `scripts/run_staging_smoke.py`, staging URL: <https://dr-ai.43.132.169.195.sslip.io> | Patient profile edits now save when the optional email is empty or unique; an email already bound to another account remains rejected safely with actionable bilingual guidance. |
+| 2026-07-16 | Complete locally - Phase 3 Slice 5 patient RAG workflow, retrieval release, and live smoke | Implemented the normative patient-chat control flow as a server-owned finite-state workflow: deterministic emergency/prohibited/PII routing, patient-only retrieval and evidence gate, provider-neutral DeepSeek v4 Flash JSON adapter with thinking disabled, strict schema and citation validation, fixed fail-closed fallbacks, metadata-only `chatbot_events`, and session-only Flutter conversation state with bilingual safety copy and source cards. The legacy educational-chat endpoint wraps the same orchestrator. After product-owner confirmation that all 55 entries/documents were manually reviewed and patient-use approved, materialized 55 checksum-linked Chinese patient versions, 426 approved passages, and 165 medical/native-language/readability review rows without inventing reviewer names or changing the 353-source registry. Built and activated immutable local release `KBIR-8293AC8D815B9715D1B44F42`; a real local query returned six passages from six sources with sufficient evidence while retaining U.S. jurisdiction metadata. Focused provider-boundary coverage confirms a missing key returns `provider_unavailable` after sufficient retrieval and never uses model memory. The ignored local server environment already contained a DeepSeek credential, so no new key was requested or exposed. A bounded live orchestrator smoke passed with sufficient evidence, six retrieved sources/passages, valid structured output, one supported displayed citation, no fallback, and provider-reported usage of 4,250 input plus 160 output tokens; telemetry stored content-free metadata only. The first HTTP-auth attempt stopped before the model because local seed passwords were absent, so the successful call used the same server orchestrator directly with the existing synthetic patient row. | `services/api/app/patient_chat.py`, `services/api/app/patient_knowledge_release.py`, `services/api/app/knowledge_retrieval.py`, `services/api/scripts/activate_open_patient_education_release.py`, `services/api/knowledge_base/release_artifacts/`, `services/api/tests/test_phase3_patient_chat.py`, `services/api/tests/test_phase3_patient_knowledge_release.py`, `apps/dr_ai_app/lib/features/chat/presentation/chat_screens.dart`, `docs/Phase_3_Chatbot_RAG_Agentic_Architecture_and_Knowledge_Base.md` | Slice 5 is complete locally. Production release still requires retrieval/answer/safety evaluation, clinical approval, privacy/legal/provider gates, observability/load checks, rollback rehearsal, production embedding/reranking approval, and deployment authorization. |
+| 2026-07-17 | Complete locally - Phase 3 Slice 7 synthetic personalized-context foundation | Added a data-origin-neutral server context broker that selects only question-relevant profile basics, dated measurements, conditions, current prescriptions/medication schedules, active Clinical Events, and active recovery-plan fields. Every fragment carries a stable context ID, record provenance, source resource, and recorded date; provider output must cite used IDs, and server validation rejects unsupported personalization. One blood-pressure reading is explicitly represented as an observation rather than a diagnosis. The patient API returns server-derived context category/provenance/date cards, and the bilingual Flutter chat shows them only when context was actually used. Migration `20260717_0029` adds the profile-context provenance timestamp, and the synthetic patient seed supplies one dated observation while using the same tables and model-input contract as future patient-entered records. Full backend Ruff/tests, Alembic upgrade/drift check, Flutter analysis, all `58` active widget tests, and whitespace checks pass locally. No persistent conversation history, Slice 8 continuity, live provider smoke, deployment, push, PR, external account action, or real patient record was added. | `services/api/app/patient_context.py`, `services/api/app/patient_chat.py`, `services/api/app/ai_chat.py`, `services/api/app/chatbot_contracts.py`, `services/api/migrations/versions/20260717_0029_phase3_patient_context.py`, `services/api/tests/test_phase3_patient_chat.py`, `apps/dr_ai_app/lib/features/chat/presentation/chat_screens.dart`, `apps/dr_ai_app/lib/features/patient/domain/patient_care_data.dart`, `apps/dr_ai_app/lib/l10n/`, `apps/dr_ai_app/test/app_test.dart`, `docs/Phase_3_Chatbot_RAG_Agentic_Architecture_and_Knowledge_Base.md` | Slice 7 is complete locally. Slice 8 should add bounded session continuity and follow-up handling without creating persistent readable chat history. |
+| 2026-07-17 | Complete locally - Phase 3 Slice 8 conversational continuity and interaction | Revised the earlier metadata-only history assumption per explicit product direction and implemented patient-owned readable AI threads with neutral cross-patient denial, a 60-day minimum retention timestamp renewed after each exchange, bounded eight-message model context, follow-up-aware retrieval, targeted non-repeating clarification prompts, and practical action chips. The chatbot now opens on a clean unsaved page, creates a thread on first send, restores full validated answer/source/context metadata, and provides a responsive collapsible history rail that defaults closed on small screens. `chatbot_events` remains content-free telemetry. Migration `20260717_0030` adds thread retention metadata and permits assistant messages without falsely assigning a patient actor. Backend Ruff, all backend tests, Alembic upgrade/drift check, Flutter analysis, the focused chat widget test, and all 59 non-golden Flutter tests pass. The two pre-existing dashboard golden comparisons still mismatch current unrelated dashboard rendering and were not regenerated during this slice. No deployment, push, PR, external account action, provider smoke, or real patient record was used. | `services/api/app/patient_chat.py`, `services/api/app/ai_chat.py`, `services/api/app/chatbot_contracts.py`, `services/api/app/models.py`, `services/api/migrations/versions/20260717_0030_phase3_chat_continuity.py`, `services/api/tests/test_phase3_patient_chat.py`, `apps/dr_ai_app/lib/features/chat/presentation/chat_screens.dart`, `apps/dr_ai_app/lib/features/auth/data/dr_ai_repository.dart`, `apps/dr_ai_app/lib/features/patient/domain/patient_care_data.dart`, `apps/dr_ai_app/lib/l10n/`, `docs/Dr_AI_v1.0_ERD.md`, `docs/Dr_AI_v1.0_API_Contract.md` | Continue to Slice 9 answer depth and practical usefulness without expanding the chatbot's diagnostic or medication-change boundary; reconcile the unrelated dashboard goldens only in their own visual-baseline task. |
+| 2026-07-17 | Complete locally - Phase 3 Slice 9 answer depth and practical usefulness | Expanded non-emergency diagnosis-seeking prompts from blanket refusal into evidence-grounded symptom orientation while preserving doctor ownership of confirmed diagnosis and treatment. The model contract now requires 3-5 supported sections, material uncertainty and a next action for symptom guidance, and rejects confident diagnostic assertions; medication-change and emergency gates remain unchanged. The patient chat now carries a concise AI-fallibility/verification notice, renders answer sections as readable paragraphs, shows material uncertainty in a distinct caution panel, offers broader symptom starter copy, and provides an “organize my symptoms” action. Updated the intended-use boundary, architecture, API contract, bilingual copy, response parsing, focused backend/widget coverage, and a mobile golden regression. No deployment, push, PR, external account action, provider smoke, real patient record, or autonomous diagnosis/treatment behavior was added. | `docs/Phase_3_Chatbot_Intended_Use_and_Safety_Boundary.md`, `docs/Phase_3_Chatbot_RAG_Agentic_Architecture_and_Knowledge_Base.md`, `docs/Dr_AI_v1.0_API_Contract.md`, `services/api/app/patient_chat.py`, `services/api/app/ai_chat.py`, `services/api/app/chatbot_contracts.py`, `services/api/tests/test_phase3_patient_chat.py`, `apps/dr_ai_app/lib/features/chat/presentation/chat_screens.dart`, `apps/dr_ai_app/lib/features/patient/domain/patient_care_data.dart`, `apps/dr_ai_app/lib/l10n/`, `apps/dr_ai_app/test/app_test.dart`, `apps/dr_ai_app/test/patient_chat_golden_test.dart`, `apps/dr_ai_app/test/goldens/patient_chat_practical_guidance_412x917.png` | Slice 9 is complete locally. Continue to planned refinement Slice 9A; final Slice 10 remains blocked until Slices 9A-9E have file-backed completion evidence. |
+| 2026-07-18 | Planned - Phase 3 chatbot refinement Slices 9A-9E before final Slice 10 | Integrated the missing and underdeveloped chatbot components plus the approved adaptive multi-call RAG direction into five bounded slices: retrieval rights/production ranking; optional DeepSeek query planning and fused retrieval rescue; semantic claim support and follow-up quality; real-context privacy, adversarial isolation, and chat lifecycle; and operational controls with a pre-release evidence package. Preserved deterministic pre-model safety, server ownership of all operations, original-query retrieval, one rewrite/retry budget, fail-closed validation, and separation of AI-assisted judging from human signoff. Slice 10 remains final verification and the production/commercialization decision rather than an implementation backlog. This was documentation-only; no code, provider call, deployment, external account, or real patient data was changed. | `docs/Phase_3_Chatbot_RAG_Agentic_Architecture_and_Knowledge_Base.md`, `docs/Dr_AI_v1.0_Implementation_Plan.md` | Implement Slice 9A first and do not begin Slice 9B until its runtime rights, production retrieval, and retrieval-only evaluation gates pass. |
+| 2026-07-18 | Slice 9A implementation complete locally; production gate open | Added independent live provider-transmission-right checks during patient release construction and immediately before evidence reaches an external reranker or DeepSeek; revoked, expired, not-yet-effective, and source-mismatched rights fail closed. Added exact passage embedding-model lineage, release/config matching, self-hosted BGE-M3 and BGE cross-encoder profiles, deterministic degradation fallback metadata, and production rejection of unapproved model profiles. Frozen a retrieval-only candidate suite spanning colloquial Chinese, bilingual terminology, short follow-up, symptom orientation, medication education, stale/conflict, and no-evidence behavior. Hong Kong is accepted for current development/staging because the API and PostgreSQL already operate there; the final production region remains evidence-based. The gate calculates Recall@6, nDCG@6, MRR, no-evidence precision, forbidden leakage, diversity, jurisdiction/language, and p95 latency without answer-evaluation material. Ruff, all `144` backend tests with warnings as errors, migration upgrade/drift check, and whitespace checks pass. The gate runner correctly refuses to create production evidence while clinician review is pending; no reviewer identity, approval, production service deployment, or passing production metric artifact was invented. The runtime validator still carries the original Mainland-specific identifiers and must be reconciled before production activation. | `services/api/app/knowledge_rights.py`, `services/api/app/knowledge_retrieval.py`, `services/api/app/knowledge_retrieval_evaluation.py`, `services/api/migrations/versions/20260718_0032_slice9a_retrieval_release_config.py`, `services/api/knowledge_base/evaluation/retrieval_cases.slice9a.v1.json`, `services/api/scripts/evaluate_slice9a_retrieval.py`, `docs/Phase_3_Chatbot_RAG_Agentic_Architecture_and_Knowledge_Base.md` | Begin Slice 9B implementation without weakening the open Slice 9A production gate. Before patient-facing production, obtain clinician approval/corrections, pass every retrieval threshold in the selected region, and reconcile the region-specific runtime configuration. |
+| 2026-07-18 | Slice 9B implementation complete locally; production evidence gate open | Preserved literal original-query retrieval and the ordinary one-retrieval/one-answer path. Added deterministic short-reference, colloquial/ambiguous, and measured-weak-result triggers; one strict DeepSeek query-planner schema; a hard one-call/one-retry budget with bounded recent user context, provider timeout, conservative pre-call cost reservation, and no repair loop; meaning-drift and prohibited-instruction rejection; reciprocal-rank fusion with checksum collapse, per-source limits, conflict/sufficiency re-evaluation, and acceptance only on positive retrieval utility delta. Planner failure, malformed output, drift, retry failure, budget excess, and no improvement retain the original safe result or fixed fallback. Migration `20260718_0033` adds content-free rescue trigger/outcome, model, token/cache, latency, configured-price cost, delta, and retry-ID telemetry without storing queries, rewrites, concepts, prompts, conversation, or passages. Frozen six candidate hard/ordinary cases plus a validation/live gate runner. Harry Cao's product-owner approval and Hou Jin's clinical/native Simplified Chinese approval as Doctor at Beijing Hospital are file-backed for 2026-07-18 with no corrections required. Ruff, all `149` backend tests with warnings as errors, Alembic upgrade/drift check, dependency compatibility, suite validation, and whitespace checks pass. No provider call, deployment, production metric claim, real patient data, or Slice 9A gate bypass occurred. | `services/api/app/retrieval_rescue.py`, `services/api/app/ai_chat.py`, `services/api/app/patient_chat.py`, `services/api/app/knowledge_retrieval.py`, `services/api/app/chatbot_contracts.py`, `services/api/migrations/versions/20260718_0033_slice9b_retrieval_rescue.py`, `services/api/knowledge_base/evaluation/retrieval_rescue_cases.slice9b.v1.json`, `services/api/scripts/evaluate_slice9b_retrieval_rescue.py`, `services/api/tests/test_phase3_patient_chat.py`, `docs/Phase_3_Chatbot_RAG_Agentic_Architecture_and_Knowledge_Base.md` | Run the live approved-provider gate and require hard-query improvement, zero ordinary-query degradation, and passing latency/cost budgets. Slice 9C development may proceed without claiming either the Slice 9A or 9B production gate closed. |
+| 2026-07-19 | Slice 9B failed-run correction implemented; v2 live gate pending | Preserved the first approved live artifact showing `0.0` hard-query improvement, `1.0` ordinary non-degradation, `2,586 ms` p95 rescue latency, `88` microunits average cost, and overall failure. Corrected longer Chinese reference detection, moved resolvable short references to deterministic bounded-thread query composition without a planner call, required context anchoring for ambiguous model rewrites with a safe contextual fallback, shortened the planner output budget, and separated `latency_exceeded` from `cost_exceeded`. Created reviewed suite v2 without changing any query or clinical source label; only the already-saturated colloquial case moved from impossible improvement to non-degradation control. Added expected-trigger, hard-case feasibility, minimum planner-use, suite-checksum, release-ID, total-latency, cost, and evidence-overwrite protections plus a no-cost preflight. The v2 preflight passes all six cases with three genuinely improvable hard cases and exact trigger matches. Ruff, all `153` backend tests with warnings as errors, suite validation, preflight, dependency compatibility, and whitespace checks pass. No second paid provider run, deployment, real patient data, or production-gate closure was claimed. | `services/api/app/retrieval_rescue.py`, `services/api/app/ai_chat.py`, `services/api/app/chatbot_contracts.py`, `services/api/tests/test_phase3_patient_chat.py`, `services/api/scripts/evaluate_slice9b_retrieval_rescue.py`, `services/api/knowledge_base/evaluation/retrieval_rescue_cases.slice9b.v2.json`, `services/api/knowledge_base/release_artifacts/evaluation/slice9b-rescue.json`, `docs/Phase_3_Chatbot_RAG_Agentic_Architecture_and_Knowledge_Base.md` | Run v2 once with the approved provider and a new output path; close Slice 9B only if hard improvement, ordinary non-degradation, trigger, planner-use, total-latency, and cost gates all pass. |
+| 2026-07-21 | Complete locally - first deterministic Slice 9C claim-support gate | Added sentence-level validation after schema and passage-ID membership: each answer sentence must remain anchored to its specifically cited admitted passages and authorized context, unsupported numbers/disease concepts/clinical-presentation features fail closed, and a valid but unrelated passage ID is rejected. Model uncertainty cannot introduce unsupported clinical entities. Patient-context use requires a server-issued attribution phrase and controlled provenance wording cannot contradict the cited record origin. Failures return fixed `unsupported_citation` copy and store only a content-free diagnostic subtype. Focused symptom-first structural tests passed `96/96`; all `215` backend tests, full Ruff, Alembic drift check, and whitespace checks passed. The existing cyclic `kb_rights_records`/`kb_sources` Alembic sort warning remains. No paid provider call, clinical approval, source-right activation, immutable release activation, deployment, real patient data, complete-answer evaluation, or production gate closure occurred. | `services/api/app/claim_support.py`, `services/api/app/patient_chat.py`, `services/api/tests/test_claim_support.py`, `services/api/tests/test_phase3_patient_chat.py`, `docs/Phase_3_Chatbot_RAG_Agentic_Architecture_and_Knowledge_Base.md`, `docs/Phase_3_Chatbot_Intended_Use_and_Safety_Boundary.md`, `docs/Dr_AI_v1.0_Implementation_Plan.md` | Continue the 100-question Slice 9A corpus and named-review gates before paid 9B work; separately extend and clinician-calibrate Slice 9C for causal, interval, schedule, medication/treatment, and subtle-contradiction claims before running complete-answer evaluation. |
+| 2026-07-21 | Complete locally - canonical complete-answer evaluation foundation and fail-closed preflight | Advanced the candidate canonical contract to schema `1.1.0` with a separate `canonical-complete-answer-v1` policy. Added machine scoring for route/action behavior, 100% emergency recall and zero pre-emergency calls, medication refusal, claim support, relevant/forbidden sources, uncertainty, provider usage, paired-variant non-degradation, latency, failures, and cost. A machine pass cannot close the independent clinician/native-Chinese human-review gate. Added a checksum- and active-release-bound preflight with one provider at a time, concurrency one, a five-case route-balanced initial batch, explicit answer/planner token caps, a computed worst-case `$0.013496` estimate under a `$0.10` cap, and repeated-provider-failure stop policy. The preflight made zero provider calls and correctly refused paid execution with 112 explicit blockers: six contract/review freeze blockers plus missing approved coverage and relevant-source labels for all 53 model-eligible canonicals. Regenerated matching safety-v2 and coverage-v4 artifacts; safety remains 37/37 canonical and 39/39 variant candidate critical recall with zero non-emergency false positives, while coverage remains 42/11/47 canonical and 19/5/39 variant candidate/no-evidence/pre-safety. The combined structural suite passed `101/101`; a first full run encountered a transient database wait in an existing HPA retrieval test, that exact test then passed independently, and a clean full rerun passed all `220` tests. Full Ruff, Alembic drift, and whitespace checks passed; the known cyclic knowledge-rights/source FK warning remains. No provider call, paid usage, approval, activation, deployment, or real-patient action occurred. | `services/api/app/answer_evaluation.py`, `services/api/scripts/evaluate_canonical_answers.py`, `services/api/scripts/build_canonical_symptom_contract.py`, `services/api/scripts/evaluate_canonical_symptom_contract.py`, `services/api/tests/test_answer_evaluation.py`, `services/api/knowledge_base/evaluation/canonical_rural_symptom_questions.v1.json`, `services/api/knowledge_base/release_artifacts/evaluation/canonical-complete-answer-preflight-v1-local-20260721.json`, `services/api/knowledge_base/release_artifacts/evaluation/canonical-rural-symptom-safety-v2-local-20260721.json`, `services/api/knowledge_base/release_artifacts/evaluation/canonical-rural-symptom-coverage-KBIR-D3DFA94CC95660019B6EF94E-v4-answer-policy-local-20260721.json`, `docs/Phase_3_Chatbot_RAG_Agentic_Architecture_and_Knowledge_Base.md`, `docs/Dr_AI_v1.0_Implementation_Plan.md` | Obtain and record named review plus case-specific approved source labels; only then run the five-case paid batch. Do not resume paid 9B or expand the answer batch until that batch passes machine gates and independent human review. |
+| 2026-07-21 | Complete locally - symptom-first urgency routing and bounded multi-turn safety slice | Replaced the non-emergency all-routine behavior with a controlled clinical-presentation rule engine covering symptoms, anatomy, timing, trajectory, severity, associated signs, measurements, population/pregnancy, exposures, trauma, danger signals, negation, and hypothetical mentions. Deterministic routing now owns `emergency_120`, `urgent_same_day`, `clinician_contact`, and `routine_education`; it runs before retrieval or model calls, constrains the allowed next action, and rejects model attempts to weaken or upgrade the server route. Added bounded user-only multi-turn continuity while keeping the current literal retrieval query authoritative. Regenerated the checksum-bound 100-case/63-variant contract and local safety/coverage artifacts. Candidate routing matches all 100 canonicals and 63 variants; emergency recall remains 37/37 canonicals and 39/39 critical variants with zero non-emergency false positives and no claimed clinical approval. The latest retrieval audit reports 36 sufficient, 17 no-eligible-evidence, and 47 pre-safety canonicals plus 17/7/39 variants; link-only source candidates cover 12 of the 17 canonical gaps, while `RCQ-018`, `RCQ-028`, `RCQ-035`, `RCQ-074`, and `RCQ-083` still have no mapped candidate. The complete-answer v2 preflight remains fail-closed with 112 readiness failures, a five-case `$0.013496` maximum estimate under the `$0.10` cap, concurrency one, and zero provider calls. Bounded release membership was materialized before retrieval eligibility joins to eliminate a repeatable PostgreSQL full-suite slowdown. Focused structural tests passed `115/115`, retrieval/HPA tests passed `27/27`, and the clean full API run passed all `235` collected tests; full Ruff, Alembic drift, and whitespace checks passed, with the pre-existing cyclic knowledge-rights/source FK warning retained. No paid call, clinical approval, source activation, immutable-release activation, deployment, or real-patient action occurred. | `services/api/app/clinical_presentation.py`, `services/api/app/patient_chat.py`, `services/api/app/ai_chat.py`, `services/api/app/chatbot_contracts.py`, `services/api/app/answer_evaluation.py`, `services/api/app/knowledge_retrieval.py`, `services/api/scripts/build_canonical_symptom_contract.py`, `services/api/scripts/evaluate_canonical_symptom_contract.py`, `services/api/scripts/evaluate_canonical_answers.py`, `services/api/knowledge_base/evaluation/canonical_rural_symptom_questions.v1.json`, `services/api/knowledge_base/evaluation/canonical_rural_symptom_source_candidates.v1.json`, `services/api/knowledge_base/release_artifacts/evaluation/canonical-rural-symptom-safety-urgency-v3-local-20260721.json`, `services/api/knowledge_base/release_artifacts/evaluation/canonical-rural-symptom-coverage-KBIR-D3DFA94CC95660019B6EF94E-v5-urgency-local-20260721.json`, `services/api/knowledge_base/release_artifacts/evaluation/canonical-complete-answer-preflight-v2-urgency-local-20260721.json`, `services/api/tests/test_clinical_presentation.py`, `services/api/tests/test_phase3_patient_chat.py`, `services/api/tests/test_answer_evaluation.py`, `services/api/tests/test_canonical_source_candidates.py`, `docs/Phase_3_Chatbot_Intended_Use_and_Safety_Boundary.md`, `docs/Phase_3_Chatbot_RAG_Agentic_Architecture_and_Knowledge_Base.md`, `docs/Dr_AI_v1.0_API_Contract.md` | Obtain named clinical/native-Chinese/product review of routes, danger-signal combinations, scene-safety copy, and all case annotations; ingest and review authoritative patient-facing sources for the 17 canonical and seven variant evidence gaps; assign relevant/forbidden source IDs; then rerun retrieval and complete-answer gates before any paid 9B optimization. |
+| 2026-07-21 | Complete locally - checksum-bound canonical source-intake mapping | Upgraded the separated source-candidate queue to schema `1.1.0` and added six verified official Mainland links for the previously unmapped biliary-pattern pain, spreading insect-bite changes, dog-bite rabies exposure, colloquial palpitation/chest-tightness, post-vaccination fever, and acute back-pain/leg-numbness presentations. Canonical and variant mappings are now explicit for all sources. Added a standalone no-network/no-provider validator that binds the queue to the canonical-contract and v5-coverage checksums, restricts locators to declared authority domains, verifies unique identifiers and exact mapping of all 17 canonical and seven variant no-evidence observations, enforces evaluation/retrieval/training separation, rejects embedded content or approval drift, and emits a local evidence artifact. The gate passes with 18 candidate sources, 17/17 canonical research leads, 7/7 variant research leads, zero unmapped IDs, zero provider calls, and explicit `eligible_evidence_claimed=false` and `clinical_approval_claimed=false`. This closes only research-lead discovery: every source remains link-only, rights-pending, review-pending, non-retrievable, and activation-blocked. The focused tests pass `3/3`; the clean full API run reaches 100% for all `236` collected tests; full Ruff, Alembic drift, and whitespace checks pass, with the pre-existing cyclic knowledge-rights/source FK warning retained. No content capture, clinical approval, rights approval, model call, paid usage, source/release activation, deployment, or real-patient action occurred. | `services/api/knowledge_base/evaluation/canonical_rural_symptom_source_candidates.v1.json`, `services/api/scripts/validate_canonical_source_candidates.py`, `services/api/knowledge_base/release_artifacts/evaluation/canonical-source-intake-v1-local-20260721.json`, `services/api/tests/test_canonical_source_candidates.py`, `services/api/knowledge_base/README.md`, `docs/Phase_3_Chatbot_RAG_Agentic_Architecture_and_Knowledge_Base.md`, `docs/Dr_AI_v1.0_Implementation_Plan.md` | Obtain source- and content-class-specific reuse rights and named section-level clinical/native-Chinese/product review before governed capture. Then ingest approved sections, build a new immutable candidate release, populate case-specific relevant/forbidden source IDs, and rerun retrieval and complete-answer gates before any paid Slice 9B work. |
+| 2026-07-21 | Complete locally - current v8 symptom-gap research-lead discovery | Expanded the separated, evaluation-only queue with 13 additional official Mainland source links and extended three existing mappings, covering every currently observed v8 presentation-centrality gap without storing article text or admitting evidence. The checksum-bound v2 validator passes with 31 link-only candidates, 33/33 canonical mappings, 25/25 variant mappings, zero provider calls, zero paid usage, and explicit `eligible_evidence_claimed=false` and `clinical_approval_claimed=false`. All candidates remain source-rights-, section-level clinical-, native-Simplified-Chinese-, readability-, and product-review pending; completion of link discovery does not change the v8 `no_eligible_evidence` decisions or populate relevant/forbidden source labels. Focused source-intake/coverage tests passed `5/5`; the full API suite passed all 250 tests in the established `3 + 4 + 243` database-safe partitions; full Ruff and Alembic drift passed; Alembic retained the known cyclic `kb_rights_records`/`kb_sources` warning. An overlapping local pytest rerun briefly deadlocked while two sessions attempted migrations against the same database; after confirming no stale pytest process remained, the isolated partition passed with exit code zero. No content capture, rights or clinical approval, source/release activation, answer generation, paid model call, deployment, or real-patient action occurred. | `services/api/knowledge_base/evaluation/canonical_rural_symptom_source_candidates.v1.json`, `services/api/knowledge_base/release_artifacts/evaluation/canonical-source-intake-v5-complete-research-leads-local-20260721.json`, `services/api/tests/test_canonical_source_candidates.py`, `services/api/scripts/validate_canonical_source_candidates.py`, `services/api/knowledge_base/README.md`, `docs/Phase_3_Chatbot_RAG_Agentic_Architecture_and_Knowledge_Base.md`, `docs/Dr_AI_v1.0_Implementation_Plan.md` | Obtain source- and content-class-specific reuse rights and named section-level clinical/native-Chinese/readability/product review. Only approved sections may be governed into a new immutable candidate release; then populate case-specific relevant/forbidden source IDs and rerun retrieval, safety, rescue, and complete-answer gates before paid optimization. |
+| 2026-07-21 | Complete locally - checksum-bound canonical review-provenance gate | Added a deterministic, evaluation-only review packet bound to the exact canonical contract file/content checksum, v8 active-release coverage artifact, and 31-source research-lead queue. The packet exposes all 100 canonical cases and 85 variants with their controlled annotations, active retrieval candidate IDs, and separate link-only lead IDs; it stores no article bodies or passages. Added a fail-closed validator for exact sets/checksums, no-content separation, named reviewer provenance, per-subject route/presentation/behavior/source/scene-safety decisions, source-specific rights capabilities and evidence, section selection, corrections requiring regeneration, and bidirectional source-to-case scope. The current packet is structurally valid but intentionally fails readiness with 949 pending items: 822 subject decisions, 34 active-source selections, 58 research-lead selections, four reviewer roles, and 31 source dispositions. It reports `eligible_evidence_claimed=false`, zero provider calls, and zero paid usage. Adversarial tests prove annotation/source drift, embedded source content, checkbox-only approval, missing rights/sections, and one-sided source scope fail closed. Focused review/source/coverage tests passed `10/10`; the full API suite passed all 255 tests in sequential `3 + 4 + 248` database-safe partitions; full Ruff and Alembic drift passed, retaining the known cyclic `kb_rights_records`/`kb_sources` warning. No review decision, rights approval, content capture, contract freeze, source/release activation, model call, deployment, or real-patient action was invented. | `services/api/scripts/build_canonical_review_packet.py`, `services/api/scripts/validate_canonical_review_packet.py`, `services/api/knowledge_base/evaluation/canonical_rural_symptom_review_packet.v1.json`, `services/api/knowledge_base/release_artifacts/evaluation/canonical-review-readiness-v1-pending-local-20260721.json`, `services/api/tests/test_canonical_review_packet.py`, `services/api/knowledge_base/README.md`, `docs/Phase_3_Chatbot_RAG_Agentic_Architecture_and_Knowledge_Base.md`, `docs/Dr_AI_v1.0_Implementation_Plan.md` | Obtain and record the named reviews in a packet copy. Apply any corrections by regenerating the canonical contract and packet with new checksums; only then pursue rights-cleared governed section capture, source-ID label population, an immutable candidate release, and separate retrieval/rescue/safety/complete-answer gates. |
+| 2026-07-21 | Complete locally - unified controlled emergency-routing authority | Removed the remaining patient-entry-point overdose/self-harm regex bypass so the production-shared controlled `SafetyAssessment` is the sole authority for every emergency decision. Added controlled Chinese/English overdose and self-harm presentation concepts, danger signals, priority/guidance mapping, and negation/hypothetical handling. Affirmed crisis inputs return immediate 120 plus bounded scene-safety guidance before retrieval/model calls; negated and educational/hypothetical forms do not emergency-route. A contract-wide invariant test proves endpoint routing agrees with the controlled assessment for all 100 canonicals and 85 variants. The checksum-bound v6 local safety artifact keeps exact route parity at 100/100 canonicals and 85/85 variants, emergency recall at 37/37 canonicals and 45/45 critical variants, zero non-emergency false positives, and zero structural/metric failures. Focused tests passed `100/100`; the full API suite passed all `269` tests in sequential `3 + 4 + 262` database-safe partitions. Full Ruff, Alembic upgrade/drift, and whitespace checks passed; Alembic retained the known cyclic `kb_rights_records`/`kb_sources` warning. No clinical approval, corpus support, model/provider call, paid usage, source/release activation, deployment, or real-patient action was claimed. | `services/api/app/clinical_presentation.py`, `services/api/app/patient_chat.py`, `services/api/tests/test_clinical_presentation.py`, `services/api/tests/test_phase3_patient_chat.py`, `services/api/scripts/evaluate_canonical_symptom_contract.py`, `services/api/knowledge_base/release_artifacts/evaluation/canonical-rural-symptom-safety-urgency-v6-unified-authority-local-20260721.json`, `docs/Phase_3_Chatbot_Intended_Use_and_Safety_Boundary.md`, `docs/Phase_3_Chatbot_RAG_Agentic_Architecture_and_Knowledge_Base.md`, `docs/Dr_AI_v1.0_Implementation_Plan.md` | Obtain named clinical/native-Chinese/product review of every route, danger-signal combination, and scene-safety instruction; then complete rights-cleared governed evidence capture, source-ID labels, and the separate retrieval/rescue/complete-answer gates before any paid optimization or production claim. |
+| 2026-07-21 | Complete locally - fail-closed canonical retrieval-only quality gate | Added a separate schema `1.0.0`, checksum- and active-release-bound retrieval policy and offline scorer so candidate coverage can no longer stand in for retrieval quality. The gate requires reviewed support labels for all 92 retrieval-eligible subjects and independently enforces relevant-source recall@6, MRR, relevant-decision correctness, symptom-only recall, all 39 paired-variant non-degradation comparisons, reviewed no-evidence precision, zero forbidden leakage/errors/pre-safety calls, 2,500 ms p95 and 8,000 ms maximum latency, and zero provider calls/cost. Extended the production `RetrievalResult` and canonical audit with content-free per-turn call/latency measurements; v9 preserves the v8 20/33/47 canonical and 14/25/46 variant candidate/no-evidence/pre-safety sets, so the existing 31-source v8 research queue remains a valid historical mapping. The first gate is structurally valid but honestly fails with 101 readiness and seven metric failures: support-label readiness is 0/92, clinically labelled recall/symptom-only recall/non-degradation are unscored, and candidate sufficiency is only 34/92 overall and 3/8 for retrieval-eligible symptom-only variants. Operational diagnostics pass locally at 93/93 pre-safety zero-call, zero retrieval errors, 918 ms p95, 1,687 ms maximum, zero provider calls, and `$0` usage; the observed zero forbidden hits cannot close that gate while labels are pending. Adversarial tests cover label/checksum/release drift, symptom-only degradation, forbidden leakage, latency, and missing observations. An initial HPA partition was interrupted after an uncommitted bulk-release query selected an unstable PostgreSQL plan; the integration test now commits activation before the patient read, matching production visibility, and the isolated partition passes. Focused tests passed `89/89`; all `274` API tests passed in sequential `3 + 4 + 267` partitions. Full Ruff and Alembic upgrade/drift passed, retaining the known cyclic `kb_rights_records`/`kb_sources` warning. No clinical/source-right approval, evidence admission, planner/answer-model call, paid usage, release activation, deployment, or real-patient action was claimed. | `services/api/app/canonical_retrieval_evaluation.py`, `services/api/app/knowledge_retrieval.py`, `services/api/scripts/audit_canonical_symptom_coverage.py`, `services/api/scripts/evaluate_canonical_retrieval.py`, `services/api/knowledge_base/evaluation/canonical_rural_symptom_retrieval_gate.v1.json`, `services/api/knowledge_base/release_artifacts/evaluation/canonical-rural-symptom-coverage-KBIR-D3DFA94CC95660019B6EF94E-v9-gate-metrics-local-20260721.json`, `services/api/knowledge_base/release_artifacts/evaluation/canonical-rural-symptom-retrieval-gate-v1-pending-local-20260721.json`, `services/api/tests/test_canonical_coverage_audit.py`, `services/api/tests/test_canonical_retrieval_evaluation.py`, `services/api/tests/test_hpa_health_myths_ingestion.py`, `services/api/knowledge_base/README.md`, `docs/Phase_3_Chatbot_Intended_Use_and_Safety_Boundary.md`, `docs/Phase_3_Chatbot_RAG_Agentic_Architecture_and_Knowledge_Base.md`, `docs/Dr_AI_v1.0_Implementation_Plan.md` | Complete named review and rights-cleared governed capture, populate case-specific relevant/forbidden labels, build a new immutable candidate release, and rerun this gate. Only after labelled symptom-only and paired metrics pass should complete-answer evaluation and any paid Slice 9B optimization resume. |
+| 2026-07-21 | Complete locally - canonical complete-answer matrix-integrity gate | Corrected two false-positive paths in the complete-answer evaluator. Variants now retain their own expected route, retrieval/model permissions, relevant source IDs, forbidden source IDs, and coverage state instead of inheriting the parent canonical labels. Scoring now requires an explicit exact scope: the five route-balanced canonical IDs for `initial_batch`, or all 100 canonical plus 85 variant IDs for `full_contract`; duplicate, missing, extra, or unplanned observations fail before scoring. A passing initial batch can set only `ready_for_full_contract_run`, while `machine_gate_passed` remains false until the exact 185-input matrix passes. The scorer also rejects non-object observations, truthy-string booleans, negative call/latency/token/cost values, and invalid or duplicate citation source IDs. Contract/preflight readiness now includes all 39 model-eligible variants as well as 53 canonicals and requires named review provenance. The no-cost v4 preflight is structurally valid but records 190 readiness failures: 106 canonical source/coverage failures, 78 variant source/coverage failures, and six contract/review/freeze failures. It plans one case per route, retains the visible DeepSeek `deepseek-v4-flash` configuration, concurrency one, `$0.013496` worst-case estimate under `$0.10`, zero provider calls, and `$0` paid usage. Adversarial tests prove partial batches cannot pass, variant-specific urgent/source labels are honored, and malformed booleans/negative usage are rejected. Focused answer/retrieval/safety tests passed `114/114`; all `277` API tests passed in sequential `3 + 4 + 270` partitions. Full Ruff and Alembic upgrade/drift passed, retaining the known cyclic `kb_rights_records`/`kb_sources` warning. No paid call, clinical/source-right approval, evidence admission, full answer result, human-review pass, release activation, deployment, or real-patient action was claimed. | `services/api/app/answer_evaluation.py`, `services/api/scripts/evaluate_canonical_answers.py`, `services/api/tests/test_answer_evaluation.py`, `services/api/knowledge_base/release_artifacts/evaluation/canonical-complete-answer-preflight-v4-matrix-integrity-local-20260721.json`, `services/api/knowledge_base/README.md`, `docs/Phase_3_Chatbot_Intended_Use_and_Safety_Boundary.md`, `docs/Phase_3_Chatbot_RAG_Agentic_Architecture_and_Knowledge_Base.md`, `docs/Dr_AI_v1.0_Implementation_Plan.md` | Complete named review, governed evidence capture, source labels, and a passing release-matched retrieval gate. Then run only the exact five-case paid initial batch; proceed to the 185-input run only if that batch passes, and keep independent clinician/native-Chinese human review mandatory. |
+| 2026-07-21 | Complete locally - safety-authoritative retrieval-rescue planner boundary | Closed a cross-layer authority gap in Slice 9B. The patient endpoint now gives rescue only the prior user turn admitted by deterministic continuity, rather than the last three user messages. Rewrite validation is bound to the exact non-emergency `SafetyAssessment.presentation` and preserves symptoms, anatomy, onset, duration, trajectory, severity, associated signs, measurements, population, pregnancy, exposures, trauma, requested actions, danger signals, negation/hypothetical state, and condition mentions. A validated model rewrite can replace only `literal_query`; retry multi-view construction and presentation-central evidence admission still use the trusted controlled representation. The frozen v2 evaluator now follows the same continuity/safety path before retrieval. Runner v3 writes immutable structural-preflight evidence and explicitly records zero calls, tokens, and cost. The v3 preflight passed all six frozen cases with three improvable hard cases and exact trigger matches, but it is not a paid improvement/latency result and does not close Slice 9B. Added adversarial tests for omitted duration, reintroduced unadmitted pregnancy history, trusted retry presentation, and one-turn measurement-method continuity. Focused presentation/patient-chat tests passed `103/103`; all `280` API tests passed in sequential `3 + 4 + 273` partitions. The first HPA partition was interrupted after transient database waiting on its fourth test; Alembic remained at head, the exact case passed independently in 14 seconds, and the complete four-test partition then passed in 18 seconds. No provider/model call, paid usage, corpus or clinical approval, release activation, deployment, or real-patient action occurred. | `services/api/app/clinical_presentation.py`, `services/api/app/retrieval_rescue.py`, `services/api/app/patient_chat.py`, `services/api/scripts/evaluate_slice9b_retrieval_rescue.py`, `services/api/tests/test_clinical_presentation.py`, `services/api/tests/test_phase3_patient_chat.py`, `services/api/knowledge_base/release_artifacts/evaluation/slice9b-rescue-v3-trusted-presentation-preflight-local-20260721.json`, `services/api/knowledge_base/README.md`, `docs/Phase_3_Chatbot_Intended_Use_and_Safety_Boundary.md`, `docs/Phase_3_Chatbot_RAG_Agentic_Architecture_and_Knowledge_Base.md`, `docs/Dr_AI_v1.0_Implementation_Plan.md` | Complete named clinical/source-right review, governed section capture, case-specific source labels, and a passing release-matched Slice 9A retrieval gate. Only then run the smallest paid Slice 9B batch and require hard-query improvement, non-degradation, latency, and cost gates before any larger run. |
+| 2026-07-21 | Complete locally - rollback-only production-path pre-model answer gate | Added an executable, content-free complete-answer lane for every contract subject that must terminate before retrieval or a model: 47 canonicals and 46 variants, comprising 82 emergency routes and 11 prohibited medication-change refusals. Runner v2 executes the real `send_patient_chat_message` path under the recognized synthetic demo identity, inserts only the contract-authorized prior user turn for multi-turn cases, replaces retrieval/planner/answer adapters with fail-fast probes, requires emergency output to equal the controlled guidance selected by `SafetyAssessment`, and contains endpoint commits in an outer rollback-only transaction. The immutable local artifact passed 93/93 with 100% emergency recall, zero pre-emergency calls, 100% medication-gate and route/action behavior, 11 ms p95 and 29 ms maximum latency, zero provider-reported tokens, and `$0` paid usage; direct database checks found zero persisted evaluation threads or events. The planner adapter's own input bound is now also one prior user message. Separately, replaced the active-release materialized CTE/JSON join that intermittently stalled PostgreSQL with a deterministic two-stage immutable-membership lookup; release-scoped embedding precedence, legacy fallback, rights/review eligibility, and model-version fail-closed behavior are preserved and regression-tested. Affected HPA/retrieval/release tests passed `35/35`, and the complete API suite passed all `282` collected tests. Repository-wide Ruff lint and touched-file Ruff formatting checks pass; Alembic upgrade/drift passes with the known cyclic `kb_rights_records`/`kb_sources` warning; the repository-wide format check still identifies 21 pre-existing Phase 3 files outside this slice and those intentional changes were not mass-reformatted. No provider/model call, clinical or language approval, corpus admission, generated-answer/full-contract pass, release activation, deployment, or real-patient action was claimed. | `services/api/scripts/evaluate_canonical_answers.py`, `services/api/app/ai_chat.py`, `services/api/app/knowledge_retrieval.py`, `services/api/tests/test_answer_evaluation.py`, `services/api/tests/test_phase3_patient_chat.py`, `services/api/tests/test_phase3_knowledge_retrieval.py`, `services/api/knowledge_base/release_artifacts/evaluation/canonical-premodel-answer-v2-rollback-production-path-local-20260721.json`, `services/api/knowledge_base/README.md`, `docs/Phase_3_Chatbot_Intended_Use_and_Safety_Boundary.md`, `docs/Phase_3_Chatbot_RAG_Agentic_Architecture_and_Knowledge_Base.md`, `docs/Dr_AI_v1.0_Implementation_Plan.md` | Obtain named clinical/native-Chinese/product review, rights-cleared governed evidence, case-specific source labels, and a passing release-matched Slice 9A retrieval gate. Then run the exact five-case generated-answer batch before the 185-input gate and independent human review; only after those pass may the smallest paid Slice 9B improvement/latency batch run. |
+| 2026-07-21 | Complete locally - presentation-aware rescue and all-remaining-subject safe-degradation gate | Audited the five retrieval-eligible symptom-only failures and confirmed that they are governed-corpus gaps rather than missed approved evidence: orthostatic presyncope, positional vertigo, pesticide-related dermatitis, palpitation/chest-tightness, and reduced fetal movement all map to official Mainland research leads, but every lead remains link-only and rights/review pending. Live page checks found explicit NHC copyright notices and no recorded reusable licence for the Beijing/Yantai pages, so no body text was copied or admitted. Added a second rollback-only production-path lane for the exact 92 post-safety subjects (53 canonicals and 39 variants), complementing the 93 pre-model subjects without overlap. It runs real active-release retrieval while local probes force planner/answer service unavailability and prohibit external requests; the v2 content-free artifact passes 92/92 route/action, call-boundary, fixed-fallback, zero-usage, and rollback checks, with 34 candidate-sufficient and 58 no-evidence decisions, 92 retrievals, 59 planner-adapter invocations, 34 answer-adapter invocations, zero provider requests/tokens/cost, 900 ms p95, 975 ms maximum latency, and zero persisted threads/events. The first diagnostic run exposed a systemic regex-first defect: the suffix `要紧吗` classified a self-contained blood-streaked-sputum query as context-dependent ambiguity and erased sufficient evidence when the planner was unavailable. Rescue triggering now consults the controlled presentation and may use ambiguity evidence-withholding only when no standalone symptom, pregnancy, exposure, trauma, or explicit-condition topic exists. The corrected full artifact restores exact 34/58 parity with the retrieval audit; the Slice 9B v4 no-cost preflight retains exact trigger matches across all six frozen cases. Focused answer/patient-chat tests passed `71/71`; all `284` API tests passed. Repository-wide Ruff lint and touched-file formatting pass; Alembic upgrade/drift passes with the known cyclic knowledge-rights/source warning. No content licence, clinical/language approval, evidence admission, retrieval-quality/complete-answer pass, provider request, paid usage, release activation, deployment, or real-patient action was claimed. | `services/api/app/retrieval_rescue.py`, `services/api/scripts/evaluate_canonical_answers.py`, `services/api/scripts/evaluate_slice9b_retrieval_rescue.py`, `services/api/tests/test_answer_evaluation.py`, `services/api/tests/test_phase3_patient_chat.py`, `services/api/knowledge_base/release_artifacts/evaluation/canonical-safe-fallback-v2-presentation-aware-rollback-local-20260721.json`, `services/api/knowledge_base/release_artifacts/evaluation/slice9b-rescue-v4-presentation-aware-ambiguity-preflight-local-20260721.json`, `services/api/knowledge_base/README.md`, `docs/Phase_3_Chatbot_Intended_Use_and_Safety_Boundary.md`, `docs/Phase_3_Chatbot_RAG_Agentic_Architecture_and_Knowledge_Base.md`, `docs/Dr_AI_v1.0_Implementation_Plan.md` | Obtain reuse permission or select rights-cleared alternatives, then complete named section-level clinical/native-Chinese/readability/product review and governed capture for the five symptom-only gaps and all other unsupported cases. Populate relevant/forbidden labels, build a new immutable candidate release, and pass the retrieval-only gate before the exact five-case generated-answer batch or any paid Slice 9B rerun. |
+| 2026-07-21 | Complete locally - rights-cleared supplementary symptom-source intake and fail-closed review gate | Generalized the governed open-content and DeepSeek translation pipeline to accept explicit checksum-bound supplementary corpus sizes and artifact paths while preserving the frozen 55-source schema and provenance. Captured five publisher-authored MedlinePlus summaries under the existing public-domain content-class evidence: low blood pressure, dizziness/vertigo, arrhythmia, pesticides, and skin conditions. Generated five unofficial Simplified-Chinese candidates sequentially with `deepseek-v4-flash` after a one-document probe; provider-reported usage was 2,591 input, 1,706 output, and 4,297 total tokens, with approximately `$0.0008` configured-price cost under a `$0.05` ceiling and no provider failures. Added a separate checksum-bound corpus-review manifest and validator requiring named medical, native-Chinese, readability, Mainland-applicability, and product review without copying evaluation prompts into retrieval material. Structural validation passes, while admission correctly fails with 45 pending review decisions and four open translation/centrality blockers. Import verification produced five pending sources and five `generated_pending_review` translations with zero patient/doctor, lexical, or vector eligibility. Focused source/translation/review tests passed `15/15`; all `292` API tests passed. Repository-wide Ruff lint, touched-file formatting, JSON parsing, Alembic upgrade/drift, and whitespace checks pass; Alembic retains the known cyclic `kb_rights_records`/`kb_sources` warning. No clinical/language/readability/Mainland/product approval, evidence support label, immutable release, retrieval or answer gate improvement, deployment, or real-patient action is claimed. | `services/api/app/open_content_ingestion.py`, `services/api/app/knowledge_translation.py`, `services/api/app/knowledge_review.py`, `services/api/scripts/build_open_patient_education_corpus.py`, `services/api/scripts/build_open_symptom_gap_corpus.py`, `services/api/scripts/import_open_patient_education.py`, `services/api/scripts/import_open_patient_education_translations.py`, `services/api/scripts/translate_open_patient_education.py`, `services/api/scripts/validate_open_symptom_review.py`, `services/api/knowledge_base/catalog/open_symptom_presentations.v1.json`, `services/api/knowledge_base/translations/open_symptom_presentations.zh-Hans.deepseek-v4-flash.v1.json`, `services/api/knowledge_base/translations/open_symptom_presentations.zh-Hans.deepseek-v4-flash.v1.jsonl`, `services/api/knowledge_base/reviews/open_symptom_presentations.v1.json`, `services/api/tests/test_phase3_open_patient_education.py`, `services/api/tests/test_phase3_knowledge_translation.py`, `services/api/tests/test_open_symptom_review.py`, `services/api/knowledge_base/README.md`, `docs/Phase_3_Chatbot_RAG_Agentic_Architecture_and_Knowledge_Base.md`, `docs/Dr_AI_v1.0_Implementation_Plan.md` | Obtain named reviews and resolve all four blockers; replace or strictly limit the two weak-centrality sources, capture a rights-reviewed reduced-fetal-movement source, and only then admit reviewed passages, populate source labels, build a non-active immutable candidate, and rerun the Slice 9A retrieval-only gate before any further paid Slice 9B work. |
+| 2026-07-21 | Complete locally - licensed reduced-fetal-movement source intake | Extended the six-source symptom-presentation intake without changing the active release. Generalized the governed catalog to represent explicit publisher jurisdiction, authority basis, content class, licence-stable ID, permission scope, capability flags, supporting evidence locators, population, and review-due metadata while keeping schema `1.0` frozen to the original 55-source counts. Captured the NHS `Your baby's movements` patient page as six publisher-authored text sections after mechanically verifying the NHS OGL v3 commercial/adaptation terms, content-exclusion page, non-excluded URL path, required clinical phrases, and removal of images/video/logos and linked third-party material. The checksum-bound rights record permits the public-source translation call but named rights review remains mandatory before candidate admission; translated or non-refreshed wording cannot inherit NHS clinical approval, claim NHS authorship/endorsement, or retain England-specific care navigation without Mainland review. One sequential `deepseek-v4-flash` call generated the six-section Chinese candidate with 611 input, 511 output, and 1,122 total provider-reported tokens; cumulative six-source usage is 3,202 input, 2,217 output, and 5,419 total tokens, with approximately `$0.0011` configured-price cost under `$0.05` and zero provider failures. The review manifest now binds six sources/translations, requires 60 named rights/medical/language/readability/Mainland/product decisions, and intentionally fails admission with six open blockers. Local import verification records six sources, six versions, eleven original passages, and six `generated_pending_review` translations with zero patient/doctor, lexical, or vector eligibility. Focused tests passed `15/15`; all `292` API tests passed. No rights/clinical/language/readability/Mainland/product approval, relevant/forbidden source label, evidence admission, immutable release, retrieval/answer metric change, deployment, or real-patient action is claimed. | `services/api/app/open_content_ingestion.py`, `services/api/app/knowledge_review.py`, `services/api/scripts/build_open_symptom_gap_corpus.py`, `services/api/knowledge_base/catalog/open_symptom_presentations.v1.json`, `services/api/knowledge_base/translations/open_symptom_presentations.zh-Hans.deepseek-v4-flash.v1.json`, `services/api/knowledge_base/translations/open_symptom_presentations.zh-Hans.deepseek-v4-flash.v1.jsonl`, `services/api/knowledge_base/reviews/open_symptom_presentations.v1.json`, `services/api/tests/test_phase3_open_patient_education.py`, `services/api/tests/test_phase3_knowledge_translation.py`, `services/api/tests/test_open_symptom_review.py`, `services/api/knowledge_base/README.md`, `docs/Phase_3_Chatbot_RAG_Agentic_Architecture_and_Knowledge_Base.md`, `docs/Dr_AI_v1.0_Implementation_Plan.md` | Obtain and record all named reviews, resolve the six blockers, apply corrections by regenerating checksum-bound artifacts, then populate case-specific source labels and build a non-active immutable candidate for the Slice 9A retrieval-only gate. |

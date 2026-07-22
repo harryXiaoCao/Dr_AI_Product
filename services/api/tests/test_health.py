@@ -51,3 +51,28 @@ def test_wildcard_cors_is_rejected_outside_local_environments() -> None:
             jwt_secret="staging-secret-value-with-enough-entropy-123",
             cors_allowed_origins=["*"],
         )
+
+
+def test_production_rejects_local_retrieval_models() -> None:
+    with pytest.raises(ValidationError, match="Production retrieval requires"):
+        Settings(
+            _env_file=None,
+            environment="production",
+            jwt_secret="production-secret-value-with-enough-entropy-123",
+        )
+
+
+def test_production_accepts_declared_mainland_retrieval_services() -> None:
+    settings = Settings(
+        _env_file=None,
+        environment="production",
+        jwt_secret="production-secret-value-with-enough-entropy-123",
+        knowledge_embedding_backend="http_service",
+        knowledge_embedding_service_url="https://embedding.internal.example.cn/v1/embeddings",
+        knowledge_embedding_model="BAAI/bge-m3@dr-ai-mainland-v1",
+        knowledge_reranker_backend="http_service",
+        knowledge_reranker_service_url="https://reranker.internal.example.cn/v1/rerank",
+        knowledge_reranker_model="BAAI/bge-reranker-v2-m3@dr-ai-mainland-medical-v1",
+    )
+
+    assert settings.knowledge_model_service_data_region == "mainland_china"

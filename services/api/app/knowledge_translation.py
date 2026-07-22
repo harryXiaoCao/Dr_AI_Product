@@ -103,9 +103,10 @@ class TranslationDocumentArtifact(BaseModel):
 class TranslationCorpusArtifact(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: Literal["1.0"]
+    schema_version: Literal["1.0", "1.1"]
     source_corpus_locator: str
     source_corpus_checksum: str = Field(pattern=r"^[0-9a-f]{64}$")
+    expected_document_count: int | None = Field(default=None, ge=1)
     target_language: Literal["zh-Hans"]
     provider: Literal["deepseek"]
     model: str = Field(min_length=1, max_length=160)
@@ -115,10 +116,16 @@ class TranslationCorpusArtifact(BaseModel):
 
     @model_validator(mode="after")
     def validate_complete_corpus(self) -> TranslationCorpusArtifact:
-        if len(self.documents) != EXPECTED_OPEN_DOCUMENT_COUNT:
-            raise ValueError(
-                f"Translation corpus must contain exactly {EXPECTED_OPEN_DOCUMENT_COUNT} documents."
-            )
+        if self.schema_version == "1.0":
+            if self.expected_document_count is not None:
+                raise ValueError("Translation schema 1.0 must use the frozen 55-document scope.")
+            expected_count = EXPECTED_OPEN_DOCUMENT_COUNT
+        else:
+            if self.expected_document_count is None:
+                raise ValueError("Translation schema 1.1 requires expected_document_count.")
+            expected_count = self.expected_document_count
+        if len(self.documents) != expected_count:
+            raise ValueError(f"Translation corpus must contain exactly {expected_count} documents.")
         source_ids = [document.source_id for document in self.documents]
         if len(source_ids) != len(set(source_ids)):
             raise ValueError("Translation corpus source IDs must be unique.")

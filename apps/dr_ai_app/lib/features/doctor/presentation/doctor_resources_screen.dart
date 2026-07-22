@@ -724,8 +724,8 @@ class _CatalogPreviewNotice extends StatelessWidget {
                 Text(
                   liveCatalog
                       ? _isChinese(context)
-                            ? '当前从受治理 API 加载 $total 项资源，涵盖国家卫健委、世界卫生组织、MedlinePlus、NCI、NIMH 与 MyHealthfinder。每项均显示其版权和审核状态。'
-                            : 'The governed API currently provides $total resources from NHC, WHO, MedlinePlus, NCI, NIMH, and MyHealthfinder. Each item shows its rights and review state.'
+                            ? '当前从受治理 API 加载 $total 项资源，涵盖台湾卫生福利部国民健康署、国家卫健委、世界卫生组织、MedlinePlus、NCI、NIMH 与 MyHealthfinder。每项均显示其版权和审核状态。'
+                            : 'The governed API currently provides $total resources from Taiwan HPA, NHC, WHO, MedlinePlus, NCI, NIMH, and MyHealthfinder. Each item shows its rights and review state.'
                       : context.l10n.resourceCatalogPreviewBody,
                   style: const TextStyle(color: DrAiColors.inkSecondary),
                 ),
@@ -1636,6 +1636,10 @@ String _organizationLabel(BuildContext context, MedicalOrganization value) =>
         context.l10n.organizationWorldHealthOrganization,
       MedicalOrganization.nationalHealthCommission =>
         context.l10n.organizationNationalHealthCommission,
+      MedicalOrganization.healthPromotionAdministration =>
+        _isChinese(context)
+            ? '台湾卫生福利部国民健康署'
+            : 'Health Promotion Administration, Taiwan',
       MedicalOrganization.medlinePlus => 'MedlinePlus',
       MedicalOrganization.nationalCancerInstitute =>
         _isChinese(context) ? '美国国家癌症研究所' : 'National Cancer Institute',
@@ -1654,6 +1658,7 @@ String _jurisdictionLabel(BuildContext context, MedicalJurisdiction value) =>
       MedicalJurisdiction.international =>
         context.l10n.jurisdictionInternational,
       MedicalJurisdiction.china => context.l10n.jurisdictionChina,
+      MedicalJurisdiction.taiwan => _isChinese(context) ? '台湾' : 'Taiwan',
       MedicalJurisdiction.unitedStates =>
         _isChinese(context) ? '美国' : 'United States',
     };

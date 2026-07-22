@@ -1,0 +1,5080 @@
+{
+  "auditor_version": "canonical-active-release-coverage-v6-gate-metrics",
+  "audited_at": "2026-07-21T11:14:22.693472+00:00",
+  "contract_id": "dr-ai-rural-symptom-first-canonical-v1",
+  "contract_sha256": "fde06922c3d5151d08560dbc7955743e24e9f02fdd6b5a97397904e4ced01129",
+  "contract_status": "candidate_pending_clinical_native_chinese_and_product_review",
+  "active_release_ids": [
+    "KBIR-D3DFA94CC95660019B6EF94E"
+  ],
+  "provider_calls": 0,
+  "paid_usage_usd": 0,
+  "case_count": 100,
+  "decision_counts": {
+    "no_eligible_evidence": 33,
+    "not_applicable_pre_safety": 47,
+    "sufficient": 20
+  },
+  "variant_count": 85,
+  "variant_decision_counts": {
+    "no_eligible_evidence": 25,
+    "not_applicable_pre_safety": 46,
+    "sufficient": 14
+  },
+  "limitations": [
+    "A retrieval hit is only a candidate and is not a claim of case-specific clinical support.",
+    "Relevant source IDs stay empty until named case-by-case clinical review is recorded.",
+    "This audit does not evaluate answer generation or claim-to-citation support.",
+    "Generated presentation views are deterministic descriptions; their text is not stored in retrieval telemetry.",
+    "All literal and generated patient candidates must centrally match the controlled presentation before evidence sufficiency is considered.",
+    "Multi-turn variants run sequentially through the production-shared bounded user-turn continuity resolver. This retrieval-only audit makes no answer-model or rescue-planner call.",
+    "Retrieval latency is measured inside the production retrieval function. For a multi-turn subject, the reported latency is the sum of attempted user-turn retrievals and excludes safety-assessment and evaluator overhead."
+  ],
+  "observations": [
+    {
+      "case_id": "RCQ-001",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-HPA-36F6256F33A4C1381683",
+        "KBS-HPA-AB73A7926E1F4100020A",
+        "KBS-HPA-8C6444A9E31A2ABAC2F7"
+      ],
+      "candidate_jurisdictions": [
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure",
+        "requested_action"
+      ],
+      "literal_candidate_count": 2,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 1687,
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "routine_education",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "sufficient",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure",
+            "requested_action"
+          ],
+          "literal_candidate_count": 2,
+          "retrieval_latency_ms": 1687
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-002",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-HPA-AB73A7926E1F4100020A",
+        "KBS-HPA-36F6256F33A4C1381683"
+      ],
+      "candidate_jurisdictions": [
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure",
+        "requested_action"
+      ],
+      "literal_candidate_count": 2,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 808,
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "sufficient",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure",
+            "requested_action"
+          ],
+          "literal_candidate_count": 2,
+          "retrieval_latency_ms": 808
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-003",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-HPA-8C6444A9E31A2ABAC2F7",
+        "KBS-HPA-58FCD0171764DA09CD68"
+      ],
+      "candidate_jurisdictions": [
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure",
+        "requested_action"
+      ],
+      "literal_candidate_count": 25,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 695,
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "clinician_contact",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "sufficient",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure",
+            "requested_action"
+          ],
+          "literal_candidate_count": 25,
+          "retrieval_latency_ms": 695
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-004",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-HPA-8C6444A9E31A2ABAC2F7",
+        "KBS-HPA-58FCD0171764DA09CD68"
+      ],
+      "candidate_jurisdictions": [
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure",
+        "requested_action"
+      ],
+      "literal_candidate_count": 77,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 671,
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "clinician_contact",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "sufficient",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure",
+            "requested_action"
+          ],
+          "literal_candidate_count": 77,
+          "retrieval_latency_ms": 671
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-005",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-HPA-16B32924EDF9F3669915",
+        "KBS-HPA-60B55635F6379A2B9EE5",
+        "KBS-HPA-58FCD0171764DA09CD68",
+        "KBS-HPA-D4EFE32352BBF27E91AF",
+        "KBS-HPA-95D54C698D5194C666C2",
+        "KBS-HPA-32EB6F6D941F1C09F1D4"
+      ],
+      "candidate_jurisdictions": [
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure",
+        "requested_action"
+      ],
+      "literal_candidate_count": 9,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 754,
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "sufficient",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure",
+            "requested_action"
+          ],
+          "literal_candidate_count": 9,
+          "retrieval_latency_ms": 754
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-006",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-HPA-8C6444A9E31A2ABAC2F7",
+        "KBS-HPA-3D2F4884ED3765CC7236"
+      ],
+      "candidate_jurisdictions": [
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation"
+      ],
+      "literal_candidate_count": 97,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 397,
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "sufficient",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation"
+          ],
+          "literal_candidate_count": 97,
+          "retrieval_latency_ms": 397
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-007",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-HPA-411B0344C368B599734F",
+        "KBS-HPA-58FCD0171764DA09CD68",
+        "KBS-HPA-50BB104AC35D2C50F047",
+        "KBS-HPA-32EB6F6D941F1C09F1D4",
+        "KBS-HPA-16B32924EDF9F3669915",
+        "KBS-HPA-60B55635F6379A2B9EE5"
+      ],
+      "candidate_jurisdictions": [
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "requested_action"
+      ],
+      "literal_candidate_count": 9,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 530,
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "sufficient",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "requested_action"
+          ],
+          "literal_candidate_count": 9,
+          "retrieval_latency_ms": 530
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-008",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-HPA-36F6256F33A4C1381683"
+      ],
+      "candidate_jurisdictions": [
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "requested_action"
+      ],
+      "literal_candidate_count": 87,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 570,
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "clinician_contact",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "sufficient",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "requested_action"
+          ],
+          "literal_candidate_count": 87,
+          "retrieval_latency_ms": 570
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-009",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-010",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-011",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure",
+        "requested_action"
+      ],
+      "literal_candidate_count": 1,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 675,
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "no_eligible_evidence",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure",
+            "requested_action"
+          ],
+          "literal_candidate_count": 1,
+          "retrieval_latency_ms": 675
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-012",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure",
+        "requested_action"
+      ],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 699,
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "no_eligible_evidence",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure",
+            "requested_action"
+          ],
+          "literal_candidate_count": 0,
+          "retrieval_latency_ms": 699
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-013",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure",
+        "requested_action"
+      ],
+      "literal_candidate_count": 22,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 693,
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "no_eligible_evidence",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure",
+            "requested_action"
+          ],
+          "literal_candidate_count": 22,
+          "retrieval_latency_ms": 693
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-014",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-HPA-0CAFB46860FFB1EF12C7",
+        "KBS-HPA-3D2F4884ED3765CC7236"
+      ],
+      "candidate_jurisdictions": [
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "requested_action"
+      ],
+      "literal_candidate_count": 3,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 518,
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "sufficient",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "requested_action"
+          ],
+          "literal_candidate_count": 3,
+          "retrieval_latency_ms": 518
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-015",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-HPA-E42E8307AF675CB4F57F",
+        "KBS-HPA-0CAFB46860FFB1EF12C7",
+        "KBS-HPA-3D2F4884ED3765CC7236"
+      ],
+      "candidate_jurisdictions": [
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation"
+      ],
+      "literal_candidate_count": 127,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 389,
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "clinician_contact",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "sufficient",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation"
+          ],
+          "literal_candidate_count": 127,
+          "retrieval_latency_ms": 389
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-016",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure",
+        "requested_action"
+      ],
+      "literal_candidate_count": 24,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 715,
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "clinician_contact",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "no_eligible_evidence",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure",
+            "requested_action"
+          ],
+          "literal_candidate_count": 24,
+          "retrieval_latency_ms": 715
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-017",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-018",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure",
+        "requested_action"
+      ],
+      "literal_candidate_count": 8,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 713,
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "no_eligible_evidence",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure",
+            "requested_action"
+          ],
+          "literal_candidate_count": 8,
+          "retrieval_latency_ms": 713
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-019",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-020",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-021",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure"
+      ],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 494,
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "clinician_contact",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "no_eligible_evidence",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure"
+          ],
+          "literal_candidate_count": 0,
+          "retrieval_latency_ms": 494
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-022",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-HPA-F5367A465961F6CDC0E0"
+      ],
+      "candidate_jurisdictions": [
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure",
+        "requested_action"
+      ],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 668,
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "clinician_contact",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "sufficient",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure",
+            "requested_action"
+          ],
+          "literal_candidate_count": 0,
+          "retrieval_latency_ms": 668
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-023",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-024",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure"
+      ],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 553,
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "no_eligible_evidence",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure"
+          ],
+          "literal_candidate_count": 0,
+          "retrieval_latency_ms": 553
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-025",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "requested_action"
+      ],
+      "literal_candidate_count": 150,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 570,
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "clinician_contact",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "no_eligible_evidence",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "requested_action"
+          ],
+          "literal_candidate_count": 150,
+          "retrieval_latency_ms": 570
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-026",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-HPA-E1C0D07D2791D9A6D1CD"
+      ],
+      "candidate_jurisdictions": [
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure",
+        "requested_action"
+      ],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 680,
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "sufficient",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure",
+            "requested_action"
+          ],
+          "literal_candidate_count": 0,
+          "retrieval_latency_ms": 680
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-027",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure"
+      ],
+      "literal_candidate_count": 34,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 534,
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "clinician_contact",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "no_eligible_evidence",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure"
+          ],
+          "literal_candidate_count": 34,
+          "retrieval_latency_ms": 534
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-028",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure",
+        "requested_action"
+      ],
+      "literal_candidate_count": 41,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 703,
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "no_eligible_evidence",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure",
+            "requested_action"
+          ],
+          "literal_candidate_count": 41,
+          "retrieval_latency_ms": 703
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-029",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure"
+      ],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 526,
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "no_eligible_evidence",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure"
+          ],
+          "literal_candidate_count": 0,
+          "retrieval_latency_ms": 526
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-030",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure"
+      ],
+      "literal_candidate_count": 2,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 549,
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "no_eligible_evidence",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure"
+          ],
+          "literal_candidate_count": 2,
+          "retrieval_latency_ms": 549
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-031",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure"
+      ],
+      "literal_candidate_count": 2,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 526,
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "clinician_contact",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "no_eligible_evidence",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure"
+          ],
+          "literal_candidate_count": 2,
+          "retrieval_latency_ms": 526
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-032",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-033",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure",
+        "requested_action"
+      ],
+      "literal_candidate_count": 38,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 605,
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "no_eligible_evidence",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure",
+            "requested_action"
+          ],
+          "literal_candidate_count": 38,
+          "retrieval_latency_ms": 605
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-034",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-035",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation"
+      ],
+      "literal_candidate_count": 2,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 393,
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "no_eligible_evidence",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation"
+          ],
+          "literal_candidate_count": 2,
+          "retrieval_latency_ms": 393
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-036",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-037",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-MEDLINEPLUS-MEASURING-BLOOD-PRESSURE",
+        "KBS-HPA-2B2A4278294927E0EE61",
+        "KBS-MYHEALTHFINDER-BLOOD-PRESSURE",
+        "KBS-MEDLINEPLUS-HIGH-BLOOD-PRESSURE",
+        "KBS-MEDLINEPLUS-CHOLESTEROL-LEVELS-WHAT-YOU-NEED-TO-KNOW",
+        "KBS-MEDLINEPLUS-CHOLESTEROL-LEVELS"
+      ],
+      "candidate_jurisdictions": [
+        "US",
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation"
+      ],
+      "literal_candidate_count": 5,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 384,
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "sufficient",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation"
+          ],
+          "literal_candidate_count": 5,
+          "retrieval_latency_ms": 384
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-038",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-039",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-040",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-041",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure"
+      ],
+      "literal_candidate_count": 56,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 538,
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "no_eligible_evidence",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure"
+          ],
+          "literal_candidate_count": 56,
+          "retrieval_latency_ms": 538
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-042",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-043",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure",
+        "requested_action"
+      ],
+      "literal_candidate_count": 1,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 700,
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "no_eligible_evidence",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure",
+            "requested_action"
+          ],
+          "literal_candidate_count": 1,
+          "retrieval_latency_ms": 700
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-044",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-HPA-58FCD0171764DA09CD68",
+        "KBS-HPA-32EB6F6D941F1C09F1D4",
+        "KBS-HPA-16B32924EDF9F3669915",
+        "KBS-HPA-95D54C698D5194C666C2",
+        "KBS-HPA-60B55635F6379A2B9EE5",
+        "KBS-HPA-411B0344C368B599734F"
+      ],
+      "candidate_jurisdictions": [
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure",
+        "requested_action"
+      ],
+      "literal_candidate_count": 9,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 708,
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "sufficient",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure",
+            "requested_action"
+          ],
+          "literal_candidate_count": 9,
+          "retrieval_latency_ms": 708
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-045",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-046",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-MEDLINEPLUS-BLOOD-GLUCOSE-TEST",
+        "KBS-MEDLINEPLUS-DIABETES-TYPE-2",
+        "KBS-MEDLINEPLUS-HEMOGLOBIN-A1C-HBA1C-TEST",
+        "KBS-HPA-7D468E3FDA58E7D029B0",
+        "KBS-HPA-45D8C87A61DD7551C858",
+        "KBS-HPA-0CD1AE328816EB8E3AE2"
+      ],
+      "candidate_jurisdictions": [
+        "US",
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation"
+      ],
+      "literal_candidate_count": 33,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 353,
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "clinician_contact",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "sufficient",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation"
+          ],
+          "literal_candidate_count": 33,
+          "retrieval_latency_ms": 353
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-047",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-048",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure",
+        "requested_action"
+      ],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 669,
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "no_eligible_evidence",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure",
+            "requested_action"
+          ],
+          "literal_candidate_count": 0,
+          "retrieval_latency_ms": 669
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-049",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-HPA-971ED5168645B82E3A86",
+        "KBS-HPA-9CF1ADD7B51387A37CC5",
+        "KBS-HPA-8C9C187BEEBEE7BA39EF",
+        "KBS-HPA-410D2C33067144404C96",
+        "KBS-MYHEALTHFINDER-PREVENT-TYPE-2-DIABETES",
+        "KBS-HPA-211E51C7492997DF2323"
+      ],
+      "candidate_jurisdictions": [
+        "TW",
+        "US"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure",
+        "requested_action"
+      ],
+      "literal_candidate_count": 38,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 602,
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "routine_education",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "sufficient",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure",
+            "requested_action"
+          ],
+          "literal_candidate_count": 38,
+          "retrieval_latency_ms": 602
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-050",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-051",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure",
+        "requested_action"
+      ],
+      "literal_candidate_count": 94,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 671,
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "no_eligible_evidence",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure",
+            "requested_action"
+          ],
+          "literal_candidate_count": 94,
+          "retrieval_latency_ms": 671
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-052",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-HPA-971ED5168645B82E3A86",
+        "KBS-HPA-45D8C87A61DD7551C858",
+        "KBS-MYHEALTHFINDER-PREVENT-TYPE-2-DIABETES",
+        "KBS-HPA-088F768E453435F03721",
+        "KBS-HPA-AD2098A1508E7E857868",
+        "KBS-HPA-3B7E9149C977B2821BE2"
+      ],
+      "candidate_jurisdictions": [
+        "TW",
+        "US"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation"
+      ],
+      "literal_candidate_count": 38,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 346,
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "routine_education",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "sufficient",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation"
+          ],
+          "literal_candidate_count": 38,
+          "retrieval_latency_ms": 346
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-053",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-HPA-45D8C87A61DD7551C858",
+        "KBS-HPA-046E6EBCE7314359C194",
+        "KBS-HPA-DBD0B39501A8C839A33E"
+      ],
+      "candidate_jurisdictions": [
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "requested_action"
+      ],
+      "literal_candidate_count": 29,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 526,
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "routine_education",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "sufficient",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "requested_action"
+          ],
+          "literal_candidate_count": 29,
+          "retrieval_latency_ms": 526
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-054",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "requested_action"
+      ],
+      "literal_candidate_count": 24,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 461,
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "clinician_contact",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "no_eligible_evidence",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "requested_action"
+          ],
+          "literal_candidate_count": 24,
+          "retrieval_latency_ms": 461
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-055",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-HPA-16B32924EDF9F3669915",
+        "KBS-HPA-95D54C698D5194C666C2",
+        "KBS-HPA-50BB104AC35D2C50F047",
+        "KBS-HPA-60B55635F6379A2B9EE5",
+        "KBS-HPA-411B0344C368B599734F",
+        "KBS-HPA-32EB6F6D941F1C09F1D4"
+      ],
+      "candidate_jurisdictions": [
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure",
+        "requested_action"
+      ],
+      "literal_candidate_count": 9,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 675,
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "sufficient",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure",
+            "requested_action"
+          ],
+          "literal_candidate_count": 9,
+          "retrieval_latency_ms": 675
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-056",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-057",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-MEDLINEPLUS-DIABETES-TYPE-2",
+        "KBS-HPA-7D468E3FDA58E7D029B0",
+        "KBS-NCI-CANCER-PROGNOSIS",
+        "KBS-MYHEALTHFINDER-HEART-HEALTHY",
+        "KBS-MEDLINEPLUS-SLEEP-DISORDERS",
+        "KBS-MYHEALTHFINDER-BLOOD-PRESSURE"
+      ],
+      "candidate_jurisdictions": [
+        "US",
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure"
+      ],
+      "literal_candidate_count": 220,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 553,
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "clinician_contact",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "sufficient",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure"
+          ],
+          "literal_candidate_count": 220,
+          "retrieval_latency_ms": 553
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-058",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure",
+        "requested_action"
+      ],
+      "literal_candidate_count": 36,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 682,
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "no_eligible_evidence",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure",
+            "requested_action"
+          ],
+          "literal_candidate_count": 36,
+          "retrieval_latency_ms": 682
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-059",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-060",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "requested_action"
+      ],
+      "literal_candidate_count": 5,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 552,
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "clinician_contact",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "no_eligible_evidence",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "requested_action"
+          ],
+          "literal_candidate_count": 5,
+          "retrieval_latency_ms": 552
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-061",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-062",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure",
+        "requested_action"
+      ],
+      "literal_candidate_count": 2,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 666,
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "no_eligible_evidence",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure",
+            "requested_action"
+          ],
+          "literal_candidate_count": 2,
+          "retrieval_latency_ms": 666
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-063",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-064",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure",
+        "requested_action"
+      ],
+      "literal_candidate_count": 49,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 723,
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "no_eligible_evidence",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure",
+            "requested_action"
+          ],
+          "literal_candidate_count": 49,
+          "retrieval_latency_ms": 723
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-065",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-066",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-067",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure",
+        "requested_action"
+      ],
+      "literal_candidate_count": 2,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 665,
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "no_eligible_evidence",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure",
+            "requested_action"
+          ],
+          "literal_candidate_count": 2,
+          "retrieval_latency_ms": 665
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-068",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-069",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "requested_action"
+      ],
+      "literal_candidate_count": 2,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 548,
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "clinician_contact",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "no_eligible_evidence",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "requested_action"
+          ],
+          "literal_candidate_count": 2,
+          "retrieval_latency_ms": 548
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-070",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-071",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure",
+        "requested_action"
+      ],
+      "literal_candidate_count": 27,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 699,
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "no_eligible_evidence",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure",
+            "requested_action"
+          ],
+          "literal_candidate_count": 27,
+          "retrieval_latency_ms": 699
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-072",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-073",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "requested_action"
+      ],
+      "literal_candidate_count": 5,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 564,
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "no_eligible_evidence",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "requested_action"
+          ],
+          "literal_candidate_count": 5,
+          "retrieval_latency_ms": 564
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-074",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "requested_action"
+      ],
+      "literal_candidate_count": 4,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 525,
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "routine_education",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "no_eligible_evidence",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "requested_action"
+          ],
+          "literal_candidate_count": 4,
+          "retrieval_latency_ms": 525
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-075",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "requested_action"
+      ],
+      "literal_candidate_count": 96,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 570,
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "clinician_contact",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "no_eligible_evidence",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "requested_action"
+          ],
+          "literal_candidate_count": 96,
+          "retrieval_latency_ms": 570
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-076",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-077",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-078",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure"
+      ],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 531,
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "no_eligible_evidence",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure"
+          ],
+          "literal_candidate_count": 0,
+          "retrieval_latency_ms": 531
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-079",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-080",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-081",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-082",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-083",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure"
+      ],
+      "literal_candidate_count": 4,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 575,
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "no_eligible_evidence",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure"
+          ],
+          "literal_candidate_count": 4,
+          "retrieval_latency_ms": 575
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-084",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-085",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure",
+        "requested_action"
+      ],
+      "literal_candidate_count": 1,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 703,
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "no_eligible_evidence",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure",
+            "requested_action"
+          ],
+          "literal_candidate_count": 1,
+          "retrieval_latency_ms": 703
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-086",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-087",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-088",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-089",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-090",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-091",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-092",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-093",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-094",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-095",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-096",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-097",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-098",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-099",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-100",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    }
+  ],
+  "variant_observations": [
+    {
+      "case_id": "RCQ-003",
+      "variant_id": "RCQ-003-V01",
+      "variant_kind": "symptom_only",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-HPA-8C6444A9E31A2ABAC2F7"
+      ],
+      "candidate_jurisdictions": [
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure"
+      ],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 508,
+      "input_mode": "single_variant_text",
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "clinician_contact",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "sufficient",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure"
+          ],
+          "literal_candidate_count": 0,
+          "retrieval_latency_ms": 508
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-003",
+      "variant_id": "RCQ-003-V02",
+      "variant_kind": "multi_turn",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-HPA-8C6444A9E31A2ABAC2F7"
+      ],
+      "candidate_jurisdictions": [
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure"
+      ],
+      "literal_candidate_count": 48,
+      "retrieval_call_count": 2,
+      "retrieval_latency_ms": 1063,
+      "input_mode": "sequential_bounded_user_turn_continuity",
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "routine_education",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "sufficient",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure"
+          ],
+          "literal_candidate_count": 37,
+          "retrieval_latency_ms": 513
+        },
+        {
+          "turn_index": 2,
+          "continuity_reason": "temporal_symptom_follow_up",
+          "carried_previous_user_turn": true,
+          "literal_query_preserved": true,
+          "safety_route": "clinician_contact",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "sufficient",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure"
+          ],
+          "literal_candidate_count": 48,
+          "retrieval_latency_ms": 550
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-004",
+      "variant_id": "RCQ-004-V01",
+      "variant_kind": "colloquial",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-HPA-8C6444A9E31A2ABAC2F7"
+      ],
+      "candidate_jurisdictions": [
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure"
+      ],
+      "literal_candidate_count": 8,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 527,
+      "input_mode": "single_variant_text",
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "clinician_contact",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "sufficient",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure"
+          ],
+          "literal_candidate_count": 8,
+          "retrieval_latency_ms": 527
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-005",
+      "variant_id": "RCQ-005-V01",
+      "variant_kind": "symptom_only",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-HPA-58FCD0171764DA09CD68",
+        "KBS-HPA-D4EFE32352BBF27E91AF",
+        "KBS-HPA-32EB6F6D941F1C09F1D4",
+        "KBS-HPA-95D54C698D5194C666C2",
+        "KBS-HPA-16B32924EDF9F3669915",
+        "KBS-HPA-411B0344C368B599734F"
+      ],
+      "candidate_jurisdictions": [
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure",
+        "requested_action"
+      ],
+      "literal_candidate_count": 9,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 700,
+      "input_mode": "single_variant_text",
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "sufficient",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure",
+            "requested_action"
+          ],
+          "literal_candidate_count": 9,
+          "retrieval_latency_ms": 700
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-006",
+      "variant_id": "RCQ-006-V01",
+      "variant_kind": "abbreviated",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-HPA-0CAFB46860FFB1EF12C7",
+        "KBS-HPA-3D2F4884ED3765CC7236"
+      ],
+      "candidate_jurisdictions": [
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation"
+      ],
+      "literal_candidate_count": 2,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 383,
+      "input_mode": "single_variant_text",
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "sufficient",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation"
+          ],
+          "literal_candidate_count": 2,
+          "retrieval_latency_ms": 383
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-007",
+      "variant_id": "RCQ-007-V01",
+      "variant_kind": "disease_name_removed",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-HPA-58FCD0171764DA09CD68",
+        "KBS-HPA-8C6444A9E31A2ABAC2F7"
+      ],
+      "candidate_jurisdictions": [
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "requested_action"
+      ],
+      "literal_candidate_count": 11,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 554,
+      "input_mode": "single_variant_text",
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "sufficient",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "requested_action"
+          ],
+          "literal_candidate_count": 11,
+          "retrieval_latency_ms": 554
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-008",
+      "variant_id": "RCQ-008-V01",
+      "variant_kind": "disease_name_removed",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-HPA-36F6256F33A4C1381683",
+        "KBS-HPA-AB73A7926E1F4100020A"
+      ],
+      "candidate_jurisdictions": [
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation"
+      ],
+      "literal_candidate_count": 12,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 420,
+      "input_mode": "single_variant_text",
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "clinician_contact",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "sufficient",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation"
+          ],
+          "literal_candidate_count": 12,
+          "retrieval_latency_ms": 420
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-011",
+      "variant_id": "RCQ-011-V01",
+      "variant_kind": "disease_name_removed",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure"
+      ],
+      "literal_candidate_count": 28,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 525,
+      "input_mode": "single_variant_text",
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "no_eligible_evidence",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure"
+          ],
+          "literal_candidate_count": 28,
+          "retrieval_latency_ms": 525
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-012",
+      "variant_id": "RCQ-012-V01",
+      "variant_kind": "abbreviated",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure",
+        "requested_action"
+      ],
+      "literal_candidate_count": 22,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 662,
+      "input_mode": "single_variant_text",
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "no_eligible_evidence",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure",
+            "requested_action"
+          ],
+          "literal_candidate_count": 22,
+          "retrieval_latency_ms": 662
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-013",
+      "variant_id": "RCQ-013-V01",
+      "variant_kind": "colloquial",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure",
+        "requested_action"
+      ],
+      "literal_candidate_count": 1,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 691,
+      "input_mode": "single_variant_text",
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "no_eligible_evidence",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure",
+            "requested_action"
+          ],
+          "literal_candidate_count": 1,
+          "retrieval_latency_ms": 691
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-014",
+      "variant_id": "RCQ-014-V01",
+      "variant_kind": "disease_name_removed",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation"
+      ],
+      "literal_candidate_count": 10,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 381,
+      "input_mode": "single_variant_text",
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "no_eligible_evidence",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation"
+          ],
+          "literal_candidate_count": 10,
+          "retrieval_latency_ms": 381
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-014",
+      "variant_id": "RCQ-014-V02",
+      "variant_kind": "multi_turn",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure"
+      ],
+      "literal_candidate_count": 16,
+      "retrieval_call_count": 2,
+      "retrieval_latency_ms": 918,
+      "input_mode": "sequential_bounded_user_turn_continuity",
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "routine_education",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "sufficient",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation"
+          ],
+          "literal_candidate_count": 22,
+          "retrieval_latency_ms": 399
+        },
+        {
+          "turn_index": 2,
+          "continuity_reason": "temporal_symptom_follow_up",
+          "carried_previous_user_turn": true,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "no_eligible_evidence",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure"
+          ],
+          "literal_candidate_count": 16,
+          "retrieval_latency_ms": 519
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-017",
+      "variant_id": "RCQ-017-V01",
+      "variant_kind": "symptom_only",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-018",
+      "variant_id": "RCQ-018-V01",
+      "variant_kind": "disease_name_removed",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure"
+      ],
+      "literal_candidate_count": 3,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 554,
+      "input_mode": "single_variant_text",
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "no_eligible_evidence",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure"
+          ],
+          "literal_candidate_count": 3,
+          "retrieval_latency_ms": 554
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-019",
+      "variant_id": "RCQ-019-V01",
+      "variant_kind": "disease_name_removed",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-021",
+      "variant_id": "RCQ-021-V01",
+      "variant_kind": "symptom_only",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure"
+      ],
+      "literal_candidate_count": 19,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 560,
+      "input_mode": "single_variant_text",
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "clinician_contact",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "no_eligible_evidence",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure"
+          ],
+          "literal_candidate_count": 19,
+          "retrieval_latency_ms": 560
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-021",
+      "variant_id": "RCQ-021-V02",
+      "variant_kind": "colloquial",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure"
+      ],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 529,
+      "input_mode": "single_variant_text",
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "clinician_contact",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "no_eligible_evidence",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure"
+          ],
+          "literal_candidate_count": 0,
+          "retrieval_latency_ms": 529
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-022",
+      "variant_id": "RCQ-022-V01",
+      "variant_kind": "disease_name_removed",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-HPA-F5367A465961F6CDC0E0"
+      ],
+      "candidate_jurisdictions": [
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation"
+      ],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 379,
+      "input_mode": "single_variant_text",
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "clinician_contact",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "sufficient",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation"
+          ],
+          "literal_candidate_count": 0,
+          "retrieval_latency_ms": 379
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-023",
+      "variant_id": "RCQ-023-V01",
+      "variant_kind": "symptom_only",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-023",
+      "variant_id": "RCQ-023-V02",
+      "variant_kind": "multi_turn",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-024",
+      "variant_id": "RCQ-024-V01",
+      "variant_kind": "disease_name_removed",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure"
+      ],
+      "literal_candidate_count": 8,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 542,
+      "input_mode": "single_variant_text",
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "no_eligible_evidence",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure"
+          ],
+          "literal_candidate_count": 8,
+          "retrieval_latency_ms": 542
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-026",
+      "variant_id": "RCQ-026-V01",
+      "variant_kind": "disease_name_removed",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-HPA-E1C0D07D2791D9A6D1CD"
+      ],
+      "candidate_jurisdictions": [
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure"
+      ],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 533,
+      "input_mode": "single_variant_text",
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "sufficient",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure"
+          ],
+          "literal_candidate_count": 0,
+          "retrieval_latency_ms": 533
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-027",
+      "variant_id": "RCQ-027-V01",
+      "variant_kind": "symptom_only",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure"
+      ],
+      "literal_candidate_count": 8,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 594,
+      "input_mode": "single_variant_text",
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "clinician_contact",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "no_eligible_evidence",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure"
+          ],
+          "literal_candidate_count": 8,
+          "retrieval_latency_ms": 594
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-028",
+      "variant_id": "RCQ-028-V01",
+      "variant_kind": "disease_name_removed",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure"
+      ],
+      "literal_candidate_count": 8,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 525,
+      "input_mode": "single_variant_text",
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "no_eligible_evidence",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure"
+          ],
+          "literal_candidate_count": 8,
+          "retrieval_latency_ms": 525
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-028",
+      "variant_id": "RCQ-028-V02",
+      "variant_kind": "colloquial",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure"
+      ],
+      "literal_candidate_count": 7,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 556,
+      "input_mode": "single_variant_text",
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "no_eligible_evidence",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure"
+          ],
+          "literal_candidate_count": 7,
+          "retrieval_latency_ms": 556
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-030",
+      "variant_id": "RCQ-030-V01",
+      "variant_kind": "symptom_only",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-HPA-36F6256F33A4C1381683",
+        "KBS-HPA-AB73A7926E1F4100020A"
+      ],
+      "candidate_jurisdictions": [
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure"
+      ],
+      "literal_candidate_count": 2,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 524,
+      "input_mode": "single_variant_text",
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "sufficient",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure"
+          ],
+          "literal_candidate_count": 2,
+          "retrieval_latency_ms": 524
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-031",
+      "variant_id": "RCQ-031-V01",
+      "variant_kind": "symptom_only",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation"
+      ],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 417,
+      "input_mode": "single_variant_text",
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "clinician_contact",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "no_eligible_evidence",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation"
+          ],
+          "literal_candidate_count": 0,
+          "retrieval_latency_ms": 417
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-032",
+      "variant_id": "RCQ-032-V01",
+      "variant_kind": "symptom_only",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-032",
+      "variant_id": "RCQ-032-V02",
+      "variant_kind": "multi_turn",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-033",
+      "variant_id": "RCQ-033-V01",
+      "variant_kind": "abbreviated",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure",
+        "requested_action"
+      ],
+      "literal_candidate_count": 38,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 581,
+      "input_mode": "single_variant_text",
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "no_eligible_evidence",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure",
+            "requested_action"
+          ],
+          "literal_candidate_count": 38,
+          "retrieval_latency_ms": 581
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-034",
+      "variant_id": "RCQ-034-V01",
+      "variant_kind": "symptom_only",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-036",
+      "variant_id": "RCQ-036-V01",
+      "variant_kind": "symptom_only",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-041",
+      "variant_id": "RCQ-041-V01",
+      "variant_kind": "disease_name_removed",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure"
+      ],
+      "literal_candidate_count": 3,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 549,
+      "input_mode": "single_variant_text",
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "no_eligible_evidence",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure"
+          ],
+          "literal_candidate_count": 3,
+          "retrieval_latency_ms": 549
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-042",
+      "variant_id": "RCQ-042-V01",
+      "variant_kind": "symptom_only",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-042",
+      "variant_id": "RCQ-042-V02",
+      "variant_kind": "multi_turn",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-043",
+      "variant_id": "RCQ-043-V01",
+      "variant_kind": "symptom_only",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation"
+      ],
+      "literal_candidate_count": 5,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 390,
+      "input_mode": "single_variant_text",
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "no_eligible_evidence",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation"
+          ],
+          "literal_candidate_count": 5,
+          "retrieval_latency_ms": 390
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-043",
+      "variant_id": "RCQ-043-V02",
+      "variant_kind": "colloquial",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure"
+      ],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 554,
+      "input_mode": "single_variant_text",
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "no_eligible_evidence",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure"
+          ],
+          "literal_candidate_count": 0,
+          "retrieval_latency_ms": 554
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-044",
+      "variant_id": "RCQ-044-V01",
+      "variant_kind": "disease_name_removed",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-HPA-8251F0461E16551C7607",
+        "KBS-HPA-58FCD0171764DA09CD68",
+        "KBS-HPA-60B55635F6379A2B9EE5",
+        "KBS-HPA-411B0344C368B599734F",
+        "KBS-HPA-16B32924EDF9F3669915",
+        "KBS-HPA-32EB6F6D941F1C09F1D4"
+      ],
+      "candidate_jurisdictions": [
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure",
+        "requested_action"
+      ],
+      "literal_candidate_count": 9,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 693,
+      "input_mode": "single_variant_text",
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "sufficient",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure",
+            "requested_action"
+          ],
+          "literal_candidate_count": 9,
+          "retrieval_latency_ms": 693
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-048",
+      "variant_id": "RCQ-048-V01",
+      "variant_kind": "disease_name_removed",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure"
+      ],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 537,
+      "input_mode": "single_variant_text",
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "no_eligible_evidence",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure"
+          ],
+          "literal_candidate_count": 0,
+          "retrieval_latency_ms": 537
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-048",
+      "variant_id": "RCQ-048-V02",
+      "variant_kind": "multi_turn",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure"
+      ],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 2,
+      "retrieval_latency_ms": 941,
+      "input_mode": "sequential_bounded_user_turn_continuity",
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "routine_education",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "sufficient",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation"
+          ],
+          "literal_candidate_count": 21,
+          "retrieval_latency_ms": 380
+        },
+        {
+          "turn_index": 2,
+          "continuity_reason": "temporal_symptom_follow_up",
+          "carried_previous_user_turn": true,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "no_eligible_evidence",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure"
+          ],
+          "literal_candidate_count": 0,
+          "retrieval_latency_ms": 561
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-050",
+      "variant_id": "RCQ-050-V01",
+      "variant_kind": "disease_name_removed",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-050",
+      "variant_id": "RCQ-050-V02",
+      "variant_kind": "abbreviated",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-051",
+      "variant_id": "RCQ-051-V01",
+      "variant_kind": "colloquial",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure"
+      ],
+      "literal_candidate_count": 36,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 533,
+      "input_mode": "single_variant_text",
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "no_eligible_evidence",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure"
+          ],
+          "literal_candidate_count": 36,
+          "retrieval_latency_ms": 533
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-055",
+      "variant_id": "RCQ-055-V01",
+      "variant_kind": "disease_name_removed",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-HPA-95D54C698D5194C666C2",
+        "KBS-HPA-60B55635F6379A2B9EE5",
+        "KBS-HPA-58FCD0171764DA09CD68",
+        "KBS-HPA-16B32924EDF9F3669915",
+        "KBS-HPA-32EB6F6D941F1C09F1D4",
+        "KBS-HPA-411B0344C368B599734F"
+      ],
+      "candidate_jurisdictions": [
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure"
+      ],
+      "literal_candidate_count": 9,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 551,
+      "input_mode": "single_variant_text",
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "sufficient",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure"
+          ],
+          "literal_candidate_count": 9,
+          "retrieval_latency_ms": 551
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-058",
+      "variant_id": "RCQ-058-V01",
+      "variant_kind": "disease_name_removed",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure"
+      ],
+      "literal_candidate_count": 32,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 529,
+      "input_mode": "single_variant_text",
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "no_eligible_evidence",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure"
+          ],
+          "literal_candidate_count": 32,
+          "retrieval_latency_ms": 529
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-059",
+      "variant_id": "RCQ-059-V01",
+      "variant_kind": "multi_turn",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-061",
+      "variant_id": "RCQ-061-V01",
+      "variant_kind": "disease_name_removed",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-063",
+      "variant_id": "RCQ-063-V01",
+      "variant_kind": "disease_name_removed",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-064",
+      "variant_id": "RCQ-064-V01",
+      "variant_kind": "symptom_only",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure",
+        "requested_action"
+      ],
+      "literal_candidate_count": 9,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 695,
+      "input_mode": "single_variant_text",
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "no_eligible_evidence",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure",
+            "requested_action"
+          ],
+          "literal_candidate_count": 9,
+          "retrieval_latency_ms": 695
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-064",
+      "variant_id": "RCQ-064-V02",
+      "variant_kind": "multi_turn",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure",
+        "requested_action"
+      ],
+      "literal_candidate_count": 44,
+      "retrieval_call_count": 2,
+      "retrieval_latency_ms": 1215,
+      "input_mode": "sequential_bounded_user_turn_continuity",
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "routine_education",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "sufficient",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure"
+          ],
+          "literal_candidate_count": 108,
+          "retrieval_latency_ms": 543
+        },
+        {
+          "turn_index": 2,
+          "continuity_reason": "pregnancy_dependency",
+          "carried_previous_user_turn": true,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "no_eligible_evidence",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure",
+            "requested_action"
+          ],
+          "literal_candidate_count": 44,
+          "retrieval_latency_ms": 672
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-065",
+      "variant_id": "RCQ-065-V01",
+      "variant_kind": "symptom_only",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-066",
+      "variant_id": "RCQ-066-V01",
+      "variant_kind": "disease_name_removed",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-066",
+      "variant_id": "RCQ-066-V02",
+      "variant_kind": "abbreviated",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-068",
+      "variant_id": "RCQ-068-V01",
+      "variant_kind": "symptom_only",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-070",
+      "variant_id": "RCQ-070-V01",
+      "variant_kind": "symptom_only",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-071",
+      "variant_id": "RCQ-071-V01",
+      "variant_kind": "colloquial",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-HPA-0FFB6D5087DDB277A2D7"
+      ],
+      "candidate_jurisdictions": [
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure",
+        "requested_action"
+      ],
+      "literal_candidate_count": 7,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 699,
+      "input_mode": "single_variant_text",
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "sufficient",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure",
+            "requested_action"
+          ],
+          "literal_candidate_count": 7,
+          "retrieval_latency_ms": 699
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-072",
+      "variant_id": "RCQ-072-V01",
+      "variant_kind": "disease_name_removed",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-074",
+      "variant_id": "RCQ-074-V01",
+      "variant_kind": "multi_turn",
+      "audit_status": "candidate_support_pending_case_review",
+      "decision": "sufficient",
+      "candidate_source_ids": [
+        "KBS-HPA-AB73A7926E1F4100020A",
+        "KBS-HPA-36F6256F33A4C1381683"
+      ],
+      "candidate_jurisdictions": [
+        "TW"
+      ],
+      "candidate_languages": [
+        "zh-Hans"
+      ],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "requested_action"
+      ],
+      "literal_candidate_count": 2,
+      "retrieval_call_count": 2,
+      "retrieval_latency_ms": 891,
+      "input_mode": "sequential_bounded_user_turn_continuity",
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "routine_education",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "sufficient",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation"
+          ],
+          "literal_candidate_count": 47,
+          "retrieval_latency_ms": 376
+        },
+        {
+          "turn_index": 2,
+          "continuity_reason": "temporal_symptom_follow_up",
+          "carried_previous_user_turn": true,
+          "literal_query_preserved": true,
+          "safety_route": "routine_education",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "sufficient",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "requested_action"
+          ],
+          "literal_candidate_count": 2,
+          "retrieval_latency_ms": 515
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-076",
+      "variant_id": "RCQ-076-V01",
+      "variant_kind": "disease_name_removed",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-076",
+      "variant_id": "RCQ-076-V02",
+      "variant_kind": "multi_turn",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-077",
+      "variant_id": "RCQ-077-V01",
+      "variant_kind": "symptom_only",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-079",
+      "variant_id": "RCQ-079-V01",
+      "variant_kind": "disease_name_removed",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-080",
+      "variant_id": "RCQ-080-V01",
+      "variant_kind": "disease_name_removed",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-080",
+      "variant_id": "RCQ-080-V02",
+      "variant_kind": "abbreviated",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-081",
+      "variant_id": "RCQ-081-V01",
+      "variant_kind": "symptom_only",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-082",
+      "variant_id": "RCQ-082-V01",
+      "variant_kind": "symptom_only",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-083",
+      "variant_id": "RCQ-083-V01",
+      "variant_kind": "colloquial",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure"
+      ],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 560,
+      "input_mode": "single_variant_text",
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "no_eligible_evidence",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure"
+          ],
+          "literal_candidate_count": 0,
+          "retrieval_latency_ms": 560
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-084",
+      "variant_id": "RCQ-084-V01",
+      "variant_kind": "disease_name_removed",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-085",
+      "variant_id": "RCQ-085-V01",
+      "variant_kind": "abbreviated",
+      "audit_status": "no_released_evidence",
+      "decision": "no_eligible_evidence",
+      "candidate_source_ids": [],
+      "candidate_jurisdictions": [],
+      "candidate_languages": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [
+        "literal",
+        "clinical_presentation",
+        "population_exposure"
+      ],
+      "literal_candidate_count": 3,
+      "retrieval_call_count": 1,
+      "retrieval_latency_ms": 526,
+      "input_mode": "single_variant_text",
+      "turn_trace": [
+        {
+          "turn_index": 1,
+          "continuity_reason": "standalone",
+          "carried_previous_user_turn": false,
+          "literal_query_preserved": true,
+          "safety_route": "urgent_same_day",
+          "retrieval_attempted": true,
+          "retrieval_outcome": "no_eligible_evidence",
+          "retrieval_view_kinds": [
+            "literal",
+            "clinical_presentation",
+            "population_exposure"
+          ],
+          "literal_candidate_count": 3,
+          "retrieval_latency_ms": 526
+        }
+      ]
+    },
+    {
+      "case_id": "RCQ-086",
+      "variant_id": "RCQ-086-V01",
+      "variant_kind": "disease_name_removed",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-087",
+      "variant_id": "RCQ-087-V01",
+      "variant_kind": "disease_name_removed",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-088",
+      "variant_id": "RCQ-088-V01",
+      "variant_kind": "symptom_only",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-089",
+      "variant_id": "RCQ-089-V01",
+      "variant_kind": "disease_name_removed",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-090",
+      "variant_id": "RCQ-090-V01",
+      "variant_kind": "abbreviated",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-091",
+      "variant_id": "RCQ-091-V01",
+      "variant_kind": "abbreviated",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-092",
+      "variant_id": "RCQ-092-V01",
+      "variant_kind": "disease_name_removed",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-093",
+      "variant_id": "RCQ-093-V01",
+      "variant_kind": "disease_name_removed",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-094",
+      "variant_id": "RCQ-094-V01",
+      "variant_kind": "symptom_only",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-095",
+      "variant_id": "RCQ-095-V01",
+      "variant_kind": "disease_name_removed",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-096",
+      "variant_id": "RCQ-096-V01",
+      "variant_kind": "symptom_only",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-097",
+      "variant_id": "RCQ-097-V01",
+      "variant_kind": "abbreviated",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-098",
+      "variant_id": "RCQ-098-V01",
+      "variant_kind": "symptom_only",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-099",
+      "variant_id": "RCQ-099-V01",
+      "variant_kind": "symptom_only",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-100",
+      "variant_id": "RCQ-100-V01",
+      "variant_kind": "disease_name_removed",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    },
+    {
+      "case_id": "RCQ-100",
+      "variant_id": "RCQ-100-V02",
+      "variant_kind": "multi_turn",
+      "audit_status": "not_applicable_pre_safety",
+      "decision": null,
+      "candidate_source_ids": [],
+      "clinically_relevant_source_ids": [],
+      "clinical_relevance_review_status": "pending",
+      "retrieval_view_kinds": [],
+      "literal_candidate_count": 0,
+      "retrieval_call_count": 0,
+      "retrieval_latency_ms": 0
+    }
+  ]
+}

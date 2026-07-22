@@ -1,0 +1,18 @@
+{
+  "validator_version": "canonical-source-intake-validator-v1",
+  "contract_sha256": "676b7bd6f12ffc2daff7bbb6eac6134eb76b6d99dea58f0d12867687c5e6787d",
+  "coverage_artifact": "canonical-rural-symptom-coverage-KBIR-D3DFA94CC95660019B6EF94E-v6-sequential-continuity-local-20260721.json",
+  "candidate_source_count": 18,
+  "canonical_no_evidence_count": 17,
+  "canonical_mapped_research_lead_count": 17,
+  "canonical_unmapped_ids": [],
+  "variant_no_evidence_count": 7,
+  "variant_mapped_research_lead_count": 7,
+  "variant_unmapped_ids": [],
+  "provider_calls": 0,
+  "paid_usage_usd": 0,
+  "eligible_evidence_claimed": false,
+  "clinical_approval_claimed": false,
+  "failures": [],
+  "passed": true
+}

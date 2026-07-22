@@ -27,13 +27,14 @@ enum MedicalDocumentType {
 enum MedicalOrganization {
   worldHealthOrganization,
   nationalHealthCommission,
+  healthPromotionAdministration,
   medlinePlus,
   nationalCancerInstitute,
   nationalInstituteOfMentalHealth,
   officeOfDiseasePreventionAndHealthPromotion,
 }
 
-enum MedicalJurisdiction { international, china, unitedStates }
+enum MedicalJurisdiction { international, china, taiwan, unitedStates }
 
 enum MedicalResourceLanguage { bilingualChineseEnglish, chinese, english }
 
@@ -91,6 +92,7 @@ class MedicalResourceFixture {
       organization: _organizationFromPublisher(publisherId),
       jurisdiction: switch (jurisdiction) {
         'CN' || 'China' => MedicalJurisdiction.china,
+        'TW' || 'Taiwan' => MedicalJurisdiction.taiwan,
         'US' => MedicalJurisdiction.unitedStates,
         _ => MedicalJurisdiction.international,
       },
@@ -237,6 +239,7 @@ MedicalDocumentType _documentTypeFromWire(String value) => switch (value) {
 
 MedicalOrganization _organizationFromPublisher(String value) => switch (value) {
   'KBP-NHC' => MedicalOrganization.nationalHealthCommission,
+  'KBP-TW-HPA' => MedicalOrganization.healthPromotionAdministration,
   'KBP-MEDLINEPLUS' => MedicalOrganization.medlinePlus,
   'KBP-NCI' => MedicalOrganization.nationalCancerInstitute,
   'KBP-NIMH' => MedicalOrganization.nationalInstituteOfMentalHealth,

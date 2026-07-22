@@ -5,11 +5,11 @@ import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, Query, Response, status
+from fastapi import APIRouter, Query, Request, Response, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
-from app.ai_chat import DeepSeekChatError, deepseek_chat_adapter
+from app.chatbot_contracts import PatientChatRequest
 from app.dependencies import AppSettings, CurrentUser, DbSession
 from app.errors import ApiError
 from app.models import (
@@ -44,6 +44,7 @@ from app.models import (
     UserRole,
     VisitHistory,
 )
+from app.patient_chat import send_patient_chat_message as run_patient_chat_workflow
 from app.schemas import (
     AssessmentListResponse,
     AssessmentRequest,
@@ -137,22 +138,6 @@ SIMULATION_LABEL = "Research simulation - not for diagnosis."
 SYNTHETIC_DATA_LABEL = "Synthetic demonstration data only. Do not enter real patient data."
 EDUCATIONAL_LABEL = "Educational information only - not medical advice."
 EMERGENCY_LABEL = "If this may be an emergency, contact local emergency services now."
-RED_FLAG_MESSAGE = (
-    "If this may be an emergency, contact local emergency services now. "
-    "For symptoms such as chest pain, trouble breathing, stroke signs, severe bleeding, "
-    "overdose, or thoughts of self-harm, seek urgent local help immediately. "
-    "Dr. AI cannot evaluate emergencies."
-)
-UNSAFE_PROMPT_MESSAGE = (
-    "Educational information only - not medical advice. I cannot diagnose, interpret personal "
-    "records, or recommend medication changes. Use this space to prepare general questions for "
-    "a qualified clinician."
-)
-DEEPSEEK_FALLBACK_MESSAGE = (
-    "Educational information only - not medical advice. The educational chat service is "
-    "temporarily using a safe fallback. Prepare questions about your synthetic recovery plan, "
-    "what to monitor, and when to contact a qualified clinician."
-)
 DEMO_UPLOAD_MAX_SIZE_BYTES = 10_485_760
 DEMO_UPLOAD_TTL_MINUTES = 15
 IMAGING_STORAGE_PROVIDER = "tencent_cos"
@@ -197,11 +182,6 @@ RECOVERY_PLAN_REVIEW_STATUSES = {"draft", "in_review", "changes_requested", "app
 RECOVERY_TASK_CATEGORIES = {"medication", "exercise", "diet", "follow_up"}
 DEFAULT_CHAT_THREAD_KEY = "patient-education"
 CONSULTATION_STATUSES = {"requested", "accepted", "completed", "cancelled"}
-RED_FLAG_PATTERNS = (
-    r"\b(chest pain|can'?t breathe|cannot breathe|shortness of breath)\b",
-    r"\b(stroke|face drooping|severe bleeding|overdose)\b",
-    r"\b(suicidal|self[- ]?harm|kill myself)\b",
-)
 UNSAFE_PROMPT_PATTERNS = (
     r"\b(diagnose|diagnosis|change my dose|change dosage|stop (my )?medication)\b",
     r"\b(prescribe|interpret my ct|interpret my scan|raw record|medical record|lab result)\b",
@@ -845,14 +825,6 @@ def _response_chunks(content: str) -> list[str]:
     return chunks
 
 
-def _fallback_content(reason: str) -> str:
-    if reason == "unsafe_prompt":
-        return UNSAFE_PROMPT_MESSAGE
-    if reason == "red_flag":
-        return RED_FLAG_MESSAGE
-    return DEEPSEEK_FALLBACK_MESSAGE
-
-
 def _unsafe_consultation_fields(
     specialty: str,
     question_summary: str,
@@ -950,49 +922,6 @@ def _check_chat_rate_limit(user: CurrentUser, db: DbSession, settings: AppSettin
             "Educational chat is temporarily rate limited. Please try again shortly.",
         )
     limit.message_count += 1
-
-
-def _record_chat_exchange(
-    db: DbSession,
-    *,
-    thread: ChatThread,
-    user: CurrentUser,
-    message: str,
-    safety_category: str,
-    fallback_reason: str | None,
-    model: str,
-) -> tuple[ChatMessage, ChatMessage]:
-    now = datetime.now(UTC)
-    prompt_hash = hashlib.sha256(message.encode("utf-8")).hexdigest()
-    user_message = ChatMessage(
-        thread_id=thread.id,
-        patient_id=thread.patient_id,
-        actor_user_id=user.id,
-        role="user",
-        prompt_hash=prompt_hash,
-        prompt_char_count=len(message),
-        safety_category=safety_category,
-        fallback_reason=fallback_reason,
-        model=None,
-        metadata_json={"content_redacted": True},
-        created_at=now,
-    )
-    assistant_message = ChatMessage(
-        thread_id=thread.id,
-        patient_id=thread.patient_id,
-        actor_user_id=user.id,
-        role="assistant",
-        prompt_hash=None,
-        prompt_char_count=None,
-        safety_category=safety_category,
-        fallback_reason=fallback_reason,
-        model=model,
-        metadata_json={"content_redacted": True, "response_mode": "stream_ready"},
-        created_at=now,
-    )
-    thread.last_message_at = now
-    db.add_all([user_message, assistant_message])
-    return user_message, assistant_message
 
 
 def _authorized_patient(
@@ -1288,6 +1217,15 @@ def _apply_demographics_update(
         if getattr(profile, field) != value:
             setattr(profile, field, value)
             updated_fields.append(field)
+    if updated_fields:
+        profile.context_recorded_at = datetime.now(UTC)
+        if {
+            "height_cm",
+            "weight_kg",
+            "systolic_blood_pressure",
+            "diastolic_blood_pressure",
+        }.intersection(updated_fields):
+            profile.measurements_recorded_at = profile.context_recorded_at
     return updated_fields
 
 
@@ -4657,6 +4595,7 @@ def own_patient_care(user: CurrentUser, db: DbSession) -> PatientCareBundleRespo
 def send_chat_message(
     thread_id: str,
     request: ChatMessageRequest,
+    raw_request: Request,
     user: CurrentUser,
     db: DbSession,
     settings: AppSettings,
@@ -4667,48 +4606,31 @@ def send_chat_message(
     profile = user.patient_profile
     thread = _chat_thread_for_request(thread_id, profile, user, db)
 
-    is_red_flag = _contains_pattern(message, RED_FLAG_PATTERNS)
-    fallback_reason: str | None = None
-    model = settings.deepseek_model
-    if is_red_flag:
-        content = RED_FLAG_MESSAGE
-        fallback_reason = "red_flag"
-        safety_category = "red_flag_escalation"
-        _record_audit_event(
-            db,
-            actor_user_id=user.id,
-            patient_id=profile.id,
-            event_type="chat_red_flag_escalated",
-            resource_type="chat_thread",
-            resource_id=thread.id,
-            metadata={"message_length": len(message), "thread_key": thread.thread_key},
-        )
-    elif _contains_pattern(message, UNSAFE_PROMPT_PATTERNS):
-        content = _fallback_content("unsafe_prompt")
-        fallback_reason = "unsafe_prompt"
-        safety_category = "unsafe_prompt_fallback"
-    else:
-        _check_chat_rate_limit(user, db, settings)
-        safety_category = "educational_chat"
-        try:
-            result = deepseek_chat_adapter.complete(message=message, settings=settings)
-            content = result.content
-            model = result.model
-        except DeepSeekChatError as exc:
-            fallback_reason = exc.fallback_reason
-            content = _fallback_content(exc.fallback_reason)
-            model = f"{settings.deepseek_model}:safe-fallback"
-
-    user_message, assistant_message = _record_chat_exchange(
+    result = run_patient_chat_workflow(
+        PatientChatRequest(
+            message=message,
+            language="en",
+            session_id=str(thread.id),
+        ),
+        raw_request,
+        user,
         db,
-        thread=thread,
-        user=user,
-        message=message,
-        safety_category=safety_category,
-        fallback_reason=fallback_reason,
-        model=model,
+        settings,
     )
-    db.commit()
+    is_red_flag = result.emergency
+    fallback_reason = result.fallback_code.value if result.fallback_code else None
+    content = "\n\n".join(result.answer_sections)
+    model = result.model_version or "fixed-safety-response"
+    stored_messages = list(
+        db.scalars(
+            select(ChatMessage)
+            .where(ChatMessage.thread_id == thread.id)
+            .order_by(ChatMessage.created_at.desc(), ChatMessage.id.desc())
+            .limit(2)
+        ).all()
+    )
+    assistant_message = next(item for item in stored_messages if item.role == "assistant")
+    user_message = next(item for item in stored_messages if item.role == "user")
     return ChatMessageResponse(
         thread_id=thread.id,
         thread_key=thread.thread_key,

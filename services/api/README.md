@@ -27,6 +27,79 @@ implement and test them.
 
 Use synthetic content only. Do not submit real patient data.
 
+Slice 9A retains BGE-M3 and BGE Reranker v2 M3 as the production-approved
+profile. A resource-bounded GTE staging candidate is implemented separately in
+`../retrieval_inference`: the pinned multilingual base pair passed local 8-GB
+feasibility and the real API embedding contract, but it is not production-
+approved and cannot be used by an existing immutable release. The current
+production code identifiers retain the initial
+Mainland-specific deployment assumption, but Hong Kong is accepted for current
+development/staging. Before production activation, runtime configuration must
+be reconciled with the explicitly approved Hong Kong-or-Mainland region and its
+documented residency, network, privacy/legal, and provider controls. Local
+hashing and policy scoring remain deterministic test/degradation fallbacks.
+Patient release construction and the final pre-provider handoff independently
+re-read effective, unexpired, source-matched
+`model_provider_transmission_allowed` rights.
+
+The frozen retrieval suite is
+`knowledge_base/evaluation/retrieval_cases.slice9a.v1.json`. The runner refuses
+to execute it until its clinician review record is approved:
+
+```bash
+uv run python -m scripts.evaluate_slice9a_retrieval \
+  --output knowledge_base/release_artifacts/evaluation/slice9a-retrieval.json
+```
+
+For a semantic-model migration, first build a non-active candidate from the
+active patient corpus. Embeddings are batched and stored on release-passage
+snapshots, so the old active release remains a valid rollback point:
+
+```bash
+uv run python -m scripts.build_patient_retrieval_candidate \
+  --artifact-root knowledge_base/release_artifacts \
+  --approver-id <approved-operator>
+
+uv run python -m scripts.evaluate_slice9a_retrieval \
+  --candidate-release-id <candidate-uuid> \
+  --output knowledge_base/release_artifacts/evaluation/slice9a-<candidate-id>.json
+
+uv run python -m scripts.activate_patient_retrieval_candidate \
+  --release-id <candidate-uuid> \
+  --evaluation knowledge_base/release_artifacts/evaluation/slice9a-<candidate-id>.json \
+  --activated-by <approved-operator>
+```
+
+Evaluation switches to the candidate only inside a rolled-back transaction.
+Activation refuses a mismatched, unapproved, overwritten, or failing artifact.
+
+Slice 9B keeps clear questions on that original-query path. A resolvable short
+reference uses bounded recent user context without another model call;
+ambiguous, colloquial, or measured weak retrieval may spend one small schema-
+constrained query-planner call. Every rescue remains limited to one retrieval
+retry. The server rejects meaning drift and makes the resolved-query result
+authoritative for referential/ambiguous rescue. Original rankings may
+corroborate only the same passage checksum and cannot introduce final evidence.
+Resolved-topic sufficiency, duplicate and source-diversity controls, and
+conflict checks are re-evaluated before rescue can report improvement.
+Resolution or sufficiency failure returns no eligible evidence for a contextual
+query instead of exposing an unrelated original-only result.
+The candidate rescue suite has file-backed product-owner, clinical, and native
+Simplified Chinese approval dated 2026-07-18. Validation is no-cost; the live
+run still requires the approved provider configuration and active release:
+
+```bash
+uv run python -m scripts.evaluate_slice9b_retrieval_rescue validate
+uv run python -m scripts.evaluate_slice9b_retrieval_rescue preflight
+uv run python -m scripts.evaluate_slice9b_retrieval_rescue run \
+  --output knowledge_base/release_artifacts/evaluation/slice9b-rescue-v2.json
+```
+
+The failed v1 and v2 evidence artifacts remain preserved; the runner refuses to
+overwrite an existing artifact. Do not repeat a paid run on the local fallback
+ranking stack. First build and pass Slice 9A with a new immutable semantic
+release, then use a new Slice 9B output path.
+
 ## Local database and environment
 
 PostgreSQL 17 is the development and CI database. Create `dr_ai` and
@@ -117,6 +190,7 @@ Implemented Week 2 and Week 3 endpoints include:
 - `GET /api/v1/patient/me/today`
 - `POST /api/v1/patient/me/tasks/{task_id}/completion`
 - `POST /api/v1/chat/threads/{thread_id}/messages`
+- `POST /api/v1/patient/chat/messages`
 - `GET /api/v1/consultations`
 - `POST /api/v1/consultations`
 
@@ -126,6 +200,68 @@ notifications, and assessment history; doctor notes are doctor-facing only.
 Doctors can run simulated assessments for assigned patients. Patients cannot
 run assessments. Cross-patient and wrong-role probes remain neutral
 `404 not_found`.
+
+The patient-chat endpoint keeps conversation content in the client session and
+follows the Phase 3 bounded RAG workflow. It routes emergencies and prohibited
+requests before retrieval or generation, retrieves only from the active
+patient-approved immutable release, calls DeepSeek only after sufficient
+evidence, validates structured output and passage citations, and records only
+content-free `chatbot_events`. Colloquial Chinese and English symptom
+paraphrases are normalized into bounded clinical concepts for routing and
+retrieval. Patient evidence requires the same primary symptom concept to be
+central to the source metadata, rather than an incidental passage mention, plus
+meaningful topic coverage; authority, dense similarity, and result count alone
+cannot make off-topic evidence sufficient. Malformed structured output receives
+one bounded repair attempt containing the complete JSON Schema and content-free
+field-level validation issues. Only the diagnostic subtype and attempt count are
+added to telemetry. For relevant questions, a server-side context
+broker selects bounded profile, measurement, condition, medication, Clinical
+Event, or recovery-plan fields and validates every model-used context ID. The
+response exposes only server-derived context category, provenance, and date
+cards alongside the answer. Without an active patient release it returns the
+fixed retrieval fallback; without `DR_AI_DEEPSEEK_API_KEY` it returns the fixed
+provider fallback.
+
+Retrieval-rescue telemetry is content-free: trigger category, attempted flag,
+outcome, planner model, provider-reported token/cache counts when present,
+latency, configured-price cost, retrieval delta, and retry request ID. It never
+stores the original question, candidate rewrite, concepts, synonyms, recent
+conversation, prompt, response, or passage text.
+
+The locally reviewed 55-document Chinese corpus can be promoted and its
+content-addressed patient release activated idempotently with:
+
+```bash
+uv run python -m scripts.activate_open_patient_education_release \
+  --reviewer-id product-owner-confirmed-unspecified \
+  --confirm-all-55-patient-approved
+```
+
+The active local manifest contains 55 source versions and 426 passages. Keep
+`DR_AI_DEEPSEEK_API_KEY` only in the ignored server `.env`; it must never enter
+Flutter, source control, command output, or chatbot telemetry.
+
+After the complete 697-entry HPA corpus has been imported and human review is
+confirmed, promote it and activate a combined immutable patient release with:
+
+```bash
+uv run python -m scripts.activate_hpa_health_myths_release \
+  --confirm-all-697-human-reviewed
+```
+
+Slice 6 adds an offline governed-source worker for NHC and China CDC freshness
+monitoring. Synchronize the checked-in allowlist and inspect status with:
+
+```bash
+uv run python -m scripts.manage_online_sources sync
+uv run python -m scripts.manage_online_sources status
+```
+
+`poll` performs bounded allowlisted network reads outside the patient request
+path and records changes only in quarantine. Both pilot families remain
+metadata-only and rights-pending, so polling cannot store article text or
+change the active patient release. Source-family kill switches are enforced by
+retrieval even when a source is already present in an immutable release.
 
 Doctors can create, edit, and delete medication entries, prescriptions with
 medication lines, and medication/refill reminders only for assigned patients.
@@ -158,11 +294,13 @@ metadata.
 
 Educational chat accepts patient question-preparation prompts only. Red-flag
 phrases bypass DeepSeek and return the fixed emergency guidance. Unsafe prompts
-and DeepSeek timeout/malformed/quota failures return bounded fallback
-messages. Local/test environments and unset DeepSeek keys use the safe fallback
-path. Chat audit and storage record metadata only, such as prompt hash, length,
-fallback category, and model label; raw prompts and raw model output are not
-stored.
+and DeepSeek timeout/malformed/quota failures return bounded fallback messages;
+malformed structured output receives one schema-guided repair attempt first.
+Local/test
+environments and unset DeepSeek keys use the safe fallback path. Chat audit and
+storage record metadata only, such as prompt hash, length, fallback category,
+model label, diagnostic subtype, and attempt count; raw prompts and raw model
+output are not stored.
 
 Doctors can create asynchronous synthetic specialist-consultation requests
 only for assigned patients. Doctors and patients can list only consultations

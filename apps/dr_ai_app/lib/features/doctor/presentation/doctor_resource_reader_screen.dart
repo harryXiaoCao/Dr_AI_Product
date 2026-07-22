@@ -100,8 +100,9 @@ class _ReaderDocumentState extends State<_ReaderDocument> {
     super.didChangeDependencies();
     if (!_languageInitialized) {
       _showChinese =
-          Localizations.localeOf(context).languageCode == 'zh' &&
-          _chineseTranslation != null;
+          _chineseTranslation != null &&
+          (Localizations.localeOf(context).languageCode == 'zh' ||
+              widget.detail.originalLanguage == 'zh-Hant');
       _languageInitialized = true;
     }
   }
@@ -112,9 +113,32 @@ class _ReaderDocumentState extends State<_ReaderDocument> {
     final resource = detail.resource;
     final chineseTranslation = _chineseTranslation;
     final showChinese = _showChinese && chineseTranslation != null;
-    final title = showChinese
-        ? chineseTranslation.title
+    final deterministicScriptConversion =
+        chineseTranslation?.translationType ==
+        'deterministic_script_conversion';
+    final reviewedScriptConversion =
+        deterministicScriptConversion &&
+        chineseTranslation?.reviewStatus ==
+            'medical_and_native_chinese_approved';
+    final originalLanguageLabel = detail.originalLanguage == 'zh-Hant'
+        ? (Localizations.localeOf(context).languageCode == 'zh'
+              ? '繁体中文原文'
+              : 'Traditional Chinese original')
+        : context.l10n.originalEnglish;
+    final chineseLanguageLabel = deterministicScriptConversion
+        ? (Localizations.localeOf(context).languageCode == 'zh'
+              ? reviewedScriptConversion
+                    ? '简体中文转换（已人工审核）'
+                    : '简体中文转换（待审核）'
+              : reviewedScriptConversion
+              ? 'Human-reviewed Simplified Chinese conversion'
+              : 'Simplified Chinese conversion (review pending)')
+        : context.l10n.reviewedChineseTranslation;
+    final originalTitle =
+        detail.originalLanguage == 'zh-Hant' && detail.sections.isNotEmpty
+        ? detail.sections.first.heading
         : resource.titleEn ?? resource.title;
+    final title = showChinese ? chineseTranslation.title : originalTitle;
     final sections = showChinese
         ? chineseTranslation.sections
         : detail.sections;
@@ -189,14 +213,12 @@ class _ReaderDocumentState extends State<_ReaderDocument> {
                                     ButtonSegment<bool>(
                                       value: false,
                                       icon: const Icon(Icons.article_outlined),
-                                      label: Text(context.l10n.originalEnglish),
+                                      label: Text(originalLanguageLabel),
                                     ),
                                     ButtonSegment<bool>(
                                       value: true,
                                       icon: const Icon(Icons.translate),
-                                      label: Text(
-                                        context.l10n.reviewedChineseTranslation,
-                                      ),
+                                      label: Text(chineseLanguageLabel),
                                     ),
                                   ],
                                   selected: <bool>{showChinese},
@@ -215,10 +237,8 @@ class _ReaderDocumentState extends State<_ReaderDocument> {
                                   _ReaderBadge(
                                     icon: Icons.translate,
                                     label: showChinese
-                                        ? context
-                                              .l10n
-                                              .reviewedChineseTranslation
-                                        : context.l10n.originalEnglish,
+                                        ? chineseLanguageLabel
+                                        : originalLanguageLabel,
                                   ),
                                   _ReaderBadge(
                                     icon: Icons.public,
@@ -248,7 +268,19 @@ class _ReaderDocumentState extends State<_ReaderDocument> {
                               ),
                               const SizedBox(height: DrAiSpacing.lg),
                               _ReaderNotice(
-                                text: showChinese
+                                text:
+                                    showChinese && deterministicScriptConversion
+                                    ? (Localizations.localeOf(
+                                                context,
+                                              ).languageCode ==
+                                              'zh'
+                                          ? reviewedScriptConversion
+                                                ? '本页是台湾卫生福利部国民健康署授权繁体中文原文的确定性简体中文转换版本，已完成人工医疗、简体中文可读性及中国大陆适用性审核。其中的台湾政策、筛查计划、联系方式和法规信息仍应明确视为台湾特定内容。'
+                                                : '本页是将台湾卫生福利部国民健康署授权数据集的繁体中文原文进行确定性字形转换后得到的简体中文版本。它尚未完成独立医疗审核和中国大陆适用性审核，不得直接用于患者回答。'
+                                          : reviewedScriptConversion
+                                          ? 'This deterministic Simplified-Chinese conversion of licensed Taiwan HPA text has completed human medical, Simplified-Chinese readability, and Mainland-China applicability review. Taiwan-specific programs, contacts, and legal requirements remain explicitly jurisdiction-bound.'
+                                          : 'This is a deterministic Simplified-Chinese script conversion of the licensed Traditional-Chinese text from Taiwan\'s Health Promotion Administration. Independent medical and Mainland-China applicability reviews remain pending, so it is not eligible for direct patient answers.')
+                                    : showChinese
                                     ? context.l10n.unofficialAiTranslationNotice
                                     : context.l10n.resourceReaderNotice,
                               ),
@@ -628,6 +660,8 @@ String _jurisdictionLabel(
         ? '美国'
         : 'United States',
   MedicalJurisdiction.china => context.l10n.jurisdictionChina,
+  MedicalJurisdiction.taiwan =>
+    Localizations.localeOf(context).languageCode == 'zh' ? '台湾' : 'Taiwan',
   MedicalJurisdiction.international => context.l10n.jurisdictionInternational,
 };
 

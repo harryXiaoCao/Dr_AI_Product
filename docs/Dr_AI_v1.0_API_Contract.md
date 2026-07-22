@@ -28,8 +28,12 @@ available. Phase 3 Slice 1 freezes chatbot governance and shared contracts.
 Slice 3 adds a doctor-only authoritative-link catalog route. Slice 4 adds
 release-specific doctor and patient retrieval endpoints while keeping the real
 WHO/NHC passage corpus inactive until rights and clinician-review approval.
+The 2026-07-23 care-and-cost slice adds payer registration and membership,
+event-level cost-item CRUD/readback, immutable payer-request snapshots, and an
+organization-scoped human review queue. It does not add claims adjudication,
+coverage decisions, reference pricing, or AI utilization decisions.
 
-Contract version: `1.0.0`
+Contract version: `1.1.0`
 
 Recorded: 2026-07-04; authentication models frozen: 2026-07-04; Week 2 Days
 6-7 reads added: 2026-07-05; Week 2 Days 8-9 demo upload and simulated
@@ -51,7 +55,8 @@ metadata, completion, list/detail, review, and care-bundle readback endpoints
 added: 2026-07-08; Phase 2 recovery-plan review, approval, completion, and
 Today progress endpoints added: 2026-07-08; Phase 2 Clinical Event/Care
 Episode backend model, endpoints, resource links, and care-bundle readback
-added: 2026-07-08
+added: 2026-07-08; payer identity and the first three-party care-and-cost
+workflow added: 2026-07-23
 
 This contract preserves the public HTTP boundary implemented for the historical
 Dr. AI v1.0.0-beta.1 demo and records the intended shape of production v1.0
@@ -109,12 +114,11 @@ beta contract is implemented.
 
 ## Implemented authentication models
 
-Invited registration is disabled for a role when its server-side invite code is
-unset. The role comes from the accepted invitation and is persisted by the
-server; Flutter cannot elevate it. Manual Phase 2 testing should no longer
-depend on seeded demo accounts: create invited patient and doctor accounts,
-have the patient share their generated patient code, and let the doctor connect
-that code before creating Clinical Events and related care records.
+Registration accepts patient, doctor, and payer roles after server-side
+verification. The role is persisted by the server; Flutter cannot elevate it.
+Payer registration additionally creates or joins a synthetic-only organization
+record and an active membership for the current local workflow. This is not
+verified institutional onboarding.
 
 ### `POST /api/v1/auth/register`
 
@@ -123,14 +127,22 @@ Request:
 ```json
 {
   "email": "new.patient@example.com",
+  "phone_number": "+8613800000000",
   "password": "user-supplied 8-20 characters",
   "role": "patient",
-  "invite_code": "server-issued opaque invitation"
+  "verification_code": "server-issued one-time code",
+  "terms_accepted": true,
+  "patient_profile": {
+    "display_name": "Lin Patient"
+  }
 }
 ```
 
-The password must be 8-20 characters. An invalid invitation returns
-`403 forbidden`; an existing normalized email returns `409 conflict`.
+The password must be 8-20 characters. Payer registration supplies
+`payer_profile` with `display_name`, `organization_name`, `title`, and one of
+`public_payer`, `commercial_payer`, or `observer` as `organization_type`.
+Invalid verification returns `403 forbidden`; an existing normalized email or
+phone returns `409 conflict`.
 
 ### `POST /api/v1/auth/login`
 
@@ -296,6 +308,9 @@ Response:
 | `GET` | `/api/v1/reminders` | Assigned patient scope | Own data | List own medication/refill reminders |
 | `GET` | `/api/v1/patient/me/notifications` | No | Own data | List own metadata-only in-app notification records |
 | `POST` | `/api/v1/chat/threads/{thread_id}/messages` | Authorized thread | Own thread | Send an educational-chat message |
+| `POST` | `/api/v1/patient/chat/messages` | Patient | Own question-relevant records only | Run safety-gated patient RAG, including evidence-grounded symptom orientation; return the server-owned urgency route, route-consistent next action, answer sections, material uncertainties, reviewed source cards, and validated context category/provenance/date cards |
+| `GET` | `/api/v1/patient/chat/threads` | Patient | Own AI threads only | List patient-owned AI conversations newest first with the minimum retention date |
+| `GET` | `/api/v1/patient/chat/threads/{thread_id}` | Patient | Own AI thread only | Restore readable user/assistant history and validated answer metadata; foreign thread IDs return neutral not-found |
 | `GET` | `/api/v1/doctor/me/contacts` | Doctor | Own active relationships | List connected patients for doctor Contacts |
 | `GET` | `/api/v1/private-chats/{contact_id}/messages` | Doctor or patient | Active mutual care relationship | Read a private conversation |
 | `POST` | `/api/v1/private-chats/{contact_id}/messages` | Doctor or patient | Active mutual care relationship | Send a text-only private message |
@@ -608,6 +623,9 @@ revealing that the resource exists would leak sensitive information.
 - A doctor can access a patient-owned resource only through an active
   `CareRelationship`.
 - A patient can access only resources whose `patient_id` is their own.
+- A payer can access only requests addressed to the payer organization of their
+  active membership. A `payer` role without an active membership receives a
+  neutral denial.
 - A specialist can access only consultation data explicitly assigned to them;
   specialist behavior is not otherwise implemented in the current beta/demo
   API slice.
@@ -619,6 +637,59 @@ revealing that the resource exists would leak sensitive information.
 - Sensitive reads, mutations, uploads, assessments, consultation changes, and
   chat escalations create audit events without copying medical content into
   logs.
+
+## Implemented Three-Party Care-And-Cost Contract
+
+This 2026-07-23 slice is an itemized transparency and human-review workflow,
+not a formal claim-adjudication API. Money is CNY integer minor units. AI fields
+are nullable and default to `ai_review_status = not_evaluated`; no endpoint in
+this slice calculates a necessity, abuse, fraud, coverage, or payment decision.
+
+### Patient and doctor ledger
+
+- `GET /api/v1/patient/me/care-costs`: patient-owned Clinical Event-grouped
+  ledger.
+- `GET /api/v1/patients/{patient_id}/care-costs`: active treating-doctor
+  ledger readback.
+- `POST /api/v1/patients/{patient_id}/clinical-events/{event_id}/care-items`:
+  create a doctor-authored event row.
+- `PUT /api/v1/patients/{patient_id}/clinical-events/{event_id}/care-items/{item_id}`:
+  replace editable row fields.
+- `DELETE /api/v1/patients/{patient_id}/clinical-events/{event_id}/care-items/{item_id}`:
+  delete the current ledger row. Existing submitted request-line snapshots are
+  retained and their source link becomes nullable.
+
+Create/replace accepts `item_type`, `label`, `service_date`, `status`,
+`quantity`, `currency`, `actual_cost_minor`, `payer_requested_minor`,
+`patient_responsibility_minor`, and optional `notes`. Supported item types are
+medication, prescription, imaging, laboratory, procedure, consultation,
+booking, follow-up, therapy, equipment, and other. Allocated payer plus patient
+amounts cannot exceed actual cost.
+
+### Submission and request readback
+
+- `GET /api/v1/payer-organizations`: doctor-visible synthetic organization
+  choices for the current slice.
+- `POST /api/v1/patients/{patient_id}/clinical-events/{event_id}/payer-requests`:
+  submit selected active care items with a doctor summary. The server snapshots
+  immutable lines and reconciles `requested_total_minor` from those lines.
+- `GET /api/v1/doctor/me/payer-requests`: submitting doctor's requests.
+- `GET /api/v1/patient/me/payer-requests`: patient's requests. Doctor and
+  patient responses exclude payer reviewer notes.
+
+### Payer workspace
+
+- `GET /api/v1/payer/me/profile`
+- `GET /api/v1/payer/me/dashboard`
+- `GET /api/v1/payer/me/requests`
+- `GET /api/v1/payer/me/requests/{request_id}`
+- `POST /api/v1/payer/me/requests/{request_id}/reviews`
+
+Review creation accepts `action`, `reason_code`, and optional `note`. Actions
+are `request_clarification`, `accept`, `escalate`, and `close`; they map to
+request statuses `clarification_requested`, `accepted`, `escalated`, and
+`closed`. These are human workflow states, not automatic reimbursement or care
+decisions. Request existence and reviewer notes remain organization-scoped.
 
 ## Authenticated support request contract
 
@@ -1077,11 +1148,15 @@ Rules:
   the configured window is exceeded.
 - DeepSeek is called only by FastAPI using `deepseek-v4-flash` by default.
 - Local/test mode or an unset DeepSeek key uses the safe fallback path.
-- Timeout, malformed response, quota, and provider-unavailable failures return
-  bounded fallback content rather than exposing provider details.
+- A malformed structured response receives one bounded repair attempt carrying
+  the complete JSON Schema, enum constraints, and content-free validation
+  paths. Repeated malformed output, timeout, quota, and provider-unavailable
+  failures return bounded fallback content rather than exposing provider
+  details.
 - Stored chat metadata includes prompt hash, prompt length, safety category,
-  fallback reason, and model label only; raw prompts and raw model output are
-  not stored in chat metadata or audit metadata.
+  fallback reason, model label, a content-free provider diagnostic subtype, and
+  provider attempt count only; raw prompts and raw model output are not stored
+  in chat metadata or audit metadata.
 
 Response:
 
@@ -1308,11 +1383,61 @@ source/version citations. It does not call an LLM.
 Patient-only evidence lookup for the later Slice 5 orchestrator. It searches
 only the active `patient` release and requires patient eligibility,
 native-language/readability approval, current status, requested language and
-China jurisdiction, and at least two source records for a sufficient decision.
-Failed sufficiency or conflict gates return no passages.
+China jurisdiction, a matching primary clinical symptom concept that is central
+to the source metadata rather than incidentally mentioned, a meaningful lexical
+topic anchor, and sufficient content coverage.
+Sufficiency requires either one strongly covering source or at least two
+independently covering sources; source count, dense similarity, and authority
+bonuses cannot admit off-topic material. Failed sufficiency or conflict gates
+return no passages.
 
 Both endpoints return `503 retrieval_unavailable` when no valid audience index
 is active or the release embedding model is not configured. Retrieval events
 store only query SHA-256, query length, filter categories, release/source/
 passage IDs, score summary, latency, decision, and fallback code. Raw queries
 and passage text are never written to retrieval telemetry.
+
+Slice 9A additionally binds every vector to the release embedding version and
+binds the active release to its reranker version. Production configuration is
+fail-closed unless the declared self-hosted BGE-M3 embedding and BGE reranker
+services are configured in an explicitly approved production region. Hong Kong
+is accepted for current development/staging; final patient-facing use requires
+documented residency, Mainland-user network performance, provider-rights,
+privacy/legal, and no-training/no-retention evidence. Reranker outage uses the
+recorded deterministic fallback. Patient-index construction
+and the immediate pre-generation handoff separately re-read source-matched,
+effective, unexpired provider-transmission rights; a stale manifest cannot
+override a revoked or expired live rights decision.
+
+Slice 9B does not change the public patient-evidence response. Patient chat
+first searches the literal user question. Only a server-defined short-
+reference, colloquial/ambiguous, or weak-result trigger may spend one bounded
+schema-constrained planner call and one retrieval retry. The server validates
+meaning preservation, keeps the original result, collapses duplicate passages,
+limits per-source dominance, and uses the fused result only when measured
+retrieval utility improves. Planner timeouts, quota errors, malformed output,
+meaning drift, retry failure, budget excess, or no improvement retain the
+original safe result or its fixed fallback.
+
+### Patient-chat urgency response
+
+New patient-chat responses populate the additive `urgency_route` field with one
+of `emergency_120`, `urgent_same_day`, `clinician_contact`,
+`routine_education`, or `prohibited_medication_change`. The field remains
+nullable only so previously stored thread metadata can still be read. It is a
+server decision, not model output.
+
+Emergency and medication-change routes return before retrieval and answer-model
+generation. For an allowed non-emergency message, the server passes the model a
+bounded next-action allowlist: `urgent_same_day` requires `seek_local_care`;
+`clinician_contact` permits `contact_connected_doctor` or `seek_local_care`;
+and a routine answer must select a non-emergency, non-`none` practical action.
+Routine output also cannot select the same-day-only `seek_local_care` action.
+Any model response outside that allowlist fails closed. Evidence/provider
+fallbacks preserve same-day care timing without generating a diagnosis or using
+model memory as evidence.
+
+The current non-emergency care-timing rule table and fixed same-day fallback
+copy are local candidates pending named clinical, native-Simplified-Chinese,
+and product review. Their presence in the response schema is not production
+approval.

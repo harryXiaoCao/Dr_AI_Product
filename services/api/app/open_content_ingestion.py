@@ -4,6 +4,7 @@ import hashlib
 from collections import Counter
 from datetime import date, datetime
 from pathlib import Path
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, model_validator
 from sqlalchemy import select
@@ -33,6 +34,22 @@ class OpenPublisherEvidence(BaseModel):
 
     checksum: str = Field(pattern=r"^[0-9a-f]{64}$")
     captured_at: datetime
+    supporting_locators: list[HttpUrl] = Field(default_factory=list)
+    evidence_scope: str | None = None
+
+
+class OpenRightsPermissions(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    commercial_use_allowed: bool = True
+    storage_allowed: bool = True
+    transformation_allowed: bool = True
+    translation_allowed: bool = True
+    embedding_allowed: bool = True
+    excerpt_display_allowed: bool = True
+    model_provider_transmission_allowed: bool = True
+    redistribution_allowed: bool = True
+    prior_version_retention_allowed: bool = True
 
 
 class OpenPublisher(BaseModel):
@@ -46,6 +63,17 @@ class OpenPublisher(BaseModel):
     rights_name: str
     attribution: str
     rights_evidence: OpenPublisherEvidence
+    rights_stable_id: str | None = Field(default=None, pattern=r"^KBR-[A-Z0-9-]+$")
+    jurisdiction: str = "US"
+    organization_type: str = "foreign_national_health_authority"
+    authority_basis: str | None = None
+    allowed_content_classes: list[str] = Field(
+        default_factory=lambda: ["official_patient_education_text"]
+    )
+    rights_scope: str = "publisher_content_class"
+    permission_reference: str | None = None
+    rights_decision_status: Literal["approved", "pending", "denied"] = "approved"
+    rights_permissions: OpenRightsPermissions = Field(default_factory=OpenRightsPermissions)
 
 
 class OpenSection(BaseModel):
@@ -69,6 +97,9 @@ class OpenDocument(BaseModel):
     publisher_summary: str | None
     publisher_date_text: str
     publication_date: date | None
+    review_due_date: date | None = None
+    jurisdiction: str | None = None
+    population: str | None = None
     captured_at: datetime
     raw_checksum: str = Field(pattern=r"^[0-9a-f]{64}$")
     normalized_checksum: str = Field(pattern=r"^[0-9a-f]{64}$")
@@ -84,18 +115,29 @@ class OpenDocument(BaseModel):
 class OpenContentCatalog(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: str
+    schema_version: Literal["1.0", "1.1"]
     generated_at: datetime
     capture_policy: str
     jurisdiction_note: str
+    expected_collection_counts: dict[str, int] | None = None
     publishers: list[OpenPublisher]
     documents: list[OpenDocument]
 
     @model_validator(mode="after")
     def validate_governed_selection(self) -> OpenContentCatalog:
         counts = Counter(document.collection for document in self.documents)
-        if counts != EXPECTED_COLLECTION_COUNTS:
+        if self.schema_version == "1.0":
+            if self.expected_collection_counts is not None:
+                raise ValueError("Open-content schema 1.0 must use the frozen 55-source scope.")
+            expected_counts = EXPECTED_COLLECTION_COUNTS
+        else:
+            if self.expected_collection_counts is None:
+                raise ValueError("Open-content schema 1.1 requires expected_collection_counts.")
+            expected_counts = self.expected_collection_counts
+        if counts != expected_counts:
             raise ValueError(f"Open-content selection counts do not match policy: {counts}")
+        if any(not key or value < 1 for key, value in expected_counts.items()):
+            raise ValueError("Open-content selection counts must be positive.")
         publisher_keys = {publisher.key for publisher in self.publishers}
         if any(document.publisher_key not in publisher_keys for document in self.documents):
             raise ValueError("Document references an unknown publisher.")
@@ -115,7 +157,10 @@ def _normalized_document(document: OpenDocument) -> str:
 
 
 def import_open_content_catalog(
-    db: Session, catalog: OpenContentCatalog
+    db: Session,
+    catalog: OpenContentCatalog,
+    *,
+    artifact_locator: str = "knowledge_base/catalog/open_patient_education.v1.json",
 ) -> tuple[int, int, int, int]:
     """Import rights-cleared originals while leaving every retrieval gate closed."""
 
@@ -129,16 +174,17 @@ def import_open_content_catalog(
                 stable_id=item.stable_id,
                 official_name_zh=item.name,
                 official_name_en=item.name,
-                organization_type="foreign_national_health_authority",
-                authority_basis=(
+                organization_type=item.organization_type,
+                authority_basis=item.authority_basis
+                or (
                     "Verified official United States national health-authority patient "
                     "education; foreign-jurisdiction evidence only."
                 ),
                 authority_evidence_locator=str(item.authority_url),
                 verified_domains_json=[item.authority_url.host],
-                jurisdiction="US",
+                jurisdiction=item.jurisdiction,
                 review_status="authority_verified",
-                allowed_content_classes_json=["official_patient_education_text"],
+                allowed_content_classes_json=item.allowed_content_classes,
                 reviewed_at=catalog.generated_at,
             )
             db.add(publisher)
@@ -146,7 +192,9 @@ def import_open_content_catalog(
             publishers_created += 1
         publishers[item.key] = publisher
 
-        rights_stable_id = item.stable_id.replace("KBP-", "KBR-") + "-PUBLIC-DOMAIN"
+        rights_stable_id = (
+            item.rights_stable_id or item.stable_id.replace("KBP-", "KBR-") + "-PUBLIC-DOMAIN"
+        )
         rights = db.scalar(
             select(KbRightsRecord).where(KbRightsRecord.stable_id == rights_stable_id)
         )
@@ -154,26 +202,31 @@ def import_open_content_catalog(
             rights = KbRightsRecord(
                 stable_id=rights_stable_id,
                 publisher_id=publisher.id,
-                scope="publisher_content_class",
+                scope=item.rights_scope,
                 license_name=item.rights_name,
-                permission_reference=(
+                permission_reference=item.permission_reference
+                or (
                     "Applies only to publisher-authored text in the selected public-domain "
                     "content class. Third-party images, logos, linked works, and content "
                     "marked otherwise are excluded."
                 ),
-                commercial_use_allowed=True,
-                storage_allowed=True,
-                transformation_allowed=True,
-                translation_allowed=True,
-                embedding_allowed=True,
-                excerpt_display_allowed=True,
-                model_provider_transmission_allowed=True,
-                redistribution_allowed=True,
-                prior_version_retention_allowed=True,
+                commercial_use_allowed=item.rights_permissions.commercial_use_allowed,
+                storage_allowed=item.rights_permissions.storage_allowed,
+                transformation_allowed=item.rights_permissions.transformation_allowed,
+                translation_allowed=item.rights_permissions.translation_allowed,
+                embedding_allowed=item.rights_permissions.embedding_allowed,
+                excerpt_display_allowed=item.rights_permissions.excerpt_display_allowed,
+                model_provider_transmission_allowed=(
+                    item.rights_permissions.model_provider_transmission_allowed
+                ),
+                redistribution_allowed=item.rights_permissions.redistribution_allowed,
+                prior_version_retention_allowed=(
+                    item.rights_permissions.prior_version_retention_allowed
+                ),
                 attribution_requirements=item.attribution,
                 evidence_checksum=item.rights_evidence.checksum,
                 evidence_locator=str(item.rights_url),
-                decision_status="approved",
+                decision_status=item.rights_decision_status,
                 effective_at=item.rights_evidence.captured_at,
             )
             db.add(rights)
@@ -191,9 +244,11 @@ def import_open_content_catalog(
                 title=document.title,
                 canonical_locator=str(document.canonical_locator),
                 source_type=document.source_type,
-                jurisdiction="US",
+                jurisdiction=document.jurisdiction
+                or publishers[document.publisher_key].jurisdiction,
                 intended_audiences_json=["doctor", "patient"],
                 topic=document.topic,
+                population=document.population,
                 original_language="en",
                 official_translations_json=[],
                 catalog_summary=(
@@ -202,8 +257,13 @@ def import_open_content_catalog(
                 ),
                 search_keywords_json=[document.title],
                 publication_date=document.publication_date,
+                review_due_date=document.review_due_date,
                 authority_tier="B",
-                lifecycle_state="rights_cleared_review_pending",
+                lifecycle_state=(
+                    "rights_cleared_review_pending"
+                    if rights_records[document.publisher_key].decision_status == "approved"
+                    else "rights_review_pending"
+                ),
                 medical_review_status="pending",
                 native_language_review_status="pending",
                 doctor_eligible=False,
@@ -235,9 +295,7 @@ def import_open_content_catalog(
             capture_mode="publisher_original_text",
             raw_checksum=document.raw_checksum,
             normalized_checksum=document.normalized_checksum,
-            normalized_artifact_locator=(
-                f"knowledge_base/catalog/open_patient_education.v1.json#{document.stable_id}"
-            ),
+            normalized_artifact_locator=(f"{artifact_locator}#{document.stable_id}"),
             parser_version=OPEN_CONTENT_PARSER_VERSION,
             valid_from=document.captured_at,
             change_summary="Initial capture of publisher-authored original English text.",

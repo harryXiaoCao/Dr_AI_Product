@@ -1,0 +1,56 @@
+{
+  "schema_version": "1.0",
+  "measured_at": "2026-07-20",
+  "host": {
+    "environment": "Tencent Hong Kong staging CVM",
+    "vcpu": 4,
+    "memory_gib": 7.4,
+    "swap_gib": 2.0
+  },
+  "embedding_model": "Alibaba-NLP/gte-multilingual-base@9bbca17d9273",
+  "reranker_model": "Alibaba-NLP/gte-multilingual-reranker-base@8215cf04918b",
+  "reranker_runtime": {
+    "type": "onnx_int8",
+    "repository_revision": "onnx-community/gte-multilingual-reranker-base@ee64367e35a2",
+    "artifact": "onnx/model_int8.onnx",
+    "artifact_sha256": "ccf51dba7f8aa9205753761cfaa68c55f741792501463a3bf25d7e5bcdac7c35"
+  },
+  "comparison": {
+    "query": "长期血压偏高应该怎样监测和就医？",
+    "document_character_counts": [8553, 7008, 5300, 4846],
+    "max_input_tokens": 512,
+    "pytorch_request_ms": [14526, 14404, 14314],
+    "pytorch_median_ms": 14404,
+    "onnx_int8_request_ms": [1331, 1504, 1178, 1169, 1171],
+    "onnx_int8_median_ms": 1178,
+    "onnx_int8_observed_max_ms": 1504,
+    "onnx_service_memory_gib": 1.842
+  },
+  "deployed": {
+    "retrieval_image_digest": "sha256:bc91102572ab164ef58b3b07a1594e9457cd53b0904a3ca83f2cbbc077346b89",
+    "api_image_digest": "sha256:bc2c4f36f011192833c9cf3223c38fc2b461f2ef4331a10c575c9a8b61adccbb",
+    "retrieval_restarts": 0,
+    "api_restarts": 0,
+    "public_health": "ok"
+  },
+  "slice9a_v2": {
+    "suite_id": "dr-ai-slice9a-retrieval-v2",
+    "candidate_release": "KBIR-AA0D160B1AFB1E17BFE452B2",
+    "passed": false,
+    "latency_p95_ms": 2018,
+    "latency_max_ms": 2018,
+    "failed_gates": [
+      "recall_at_6",
+      "mrr",
+      "decision_accuracy",
+      "jurisdiction_pass_rate"
+    ],
+    "candidate_status_after_run": "built",
+    "active_patient_release": null
+  },
+  "rejected_runtime": {
+    "image": "ghcr.io/huggingface/text-embeddings-inference:cpu-1.7",
+    "outcome": "rejected",
+    "reason": "The Candle CPU backend exited with code 139 after Intel MKL SGEMM errors on this CVM."
+  }
+}

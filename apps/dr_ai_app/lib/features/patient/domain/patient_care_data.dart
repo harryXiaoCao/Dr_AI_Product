@@ -1242,9 +1242,51 @@ class ChatMessageResult {
     required this.createdAt,
     this.emergencyLabel,
     this.fallbackReason,
+    this.sources = const <ChatSourceCard>[],
+    this.contextUsed = const <ChatContextCard>[],
+    this.uncertainties = const <String>[],
+    this.limitation,
+    this.nextActionCode = 'none',
+    this.suggestedActionCodes = const <String>[],
+    this.followUpQuestion,
   });
 
   factory ChatMessageResult.fromJson(Map<String, dynamic> json) {
+    if (json.containsKey('answer_sections')) {
+      final sections = (json['answer_sections'] as List).cast<String>();
+      return ChatMessageResult(
+        threadId: json['session_id'] as String,
+        threadKey: 'patient-rag',
+        messageId: json['request_id'] as String,
+        assistantMessageId: json['request_id'] as String,
+        content: sections.join('\n\n'),
+        responseChunks: sections,
+        safetyLabel: json['safety_code'] as String,
+        emergencyLabel: json['emergency'] as bool ? 'emergency' : null,
+        isRedFlag: json['emergency'] as bool,
+        fallbackReason: json['fallback_code'] as String?,
+        model: json['model_version'] as String? ?? 'fixed-safety-response',
+        createdAt: DateTime.now(),
+        sources: (json['sources'] as List)
+            .map(
+              (item) => ChatSourceCard.fromJson(item as Map<String, dynamic>),
+            )
+            .toList(),
+        contextUsed: ((json['context_used'] as List?) ?? <Object>[])
+            .map(
+              (item) => ChatContextCard.fromJson(item as Map<String, dynamic>),
+            )
+            .toList(),
+        uncertainties: ((json['uncertainties'] as List?) ?? <Object>[])
+            .cast<String>(),
+        limitation: json['limitation'] as String,
+        nextActionCode: json['next_action_code'] as String,
+        suggestedActionCodes:
+            ((json['suggested_action_codes'] as List?) ?? <Object>[])
+                .cast<String>(),
+        followUpQuestion: json['follow_up_question'] as String?,
+      );
+    }
     return ChatMessageResult(
       threadId: json['thread_id'] as String,
       threadKey: json['thread_key'] as String,
@@ -1273,6 +1315,142 @@ class ChatMessageResult {
   final String? fallbackReason;
   final String model;
   final DateTime createdAt;
+  final List<ChatSourceCard> sources;
+  final List<ChatContextCard> contextUsed;
+  final List<String> uncertainties;
+  final String? limitation;
+  final String nextActionCode;
+  final List<String> suggestedActionCodes;
+  final String? followUpQuestion;
+}
+
+class PatientChatThreadSummary {
+  const PatientChatThreadSummary({
+    required this.threadId,
+    required this.title,
+    required this.createdAt,
+    required this.lastMessageAt,
+    required this.retentionUntil,
+  });
+
+  factory PatientChatThreadSummary.fromJson(Map<String, dynamic> json) {
+    return PatientChatThreadSummary(
+      threadId: json['thread_id'] as String,
+      title: json['title'] as String,
+      createdAt: DateTime.parse(json['created_at'] as String),
+      lastMessageAt: DateTime.parse(json['last_message_at'] as String),
+      retentionUntil: DateTime.parse(json['retention_until'] as String),
+    );
+  }
+
+  final String threadId;
+  final String title;
+  final DateTime createdAt;
+  final DateTime lastMessageAt;
+  final DateTime retentionUntil;
+}
+
+class PatientChatHistoryMessage {
+  const PatientChatHistoryMessage({
+    required this.messageId,
+    required this.role,
+    required this.content,
+    required this.createdAt,
+    this.response,
+  });
+
+  factory PatientChatHistoryMessage.fromJson(Map<String, dynamic> json) {
+    final response = json['response'];
+    return PatientChatHistoryMessage(
+      messageId: json['message_id'] as String,
+      role: json['role'] as String,
+      content: json['content'] as String,
+      createdAt: DateTime.parse(json['created_at'] as String),
+      response: response is Map<String, dynamic>
+          ? ChatMessageResult.fromJson(response)
+          : null,
+    );
+  }
+
+  final String messageId;
+  final String role;
+  final String content;
+  final DateTime createdAt;
+  final ChatMessageResult? response;
+}
+
+class PatientChatHistory {
+  const PatientChatHistory({required this.thread, required this.messages});
+
+  factory PatientChatHistory.fromJson(Map<String, dynamic> json) {
+    return PatientChatHistory(
+      thread: PatientChatThreadSummary.fromJson(
+        json['thread'] as Map<String, dynamic>,
+      ),
+      messages: (json['messages'] as List)
+          .map(
+            (item) => PatientChatHistoryMessage.fromJson(
+              item as Map<String, dynamic>,
+            ),
+          )
+          .toList(),
+    );
+  }
+
+  final PatientChatThreadSummary thread;
+  final List<PatientChatHistoryMessage> messages;
+}
+
+class ChatContextCard {
+  const ChatContextCard({
+    required this.category,
+    required this.provenance,
+    required this.recordedOn,
+  });
+
+  factory ChatContextCard.fromJson(Map<String, dynamic> json) {
+    return ChatContextCard(
+      category: json['category'] as String,
+      provenance: json['provenance'] as String,
+      recordedOn: json['recorded_on'] as String,
+    );
+  }
+
+  final String category;
+  final String provenance;
+  final String recordedOn;
+}
+
+class ChatSourceCard {
+  const ChatSourceCard({
+    required this.number,
+    required this.passageId,
+    required this.title,
+    required this.publisher,
+    required this.officialLocator,
+    this.publicationDate,
+    required this.lastMedicalReviewDate,
+  });
+
+  factory ChatSourceCard.fromJson(Map<String, dynamic> json) {
+    return ChatSourceCard(
+      number: json['number'] as int,
+      passageId: json['passage_id'] as String,
+      title: json['title'] as String,
+      publisher: json['publisher'] as String,
+      officialLocator: json['official_locator'] as String,
+      publicationDate: json['publication_date'] as String?,
+      lastMedicalReviewDate: json['last_medical_review_date'] as String,
+    );
+  }
+
+  final int number;
+  final String passageId;
+  final String title;
+  final String publisher;
+  final String officialLocator;
+  final String? publicationDate;
+  final String lastMedicalReviewDate;
 }
 
 class ConsultationRequestItem {

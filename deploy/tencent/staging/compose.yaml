@@ -1,4 +1,42 @@
 services:
+  retrieval_models:
+    image: ${DR_AI_RETRIEVAL_IMAGE:?Set DR_AI_RETRIEVAL_IMAGE to the immutable model image}
+    restart: unless-stopped
+    environment:
+      DR_AI_RETRIEVAL_TORCH_THREADS: "4"
+      DR_AI_RETRIEVAL_MAX_BATCH_SIZE: "30"
+      DR_AI_RETRIEVAL_MAX_INPUT_TOKENS: "512"
+      DR_AI_RETRIEVAL_RERANKER_RUNTIME: "onnx_int8"
+      DR_AI_RETRIEVAL_MODEL_CACHE_DIR: /models
+      HF_HOME: /models/huggingface
+    expose:
+      - "8090"
+    volumes:
+      - retrieval_models:/models
+    command:
+      - uv
+      - run
+      - --no-sync
+      - uvicorn
+      - app.main:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8090"
+      - --workers
+      - "1"
+      - --no-access-log
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8090/health', timeout=3)"
+      interval: 15s
+      timeout: 5s
+      retries: 40
+      start_period: 10m
+
   api:
     image: ${DR_AI_IMAGE:?Set DR_AI_IMAGE to the immutable staging image}
     restart: unless-stopped
@@ -6,6 +44,8 @@ services:
       - .env
     expose:
       - "8000"
+    volumes:
+      - ./release_artifacts:/app/knowledge_base/release_artifacts
     command:
       - uv
       - run
@@ -17,6 +57,9 @@ services:
       - --port
       - "8000"
       - --no-access-log
+    depends_on:
+      retrieval_models:
+        condition: service_healthy
 
   caddy:
     image: caddy:2.10-alpine
@@ -35,5 +78,6 @@ services:
       - api
 
 volumes:
+  retrieval_models:
   caddy_data:
   caddy_config:
