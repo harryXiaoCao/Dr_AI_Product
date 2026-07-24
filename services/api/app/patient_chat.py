@@ -913,6 +913,75 @@ def _fallback_response(
     )
 
 
+def _source_cards(
+    evidence: list[EvidencePassage],
+    passage_ids: list[str] | None = None,
+) -> list[PatientChatSourceCard]:
+    evidence_by_id = {item.passage_id: item for item in evidence}
+    selected_ids = passage_ids or list(evidence_by_id)
+    return [
+        PatientChatSourceCard(
+            number=index,
+            passage_id=passage_id,
+            title=evidence_by_id[passage_id].citation.title,
+            publisher=evidence_by_id[passage_id].citation.publisher,
+            publication_date=evidence_by_id[passage_id].citation.publication_date,
+            last_medical_review_date=evidence_by_id[passage_id].citation.last_medical_review_date,
+            official_locator=evidence_by_id[passage_id].citation.official_locator,
+        )
+        for index, passage_id in enumerate(selected_ids, start=1)
+        if passage_id in evidence_by_id
+    ]
+
+
+def _evidence_validation_fallback_response(
+    request: PatientChatRequest,
+    *,
+    request_id: str,
+    session_id: str,
+    safety_code: SafetyCode,
+    urgency_route: str,
+    evidence: list[EvidencePassage],
+) -> PatientChatResponse:
+    text = (
+        "已找到与问题相关、获准用于患者回答的资料，但自动生成的总结未通过逐句证据支持"
+        "校验，因此没有显示该总结。你仍可查看下方已审核来源，并向医生确认重要信息。"
+        if request.language == "zh-Hans"
+        else "Relevant patient-approved evidence was found, but the generated summary did not "
+        "pass sentence-level support validation and is not shown. You can still review the "
+        "approved sources below and confirm important information with a clinician."
+    )
+    next_action = (
+        NextActionCode.seek_local_care
+        if urgency_route == UrgencyRoute.urgent_same_day.value
+        else NextActionCode.contact_connected_doctor
+    )
+    return PatientChatResponse(
+        grounding_mode=GroundingMode.approved_evidence,
+        request_id=request_id,
+        session_id=session_id,
+        answer_language=request.language,
+        answer_sections=[text],
+        sources=_source_cards(evidence),
+        limitation=(
+            "没有显示未通过证据支持校验的 AI 总结。"
+            if request.language == "zh-Hans"
+            else "The AI summary that failed evidence-support validation is not shown."
+        ),
+        next_action_code=next_action,
+        safety_code=safety_code,
+        urgency_route=urgency_route,
+        evidence_decision=EvidenceDecision.sufficient,
+        fallback_code=FallbackCode.unsupported_citation,
+        suggested_action_codes=_suggested_actions(
+            safety_code,
+            next_action,
+            None,
+            request.message,
+        ),
+    )
+
+
 def _deliver_general_or_fixed(
     *,
     db: DbSession,
@@ -1432,12 +1501,17 @@ def send_patient_chat_message(
             answer_schema_version=settings.chatbot_grounded_answer_schema_version,
             structured_output_repair_count=max(0, provider.attempt_count - 1),
         )
-        return _persist_exchange(
-            db,
-            thread=thread,
-            user=user,
-            body=body,
-            response=_fallback_response(
+        response = (
+            _evidence_validation_fallback_response(
+                body,
+                request_id=request_id,
+                session_id=thread_id,
+                safety_code=safety_code,
+                urgency_route=urgency_route,
+                evidence=evidence,
+            )
+            if fallback_code == FallbackCode.unsupported_citation and evidence
+            else _fallback_response(
                 body,
                 request_id,
                 thread_id,
@@ -1445,7 +1519,14 @@ def send_patient_chat_message(
                 fallback_code,
                 urgency_route=urgency_route,
                 evidence_decision=result.decision,
-            ),
+            )
+        )
+        return _persist_exchange(
+            db,
+            thread=thread,
+            user=user,
+            body=body,
+            response=response,
         )
 
     cited_ids = list(
@@ -1455,20 +1536,8 @@ def send_patient_chat_message(
             for passage_id in section.supporting_passage_ids
         )
     )
-    evidence_by_id = {item.passage_id: item for item in evidence}
     context_by_id = {item.context_id: item for item in patient_context.items}
-    sources = [
-        PatientChatSourceCard(
-            number=index,
-            passage_id=passage_id,
-            title=evidence_by_id[passage_id].citation.title,
-            publisher=evidence_by_id[passage_id].citation.publisher,
-            publication_date=evidence_by_id[passage_id].citation.publication_date,
-            last_medical_review_date=evidence_by_id[passage_id].citation.last_medical_review_date,
-            official_locator=evidence_by_id[passage_id].citation.official_locator,
-        )
-        for index, passage_id in enumerate(cited_ids, start=1)
-    ]
+    sources = _source_cards(evidence, cited_ids)
     context_cards = []
     seen_context_cards = set()
     for context_id in provider.output.used_patient_context_ids:

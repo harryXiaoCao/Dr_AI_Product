@@ -1531,7 +1531,7 @@ def test_future_real_context_mode_uses_same_broker_contract(settings) -> None:
     assert any("138/86 mmHg" in item.value for item in context.items)
 
 
-def test_unsupported_model_citation_returns_fixed_fallback(
+def test_unsupported_model_citation_returns_reviewed_source_fallback(
     client: TestClient, settings, monkeypatch, tmp_path
 ) -> None:
     with Session(engine) as db:
@@ -1545,10 +1545,12 @@ def test_unsupported_model_citation_returns_fixed_fallback(
 
     assert response.status_code == 200
     assert response.json()["fallback_code"] == "unsupported_citation"
-    assert response.json()["sources"] == []
+    assert response.json()["grounding_mode"] == "approved_evidence"
+    assert response.json()["sources"]
+    assert all(source["passage_id"] != "invented-passage" for source in response.json()["sources"])
 
 
-def test_valid_but_unrelated_citation_returns_fixed_fallback(
+def test_valid_but_unrelated_citation_returns_reviewed_source_fallback(
     client: TestClient, settings, monkeypatch, tmp_path
 ) -> None:
     with Session(engine) as db:
@@ -1562,7 +1564,8 @@ def test_valid_but_unrelated_citation_returns_fixed_fallback(
 
     assert response.status_code == 200
     assert response.json()["fallback_code"] == "unsupported_citation"
-    assert response.json()["sources"] == []
+    assert response.json()["grounding_mode"] == "approved_evidence"
+    assert response.json()["sources"]
     with Session(engine) as db:
         event = db.scalar(select(ChatbotEvent).order_by(ChatbotEvent.occurred_at.desc()))
         assert event is not None
@@ -1622,12 +1625,13 @@ def test_generation_policy_requests_bounded_longer_answers(
     assert captured["max_tokens"] == 1400
     system_prompt = captured["messages"][0]["content"]
     assert "intent-adaptive length" in system_prompt
-    assert "2 to 5 non-repetitive" in system_prompt
+    assert "Routine education should use 2 to 3 non-repetitive" in system_prompt
+    assert "closely paraphrase" in system_prompt
     assert "numeric claim unless that exact value appears verbatim" in system_prompt
     user_payload = json.loads(captured["messages"][1]["content"])
     assert user_payload["urgency_route"] == "routine_education"
     assert "call_120" not in user_payload["response_policy"]["allowed_next_actions"]
-    assert user_payload["response_policy"]["section_count"] == "2-5"
+    assert user_payload["response_policy"]["section_count"] == "2-3"
     assert user_payload["response_policy"]["target_length"] == ("350-700 Chinese characters")
     assert (
         user_payload["response_policy"]["numeric_claims_require_exact_verbatim_cited_evidence"]
