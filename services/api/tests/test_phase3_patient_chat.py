@@ -1623,11 +1623,16 @@ def test_generation_policy_requests_bounded_longer_answers(
     system_prompt = captured["messages"][0]["content"]
     assert "intent-adaptive length" in system_prompt
     assert "2 to 5 non-repetitive" in system_prompt
+    assert "numeric claim unless that exact value appears verbatim" in system_prompt
     user_payload = json.loads(captured["messages"][1]["content"])
     assert user_payload["urgency_route"] == "routine_education"
     assert "call_120" not in user_payload["response_policy"]["allowed_next_actions"]
     assert user_payload["response_policy"]["section_count"] == "2-5"
     assert user_payload["response_policy"]["target_length"] == ("350-700 Chinese characters")
+    assert (
+        user_payload["response_policy"]["numeric_claims_require_exact_verbatim_cited_evidence"]
+        is True
+    )
 
 
 def test_malformed_provider_output_is_repaired_once(
