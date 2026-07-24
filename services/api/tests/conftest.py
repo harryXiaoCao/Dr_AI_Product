@@ -76,5 +76,9 @@ def client() -> Generator[TestClient]:
 
 
 @pytest.fixture
-def settings():
-    return get_settings()
+def settings(monkeypatch):
+    settings = get_settings()
+    # Tests must never inherit a developer's live provider credential. Adapter
+    # contract tests opt in with an explicit fake key and a stubbed request.
+    monkeypatch.setattr(settings, "deepseek_api_key", None)
+    return settings

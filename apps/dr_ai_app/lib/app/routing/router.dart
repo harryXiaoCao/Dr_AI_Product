@@ -3,9 +3,11 @@ import 'package:dr_ai_app/features/auth/presentation/legal_placeholder_screen.da
 import 'package:dr_ai_app/features/auth/presentation/login_screen.dart';
 import 'package:dr_ai_app/features/beta/presentation/beta_support_screen.dart';
 import 'package:dr_ai_app/features/care_cost/presentation/care_cost_screens.dart';
+import 'package:dr_ai_app/features/care_cost/presentation/payer_account_screen.dart';
 import 'package:dr_ai_app/features/chat/presentation/chat_screens.dart';
 import 'package:dr_ai_app/features/doctor/presentation/doctor_contacts_screen.dart';
 import 'package:dr_ai_app/features/doctor/presentation/doctor_dashboard_screen.dart';
+import 'package:dr_ai_app/features/doctor/presentation/doctor_payer_requests_screen.dart';
 import 'package:dr_ai_app/features/doctor/presentation/doctor_resource_reader_screen.dart';
 import 'package:dr_ai_app/features/doctor/presentation/doctor_resources_screen.dart';
 import 'package:dr_ai_app/features/doctor/presentation/patient_management_screen.dart';
@@ -138,8 +140,13 @@ GoRouter createRouter(AppRole? role, {String? initialLocation}) {
           ),
           GoRoute(
             path: 'payer-requests',
-            pageBuilder: (context, state) =>
-                _drAiPage(state, const DoctorPayerRequestsScreen()),
+            pageBuilder: (context, state) => _drAiPage(
+              state,
+              DoctorPayerRequestsScreen(
+                initialPatientId: state.uri.queryParameters['patient'],
+                initialClinicalEventId: state.uri.queryParameters['event'],
+              ),
+            ),
           ),
         ],
       ),

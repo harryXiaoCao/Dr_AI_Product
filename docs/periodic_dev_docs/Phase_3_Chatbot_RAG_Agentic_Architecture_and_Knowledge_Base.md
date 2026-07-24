@@ -24,6 +24,23 @@ user-to-model chatbot. It will be a bounded, retrieval-grounded workflow in
 which deterministic safety rules, authorization, evidence retrieval, citation
 validation, and output policy remain outside the model.
 
+The editable early-stage decision recorded on 2026-07-24 adds three explicit
+response modes without weakening those server controls:
+
+1. `approved_evidence` uses authorized, versioned Dr. AI passages and validated
+   source cards;
+2. `general_model_knowledge` is an independently controlled, citation-free
+   answer from model knowledge when adequate approved evidence is unavailable;
+   it carries a conspicuous no-supporting-source disclosure, no patient-record
+   context, and mode-specific uncertainty/medication/diagnostic validation; and
+3. `fixed_safety_response` is server-owned emergency, prohibited-action,
+   authorization, provider-failure, or other fixed copy.
+
+General model knowledge is not evidence and may be wrong. None of the three
+modes creates a diagnosis, prescription, clinical decision, or clinical record.
+There is no arbitrary answer-time web browsing. Historical Slice 9A/9B
+evaluation artifacts remain truthful and are not retroactively reclassified.
+
 The same governed medical knowledge platform will serve two different product
 experiences:
 
@@ -315,7 +332,10 @@ flowchart TB
     RewriteValidation -- "Valid bounded rewrite" --> QueryFusion --> Hybrid
     RewriteValidation -- "Meaning drift or invalid" --> Fallback
 
-    Evidence -- "Insufficient, stale or conflicting" --> Fallback["Fixed no-evidence or<br/>conflict fallback"]
+    Evidence -- "Insufficient, stale or conflicting" --> GeneralGate["General-knowledge mode enabled<br/>and clarification not required?"]
+    GeneralGate -- "No" --> Fallback["Fixed server response"]
+    GeneralGate -- "Yes" --> GeneralModel["Citation-free general model answer<br/>No patient-record context or source cards"]
+    GeneralModel --> GeneralValidation["General schema and policy validation<br/>No citation check"] --> Composer
     Evidence -- "Sufficient patient evidence" --> ContextBuilder
 
     subgraph Generation["Grounded generation"]
@@ -430,9 +450,10 @@ treatment operation.
    only literal search wording, while the trusted presentation continues to
    generate retrieval views and enforce centrality. Reject drift and never
    discard the original query.
-8. **Evidence gate:** continue only if evidence is current, rights-admitted,
-   audience-approved, and sufficient. Otherwise ask one clarifying question or
-   return a safe no-evidence fallback.
+8. **Evidence gate:** use `approved_evidence` only if evidence is current,
+   rights-admitted, audience-approved, and sufficient. Otherwise ask one
+   genuinely needed clarifying question, use the independently enabled
+   citation-free `general_model_knowledge` path, or return a fixed response.
 9. **Generate:** call `deepseek-v4-flash` through the adapter with a bounded
    context window and a required JSON schema. This call produces an answer and
    response-action codes; it does not choose or execute server operations.
@@ -527,7 +548,9 @@ Return fixed, reviewed responses for:
 - unsupported citation or failed policy validation; and
 - low-bandwidth/network interruption.
 
-No fallback may silently switch to ungrounded model memory.
+No path may silently switch to model memory. General model knowledge is allowed
+only through its explicit mode, schema, disclosure, kill switch, content-free
+telemetry, and patient-context exclusion.
 
 ### 4.8 Production deployment baseline
 
@@ -1178,7 +1201,10 @@ or schema diagnostic plus attempt count while raw provider content remains
 transient and is never persisted.
 
 With sufficient patient evidence, a missing DeepSeek key returns the fixed
-`provider_unavailable` response and never falls back to model memory. The
+`provider_unavailable` response and did not fall back to model memory under the
+historical Slice 5 boundary. The 2026-07-24 editable early-stage decision
+supersedes that no-evidence behavior only through the explicit
+`general_model_knowledge` mode. The
 ignored local server environment already contained a DeepSeek credential, so
 no new key was requested or exposed. One bounded live smoke on 2026-07-16
 completed through the same orchestrator with `sufficient` evidence, six
@@ -2027,7 +2053,9 @@ This plan is implemented correctly only when:
   retrieval-rescue rewrite is schema-constrained, server-validated for meaning
   preservation, used at most once, and fused with rather than substituted for
   original-query retrieval.
-- Unsupported or conflicting evidence cannot fall back to model memory.
+- Unsupported or conflicting evidence cannot be presented as grounded.
+  Separately enabled general model knowledge must be citation-free, visibly
+  labeled, patient-context-free, and independently disableable.
 - Every material factual claim both maps to displayed evidence and is
   semantically supported by that evidence; passage-ID membership alone is not
   sufficient.

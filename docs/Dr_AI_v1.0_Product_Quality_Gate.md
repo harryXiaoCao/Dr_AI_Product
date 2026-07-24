@@ -28,3 +28,19 @@ Created: 2026-07-09
 6. **Healthcare tone must be calm and precise.**
    Copy should be reassuring, non-dramatic, clinically careful, and free of
    claims the product cannot support.
+
+7. **Price the care source, not its paperwork.**
+   Financial status and its next action must be visible on the medication or
+   Clinical Service record. Appointments schedule, services represent care,
+   and uploads/reports provide evidence; the UI must not imply that a booking,
+   document, image, report, diagnosis, note, or observation is automatically a
+   separate charge.
+
+8. **Make chatbot grounding unmistakable.**
+   Reviewed Dr. AI evidence, general model knowledge, and server-owned fixed
+   safety copy must never look interchangeable. A general-model answer shows a
+   conspicuous no-supporting-source label and no Sources section; an approved
+   answer shows actionable reviewed source cards; an emergency or provider
+   failure remains visibly server-controlled. An AI disclosure supplements,
+   but never replaces, deterministic emergency, authorization, privacy, record,
+   and action boundaries.

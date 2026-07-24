@@ -8,6 +8,7 @@ import 'package:dr_ai_app/design_system/dr_ai_theme.dart';
 import 'package:dr_ai_app/design_system/dr_ai_tokens.dart';
 import 'package:dr_ai_app/features/auth/application/auth_controller.dart';
 import 'package:dr_ai_app/features/auth/domain/auth_models.dart';
+import 'package:dr_ai_app/features/care_cost/domain/care_cost_data.dart';
 import 'package:dr_ai_app/features/dashboard/domain/dashboard_data.dart';
 import 'package:dr_ai_app/features/patient/application/patient_care_providers.dart';
 import 'package:dr_ai_app/features/patient/domain/patient_care_data.dart';
@@ -159,6 +160,164 @@ void main() {
     expect(find.text('Team Management'), findsOneWidget);
     expect(find.text('Dr. Avery Demo'), findsNothing);
   });
+
+  testWidgets(
+    'doctor navigation opens the dedicated payment request workspace',
+    (tester) async {
+      setViewport(tester, const Size(1280, 832));
+      await pumpApp(tester, FakeDrAiRepository(restoredSession: doctorSession));
+
+      await tester.tap(find.text('Payment requests').last);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Payment Requests'), findsOneWidget);
+      expect(find.text('New request'), findsOneWidget);
+      expect(find.text('Request history'), findsOneWidget);
+      expect(find.byKey(const Key('payment-request-patient-search')), findsOne);
+    },
+  );
+
+  testWidgets(
+    'doctor request history separates accepted and rejected payer outcomes',
+    (tester) async {
+      setViewport(tester, const Size(1280, 832));
+      final accepted = FakeDrAiRepository.payerRequestFixture(
+        id: 'accepted-request-id',
+        clinicalEventTitle: 'Accepted respiratory request',
+        status: 'accepted',
+        reviewedAt: DateTime(2026, 7, 24),
+        reviews: <PayerReviewData>[
+          PayerReviewData(
+            id: 'accepted-review-id',
+            action: 'accept',
+            reasonCode: 'supported_request',
+            createdAt: DateTime(2026, 7, 24),
+          ),
+        ],
+      );
+      final rejected = FakeDrAiRepository.payerRequestFixture(
+        id: 'rejected-request-id',
+        clinicalEventTitle: 'Rejected imaging request',
+        status: 'rejected',
+        reviewedAt: DateTime(2026, 7, 24),
+        reviews: <PayerReviewData>[
+          PayerReviewData(
+            id: 'rejected-review-id',
+            action: 'reject',
+            reasonCode: 'unsupported_request',
+            createdAt: DateTime(2026, 7, 24),
+          ),
+        ],
+      );
+      await pumpApp(
+        tester,
+        FakeDrAiRepository(
+          restoredSession: doctorSession,
+          payerRequests: <PayerRequestData>[accepted, rejected],
+        ),
+      );
+
+      await tester.tap(find.text('Payment requests').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Request history'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Accepted respiratory request'), findsOneWidget);
+      expect(find.text('Rejected imaging request'), findsOneWidget);
+
+      await tester.tap(
+        find.byKey(const Key('payment-request-filter-accepted')),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Accepted respiratory request'), findsOneWidget);
+      expect(find.text('Rejected imaging request'), findsNothing);
+      await tester.tap(
+        find.byKey(const Key('payment-request-history-accepted-request-id')),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Accepted by payer reviewer'), findsOneWidget);
+      expect(find.textContaining('supported request'), findsOneWidget);
+
+      await tester.tap(
+        find.byKey(const Key('payment-request-filter-rejected')),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Accepted respiratory request'), findsNothing);
+      expect(find.text('Rejected imaging request'), findsOneWidget);
+      await tester.tap(
+        find.byKey(const Key('payment-request-history-rejected-request-id')),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Rejected by payer reviewer'), findsOneWidget);
+      expect(find.textContaining('unsupported request'), findsOneWidget);
+      expect(find.textContaining('reviewer-only'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'doctor explicitly selects items and confirms an immutable payment request',
+    (tester) async {
+      setViewport(tester, const Size(1280, 832));
+      final repository = FakeDrAiRepository(
+        restoredSession: doctorSession,
+        payerRequests: const <PayerRequestData>[],
+      );
+      await pumpApp(tester, repository);
+
+      await tester.tap(find.text('Payment requests').last);
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(
+          const Key('payment-request-patient-patient-profile-test-id'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const Key('payment-request-event-clinical-event-test-id')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('payment-request-continue')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(
+        find.byKey(const Key('payment-request-item-care-cost-item-test-id')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('payment-request-continue')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('payment-request-payer')));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.text('Synthetic Municipal Medical Insurance · Public payer').last,
+      );
+      await tester.enterText(
+        find.byKey(const Key('payment-request-summary')),
+        'Doctor-authored clinical context for the selected services.',
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('payment-request-continue')));
+      await tester.pumpAndSettle();
+
+      final confirmation = find.byKey(
+        const Key('payment-request-confirmation'),
+      );
+      await tester.ensureVisible(confirmation);
+      await tester.tap(confirmation);
+      await tester.pumpAndSettle();
+      final submit = find.byKey(const Key('payment-request-submit'));
+      await tester.ensureVisible(submit);
+      await tester.tap(submit);
+      await tester.pumpAndSettle();
+
+      expect(repository.payerRequestCreated, isTrue);
+      expect(repository.lastPayerRequestItemIds, const <String>[
+        'care-cost-item-test-id',
+      ]);
+      expect(find.byKey(const Key('payment-request-success')), findsOneWidget);
+      expect(find.textContaining('¥500.00'), findsWidgets);
+    },
+  );
 
   testWidgets(
     'login prefixes local phone numbers with the selected country code',
@@ -595,6 +754,10 @@ void main() {
     );
     expect(find.byKey(const Key('patient-ai-uncertainty')), findsOneWidget);
     expect(find.text('Important uncertainty'), findsOneWidget);
+    expect(
+      find.byKey(const Key('patient-ai-grounding-approved_evidence')),
+      findsOneWidget,
+    );
   });
 
   test(
@@ -632,12 +795,66 @@ void main() {
       });
 
       expect(result.content, 'Reviewed educational answer.');
+      expect(result.groundingMode, 'approved_evidence');
       expect(result.sources.single.title, 'Reviewed source');
       expect(result.contextUsed.single.category, 'measurements');
       expect(result.nextActionCode, 'contact_connected_doctor');
       expect(result.uncertainties, <String>['Important context is missing.']);
     },
   );
+
+  testWidgets('patient AI chat labels general knowledge without sources', (
+    tester,
+  ) async {
+    setViewport(tester, const Size(412, 917));
+    final repository = FakeDrAiRepository(
+      restoredSession: patientSession,
+      loginSession: patientSession,
+      dashboard: patientDashboard,
+      chatResult: ChatMessageResult(
+        threadId: 'general-thread',
+        threadKey: 'patient-rag',
+        messageId: 'general-request',
+        assistantMessageId: 'general-request',
+        content: 'General information without a reviewed source.',
+        responseChunks: const <String>[
+          'General information without a reviewed source.',
+        ],
+        safetyLabel: 'permitted_education',
+        isRedFlag: false,
+        model: 'general-ai',
+        createdAt: DateTime(2026, 7, 24),
+        groundingMode: 'general_model_knowledge',
+        limitation:
+            'General AI-generated information without a supporting Dr. AI source.',
+        nextActionCode: 'contact_connected_doctor',
+      ),
+    );
+    await pumpApp(tester, repository);
+
+    await tester.tap(find.text('Contacts'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('dr-ai-contact')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('patient-ai-input')),
+      'Explain photosynthesis briefly.',
+    );
+    await tester.tap(find.byKey(const Key('patient-ai-send')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('patient-ai-grounding-general_model_knowledge')),
+      findsOneWidget,
+    );
+    expect(
+      find.text(
+        'General AI-generated information — no supporting Dr. AI source was found.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Reviewed sources'), findsNothing);
+  });
 
   testWidgets('legal pages return to the registration page', (tester) async {
     final router = createRouter(null, initialLocation: '/terms');
@@ -952,6 +1169,173 @@ void main() {
     expect(find.text('Account changes saved.'), findsOneWidget);
   });
 
+  testWidgets('payer reviewer can record an explicit rejection outcome', (
+    tester,
+  ) async {
+    setViewport(tester, const Size(1280, 832));
+    await pumpApp(tester, FakeDrAiRepository(restoredSession: payerSession));
+
+    await tester.tap(find.text('Review queue'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Record human review'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('payer-review-action')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Accept request'), findsOneWidget);
+    expect(find.text('Reject request'), findsOneWidget);
+  });
+
+  testWidgets(
+    'payer account separates editable reviewer identity from governed access',
+    (tester) async {
+      setViewport(tester, const Size(1280, 1100));
+      final repository = FakeDrAiRepository(restoredSession: payerSession);
+      await pumpApp(tester, repository);
+
+      await tester.tap(find.text('Account').last);
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('payer-account-list')), findsOneWidget);
+      expect(find.text('Payer Account'), findsOneWidget);
+      expect(find.text('Reviewer profile'), findsOneWidget);
+      expect(find.text('Organization & access'), findsOneWidget);
+      expect(
+        find.text('Synthetic Municipal Medical Insurance'),
+        findsOneWidget,
+      );
+      expect(find.text('Public payer'), findsOneWidget);
+      expect(find.text('Synthetic review'), findsOneWidget);
+      expect(find.text('Synthetic-only'), findsOneWidget);
+      expect(
+        find.textContaining('Only an authorized administrator'),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('payer-account-change-password-button')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('account-sign-out-button')), findsOneWidget);
+      expect(
+        find.byKey(const Key('payer-account-organization-field')),
+        findsNothing,
+      );
+
+      await tester.tap(find.byKey(const Key('payer-account-save-button')));
+      await tester.pumpAndSettle();
+      expect(repository.payerProfileUpdated, isFalse);
+      expect(repository.accountEmailUpdated, isFalse);
+      expect(find.text('No account changes to save.'), findsOneWidget);
+
+      await tester.enterText(
+        find.byKey(const Key('payer-account-display-name-field')),
+        'Mei Reviewer',
+      );
+      await tester.enterText(
+        find.byKey(const Key('payer-account-title-field')),
+        'Senior expenditure reviewer',
+      );
+      await tester.enterText(
+        find.byKey(const Key('payer-account-email-field')),
+        'mei.reviewer@example.com',
+      );
+      await tester.tap(find.byKey(const Key('payer-account-save-button')));
+      await tester.pumpAndSettle();
+
+      expect(repository.payerProfileUpdated, isTrue);
+      expect(repository.accountEmailUpdated, isTrue);
+      expect(repository.payerProfileLoadCount, greaterThan(1));
+      expect(find.text('Account changes saved.'), findsOneWidget);
+      expect(find.text('Mei Reviewer'), findsWidgets);
+    },
+  );
+
+  testWidgets(
+    'payer account preserves entered values after a recoverable email conflict',
+    (tester) async {
+      setViewport(tester, const Size(1280, 1100));
+      final repository = FakeDrAiRepository(
+        restoredSession: payerSession,
+        accountEmailError: const ApiError(
+          code: 'email_already_in_use',
+          message: 'An account already uses this email address.',
+          statusCode: 409,
+        ),
+      );
+      await pumpApp(tester, repository);
+      await tester.tap(find.text('Account').last);
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.byKey(const Key('payer-account-display-name-field')),
+        'Mei Reviewer',
+      );
+      await tester.enterText(
+        find.byKey(const Key('payer-account-email-field')),
+        'conflict@example.com',
+      );
+      await tester.tap(find.byKey(const Key('payer-account-save-button')));
+      await tester.pumpAndSettle();
+
+      expect(repository.payerProfileUpdateCount, 1);
+      expect(
+        tester
+            .widget<TextFormField>(
+              find.byKey(const Key('payer-account-display-name-field')),
+            )
+            .controller
+            ?.text,
+        'Mei Reviewer',
+      );
+      expect(
+        tester
+            .widget<TextFormField>(
+              find.byKey(const Key('payer-account-email-field')),
+            )
+            .controller
+            ?.text,
+        'conflict@example.com',
+      );
+      expect(
+        find.textContaining('already linked to another account'),
+        findsOneWidget,
+      );
+
+      repository.accountEmailError = null;
+      await tester.enterText(
+        find.byKey(const Key('payer-account-email-field')),
+        'mei.reviewer@example.com',
+      );
+      await tester.tap(find.byKey(const Key('payer-account-save-button')));
+      await tester.pumpAndSettle();
+
+      expect(repository.payerProfileUpdateCount, 1);
+      expect(find.text('Account changes saved.'), findsOneWidget);
+    },
+  );
+
+  testWidgets('payer account remains usable at a narrow mobile width', (
+    tester,
+  ) async {
+    setViewport(tester, const Size(412, 917));
+    await pumpApp(tester, FakeDrAiRepository(restoredSession: payerSession));
+
+    await tester.tap(find.text('Account').last);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('payer-account-list')), findsOneWidget);
+    expect(
+      find.byKey(const Key('payer-account-identity-card')),
+      findsOneWidget,
+    );
+    await tester.ensureVisible(
+      find.byKey(const Key('payer-account-governance-card')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Organization & access'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('patient profile editor accepts an empty optional email', (
     tester,
   ) async {
@@ -1190,6 +1574,7 @@ void main() {
     expect(find.text('Synthetic observation'), findsOneWidget);
 
     expect(find.byKey(const Key('doctor-section-reminders')), findsNothing);
+    expect(find.byKey(const Key('doctor-section-careCosts')), findsNothing);
     await tester.tap(
       find.byKey(const Key('doctor-section-medicationPrescriptions')),
     );
@@ -1227,6 +1612,8 @@ void main() {
       'clinical-event-test-id',
     );
     expect(find.byKey(const Key('medication-workflow-success')), findsWidgets);
+    expect(repository.lastMedicationFinancial, isNotNull);
+    expect(repository.lastMedicationFinancial!.pricingState, 'final');
     expect(
       find.byKey(const Key('create-medication-reminder-button')),
       findsNothing,
@@ -1305,6 +1692,79 @@ void main() {
     expect(find.byKey(const Key('demo-upload-filename-field')), findsNothing);
     expect(find.byKey(const Key('demo-upload-presign-button')), findsNothing);
   });
+
+  testWidgets(
+    'doctor creates an imaging service before attaching non-billable evidence',
+    (tester) async {
+      setViewport(tester, const Size(1280, 1800));
+      final repository = FakeDrAiRepository(restoredSession: doctorSession);
+      await pumpApp(tester, repository);
+      await openDoctorPatientWorkflow(tester);
+
+      expect(
+        find.byKey(const Key('imaging-clinical-service-panel')),
+        findsOneWidget,
+      );
+      await tester.enterText(
+        find.byKey(const Key('imaging-procedure-name')),
+        'Low-dose CT chest',
+      );
+      await tester.enterText(find.byKey(const Key('imaging-modality')), 'CT');
+      await tester.enterText(
+        find.byKey(const Key('imaging-body-region')),
+        'Chest',
+      );
+      await tester.dragUntilVisible(
+        find.byKey(const Key('save-imaging-procedure')),
+        find.byKey(const Key('doctor-section-list-imaging')),
+        const Offset(0, -360),
+      );
+      await tester.ensureVisible(
+        find.byKey(const Key('save-imaging-procedure')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('save-imaging-procedure')));
+      await tester.pumpAndSettle();
+
+      expect(repository.clinicalServiceSaved, isTrue);
+      expect(repository.patientCareBundle.clinicalServices, hasLength(1));
+      expect(
+        repository.patientCareBundle.clinicalServices.first.name,
+        'Low-dose CT chest',
+      );
+
+      await tester.dragUntilVisible(
+        find.byKey(const Key('imaging-evidence-filename')),
+        find.byKey(const Key('doctor-section-list-imaging')),
+        const Offset(0, -420),
+      );
+      await tester.ensureVisible(
+        find.byKey(const Key('imaging-evidence-filename')),
+      );
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const Key('imaging-evidence-filename')),
+        'ct-series.dcm',
+      );
+      await tester.enterText(
+        find.byKey(const Key('imaging-evidence-size')),
+        '4096',
+      );
+      await tester.ensureVisible(
+        find.byKey(const Key('prepare-imaging-evidence')),
+      );
+      await tester.tap(find.byKey(const Key('prepare-imaging-evidence')));
+      await tester.pumpAndSettle();
+
+      expect(repository.imagingPrepared, isTrue);
+      expect(
+        repository.lastImagingClinicalServiceId,
+        'clinical-service-test-id',
+      );
+      expect(find.text('Cost pending'), findsWidgets);
+      expect(find.text('Attach evidence'), findsWidgets);
+    },
+  );
 
   testWidgets('doctor patient workspace uses compact navigation on phone', (
     tester,
@@ -1656,6 +2116,13 @@ void main() {
       find.byKey(const Key('consultation-summary-field')),
       'Review respiratory symptoms and recent imaging.',
     );
+    final consultationBillable = find
+        .byKey(const Key('billable-clinical-item-checkbox'))
+        .last;
+    await tester.ensureVisible(consultationBillable);
+    await tester.pumpAndSettle();
+    await tester.tap(consultationBillable);
+    await tester.pumpAndSettle();
     await tester.testTextInput.receiveAction(TextInputAction.done);
     await tester.dragUntilVisible(
       find.byKey(const Key('consultation-request-button')),
@@ -1667,12 +2134,34 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(repository.consultations.items, isNotEmpty);
+    expect(repository.lastConsultationFinancial, isNotNull);
+    expect(repository.lastConsultationFinancial!.pricingState, 'pending_cost');
     expect(
       repository.consultations.items.first.clinicalEventId,
       'clinical-event-test-id',
     );
     expect(find.textContaining('consultation requested'), findsWidgets);
     expect(find.textContaining('Pulmonology - requested'), findsWidgets);
+
+    final editCost = find.byKey(
+      const Key('edit-consultation-cost-created-consultation-id'),
+    );
+    await tester.ensureVisible(editCost);
+    await tester.drag(
+      find.byKey(const Key('doctor-section-list-consultationActivity')),
+      const Offset(0, -120),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(editCost);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(
+      find.byKey(const Key('consultation-request-button')),
+    );
+    await tester.tap(find.byKey(const Key('consultation-request-button')));
+    await tester.pumpAndSettle();
+
+    expect(repository.consultationFinancialUpdates, 1);
+    expect(find.text('Save consultation cost'), findsOneWidget);
   });
 
   testWidgets('core controls expose accessible labels and disabled states', (

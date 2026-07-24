@@ -14,6 +14,8 @@ from app.models import (
     CareCostItem,
     CareRelationship,
     ClinicalEvent,
+    ClinicalService,
+    ConsultationRequest,
     PatientProfile,
     PayerMembership,
     PayerOrganization,
@@ -22,6 +24,7 @@ from app.models import (
     PayerReview,
     UserRole,
 )
+from app.schemas import ClinicalFinancialInput
 
 router = APIRouter(prefix="/api/v1", tags=["care-and-cost transparency"])
 
@@ -39,7 +42,13 @@ ItemType = Literal[
     "other",
 ]
 ItemStatus = Literal["planned", "scheduled", "completed", "cancelled"]
-ReviewAction = Literal["request_clarification", "accept", "escalate", "close"]
+ReviewAction = Literal[
+    "request_clarification",
+    "accept",
+    "reject",
+    "escalate",
+    "close",
+]
 
 
 class CareCostItemRequest(BaseModel):
@@ -51,6 +60,7 @@ class CareCostItemRequest(BaseModel):
     status: ItemStatus = "planned"
     quantity: int = Field(default=1, ge=1, le=999)
     currency: Literal["CNY"] = "CNY"
+    pricing_state: Literal["pending_cost", "estimated", "final"] = "final"
     actual_cost_minor: int = Field(default=0, ge=0, le=1_000_000_000)
     payer_requested_minor: int = Field(default=0, ge=0, le=1_000_000_000)
     patient_responsibility_minor: int = Field(default=0, ge=0, le=1_000_000_000)
@@ -59,8 +69,19 @@ class CareCostItemRequest(BaseModel):
     @model_validator(mode="after")
     def validate_amounts(self) -> "CareCostItemRequest":
         allocated = self.payer_requested_minor + self.patient_responsibility_minor
-        if allocated > self.actual_cost_minor:
-            raise ValueError("Payer and patient amounts cannot exceed the actual cost.")
+        if self.pricing_state == "pending_cost":
+            if any(
+                (
+                    self.actual_cost_minor,
+                    self.payer_requested_minor,
+                    self.patient_responsibility_minor,
+                )
+            ):
+                raise ValueError("Pending-cost records cannot contain partial amounts.")
+        elif self.actual_cost_minor <= 0 or allocated != self.actual_cost_minor:
+            raise ValueError(
+                "Requested payer and expected patient amounts must equal the total cost."
+            )
         return self
 
 
@@ -71,6 +92,17 @@ class CareCostItemResponse(BaseModel):
     label: str
     service_date: date
     status: str
+    pricing_state: str
+    source_type: str
+    source_record_id: uuid.UUID | None
+    source_category: str
+    source_status: str
+    ordered_at: datetime | None
+    scheduled_at: datetime | None
+    performed_at: datetime | None
+    already_submitted: bool
+    submission_eligible: bool
+    ineligibility_reason: str | None
     quantity: int
     currency: str
     actual_cost_minor: int
@@ -117,7 +149,7 @@ class PayerRequestCreate(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
     payer_organization_id: uuid.UUID
-    care_cost_item_ids: list[uuid.UUID] = Field(default_factory=list, max_length=200)
+    care_cost_item_ids: list[uuid.UUID] = Field(min_length=1, max_length=200)
     doctor_summary: str = Field(min_length=10, max_length=4000)
 
 
@@ -183,6 +215,13 @@ class PayerProfileResponse(BaseModel):
     organization: PayerOrganizationResponse
 
 
+class PayerProfileUpdateRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    display_name: str | None = Field(default=None, min_length=1, max_length=120)
+    title: str | None = Field(default=None, min_length=2, max_length=120)
+
+
 class PayerDashboardResponse(BaseModel):
     profile: PayerProfileResponse
     open_requests: int
@@ -240,7 +279,31 @@ def _require_membership(db: DbSession, user: CurrentUser) -> PayerMembership:
     return membership
 
 
-def _item_response(item: CareCostItem) -> CareCostItemResponse:
+def _item_response(item: CareCostItem, *, already_submitted: bool = False) -> CareCostItemResponse:
+    ineligibility_reason = _submission_ineligibility(item, already_submitted=already_submitted)
+    source_type = "legacy"
+    source_record_id = None
+    source_category = item.item_type
+    source_status = item.status
+    ordered_at = None
+    scheduled_at = None
+    performed_at = None
+    if item.medication_id is not None:
+        source_type = "medication"
+        source_record_id = item.medication_id
+        source_category = "medication"
+        if item.medication is not None:
+            source_status = item.medication.status
+    elif item.clinical_service_id is not None:
+        source_type = "clinical_service"
+        source_record_id = item.clinical_service_id
+        if item.clinical_service is not None:
+            source_type = item.clinical_service.category
+            source_category = item.clinical_service.category
+            source_status = item.clinical_service.status
+            ordered_at = item.clinical_service.ordered_at
+            scheduled_at = item.clinical_service.scheduled_at
+            performed_at = item.clinical_service.performed_at
     return CareCostItemResponse(
         id=item.id,
         clinical_event_id=item.clinical_event_id,
@@ -248,6 +311,17 @@ def _item_response(item: CareCostItem) -> CareCostItemResponse:
         label=item.label,
         service_date=item.service_date,
         status=item.status,
+        pricing_state=item.pricing_state,
+        source_type=source_type,
+        source_record_id=source_record_id,
+        source_category=source_category,
+        source_status=source_status,
+        ordered_at=ordered_at,
+        scheduled_at=scheduled_at,
+        performed_at=performed_at,
+        already_submitted=already_submitted,
+        submission_eligible=ineligibility_reason is None,
+        ineligibility_reason=ineligibility_reason,
         quantity=item.quantity,
         currency=item.currency,
         actual_cost_minor=item.actual_cost_minor,
@@ -262,10 +336,156 @@ def _item_response(item: CareCostItem) -> CareCostItemResponse:
     )
 
 
+def _submission_ineligibility(item: CareCostItem, *, already_submitted: bool = False) -> str | None:
+    if already_submitted:
+        return "already_submitted"
+    if item.status == "cancelled":
+        return "cancelled"
+    if item.pricing_state == "pending_cost":
+        return "cost_pending"
+    if item.currency != "CNY":
+        return "unsupported_currency"
+    if item.actual_cost_minor <= 0:
+        return "total_required"
+    if item.payer_requested_minor + item.patient_responsibility_minor != item.actual_cost_minor:
+        return "allocation_incomplete"
+    if item.medication_id is None and item.clinical_service_id is None:
+        return "unlinked_legacy_item"
+    if item.medication_id is not None:
+        medication = item.medication
+        if (
+            medication is None
+            or medication.patient_id != item.patient_id
+            or medication.clinical_event_id != item.clinical_event_id
+        ):
+            return "source_mismatch"
+        if medication.status == "entered_in_error":
+            return "source_ineligible"
+    if item.clinical_service_id is not None:
+        service = item.clinical_service
+        if (
+            service is None
+            or service.patient_id != item.patient_id
+            or service.clinical_event_id != item.clinical_event_id
+        ):
+            return "source_mismatch"
+        if service.status in {"cancelled", "not_completed"}:
+            return "source_ineligible"
+    return None
+
+
+def sync_clinical_financial(
+    db: DbSession,
+    user: CurrentUser,
+    *,
+    patient_id: uuid.UUID,
+    clinical_event_id: uuid.UUID | None,
+    source_type: Literal["medication", "service"],
+    source_record_id: uuid.UUID,
+    label: str,
+    source_status: str,
+    financial: ClinicalFinancialInput | None,
+) -> CareCostItem | None:
+    """Create or synchronize one active financial companion without committing."""
+
+    source_column = (
+        CareCostItem.medication_id
+        if source_type == "medication"
+        else CareCostItem.clinical_service_id
+    )
+    item = db.scalar(select(CareCostItem).where(source_column == source_record_id))
+    if item is None and financial is None:
+        return None
+    if clinical_event_id is None:
+        raise ApiError(
+            422,
+            "validation_failed",
+            "A billable clinical record must belong to a Clinical Event.",
+        )
+    event = db.scalar(
+        select(ClinicalEvent).where(
+            ClinicalEvent.id == clinical_event_id,
+            ClinicalEvent.patient_id == patient_id,
+        )
+    )
+    if event is None:
+        raise _not_found()
+    source_item_type = "medication"
+    if source_type == "service":
+        service = db.scalar(
+            select(ClinicalService).where(
+                ClinicalService.id == source_record_id,
+                ClinicalService.patient_id == patient_id,
+                ClinicalService.clinical_event_id == clinical_event_id,
+            )
+        )
+        if service is None:
+            raise _not_found()
+        source_item_type = service.category
+    mapped_status = (
+        "cancelled"
+        if source_status in {"cancelled", "entered_in_error"}
+        else "scheduled"
+        if source_type == "service" and source_status in {"ordered", "requested", "scheduled"}
+        else "planned"
+        if source_type == "service" and source_status == "in_progress"
+        else "completed"
+    )
+    if item is None:
+        assert financial is not None
+        item = CareCostItem(
+            patient_id=patient_id,
+            clinical_event_id=clinical_event_id,
+            created_by_user_id=user.id,
+            medication_id=source_record_id if source_type == "medication" else None,
+            clinical_service_id=source_record_id if source_type == "service" else None,
+            item_type=source_item_type,
+            label=label,
+            service_date=financial.service_date or date.today(),
+            status=mapped_status,
+            pricing_state=financial.pricing_state,
+            quantity=1,
+            currency=financial.currency,
+            actual_cost_minor=financial.total_cost_minor,
+            payer_requested_minor=financial.payer_requested_minor,
+            patient_responsibility_minor=financial.patient_responsibility_minor,
+            ai_review_status="not_evaluated",
+        )
+        db.add(item)
+    else:
+        item.patient_id = patient_id
+        item.clinical_event_id = clinical_event_id
+        item.item_type = source_item_type
+        item.label = label
+        item.status = mapped_status
+        if financial is not None:
+            item.service_date = financial.service_date or item.service_date
+            item.pricing_state = financial.pricing_state
+            item.currency = financial.currency
+            item.actual_cost_minor = financial.total_cost_minor
+            item.payer_requested_minor = financial.payer_requested_minor
+            item.patient_responsibility_minor = financial.patient_responsibility_minor
+    db.flush()
+    return item
+
+
 def _ledger(db: DbSession, patient: PatientProfile) -> CareCostLedgerResponse:
+    submitted_item_ids = set(
+        db.scalars(
+            select(PayerRequestLine.care_cost_item_id)
+            .join(PayerRequest)
+            .where(
+                PayerRequest.patient_id == patient.id,
+                PayerRequestLine.care_cost_item_id.is_not(None),
+            )
+        ).all()
+    )
     events = db.scalars(
         select(ClinicalEvent)
-        .options(selectinload(ClinicalEvent.care_cost_items))
+        .options(
+            selectinload(ClinicalEvent.care_cost_items).selectinload(CareCostItem.clinical_service),
+            selectinload(ClinicalEvent.care_cost_items).selectinload(CareCostItem.medication),
+        )
         .where(ClinicalEvent.patient_id == patient.id)
         .order_by(ClinicalEvent.updated_at.desc(), ClinicalEvent.id)
     ).all()
@@ -287,7 +507,10 @@ def _ledger(db: DbSession, patient: PatientProfile) -> CareCostLedgerResponse:
                     item.patient_responsibility_minor for item in items
                 ),
                 currency="CNY",
-                items=[_item_response(item) for item in items],
+                items=[
+                    _item_response(item, already_submitted=item.id in submitted_item_ids)
+                    for item in items
+                ],
             )
         )
     return CareCostLedgerResponse(
@@ -425,27 +648,11 @@ def create_care_cost_item(
 ) -> CareCostItemResponse:
     _require_doctor_patient(db, user, patient_id)
     _require_event(db, patient_id, event_id)
-    item = CareCostItem(
-        patient_id=patient_id,
-        clinical_event_id=event_id,
-        created_by_user_id=user.id,
-        **body.model_dump(),
-        ai_review_status="not_evaluated",
+    raise ApiError(
+        409,
+        "integrated_financial_required",
+        "Create cost information from the billable clinical record.",
     )
-    db.add(item)
-    db.flush()
-    _audit(
-        db,
-        user,
-        "care_cost_item_created",
-        target_id=item.id,
-        patient_id=str(patient_id),
-        clinical_event_id=str(event_id),
-        item_type=item.item_type,
-    )
-    db.commit()
-    db.refresh(item)
-    return _item_response(item)
 
 
 @router.put(
@@ -470,6 +677,12 @@ def update_care_cost_item(
     )
     if item is None:
         raise _not_found()
+    if item.medication_id is not None or item.clinical_service_id is not None:
+        raise ApiError(
+            409,
+            "integrated_financial_required",
+            "Update cost information from the linked clinical record.",
+        )
     for field, value in body.model_dump().items():
         setattr(item, field, value)
     _audit(
@@ -507,6 +720,12 @@ def delete_care_cost_item(
     )
     if item is None:
         raise _not_found()
+    if item.medication_id is not None or item.clinical_service_id is not None:
+        raise ApiError(
+            409,
+            "integrated_financial_required",
+            "Delete or archive the linked clinical record instead.",
+        )
     _audit(
         db,
         user,
@@ -518,6 +737,117 @@ def delete_care_cost_item(
     )
     db.delete(item)
     db.commit()
+
+
+@router.put(
+    "/patients/{patient_id}/consultations/{consultation_id}/financial",
+    response_model=CareCostItemResponse,
+)
+def update_consultation_financial(
+    patient_id: uuid.UUID,
+    consultation_id: uuid.UUID,
+    body: ClinicalFinancialInput,
+    user: CurrentUser,
+    db: DbSession,
+) -> CareCostItemResponse:
+    _require_doctor_patient(db, user, patient_id)
+    consultation = db.scalar(
+        select(ConsultationRequest).where(
+            ConsultationRequest.id == consultation_id,
+            ConsultationRequest.patient_id == patient_id,
+        )
+    )
+    if consultation is None:
+        raise _not_found()
+    if consultation.clinical_service_id is None:
+        raise ApiError(
+            409,
+            "clinical_service_required",
+            "This consultation has no linked clinical service.",
+        )
+    service = db.scalar(
+        select(ClinicalService).where(
+            ClinicalService.id == consultation.clinical_service_id,
+            ClinicalService.patient_id == patient_id,
+        )
+    )
+    if service is None:
+        raise _not_found()
+    item = sync_clinical_financial(
+        db,
+        user,
+        patient_id=patient_id,
+        clinical_event_id=service.clinical_event_id,
+        source_type="service",
+        source_record_id=service.id,
+        label=service.name,
+        source_status=service.status,
+        financial=body,
+    )
+    assert item is not None
+    _audit(
+        db,
+        user,
+        "clinical_financial_updated",
+        target_id=item.id,
+        patient_id=str(patient_id),
+        clinical_event_id=str(consultation.clinical_event_id),
+        source_type="clinical_service",
+        source_record_id=str(service.id),
+        pricing_state=item.pricing_state,
+    )
+    db.commit()
+    db.refresh(item)
+    return _item_response(item)
+
+
+@router.put(
+    "/patients/{patient_id}/clinical-services/{service_id}/financial",
+    response_model=CareCostItemResponse,
+)
+def update_clinical_service_financial(
+    patient_id: uuid.UUID,
+    service_id: uuid.UUID,
+    body: ClinicalFinancialInput,
+    user: CurrentUser,
+    db: DbSession,
+) -> CareCostItemResponse:
+    _require_doctor_patient(db, user, patient_id)
+    service = db.scalar(
+        select(ClinicalService).where(
+            ClinicalService.id == service_id,
+            ClinicalService.patient_id == patient_id,
+        )
+    )
+    if service is None:
+        raise _not_found()
+    item = sync_clinical_financial(
+        db,
+        user,
+        patient_id=patient_id,
+        clinical_event_id=service.clinical_event_id,
+        source_type="service",
+        source_record_id=service.id,
+        label=service.name,
+        source_status=service.status,
+        financial=body,
+    )
+    assert item is not None
+    _audit(
+        db,
+        user,
+        "clinical_financial_updated",
+        target_id=item.id,
+        patient_id=str(patient_id),
+        clinical_event_id=str(service.clinical_event_id),
+        source_type="clinical_service",
+        source_record_id=str(service.id),
+        source_category=service.category,
+        pricing_state=item.pricing_state,
+    )
+    db.commit()
+    db.refresh(item)
+    return _item_response(item)
 
 
 @router.get("/payer-organizations", response_model=list[PayerOrganizationResponse])
@@ -552,16 +882,47 @@ def create_payer_request(
         CareCostItem.clinical_event_id == event_id,
         CareCostItem.status != "cancelled",
     )
-    if body.care_cost_item_ids:
-        if len(set(body.care_cost_item_ids)) != len(body.care_cost_item_ids):
-            raise ApiError(422, "validation_failed", "Each care item may be selected once.")
-        item_query = item_query.where(CareCostItem.id.in_(body.care_cost_item_ids))
+    if len(set(body.care_cost_item_ids)) != len(body.care_cost_item_ids):
+        raise ApiError(422, "validation_failed", "Each care item may be selected once.")
+    item_query = item_query.where(CareCostItem.id.in_(body.care_cost_item_ids))
     items = db.scalars(item_query.order_by(CareCostItem.service_date, CareCostItem.id)).all()
-    if not items or (body.care_cost_item_ids and len(items) != len(body.care_cost_item_ids)):
+    if len(items) != len(body.care_cost_item_ids):
         raise ApiError(422, "validation_failed", "Select valid care items for this event.")
+    submitted_item_ids = set(
+        db.scalars(
+            select(PayerRequestLine.care_cost_item_id).where(
+                PayerRequestLine.care_cost_item_id.in_(body.care_cost_item_ids)
+            )
+        ).all()
+    )
+    if submitted_item_ids:
+        raise ApiError(
+            409,
+            "conflict",
+            "One or more selected care items were already submitted in an earlier request.",
+        )
     currencies = {item.currency for item in items}
     if currencies != {"CNY"}:
         raise ApiError(422, "validation_failed", "All selected items must use CNY.")
+    blocked = {
+        str(item.id): reason
+        for item in items
+        if (reason := _submission_ineligibility(item)) is not None
+    }
+    if blocked:
+        raise ApiError(
+            422,
+            "validation_failed",
+            "Complete valid cost allocation for every selected clinical item.",
+            [
+                {
+                    "field": "care_cost_item_ids",
+                    "code": reason,
+                    "message": f"Care item {item_id} is not eligible for submission.",
+                }
+                for item_id, reason in blocked.items()
+            ],
+        )
     payer_request = PayerRequest(
         clinical_event_id=event.id,
         patient_id=patient_id,
@@ -638,6 +999,46 @@ def own_payer_profile(user: CurrentUser, db: DbSession) -> PayerProfileResponse:
     return _profile_response(_require_membership(db, user))
 
 
+@router.patch("/payer/me/profile", response_model=PayerProfileResponse)
+def update_own_payer_profile(
+    body: PayerProfileUpdateRequest,
+    user: CurrentUser,
+    db: DbSession,
+) -> PayerProfileResponse:
+    membership = _require_membership(db, user)
+    updated_fields: list[str] = []
+    for field in ("display_name", "title"):
+        value = getattr(body, field)
+        if value is not None and getattr(membership, field) != value:
+            setattr(membership, field, value)
+            updated_fields.append(field)
+    if not updated_fields:
+        raise ApiError(
+            422,
+            "validation_failed",
+            "The request could not be validated.",
+            [
+                {
+                    "field": "profile",
+                    "code": "no_fields_updated",
+                    "message": "Provide at least one changed reviewer profile field.",
+                }
+            ],
+        )
+    _audit(
+        db,
+        user,
+        "payer_profile_updated",
+        target_id=membership.id,
+        payer_organization_id=str(membership.payer_organization_id),
+        fields=updated_fields,
+        actor_role=user.role.value,
+    )
+    db.commit()
+    db.refresh(membership)
+    return _profile_response(membership)
+
+
 @router.get("/payer/me/dashboard", response_model=PayerDashboardResponse)
 def own_payer_dashboard(user: CurrentUser, db: DbSession) -> PayerDashboardResponse:
     membership = _require_membership(db, user)
@@ -651,7 +1052,9 @@ def own_payer_dashboard(user: CurrentUser, db: DbSession) -> PayerDashboardRespo
         profile=_profile_response(membership),
         open_requests=sum(item.status in open_statuses for item in requests),
         clarification_requests=sum(item.status == "clarification_requested" for item in requests),
-        completed_reviews=sum(item.status in {"accepted", "closed"} for item in requests),
+        completed_reviews=sum(
+            item.status in {"accepted", "rejected", "closed"} for item in requests
+        ),
         pending_requested_total_minor=sum(
             item.requested_total_minor for item in requests if item.status in open_statuses
         ),
@@ -709,6 +1112,7 @@ def review_payer_request(
     next_status = {
         "request_clarification": "clarification_requested",
         "accept": "accepted",
+        "reject": "rejected",
         "escalate": "escalated",
         "close": "closed",
     }[body.action]

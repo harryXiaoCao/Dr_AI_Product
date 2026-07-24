@@ -18,30 +18,39 @@ class ResponsiveAppShell extends ConsumerWidget {
   final Widget child;
   final int selectedIndex;
 
-  List<NavigationDestination> _doctorDestinations(BuildContext context) =>
-      <NavigationDestination>[
-        NavigationDestination(
-          icon: const Icon(Icons.dashboard),
-          label: context.l10n.dashboard,
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.people_outline),
-          label: context.l10n.patientManagement,
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.menu_book_outlined),
-          selectedIcon: Icon(Icons.menu_book),
-          label: context.l10n.resources,
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.chat_bubble_outline),
-          label: context.l10n.contacts,
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.manage_accounts_outlined),
-          label: context.l10n.account,
-        ),
-      ];
+  List<NavigationDestination> _doctorDestinations(
+    BuildContext context, {
+    bool compact = false,
+  }) => <NavigationDestination>[
+    NavigationDestination(
+      icon: const Icon(Icons.dashboard),
+      label: context.l10n.dashboard,
+    ),
+    NavigationDestination(
+      icon: Icon(Icons.people_outline),
+      label: context.l10n.patientManagement,
+    ),
+    NavigationDestination(
+      icon: Icon(Icons.menu_book_outlined),
+      selectedIcon: Icon(Icons.menu_book),
+      label: context.l10n.resources,
+    ),
+    NavigationDestination(
+      icon: const Icon(Icons.request_quote_outlined),
+      selectedIcon: const Icon(Icons.request_quote),
+      label: compact
+          ? _copy(context, 'Requests', '申请')
+          : _copy(context, 'Payment requests', '支付申请'),
+    ),
+    NavigationDestination(
+      icon: Icon(Icons.chat_bubble_outline),
+      label: context.l10n.contacts,
+    ),
+    NavigationDestination(
+      icon: Icon(Icons.manage_accounts_outlined),
+      label: context.l10n.account,
+    ),
+  ];
 
   List<NavigationDestination> _patientDestinations(BuildContext context) =>
       <NavigationDestination>[
@@ -88,7 +97,10 @@ class ResponsiveAppShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final width = MediaQuery.sizeOf(context).width;
     final destinations = switch (role) {
-      AppRole.doctor => _doctorDestinations(context),
+      AppRole.doctor => _doctorDestinations(
+        context,
+        compact: width < DrAiBreakpoints.mobile,
+      ),
       AppRole.patient => _patientDestinations(context),
       AppRole.payer => _payerDestinations(context),
       AppRole.unsupported => const <NavigationDestination>[],
@@ -106,7 +118,7 @@ class ResponsiveAppShell extends ConsumerWidget {
           child: NavigationBarTheme(
             data: _navigationBarTheme(context),
             child: NavigationBar(
-              height: role == AppRole.doctor ? 74 : 68,
+              height: role == AppRole.doctor ? 82 : 68,
               backgroundColor: DrAiColors.white,
               surfaceTintColor: Colors.transparent,
               elevation: 0,
@@ -336,10 +348,14 @@ class ResponsiveAppShell extends ConsumerWidget {
         return;
       }
       if (index == 3) {
-        context.go('/doctor/contact');
+        context.go('/doctor/payer-requests');
         return;
       }
       if (index == 4) {
+        context.go('/doctor/contact');
+        return;
+      }
+      if (index == 5) {
         context.go('/doctor/account');
         return;
       }

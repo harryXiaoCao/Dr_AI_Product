@@ -9,6 +9,7 @@ import 'package:dr_ai_app/shared/widgets/responsive_app_shell.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ServiceChatScreen extends StatelessWidget {
   const ServiceChatScreen({
@@ -582,6 +583,7 @@ class _AiMessageBubble extends StatelessWidget {
   Widget build(BuildContext context) {
     final result = message.result;
     final emergency = result?.isRedFlag ?? false;
+    final generalKnowledge = result?.groundingMode == 'general_model_knowledge';
     return Align(
       alignment: message.isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
@@ -624,6 +626,10 @@ class _AiMessageBubble extends StatelessWidget {
                   style: const TextStyle(color: DrAiColors.ink, height: 1.5),
                 ),
               ],
+            if (result != null && !message.isUser) ...<Widget>[
+              const SizedBox(height: DrAiSpacing.sm),
+              _GroundingModeBanner(result: result),
+            ],
             if (result != null && result.uncertainties.isNotEmpty) ...<Widget>[
               const SizedBox(height: DrAiSpacing.sm),
               Container(
@@ -681,13 +687,40 @@ class _AiMessageBubble extends StatelessWidget {
               for (final source in result.sources)
                 Padding(
                   padding: const EdgeInsets.only(top: 6),
-                  child: Text(
-                    '${source.number}. ${source.title} · ${source.publisher} · '
-                    '${source.lastMedicalReviewDate}',
-                    style: const TextStyle(
-                      color: DrAiColors.inkSecondary,
-                      fontSize: 12,
-                      height: 1.35,
+                  child: Container(
+                    padding: const EdgeInsets.all(DrAiSpacing.xs),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: DrAiColors.outline),
+                      borderRadius: BorderRadius.circular(DrAiRadii.md),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          '${source.number}. ${source.title}',
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          '${source.publisher} · '
+                          '${source.lastMedicalReviewDate}',
+                          style: const TextStyle(
+                            color: DrAiColors.inkSecondary,
+                            fontSize: 12,
+                            height: 1.35,
+                          ),
+                        ),
+                        if (_safeOfficialUri(source.officialLocator) != null)
+                          TextButton.icon(
+                            onPressed: () =>
+                                _openOfficialSource(source.officialLocator),
+                            icon: const Icon(
+                              Icons.open_in_new_rounded,
+                              size: 16,
+                            ),
+                            label: Text(context.l10n.aiOpenOfficialSource),
+                          ),
+                      ],
                     ),
                   ),
                 ),
@@ -729,8 +762,10 @@ class _AiMessageBubble extends StatelessWidget {
               const SizedBox(height: DrAiSpacing.sm),
               Text(
                 result!.limitation!,
-                style: const TextStyle(
-                  color: DrAiColors.inkSecondary,
+                style: TextStyle(
+                  color: generalKnowledge
+                      ? Color(0xFF674D00)
+                      : DrAiColors.inkSecondary,
                   fontSize: 12,
                   height: 1.35,
                 ),
@@ -799,6 +834,19 @@ class _AiMessageBubble extends StatelessWidget {
     );
   }
 
+  static Uri? _safeOfficialUri(String locator) {
+    final uri = Uri.tryParse(locator);
+    return uri != null && (uri.scheme == 'https' || uri.scheme == 'http')
+        ? uri
+        : null;
+  }
+
+  static Future<void> _openOfficialSource(String locator) async {
+    final uri = _safeOfficialUri(locator);
+    if (uri == null) return;
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
   IconData _actionIcon(String action) {
     return switch (action) {
       'review_measurement_guidance' => Icons.monitor_heart_outlined,
@@ -843,6 +891,64 @@ class _AiMessageBubble extends StatelessWidget {
       'recovery_plan' => context.l10n.aiContextCurrentRecoveryPlan,
       _ => provenance,
     };
+  }
+}
+
+class _GroundingModeBanner extends StatelessWidget {
+  const _GroundingModeBanner({required this.result});
+
+  final ChatMessageResult result;
+
+  @override
+  Widget build(BuildContext context) {
+    final (icon, color, background, label) = switch (result.groundingMode) {
+      'approved_evidence' => (
+        Icons.verified_outlined,
+        const Color(0xFF087F5B),
+        const Color(0xFFE7F7F0),
+        context.l10n.aiApprovedEvidenceBanner,
+      ),
+      'general_model_knowledge' => (
+        Icons.auto_awesome_outlined,
+        const Color(0xFF674D00),
+        const Color(0xFFFFF3C4),
+        context.l10n.aiGeneralKnowledgeBanner,
+      ),
+      _ => (
+        Icons.health_and_safety_outlined,
+        result.isRedFlag ? DrAiColors.danger : DrAiColors.accentIndigo,
+        result.isRedFlag
+            ? DrAiColors.danger.withValues(alpha: 0.08)
+            : DrAiColors.accentIndigo.withValues(alpha: 0.07),
+        context.l10n.aiFixedSafetyBanner,
+      ),
+    };
+    return Container(
+      key: Key('patient-ai-grounding-${result.groundingMode}'),
+      width: double.infinity,
+      padding: const EdgeInsets.all(DrAiSpacing.xs),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(DrAiRadii.md),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Icon(icon, size: 18, color: color),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                color: color,
+                height: 1.35,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

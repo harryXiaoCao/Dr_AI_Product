@@ -370,9 +370,32 @@ the full machine gate. Only an exact, duplicate-free 100-canonical plus
 85-variant result matrix may close the machine portion, and independent human
 review remains mandatory afterward.
 
-General model memory is not an authoritative medical source. Fine-tuning may
-later improve tone, format, terminology, or refusal behavior, but it must not be
-used as the only mechanism for keeping clinical knowledge correct or current.
+General model memory is not an authoritative medical source. For the editable
+early-stage product boundary adopted on 2026-07-24, lack of adequate approved
+retrieval no longer requires an automatic no-evidence refusal. A separately
+enabled `general_model_knowledge` mode may answer from model knowledge when it
+is clearly labeled as general AI-generated information with no supporting
+Dr. AI source. It returns no citations or source cards, receives no unrelated
+patient-record context, states material uncertainty for medically consequential
+questions, and gives an appropriate next step. It may give multiple possible
+explanations but cannot confirm or rule out diagnosis, reassure that an
+emergency is absent, or direct a patient-specific medication change or dose.
+Safe general medicine education may continue while a mixed request's personal
+treatment-change portion is declined.
+
+The other two response modes remain distinct. `approved_evidence` uses only
+authorized, versioned, patient-approved passages and validated source IDs.
+`fixed_safety_response` is deterministic server copy for emergency guidance,
+prohibited actions without a safe separable portion, authorization denial,
+provider failure, and other server-owned fallbacks. None automatically becomes
+a diagnosis, prescription, clinical decision, or clinical record.
+
+Grounded generation and general-model-knowledge generation are independently
+configured and versioned so the latter can be disabled without changing the
+retrieval release. No mode authorizes arbitrary answer-time web browsing.
+Fine-tuning may later improve tone, format, terminology, or refusal behavior,
+but it must not be used as the only mechanism for keeping clinical knowledge
+correct or current.
 
 The architecture must use a provider adapter so that DeepSeek and other
 candidate models can be evaluated or replaced without changing the patient
@@ -393,18 +416,23 @@ Every message follows this order:
 4. Return fixed reviewed guidance if an emergency rule triggers.
 5. For an allowed non-emergency message, assign the server-owned same-day,
    clinician-contact, or routine-education route before retrieval.
-6. Retrieve only approved sources and the minimum authorized patient context
-   needed for an allowed question.
-7. Call the model through the provider-neutral backend adapter with only the
-   allowed next actions for the deterministic route.
+6. Retrieve the immutable original question first. Trigger the bounded planner
+   only for server-detected weak retrieval, colloquial wording, ambiguity, or
+   an unresolved follow-up reference. Search each accepted planned query
+   independently and fuse deterministically; never concatenate planner terms
+   into one embedding.
+7. If adequate evidence exists, call the grounded answer schema with only
+   approved passages and minimum authorized patient context. Otherwise ask a
+   genuinely needed clarification or, when independently enabled, call the
+   citation-free general-model-knowledge schema without patient-record context.
 8. Validate structured output and screen for prohibited medical instructions,
    unsupported claims, missing attribution, and unsafe escalation.
    Passage-ID membership alone is insufficient: each displayed answer sentence
    must remain semantically anchored to its specifically cited passage or
    authorized context. Model-generated uncertainty text must not introduce an
    unsupported number, disease concept, or clinical-presentation feature.
-9. Show a bounded answer, limitations, relevant source attribution, and one
-   clear next action.
+9. Show a bounded answer, explicit grounding label, mode-appropriate source
+   treatment, limitations, and one clear next action.
 10. Record metadata-only safety and operational events.
 11. Use fixed fallback copy for timeout, quota, malformed response, provider
     outage, or failed safety validation.

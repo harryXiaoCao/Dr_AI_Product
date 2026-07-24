@@ -90,6 +90,112 @@ class AppLocalizationsEn extends AppLocalizations {
       'Manage your profile, language preferences, and account settings.';
 
   @override
+  String get payerAccount => 'Payer Account';
+
+  @override
+  String get payerAccountDescription =>
+      'Manage your reviewer identity and account security while keeping organization authorization administrator-controlled.';
+
+  @override
+  String get loadingPayerAccount => 'Loading payer account';
+
+  @override
+  String get payerAccountLoadFailed =>
+      'Unable to load the payer account. Check your connection and try again.';
+
+  @override
+  String get payerAccessUnavailable =>
+      'Your payer organization access is unavailable. Contact an administrator if this is unexpected.';
+
+  @override
+  String get reviewerProfile => 'Reviewer profile';
+
+  @override
+  String get reviewerProfileDescription =>
+      'These personal identity fields belong to your reviewer account.';
+
+  @override
+  String get reviewerIdentityHint =>
+      'Use the name and professional title colleagues should recognize in the review workspace.';
+
+  @override
+  String get professionalTitle => 'Professional title';
+
+  @override
+  String get payerTitleTooShort => 'Use at least 2 characters.';
+
+  @override
+  String get payerEmailDescription =>
+      'Used to sign in and for account communication. Leave empty to remove it.';
+
+  @override
+  String get payerProfileValidationFailed =>
+      'Check the reviewer name and professional title, then try again.';
+
+  @override
+  String get organizationAndAccess => 'Organization & access';
+
+  @override
+  String get organizationAndAccessDescription =>
+      'Your current institutional membership and review boundary.';
+
+  @override
+  String get organizationAccessManaged =>
+      'These fields are read-only. Only an authorized administrator can change membership, scope, or verification.';
+
+  @override
+  String get organizationType => 'Organization type';
+
+  @override
+  String get jurisdiction => 'Jurisdiction';
+
+  @override
+  String get membershipStatus => 'Membership status';
+
+  @override
+  String get accessScope => 'Access scope';
+
+  @override
+  String get organizationVerification => 'Organization verification';
+
+  @override
+  String get publicPayer => 'Public payer';
+
+  @override
+  String get commercialPayer => 'Commercial payer';
+
+  @override
+  String get observerOrganization => 'Observer organization';
+
+  @override
+  String get activeMembership => 'Active';
+
+  @override
+  String get suspended => 'Suspended';
+
+  @override
+  String get revoked => 'Revoked';
+
+  @override
+  String get syntheticReviewScope => 'Synthetic review';
+
+  @override
+  String get syntheticOnlyVerification => 'Synthetic-only';
+
+  @override
+  String get verified => 'Verified';
+
+  @override
+  String get sessionActions => 'Session actions';
+
+  @override
+  String get payerSessionActionsDescription =>
+      'Sign out of this device when you have finished working with restricted review information.';
+
+  @override
+  String get saving => 'Saving';
+
+  @override
   String get preferredLanguage => 'Preferred language';
 
   @override
@@ -2469,7 +2575,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aiChatSubtitle =>
-      'Practical health guidance grounded in reviewed sources.';
+      'Practical health guidance with a clear source or general-AI label.';
 
   @override
   String get aiChatSafetyNotice =>
@@ -2547,6 +2653,20 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aiSources => 'Reviewed sources';
+
+  @override
+  String get aiApprovedEvidenceBanner =>
+      'Source-grounded answer — supported by reviewed Dr. AI passages.';
+
+  @override
+  String get aiGeneralKnowledgeBanner =>
+      'General AI-generated information — no supporting Dr. AI source was found.';
+
+  @override
+  String get aiFixedSafetyBanner => 'Server-controlled safety response.';
+
+  @override
+  String get aiOpenOfficialSource => 'Open official source';
 
   @override
   String get aiImportantUncertainty => 'Important uncertainty';
@@ -3154,4 +3274,173 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get unofficialAiTranslationNotice =>
       'This is an unofficial AI-generated Chinese translation that has completed medical and native-Chinese review. Use the publisher\'s English original for authoritative verification. The translation remains separate from retrieval approval.';
+
+  @override
+  String get financialDetails => 'Financial details';
+
+  @override
+  String get financialDetailsDescription =>
+      'Financial information belongs to the billable service or product that produced it.';
+
+  @override
+  String get billableClinicalItem => 'This clinical item is billable';
+
+  @override
+  String get billableClinicalItemDescription =>
+      'Leave this off when the record is clinical documentation only.';
+
+  @override
+  String get costStatus => 'Cost status';
+
+  @override
+  String get costPending => 'Cost pending';
+
+  @override
+  String get costEstimate => 'Estimate';
+
+  @override
+  String get costFinal => 'Final';
+
+  @override
+  String get currency => 'Currency';
+
+  @override
+  String get pendingCostSubmissionBlocked =>
+      'You can save the clinical record now. It cannot be selected for a payer request until the full allocation is recorded.';
+
+  @override
+  String get totalCostCny => 'Total cost (CNY)';
+
+  @override
+  String get requestedFromPayerCny => 'Requested from payer (CNY)';
+
+  @override
+  String get expectedPatientResponsibilityCny =>
+      'Expected patient responsibility (CNY)';
+
+  @override
+  String get financialAllocationNotice =>
+      'Requested from payer is not a payment guarantee. Expected patient responsibility is not a final adjudicated obligation.';
+
+  @override
+  String get financialAllocationValidation =>
+      'Enter non-negative amounts. Requested payer amount plus expected patient responsibility must equal the total.';
+
+  @override
+  String get imagingArtifactNotBillable =>
+      'The uploaded image and report are clinical evidence, not a second charge. A distinct imaging-procedure record is required before procedure costs can be captured.';
+
+  @override
+  String get editConsultationCost => 'Complete or edit cost';
+
+  @override
+  String get saveConsultationCost => 'Save consultation cost';
+
+  @override
+  String get financialStatus => 'Financial status';
+
+  @override
+  String get noCostRecorded => 'No cost recorded';
+
+  @override
+  String estimatedCost(String amount) {
+    return 'Estimated ¥$amount';
+  }
+
+  @override
+  String finalCost(String amount) {
+    return 'Final ¥$amount';
+  }
+
+  @override
+  String get alreadySubmitted => 'Already submitted';
+
+  @override
+  String get addCost => 'Add cost';
+
+  @override
+  String get completeCost => 'Complete cost';
+
+  @override
+  String get editCost => 'Edit cost';
+
+  @override
+  String get saveCost => 'Save cost';
+
+  @override
+  String get imagingProcedure => 'Imaging procedure';
+
+  @override
+  String get imagingProcedures => 'Imaging procedures';
+
+  @override
+  String get imagingProcedureDescription =>
+      'Create the ordered, scheduled, or performed service first. Scheduling and evidence remain separate from its financial companion.';
+
+  @override
+  String get clinicalDetails => 'Clinical details';
+
+  @override
+  String get procedureName => 'Procedure name';
+
+  @override
+  String get modality => 'Modality or procedure type';
+
+  @override
+  String get bodyRegion => 'Body region';
+
+  @override
+  String get clinicalIndication => 'Clinical indication or summary (optional)';
+
+  @override
+  String get schedulingServiceDetails => 'Scheduling and service details';
+
+  @override
+  String get scheduledDateTime => 'Scheduled date and time';
+
+  @override
+  String get performedDateTime => 'Performed date and time';
+
+  @override
+  String get createImagingProcedure => 'Create imaging procedure';
+
+  @override
+  String get updateImagingProcedure => 'Update imaging procedure';
+
+  @override
+  String get editClinicalService => 'Edit details';
+
+  @override
+  String imagingProcedureSaved(String name) {
+    return '$name saved.';
+  }
+
+  @override
+  String get noImagingProcedures =>
+      'No imaging procedure has been created for this Clinical Event.';
+
+  @override
+  String get imagingEvidence => 'Imaging evidence and results';
+
+  @override
+  String get selectImagingProcedure => 'Imaging procedure';
+
+  @override
+  String get attachEvidence => 'Attach evidence';
+
+  @override
+  String evidenceFileCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count linked files',
+      one: '1 linked file',
+      zero: 'No linked files',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get imagingProcedureValidation =>
+      'Enter a procedure name, modality, and body region. Scheduled services need a scheduled time; performed or completed services need a performed time.';
 }

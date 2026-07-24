@@ -100,6 +100,24 @@ class AuthController extends AsyncNotifier<AuthState> {
     state = AsyncData(AuthState.signedIn(user));
   }
 
+  void syncAccountDisplayName(String displayName) {
+    final user = state.value?.user;
+    if (user == null || user.displayName == displayName) {
+      return;
+    }
+    state = AsyncData(
+      AuthState.signedIn(
+        SessionUser(
+          id: user.id,
+          email: user.email,
+          phoneNumber: user.phoneNumber,
+          role: user.role,
+          displayName: displayName,
+        ),
+      ),
+    );
+  }
+
   Future<void> logout() async {
     state = const AsyncLoading();
     try {

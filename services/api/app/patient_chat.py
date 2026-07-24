@@ -15,6 +15,7 @@ from app.ai_chat import (
     ConversationTurn,
     DeepSeekChatAdapter,
     DeepSeekChatError,
+    DeepSeekGeneralResult,
     deepseek_chat_adapter,
 )
 from app.chatbot_contracts import (
@@ -23,6 +24,8 @@ from app.chatbot_contracts import (
     EvidenceDecision,
     EvidencePassage,
     FallbackCode,
+    GeneralModelOutput,
+    GroundingMode,
     NextActionCode,
     PatientChatContextCard,
     PatientChatHistory,
@@ -110,7 +113,6 @@ DIAGNOSTIC_ASSERTION_PATTERNS = (
     r"(你(?:肯定|一定|明确)(?:是|得了|患有)|已经确诊|可以确诊|诊断就是|完全排除)",
 )
 OUTPUT_PROHIBITED_PATTERNS = (*DIAGNOSTIC_ASSERTION_PATTERNS, *MEDICATION_CHANGE_PATTERNS)
-MIN_GROUNDED_ANSWER_SECTIONS = 3
 MAX_GROUNDED_ANSWER_SECTIONS = 5
 PERMITTED_SAFETY_CODES = {
     SafetyCode.permitted_education,
@@ -172,6 +174,8 @@ def _allowed_next_actions(urgency_route: str) -> frozenset[NextActionCode]:
         return frozenset({NextActionCode.seek_local_care})
     if urgency_route == UrgencyRoute.clinician_contact.value:
         return frozenset({NextActionCode.contact_connected_doctor, NextActionCode.seek_local_care})
+    if urgency_route == "prohibited_medication_change":
+        return frozenset({NextActionCode.contact_connected_doctor})
     return frozenset(
         action
         for action in NextActionCode
@@ -195,6 +199,29 @@ def _classify_intent(message: str) -> PatientChatIntent:
     return PatientChatIntent.education
 
 
+def _has_safe_medicine_education_portion(message: str) -> bool:
+    return _matches(message, MEDICATION_CONTEXT_PATTERNS) and bool(
+        re.search(
+            r"\b(what is|what does|how does|why is|side effect|general information)\b"
+            r"|(?:是什么|有什么作用|作用是什么|副作用|一般用于|为什么开)",
+            message,
+            re.IGNORECASE,
+        )
+    )
+
+
+def _requires_material_uncertainty(message: str, safety_code: SafetyCode) -> bool:
+    return safety_code == SafetyCode.permitted_symptom_guidance or bool(
+        _matches(message, MEDICATION_CONTEXT_PATTERNS)
+        or re.search(
+            r"\b(health|medical|disease|condition|test result)\b"
+            r"|(?:健康|疾病|检查结果|病情)",
+            message,
+            re.IGNORECASE,
+        )
+    )
+
+
 def _plan_retrieval(body: PatientChatRequest, intent: PatientChatIntent) -> PatientEvidenceRequest:
     excluded = ["clinical_guideline_doctor_only", "raw_clinical_record"]
     if intent != PatientChatIntent.medication_education:
@@ -215,6 +242,10 @@ def _fixed_copy(language: str, code: FallbackCode) -> tuple[str, NextActionCode]
         ),
         FallbackCode.prohibited_request: (
             "我不能为你诊断，也不能建议开始、停止或更改药物。你可以让我帮你整理要向医生询问的问题。",
+            NextActionCode.contact_connected_doctor,
+        ),
+        FallbackCode.authorization_denied: (
+            "当前授权不允许将所需资料用于回答，因此不会生成或显示该回答。",
             NextActionCode.contact_connected_doctor,
         ),
         FallbackCode.no_eligible_evidence: (
@@ -269,6 +300,10 @@ def _fixed_copy(language: str, code: FallbackCode) -> tuple[str, NextActionCode]
             "I cannot diagnose you or advise starting, stopping, or changing medication. "
             "I can help prepare questions for your doctor."
         ),
+        FallbackCode.authorization_denied: (
+            "Current authorization does not allow the required information to be used "
+            "for this answer, so no generated answer is shown."
+        ),
         FallbackCode.no_eligible_evidence: (
             "There is not enough patient-approved evidence to answer safely. "
             "I will not fill the gap with model memory."
@@ -316,6 +351,7 @@ def _provider_fallback(reason: str) -> FallbackCode:
         "quota": FallbackCode.provider_quota,
         "service_unavailable": FallbackCode.provider_unavailable,
         "malformed": FallbackCode.malformed_model_output,
+        "policy_validation_failed": FallbackCode.policy_validation_failed,
     }.get(reason, FallbackCode.provider_unavailable)
 
 
@@ -340,11 +376,21 @@ def _validate_output(
         return FallbackCode.policy_validation_failed, "policy_symptom_guidance_structure"
     if output.next_action_code not in _allowed_next_actions(urgency_route):
         return FallbackCode.policy_validation_failed, "policy_urgency_next_action"
-    if (
-        not MIN_GROUNDED_ANSWER_SECTIONS
-        <= len(output.answer_sections)
-        <= (MAX_GROUNDED_ANSWER_SECTIONS)
-    ):
+    concise_definition = bool(
+        re.search(
+            r"^(what is|what does .+ mean|define|什么是|.+是什么意思)[^?？]{0,80}[?？]?$",
+            original_message.strip(),
+            re.IGNORECASE,
+        )
+    )
+    minimum_sections = (
+        3
+        if safety_code == SafetyCode.permitted_symptom_guidance
+        else 1
+        if concise_definition
+        else 2
+    )
+    if not minimum_sections <= len(output.answer_sections) <= MAX_GROUNDED_ANSWER_SECTIONS:
         return FallbackCode.policy_validation_failed, "policy_answer_section_count"
     for section in output.answer_sections:
         if not set(section.supporting_passage_ids).issubset(available_ids):
@@ -365,6 +411,120 @@ def _validate_output(
             f"claim_support_{claim_failure.value}",
         )
     return None
+
+
+def _validate_general_output(
+    output: GeneralModelOutput,
+    *,
+    language: str,
+    safety_code: SafetyCode,
+    urgency_route: str,
+    original_message: str,
+    decline_prohibited_portion: bool,
+) -> tuple[FallbackCode, str] | None:
+    if output.answer_language != language:
+        return FallbackCode.policy_validation_failed, "general_answer_language"
+    allowed_actions = set(_allowed_next_actions(urgency_route))
+    medically_consequential = _requires_material_uncertainty(
+        original_message,
+        safety_code,
+    )
+    if not medically_consequential and urgency_route == UrgencyRoute.routine_education.value:
+        allowed_actions.add(NextActionCode.none)
+    if output.next_action_code not in allowed_actions:
+        return FallbackCode.policy_validation_failed, "general_urgency_next_action"
+    if medically_consequential and not output.uncertainties:
+        return FallbackCode.policy_validation_failed, "general_uncertainty_required"
+    if decline_prohibited_portion != bool(output.declined_portion):
+        return FallbackCode.policy_validation_failed, "general_declined_portion"
+    output_text = " ".join([*output.answer_sections, *output.uncertainties])
+    if _matches(output_text, DIAGNOSTIC_ASSERTION_PATTERNS):
+        return FallbackCode.policy_validation_failed, "general_diagnostic_certainty"
+    if not decline_prohibited_portion and _matches(output_text, MEDICATION_CHANGE_PATTERNS):
+        return FallbackCode.policy_validation_failed, "general_medication_change"
+    return None
+
+
+def _general_knowledge_response(
+    body: PatientChatRequest,
+    *,
+    request_id: str,
+    thread_id: str,
+    safety_code: SafetyCode,
+    urgency_route: str,
+    settings: AppSettings,
+    decline_prohibited_portion: bool = False,
+    evidence_decision: EvidenceDecision | None = None,
+) -> tuple[PatientChatResponse, DeepSeekGeneralResult]:
+    allowed_action_codes = set(_allowed_next_actions(urgency_route))
+    if (
+        not _requires_material_uncertainty(body.message, safety_code)
+        and urgency_route == UrgencyRoute.routine_education.value
+    ):
+        allowed_action_codes.add(NextActionCode.none)
+    allowed_actions = sorted(item.value for item in allowed_action_codes)
+    provider = deepseek_chat_adapter.complete_general_knowledge(
+        message=body.message,
+        language=body.language,
+        response_mode=safety_code.value,
+        urgency_route=urgency_route,
+        allowed_next_actions=allowed_actions,
+        decline_prohibited_portion=decline_prohibited_portion,
+        settings=settings,
+    )
+    validation_failure = _validate_general_output(
+        provider.output,
+        language=body.language,
+        safety_code=safety_code,
+        urgency_route=urgency_route,
+        original_message=body.message,
+        decline_prohibited_portion=decline_prohibited_portion,
+    )
+    if validation_failure is not None:
+        _, diagnostic = validation_failure
+        raise DeepSeekChatError(
+            "policy_validation_failed",
+            diagnostic_code=diagnostic,
+            attempt_count=provider.attempt_count,
+        )
+    sections = list(provider.output.answer_sections)
+    if provider.output.declined_portion:
+        sections.append(provider.output.declined_portion)
+    follow_up_question = (
+        _follow_up_question(body.message, body.language, [])
+        if safety_code == SafetyCode.permitted_symptom_guidance
+        else None
+    )
+    response = PatientChatResponse(
+        grounding_mode=GroundingMode.general_model_knowledge,
+        request_id=request_id,
+        session_id=thread_id,
+        answer_language=body.language,
+        answer_sections=sections,
+        sources=[],
+        context_used=[],
+        uncertainties=provider.output.uncertainties,
+        limitation=(
+            "这是没有 Dr. AI 支持来源的一般 AI 生成信息，可能不正确；"
+            "重要信息请向医生或权威来源核实。"
+            if body.language == "zh-Hans"
+            else "This is general AI-generated information without a supporting Dr. AI "
+            "source and may be incorrect. Verify important details with a clinician or "
+            "authoritative source."
+        ),
+        next_action_code=provider.output.next_action_code,
+        safety_code=safety_code,
+        urgency_route=urgency_route,
+        model_version=None,
+        suggested_action_codes=_suggested_actions(
+            safety_code,
+            provider.output.next_action_code,
+            follow_up_question,
+            body.message,
+        ),
+        follow_up_question=follow_up_question,
+    )
+    return response, provider
 
 
 def _check_rate_limit(db: DbSession, user: CurrentUser, settings: AppSettings) -> None:
@@ -622,6 +782,13 @@ def _observe(
     provider_attempt_count: int | None = None,
     provider_cost_microunits: int | None = None,
     rescue: RescueMetadata | None = None,
+    grounding_mode: GroundingMode = GroundingMode.fixed_safety_response,
+    original_retrieval_adequate: bool | None = None,
+    retrieval_decision: str | None = None,
+    general_knowledge_eligible: bool = False,
+    general_knowledge_outcome: str | None = None,
+    answer_schema_version: str | None = None,
+    structured_output_repair_count: int = 0,
 ) -> None:
     evidence = evidence or []
     rescue = rescue or RescueMetadata()
@@ -636,6 +803,14 @@ def _observe(
             retrieved_source_ids_json=list(dict.fromkeys(item.source_id for item in evidence)),
             retrieved_passage_ids_json=[item.passage_id for item in evidence],
             evidence_decision=evidence_decision.value if evidence_decision else None,
+            grounding_mode=grounding_mode.value,
+            original_retrieval_adequate=original_retrieval_adequate,
+            searched_query_variant_count=rescue.searched_query_variant_count,
+            retrieval_decision=retrieval_decision,
+            general_knowledge_eligible=general_knowledge_eligible,
+            general_knowledge_outcome=general_knowledge_outcome,
+            answer_schema_version=answer_schema_version,
+            structured_output_repair_count=structured_output_repair_count,
             model_version=model_version,
             policy_version=CHATBOT_POLICY_VERSION,
             tool_schema_version=CHATBOT_TOOL_SCHEMA_VERSION,
@@ -715,6 +890,7 @@ def _fallback_response(
             else "Which symptom, test result, or health topic do you mean?"
         )
     return PatientChatResponse(
+        grounding_mode=GroundingMode.fixed_safety_response,
         request_id=request_id,
         session_id=session_id,
         answer_language=request.language,
@@ -732,6 +908,141 @@ def _fallback_response(
             next_action,
             None,
             request.message,
+        ),
+    )
+
+
+def _deliver_general_or_fixed(
+    *,
+    db: DbSession,
+    thread: ChatThread,
+    user: CurrentUser,
+    body: PatientChatRequest,
+    request_id: str,
+    started: float,
+    safety_code: SafetyCode,
+    urgency_route: str,
+    settings: AppSettings,
+    fixed_fallback: FallbackCode,
+    evidence_decision: EvidenceDecision | None = None,
+    index_release_id: str | None = None,
+    rescue: RescueMetadata | None = None,
+    clarification_needed: bool = False,
+    decline_prohibited_portion: bool = False,
+) -> PatientChatResponse:
+    eligible = settings.chatbot_general_model_knowledge_enabled and not clarification_needed
+    if eligible:
+        try:
+            response, provider = _general_knowledge_response(
+                body,
+                request_id=request_id,
+                thread_id=str(thread.id),
+                safety_code=safety_code,
+                urgency_route=urgency_route,
+                settings=settings,
+                decline_prohibited_portion=decline_prohibited_portion,
+                evidence_decision=evidence_decision,
+            )
+        except DeepSeekChatError as exc:
+            fallback = _provider_fallback(exc.fallback_reason)
+            _observe(
+                db,
+                request_id=request_id,
+                message=body.message,
+                safety_code=safety_code,
+                started=started,
+                evidence_decision=evidence_decision,
+                index_release_id=index_release_id,
+                fallback_code=fallback,
+                provider_error_code=exc.diagnostic_code,
+                provider_attempt_count=exc.attempt_count,
+                rescue=rescue,
+                general_knowledge_eligible=True,
+                general_knowledge_outcome="provider_or_validation_failure",
+                answer_schema_version=settings.chatbot_general_answer_schema_version,
+                structured_output_repair_count=max(0, exc.attempt_count - 1),
+                original_retrieval_adequate=False if evidence_decision else None,
+                retrieval_decision=evidence_decision.value if evidence_decision else None,
+            )
+            return _persist_exchange(
+                db,
+                thread=thread,
+                user=user,
+                body=body,
+                response=_fallback_response(
+                    body,
+                    request_id,
+                    str(thread.id),
+                    safety_code,
+                    fallback,
+                    urgency_route=urgency_route,
+                    evidence_decision=evidence_decision,
+                ),
+            )
+        _observe(
+            db,
+            request_id=request_id,
+            message=body.message,
+            safety_code=safety_code,
+            started=started,
+            evidence_decision=evidence_decision,
+            index_release_id=index_release_id,
+            model_version=provider.model,
+            input_tokens=provider.input_tokens,
+            output_tokens=provider.output_tokens,
+            provider_attempt_count=provider.attempt_count,
+            provider_cost_microunits=_provider_cost_microunits(
+                settings,
+                provider.input_tokens,
+                provider.output_tokens,
+            ),
+            rescue=rescue,
+            grounding_mode=GroundingMode.general_model_knowledge,
+            general_knowledge_eligible=True,
+            general_knowledge_outcome="generated",
+            answer_schema_version=settings.chatbot_general_answer_schema_version,
+            structured_output_repair_count=max(0, provider.attempt_count - 1),
+            original_retrieval_adequate=False if evidence_decision else None,
+            retrieval_decision=evidence_decision.value if evidence_decision else None,
+        )
+        return _persist_exchange(
+            db,
+            thread=thread,
+            user=user,
+            body=body,
+            response=response,
+        )
+    _observe(
+        db,
+        request_id=request_id,
+        message=body.message,
+        safety_code=safety_code,
+        started=started,
+        evidence_decision=evidence_decision,
+        index_release_id=index_release_id,
+        fallback_code=fixed_fallback,
+        rescue=rescue,
+        general_knowledge_eligible=False,
+        general_knowledge_outcome=(
+            "clarification_required" if clarification_needed else "disabled"
+        ),
+        original_retrieval_adequate=False if evidence_decision else None,
+        retrieval_decision=evidence_decision.value if evidence_decision else None,
+    )
+    return _persist_exchange(
+        db,
+        thread=thread,
+        user=user,
+        body=body,
+        response=_fallback_response(
+            body,
+            request_id,
+            str(thread.id),
+            safety_code,
+            fixed_fallback,
+            urgency_route=urgency_route,
+            evidence_decision=evidence_decision,
+            clarification_needed=clarification_needed,
         ),
     )
 
@@ -842,6 +1153,24 @@ def send_patient_chat_message(
                 emergency_guidance_code=safety_assessment.guidance_code,
             ),
         )
+    if (
+        safety_code == SafetyCode.prohibited_medication_change
+        and _has_safe_medicine_education_portion(continuity_message)
+    ):
+        _check_rate_limit(db, user, settings)
+        return _deliver_general_or_fixed(
+            db=db,
+            thread=thread,
+            user=user,
+            body=body,
+            request_id=request_id,
+            started=started,
+            safety_code=safety_code,
+            urgency_route=urgency_route,
+            settings=settings,
+            fixed_fallback=FallbackCode.prohibited_request,
+            decline_prohibited_portion=True,
+        )
     if safety_code not in PERMITTED_SAFETY_CODES:
         fallback = FallbackCode.prohibited_request
         _observe(
@@ -886,30 +1215,20 @@ def send_patient_chat_message(
     except ApiError as exc:
         if exc.code != "retrieval_unavailable":
             raise
-        fallback = FallbackCode.retrieval_unavailable
-        _observe(
-            db,
-            request_id=request_id,
-            message=body.message,
-            safety_code=safety_code,
-            started=started,
-            fallback_code=fallback,
-        )
-        return _persist_exchange(
-            db,
+        return _deliver_general_or_fixed(
+            db=db,
             thread=thread,
             user=user,
             body=body,
-            response=_fallback_response(
-                body,
-                request_id,
-                thread_id,
-                safety_code,
-                fallback,
-                urgency_route=urgency_route,
-            ),
+            request_id=request_id,
+            started=started,
+            safety_code=safety_code,
+            urgency_route=urgency_route,
+            settings=settings,
+            fixed_fallback=FallbackCode.retrieval_unavailable,
         )
 
+    original_retrieval_adequate = result.decision == EvidenceDecision.sufficient
     recent_user_messages = [turn.content for turn in conversation if turn.role == "user"]
     bounded_rescue_context = (
         recent_user_messages[-1:] if continuity.carried_previous_user_turn else []
@@ -948,6 +1267,27 @@ def send_patient_chat_message(
     }
     if result.decision != EvidenceDecision.sufficient:
         fallback = decision_fallback[result.decision]
+        return _deliver_general_or_fixed(
+            db=db,
+            thread=thread,
+            user=user,
+            body=body,
+            request_id=request_id,
+            started=started,
+            safety_code=safety_code,
+            urgency_route=urgency_route,
+            settings=settings,
+            fixed_fallback=fallback,
+            evidence_decision=result.decision,
+            index_release_id=result.release.stable_id,
+            rescue=rescue,
+            clarification_needed=rescue.clarification_needed,
+        )
+
+    try:
+        assert_passages_provider_transmittable(db, [item.passage_id for item in evidence])
+    except PermissionError:
+        fallback = FallbackCode.authorization_denied
         _observe(
             db,
             request_id=request_id,
@@ -958,6 +1298,8 @@ def send_patient_chat_message(
             index_release_id=result.release.stable_id,
             fallback_code=fallback,
             rescue=rescue,
+            original_retrieval_adequate=original_retrieval_adequate,
+            retrieval_decision=result.decision.value,
         )
         return _persist_exchange(
             db,
@@ -972,14 +1314,11 @@ def send_patient_chat_message(
                 fallback,
                 urgency_route=urgency_route,
                 evidence_decision=result.decision,
-                clarification_needed=rescue.clarification_needed,
             ),
         )
 
-    try:
-        assert_passages_provider_transmittable(db, [item.passage_id for item in evidence])
-    except PermissionError:
-        fallback = FallbackCode.retrieval_unavailable
+    if not settings.chatbot_grounded_generation_enabled:
+        fallback = FallbackCode.provider_unavailable
         _observe(
             db,
             request_id=request_id,
@@ -990,6 +1329,9 @@ def send_patient_chat_message(
             index_release_id=result.release.stable_id,
             fallback_code=fallback,
             rescue=rescue,
+            original_retrieval_adequate=original_retrieval_adequate,
+            retrieval_decision=result.decision.value,
+            answer_schema_version=settings.chatbot_grounded_answer_schema_version,
         )
         return _persist_exchange(
             db,
@@ -1033,6 +1375,10 @@ def send_patient_chat_message(
             provider_error_code=exc.diagnostic_code,
             provider_attempt_count=exc.attempt_count,
             rescue=rescue,
+            original_retrieval_adequate=original_retrieval_adequate,
+            retrieval_decision=result.decision.value,
+            answer_schema_version=settings.chatbot_grounded_answer_schema_version,
+            structured_output_repair_count=max(0, exc.attempt_count - 1),
         )
         return _persist_exchange(
             db,
@@ -1080,6 +1426,10 @@ def send_patient_chat_message(
             ),
             provider_error_code=validation_diagnostic,
             rescue=rescue,
+            original_retrieval_adequate=original_retrieval_adequate,
+            retrieval_decision=result.decision.value,
+            answer_schema_version=settings.chatbot_grounded_answer_schema_version,
+            structured_output_repair_count=max(0, provider.attempt_count - 1),
         )
         return _persist_exchange(
             db,
@@ -1150,9 +1500,15 @@ def send_patient_chat_message(
             settings, provider.input_tokens, provider.output_tokens
         ),
         rescue=rescue,
+        grounding_mode=GroundingMode.approved_evidence,
+        original_retrieval_adequate=original_retrieval_adequate,
+        retrieval_decision=result.decision.value,
+        answer_schema_version=settings.chatbot_grounded_answer_schema_version,
+        structured_output_repair_count=max(0, provider.attempt_count - 1),
     )
     follow_up_question = _follow_up_question(body.message, body.language, conversation)
     response = PatientChatResponse(
+        grounding_mode=GroundingMode.approved_evidence,
         request_id=request_id,
         session_id=thread_id,
         answer_language=body.language,
@@ -1170,7 +1526,7 @@ def send_patient_chat_message(
         safety_code=safety_code,
         urgency_route=urgency_route,
         evidence_decision=result.decision,
-        model_version=provider.model,
+        model_version=None,
         suggested_action_codes=_suggested_actions(
             safety_code,
             provider.output.next_action_code,

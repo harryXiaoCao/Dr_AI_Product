@@ -56,7 +56,8 @@ added: 2026-07-08; Phase 2 recovery-plan review, approval, completion, and
 Today progress endpoints added: 2026-07-08; Phase 2 Clinical Event/Care
 Episode backend model, endpoints, resource links, and care-bundle readback
 added: 2026-07-08; payer identity and the first three-party care-and-cost
-workflow added: 2026-07-23
+workflow added: 2026-07-23; canonical Clinical Service and imaging-procedure
+financial workflow added: 2026-07-24
 
 This contract preserves the public HTTP boundary implemented for the historical
 Dr. AI v1.0.0-beta.1 demo and records the intended shape of production v1.0
@@ -652,44 +653,112 @@ this slice calculates a necessity, abuse, fraud, coverage, or payment decision.
 - `GET /api/v1/patients/{patient_id}/care-costs`: active treating-doctor
   ledger readback.
 - `POST /api/v1/patients/{patient_id}/clinical-events/{event_id}/care-items`:
-  create a doctor-authored event row.
+  legacy generic creation is disabled with `409 integrated_financial_required`;
+  create the cost from its price-bearing clinical record instead.
 - `PUT /api/v1/patients/{patient_id}/clinical-events/{event_id}/care-items/{item_id}`:
-  replace editable row fields.
+  replace editable fields only on an unlinked historical generic row. A
+  clinically linked companion returns `409 integrated_financial_required` and
+  must be updated through its medication or Clinical Service workflow.
 - `DELETE /api/v1/patients/{patient_id}/clinical-events/{event_id}/care-items/{item_id}`:
-  delete the current ledger row. Existing submitted request-line snapshots are
-  retained and their source link becomes nullable.
+  delete only an unlinked historical generic row. A clinically linked
+  companion returns `409 integrated_financial_required` and follows its
+  source record's archive/delete lifecycle. Existing submitted request-line
+  snapshots are retained and their source link becomes nullable if a permitted
+  source deletion removes the companion.
 
-Create/replace accepts `item_type`, `label`, `service_date`, `status`,
-`quantity`, `currency`, `actual_cost_minor`, `payer_requested_minor`,
-`patient_responsibility_minor`, and optional `notes`. Supported item types are
-medication, prescription, imaging, laboratory, procedure, consultation,
-booking, follow-up, therapy, equipment, and other. Allocated payer plus patient
-amounts cannot exceed actual cost.
+The implemented price-bearing sources are medications/products and canonical
+Clinical Services. Specialist consultation requests create a one-to-one
+`category = consultation` Clinical Service when linked to a Clinical Event;
+imaging procedures use `category = imaging`. Medication create/update,
+consultation create, and imaging-service create/update accept an optional
+`financial` object with `pricing_state` (`pending_cost`,
+`estimated`, or `final`), optional `service_date`, CNY `currency`,
+`total_cost_minor`, `payer_requested_minor`, and
+`patient_responsibility_minor`. Pending-cost companions must contain zero
+amounts and are patient-visible but submission-ineligible. Estimated/final
+companions require a positive total and an exact payer-plus-patient allocation.
+`PUT /api/v1/patients/{patient_id}/consultations/{consultation_id}/financial`
+supports later completion inside the consultation workflow by resolving its
+canonical service. `PUT
+/api/v1/patients/{patient_id}/clinical-services/{service_id}/financial`
+supports later completion from the service record.
+
+Each active companion has a real nullable foreign key to exactly one medication
+or Clinical Service and a source-specific unique index. Responses expose
+`pricing_state`, canonical `source_record_id`, recognizable `source_category`,
+live `source_status`, ordered/scheduled/performed dates, `already_submitted`,
+`submission_eligible`, and `ineligibility_reason`. Clinical source and
+financial writes synchronize in one transaction. Source deletion cascades the
+active companion where deletion is permitted, while prior request-line
+snapshots survive with a nullable source pointer.
+
+Prescription documents do not create a second medication charge. A
+`MedicalImagingAsset` image/report is evidence linked to an imaging Clinical
+Service and never creates another charge. Appointments and equipment bookings
+are scheduling/resource containers and are not automatically billable.
+Diagnoses, history facts, doctor notes, recovery plans/observations, reminders,
+and patient updates remain non-billable clinical documentation.
 
 ### Submission and request readback
 
 - `GET /api/v1/payer-organizations`: doctor-visible synthetic organization
   choices for the current slice.
 - `POST /api/v1/patients/{patient_id}/clinical-events/{event_id}/payer-requests`:
-  submit selected active care items with a doctor summary. The server snapshots
-  immutable lines and reconciles `requested_total_minor` from those lines.
+  submit an explicit, non-empty selection of active care items with a doctor
+  summary. The server snapshots immutable lines and reconciles
+  `requested_total_minor` from those lines. A source care-cost item that
+  already appears in an earlier request snapshot cannot be submitted again;
+  a repeated selection returns `409 conflict`. Every selected source must also
+  be linked, non-cancelled, CNY, estimated/final, positive-total, exactly
+  allocated, source-consistent, authorized, and not already submitted;
+  otherwise the server rejects the whole request with per-item eligibility
+  reasons.
 - `GET /api/v1/doctor/me/payer-requests`: submitting doctor's requests.
 - `GET /api/v1/patient/me/payer-requests`: patient's requests. Doctor and
-  patient responses exclude payer reviewer notes.
+  patient responses exclude payer reviewer notes. Each immutable line exposes
+  its nullable `care_cost_item_id` source link so authorized clients can mark
+  previously submitted ledger rows; the remaining line fields stay valid if
+  the editable source row is later deleted.
 
 ### Payer workspace
 
 - `GET /api/v1/payer/me/profile`
+- `PATCH /api/v1/payer/me/profile`
 - `GET /api/v1/payer/me/dashboard`
 - `GET /api/v1/payer/me/requests`
 - `GET /api/v1/payer/me/requests/{request_id}`
 - `POST /api/v1/payer/me/requests/{request_id}/reviews`
 
+The payer profile update contract accepts only reviewer-owned personal identity
+fields:
+
+```json
+{
+  "display_name": "Mei Reviewer",
+  "title": "Senior expenditure reviewer"
+}
+```
+
+Both fields are optional at the transport level so PATCH can update either
+one, but at least one value must differ from the current membership record.
+`display_name` is 1-120 trimmed characters and `title` is 2-120 trimmed
+characters. Unknown or administrator-controlled fields are rejected with
+`422 validation_failed`; this includes organization identity/type,
+jurisdiction, membership status, access scope, and organization verification.
+The endpoint requires the authenticated payer user's active membership and
+otherwise returns the same neutral `404 not_found` boundary as the other payer
+workspace endpoints. Account email remains owned by the shared
+`PATCH /api/v1/auth/account/email` contract, and password changes continue
+through `PUT /api/v1/auth/password` with session revocation.
+
 Review creation accepts `action`, `reason_code`, and optional `note`. Actions
-are `request_clarification`, `accept`, `escalate`, and `close`; they map to
-request statuses `clarification_requested`, `accepted`, `escalated`, and
-`closed`. These are human workflow states, not automatic reimbursement or care
-decisions. Request existence and reviewer notes remain organization-scoped.
+are `request_clarification`, `accept`, `reject`, `escalate`, and `close`; they
+map to request statuses `clarification_requested`, `accepted`, `rejected`,
+`escalated`, and `closed`. The doctor request-history contract returns every
+current status, review action, reason code, and review timestamp but redacts the
+reviewer-only note. These are human workflow states, not automatic
+reimbursement, payment, coverage, adjudication, or care decisions. Request
+existence and reviewer notes remain organization-scoped.
 
 ## Authenticated support request contract
 
@@ -826,11 +895,55 @@ secrets.
 
 ## Phase 2 imaging upload and review contract
 
-The imaging workflow is a production-separated metadata/status workflow backed
-by `medical_imaging_assets`. It is Tencent-COS-compatible in shape, but this
-slice does not call Tencent COS, inspect uploaded file bytes, or make clinical
-claims. The historical `demo_medical_assets` beta table and
-`/assets/presign` endpoint remain separate.
+The imaging workflow now has two explicit layers:
+
+1. `clinical_services` is the ordered, scheduled, in-progress, performed,
+   completed, cancelled, or not-completed imaging procedure. It carries the
+   patient, Clinical Event, category/name/type/body region, ordering doctor,
+   optional provider/clinic/appointment, lifecycle dates, optional clinical
+   indication, and at most one active financial companion.
+2. `medical_imaging_assets` stores uploaded images/reports and review results as
+   evidence. Multiple assets may link to one imaging service without creating
+   additional charges.
+
+Implemented service endpoints:
+
+- `GET /api/v1/patients/{patient_id}/clinical-services`
+- `POST /api/v1/patients/{patient_id}/clinical-services`
+- `PUT /api/v1/patients/{patient_id}/clinical-services/{service_id}`
+- `PUT /api/v1/patients/{patient_id}/clinical-services/{service_id}/financial`
+
+Only an active treating doctor may create or mutate the current imaging
+service slice. Authorized patients receive read-only service data through the
+care bundle and patient-scoped list. Writable request fields are explicitly
+allow-listed; the current public create/update schema accepts only
+`category = imaging`, leaving laboratory and treatment forms unavailable until
+their real lifecycle and authorization paths are implemented.
+
+The asset layer remains a production-separated metadata/status workflow. It is
+Tencent-COS-compatible in shape, but this slice does not call Tencent COS,
+inspect uploaded file bytes, or make clinical claims. The historical
+`demo_medical_assets` beta table and `/assets/presign` endpoint remain
+separate.
+
+### Billable source boundary
+
+| Record | Financial treatment |
+|---|---|
+| Medication/product | May own one active linked financial companion. |
+| Prescription document | Authorization/documentation only; no second charge. |
+| Specialist consultation | Its canonical Clinical Service may own one companion. |
+| Appointment/meeting booking | Scheduling container only; no automatic charge. |
+| Imaging procedure Clinical Service | May own one companion in pending, estimated, or final state. |
+| Uploaded image/report | Evidence/result only; never creates a companion automatically. |
+| Future laboratory test or treatment session | Must first become a governed Clinical Service with a real lifecycle and authorization path. |
+| Equipment reservation | Non-billable until an explicit rental/use/deposit/cancellation policy and source type are implemented. |
+| Diagnosis, note, history, observation | Non-billable clinical documentation. |
+
+An appointment may schedule one or more Clinical Services, but the current
+slice adds only the optional service-to-appointment foreign key. Requested or
+scheduled state does not assert delivery. No deposit, no-show, cancellation,
+equipment-use, or rental fee is inferred.
 
 ### Prepare imaging upload metadata
 
@@ -838,6 +951,8 @@ claims. The historical `demo_medical_assets` beta table and
 
 ```json
 {
+  "clinical_event_id": "event-opaque-uuid",
+  "clinical_service_id": "imaging-service-opaque-uuid",
   "filename": "synthetic-ct-phase2.png",
   "content_type": "image/png",
   "size_bytes": 4096
@@ -848,7 +963,10 @@ Rules:
 
 - Doctors can prepare uploads only for active-care assigned patients.
 - Patients can prepare uploads only for their own patient profile.
-- Validation matches the demo presign content-type, size, and extension rules.
+- PNG, JPEG, DICOM, and PDF evidence use explicit content-type, size, and
+  extension validation.
+- When `clinical_service_id` is supplied, it must identify an imaging service
+  for the same authorized patient and Clinical Event.
 - The response includes a short-lived upload URL shape and headers for the
   client upload step, but later imaging list/detail responses do not echo the
   upload URL or object key.
@@ -861,6 +979,8 @@ Response:
 {
   "asset_id": "asset-opaque-uuid",
   "patient_id": "patient-opaque-uuid",
+  "clinical_event_id": "event-opaque-uuid",
+  "clinical_service_id": "imaging-service-opaque-uuid",
   "upload_url": "https://tencent-cos-upload.invalid/medical-imaging-assets/patient/asset.png",
   "method": "PUT",
   "headers": {
@@ -1419,6 +1539,45 @@ retrieval utility improves. Planner timeouts, quota errors, malformed output,
 meaning drift, retry failure, budget excess, or no improvement retain the
 original safe result or its fixed fallback.
 
+### Patient-chat grounding modes
+
+`POST /api/v1/patient/chat/messages` now returns additive
+`grounding_mode` with one of:
+
+- `approved_evidence`: the answer was generated only from authorized,
+  versioned Dr. AI passages. Every material claim retains validated passage
+  support and the response contains real reviewed source cards.
+- `general_model_knowledge`: adequate approved evidence was unavailable and
+  the independently enabled general model answered without patient-record
+  context, citations, passage IDs, or source cards. The UI must disclose
+  “General AI-generated information — no supporting Dr. AI source was found.”
+  This output can be wrong and is not evidence-grounded.
+- `fixed_safety_response`: deterministic emergency/prohibited-action copy,
+  authorization denial, provider/retrieval failure, malformed output, or
+  another server-owned fixed response.
+
+Historical stored response JSON remains readable: old payloads with source
+cards are interpreted as `approved_evidence`; old fallback payloads are
+interpreted as `fixed_safety_response`. Provider/model identifiers remain
+metadata-only and are not returned as patient-facing details.
+
+The general-knowledge schema has no citation fields. It cannot represent model
+memory as reviewed evidence, use patient records as evidence, confirm or rule
+out diagnosis, reassure that an emergency is absent, or prescribe a
+patient-specific medication start/stop/substitution/dose. It must include
+material uncertainty and a sensible next step for symptom-related or otherwise
+medically consequential questions. A mixed request may answer the safe general
+education portion while explicitly declining a prohibited personal treatment
+change. Adequate approved evidence continues to use the grounded schema and
+claim/citation/context validation.
+
+The workflow permits zero or one planner request, one answer-generation
+request, and at most one malformed-output schema-repair request. This is a
+two-stage adaptive workflow with an optional bounded repair, not an absolute
+two-request guarantee. Grounded generation and general-model-knowledge
+generation have separate kill switches and schema versions. There is no
+arbitrary answer-time web browsing.
+
 ### Patient-chat urgency response
 
 New patient-chat responses populate the additive `urgency_route` field with one
@@ -1427,15 +1586,18 @@ of `emergency_120`, `urgent_same_day`, `clinician_contact`,
 nullable only so previously stored thread metadata can still be read. It is a
 server decision, not model output.
 
-Emergency and medication-change routes return before retrieval and answer-model
-generation. For an allowed non-emergency message, the server passes the model a
+Emergency routes return before retrieval and answer-model generation.
+Prohibited medication actions remain server-owned; a mixed request may pass
+only its safe educational portion to the general-knowledge schema while the
+personalized change is declined. For an allowed non-emergency message, the server passes the model a
 bounded next-action allowlist: `urgent_same_day` requires `seek_local_care`;
 `clinician_contact` permits `contact_connected_doctor` or `seek_local_care`;
 and a routine answer must select a non-emergency, non-`none` practical action.
 Routine output also cannot select the same-day-only `seek_local_care` action.
 Any model response outside that allowlist fails closed. Evidence/provider
 fallbacks preserve same-day care timing without generating a diagnosis or using
-model memory as evidence.
+model memory as evidence. General-model knowledge is separately labeled and
+never presented as evidence.
 
 The current non-emergency care-timing rule table and fixed same-day fallback
 copy are local candidates pending named clinical, native-Simplified-Chinese,

@@ -6,6 +6,12 @@ class CareCostItemData {
     required this.label,
     required this.serviceDate,
     required this.status,
+    required this.pricingState,
+    required this.sourceType,
+    this.sourceCategory = 'legacy',
+    this.sourceStatus = 'planned',
+    this.alreadySubmitted = false,
+    required this.submissionEligible,
     required this.quantity,
     required this.currency,
     required this.actualCostMinor,
@@ -17,6 +23,11 @@ class CareCostItemData {
     this.aiReviewScore,
     this.aiReviewSummary,
     this.notes,
+    this.sourceRecordId,
+    this.ineligibilityReason,
+    this.orderedAt,
+    this.scheduledAt,
+    this.performedAt,
   });
 
   factory CareCostItemData.fromJson(Map<String, dynamic> json) {
@@ -27,6 +38,17 @@ class CareCostItemData {
       label: json['label'] as String,
       serviceDate: DateTime.parse(json['service_date'] as String),
       status: json['status'] as String,
+      pricingState: json['pricing_state'] as String? ?? 'final',
+      sourceType: json['source_type'] as String? ?? 'legacy',
+      sourceCategory: json['source_category'] as String? ?? 'legacy',
+      sourceStatus: json['source_status'] as String? ?? 'planned',
+      alreadySubmitted: json['already_submitted'] as bool? ?? false,
+      sourceRecordId: json['source_record_id'] as String?,
+      submissionEligible: json['submission_eligible'] as bool? ?? true,
+      ineligibilityReason: json['ineligibility_reason'] as String?,
+      orderedAt: _optionalDate(json['ordered_at']),
+      scheduledAt: _optionalDate(json['scheduled_at']),
+      performedAt: _optionalDate(json['performed_at']),
       quantity: json['quantity'] as int,
       currency: json['currency'] as String,
       actualCostMinor: json['actual_cost_minor'] as int,
@@ -47,6 +69,17 @@ class CareCostItemData {
   final String label;
   final DateTime serviceDate;
   final String status;
+  final String pricingState;
+  final String sourceType;
+  final String sourceCategory;
+  final String sourceStatus;
+  final bool alreadySubmitted;
+  final String? sourceRecordId;
+  final bool submissionEligible;
+  final String? ineligibilityReason;
+  final DateTime? orderedAt;
+  final DateTime? scheduledAt;
+  final DateTime? performedAt;
   final int quantity;
   final String currency;
   final int actualCostMinor;
@@ -58,6 +91,35 @@ class CareCostItemData {
   final String? notes;
   final DateTime createdAt;
   final DateTime updatedAt;
+}
+
+DateTime? _optionalDate(Object? value) =>
+    value is String ? DateTime.tryParse(value) : null;
+
+class ClinicalFinancialDraft {
+  const ClinicalFinancialDraft({
+    required this.pricingState,
+    required this.totalCostMinor,
+    required this.payerRequestedMinor,
+    required this.patientResponsibilityMinor,
+    this.serviceDate,
+  });
+
+  final String pricingState;
+  final int totalCostMinor;
+  final int payerRequestedMinor;
+  final int patientResponsibilityMinor;
+  final DateTime? serviceDate;
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    'pricing_state': pricingState,
+    'currency': 'CNY',
+    'total_cost_minor': totalCostMinor,
+    'payer_requested_minor': payerRequestedMinor,
+    'patient_responsibility_minor': patientResponsibilityMinor,
+    if (serviceDate != null)
+      'service_date': serviceDate!.toIso8601String().split('T').first,
+  };
 }
 
 class CareCostEventData {
@@ -170,6 +232,7 @@ class PayerOrganizationData {
 class PayerRequestLineData {
   const PayerRequestLineData({
     required this.id,
+    required this.careCostItemId,
     required this.itemType,
     required this.label,
     required this.serviceDate,
@@ -182,6 +245,7 @@ class PayerRequestLineData {
   factory PayerRequestLineData.fromJson(Map<String, dynamic> json) {
     return PayerRequestLineData(
       id: json['id'] as String,
+      careCostItemId: json['care_cost_item_id'] as String?,
       itemType: json['item_type'] as String,
       label: json['label'] as String,
       serviceDate: DateTime.parse(json['service_date'] as String),
@@ -193,6 +257,7 @@ class PayerRequestLineData {
   }
 
   final String id;
+  final String? careCostItemId;
   final String itemType;
   final String label;
   final DateTime serviceDate;

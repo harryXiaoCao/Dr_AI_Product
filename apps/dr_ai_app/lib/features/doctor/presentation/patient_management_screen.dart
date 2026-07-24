@@ -1,7 +1,8 @@
 import 'package:dr_ai_app/app/routing/app_role.dart';
 import 'package:dr_ai_app/core/api/api_error.dart';
 import 'package:dr_ai_app/design_system/dr_ai_tokens.dart';
-import 'package:dr_ai_app/features/care_cost/presentation/care_cost_screens.dart';
+import 'package:dr_ai_app/features/care_cost/application/care_cost_providers.dart';
+import 'package:dr_ai_app/features/care_cost/domain/care_cost_data.dart';
 import 'package:dr_ai_app/features/patient/application/patient_care_providers.dart';
 import 'package:dr_ai_app/features/patient/domain/patient_care_data.dart';
 import 'package:dr_ai_app/l10n/l10n.dart';
@@ -148,7 +149,6 @@ enum _DoctorPatientSection {
   medicationPrescriptions(icon: Icons.medication_outlined),
   recoveryPlans(icon: Icons.assignment_turned_in_outlined),
   imaging(icon: Icons.image_search_outlined),
-  careCosts(icon: Icons.receipt_long_outlined),
   consultationActivity(icon: Icons.edit_note_outlined);
 
   const _DoctorPatientSection({required this.icon});
@@ -166,10 +166,6 @@ extension _LocalizedDoctorPatientSection on _DoctorPatientSection {
       context.l10n.medicationsPrescriptions,
     _DoctorPatientSection.recoveryPlans => context.l10n.recoveryPlans,
     _DoctorPatientSection.imaging => context.l10n.imaging,
-    _DoctorPatientSection.careCosts =>
-      Localizations.localeOf(context).languageCode == 'zh'
-          ? '诊疗与费用'
-          : 'Care & costs',
     _DoctorPatientSection.consultationActivity =>
       context.l10n.consultationActivity,
   };
@@ -183,10 +179,6 @@ extension _LocalizedDoctorPatientSection on _DoctorPatientSection {
       context.l10n.medicationsSummary,
     _DoctorPatientSection.recoveryPlans => context.l10n.recoveryPlansSummary,
     _DoctorPatientSection.imaging => context.l10n.imagingSummary,
-    _DoctorPatientSection.careCosts =>
-      Localizations.localeOf(context).languageCode == 'zh'
-          ? '记录临床事件下的服务、实际费用与支付申请。'
-          : 'Record event services, actual costs, and payer requests.',
     _DoctorPatientSection.consultationActivity =>
       context.l10n.consultationActivitySummary,
   };
@@ -1043,10 +1035,6 @@ class _WorkspaceSectionContent extends StatelessWidget {
         bundle: bundle,
         selectedEvent: selectedEvent,
       ),
-      _DoctorPatientSection.careCosts => DoctorCareCostEditor(
-        patientId: bundle.patient.patientId,
-        clinicalEventId: selectedEvent?.id,
-      ),
       _DoctorPatientSection.consultationActivity =>
         _ConsultationActivitySection(
           bundle: bundle,
@@ -1692,11 +1680,655 @@ class _ImagingSection extends StatelessWidget {
             _eventTitle(context, bundle, selectedEvent),
           ),
         ),
+        const SizedBox(height: DrAiSpacing.xs),
+        _InlineMessage(
+          message: context.l10n.imagingArtifactNotBillable,
+          icon: Icons.info_outline,
+        ),
+        const SizedBox(height: DrAiSpacing.sm),
+        _ImagingClinicalServicePanel(
+          bundle: bundle,
+          selectedEvent: selectedEvent,
+        ),
         const SizedBox(height: DrAiSpacing.sm),
         _imagingListSection(context, bundle, selectedEvent),
       ],
     );
   }
+}
+
+class _ImagingClinicalServicePanel extends ConsumerStatefulWidget {
+  const _ImagingClinicalServicePanel({
+    required this.bundle,
+    required this.selectedEvent,
+  });
+
+  final PatientCareBundle bundle;
+  final ClinicalEventItem? selectedEvent;
+
+  @override
+  ConsumerState<_ImagingClinicalServicePanel> createState() =>
+      _ImagingClinicalServicePanelState();
+}
+
+class _ImagingClinicalServicePanelState
+    extends ConsumerState<_ImagingClinicalServicePanel> {
+  final _nameController = TextEditingController();
+  final _modalityController = TextEditingController();
+  final _bodyRegionController = TextEditingController();
+  final _scheduledController = TextEditingController();
+  final _performedController = TextEditingController();
+  final _indicationController = TextEditingController();
+  final _totalController = TextEditingController();
+  final _payerController = TextEditingController();
+  final _patientController = TextEditingController();
+  final _filenameController = TextEditingController();
+  final _sizeController = TextEditingController();
+  final _findingController = TextEditingController();
+  String _status = 'ordered';
+  String _pricingState = 'pending_cost';
+  String _contentType = 'application/dicom';
+  bool _recordCost = true;
+  String? _editingServiceId;
+  String? _evidenceServiceId;
+  String? _validationError;
+
+  List<ClinicalServiceItem> get _services => widget.bundle.clinicalServices
+      .where(
+        (item) =>
+            item.category == 'imaging' &&
+            item.clinicalEventId == widget.selectedEvent?.id,
+      )
+      .toList();
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _modalityController.dispose();
+    _bodyRegionController.dispose();
+    _scheduledController.dispose();
+    _performedController.dispose();
+    _indicationController.dispose();
+    _totalController.dispose();
+    _payerController.dispose();
+    _patientController.dispose();
+    _filenameController.dispose();
+    _sizeController.dispose();
+    _findingController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final serviceState = ref.watch(clinicalServiceWorkflowControllerProvider);
+    final imagingState = ref.watch(medicalImagingWorkflowControllerProvider);
+    final ledger = ref
+        .watch(patientCareCostLedgerProvider(widget.bundle.patient.patientId))
+        .asData
+        ?.value;
+    final services = _services;
+    if (_evidenceServiceId != null &&
+        !services.any((item) => item.id == _evidenceServiceId)) {
+      _evidenceServiceId = null;
+    }
+    return DecoratedBox(
+      key: const Key('imaging-clinical-service-panel'),
+      decoration: BoxDecoration(
+        color: DrAiColors.surfaceSubtle,
+        borderRadius: BorderRadius.circular(DrAiRadii.md),
+        border: Border.all(color: DrAiColors.outline),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(DrAiSpacing.sm),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Text(
+              context.l10n.imagingProcedure,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: DrAiSpacing.xs),
+            Text(
+              context.l10n.imagingProcedureDescription,
+              style: const TextStyle(
+                color: DrAiColors.inkSecondary,
+                fontSize: 12,
+              ),
+            ),
+            const SizedBox(height: DrAiSpacing.sm),
+            Text(
+              context.l10n.clinicalDetails,
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+            const SizedBox(height: DrAiSpacing.xs),
+            TextField(
+              key: const Key('imaging-procedure-name'),
+              controller: _nameController,
+              decoration: InputDecoration(
+                labelText: context.l10n.procedureName,
+                prefixIcon: const Icon(Icons.medical_information_outlined),
+              ),
+            ),
+            const SizedBox(height: DrAiSpacing.xs),
+            Row(
+              children: <Widget>[
+                Expanded(
+                  child: TextField(
+                    key: const Key('imaging-modality'),
+                    controller: _modalityController,
+                    decoration: InputDecoration(
+                      labelText: context.l10n.modality,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: DrAiSpacing.xs),
+                Expanded(
+                  child: TextField(
+                    key: const Key('imaging-body-region'),
+                    controller: _bodyRegionController,
+                    decoration: InputDecoration(
+                      labelText: context.l10n.bodyRegion,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: DrAiSpacing.xs),
+            TextField(
+              key: const Key('imaging-indication'),
+              controller: _indicationController,
+              minLines: 2,
+              maxLines: 3,
+              decoration: InputDecoration(
+                labelText: context.l10n.clinicalIndication,
+              ),
+            ),
+            const SizedBox(height: DrAiSpacing.sm),
+            Text(
+              context.l10n.schedulingServiceDetails,
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+            const SizedBox(height: DrAiSpacing.xs),
+            DropdownButtonFormField<String>(
+              key: const Key('imaging-service-status'),
+              initialValue: _status,
+              decoration: InputDecoration(labelText: context.l10n.status),
+              items: <DropdownMenuItem<String>>[
+                for (final value in <String>[
+                  'ordered',
+                  'requested',
+                  'scheduled',
+                  'in_progress',
+                  'performed',
+                  'completed',
+                  'cancelled',
+                  'not_completed',
+                ])
+                  DropdownMenuItem(
+                    value: value,
+                    child: Text(context.l10n.stableValue(value)),
+                  ),
+              ],
+              onChanged: (value) =>
+                  setState(() => _status = value ?? 'ordered'),
+            ),
+            const SizedBox(height: DrAiSpacing.xs),
+            Row(
+              children: <Widget>[
+                Expanded(
+                  child: TextField(
+                    key: const Key('imaging-scheduled-at'),
+                    controller: _scheduledController,
+                    decoration: InputDecoration(
+                      labelText: context.l10n.scheduledDateTime,
+                      hintText: '2026-07-25 09:30',
+                    ),
+                  ),
+                ),
+                const SizedBox(width: DrAiSpacing.xs),
+                Expanded(
+                  child: TextField(
+                    key: const Key('imaging-performed-at'),
+                    controller: _performedController,
+                    decoration: InputDecoration(
+                      labelText: context.l10n.performedDateTime,
+                      hintText: '2026-07-25 10:00',
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: DrAiSpacing.sm),
+            _ClinicalFinancialSection(
+              billable: _recordCost,
+              pricingState: _pricingState,
+              totalController: _totalController,
+              payerController: _payerController,
+              patientController: _patientController,
+              onBillableChanged: (value) => setState(() => _recordCost = value),
+              onPricingStateChanged: (value) =>
+                  setState(() => _pricingState = value),
+            ),
+            if (_validationError != null)
+              _InlineMessage(
+                message: _validationError!,
+                icon: Icons.error_outline,
+              ),
+            serviceState.when(
+              loading: () => const LinearProgressIndicator(),
+              error: (error, stackTrace) =>
+                  _InlineMessage(message: _safeErrorMessage(context, error)),
+              data: (service) => service == null
+                  ? const SizedBox.shrink()
+                  : _InlineMessage(
+                      message: context.l10n.imagingProcedureSaved(service.name),
+                      icon: Icons.check_circle_outline,
+                    ),
+            ),
+            const SizedBox(height: DrAiSpacing.xs),
+            FilledButton.icon(
+              key: const Key('save-imaging-procedure'),
+              onPressed: serviceState.isLoading || widget.selectedEvent == null
+                  ? null
+                  : _saveService,
+              icon: const Icon(Icons.save_outlined),
+              label: Text(
+                _editingServiceId == null
+                    ? context.l10n.createImagingProcedure
+                    : context.l10n.updateImagingProcedure,
+              ),
+            ),
+            const SizedBox(height: DrAiSpacing.md),
+            Text(
+              context.l10n.imagingProcedures,
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+            if (services.isEmpty)
+              _InlineMessage(
+                message: context.l10n.noImagingProcedures,
+                icon: Icons.medical_information_outlined,
+              )
+            else
+              for (final service in services)
+                _serviceCard(context, service, ledger),
+            const SizedBox(height: DrAiSpacing.md),
+            Text(
+              context.l10n.imagingEvidence,
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+            const SizedBox(height: DrAiSpacing.xs),
+            DropdownButtonFormField<String>(
+              key: const Key('imaging-evidence-service'),
+              initialValue: _evidenceServiceId,
+              decoration: InputDecoration(
+                labelText: context.l10n.selectImagingProcedure,
+              ),
+              items: <DropdownMenuItem<String>>[
+                for (final service in services)
+                  DropdownMenuItem(
+                    value: service.id,
+                    child: Text(service.name),
+                  ),
+              ],
+              onChanged: (value) => setState(() => _evidenceServiceId = value),
+            ),
+            const SizedBox(height: DrAiSpacing.xs),
+            Row(
+              children: <Widget>[
+                Expanded(
+                  flex: 2,
+                  child: TextField(
+                    key: const Key('imaging-evidence-filename'),
+                    controller: _filenameController,
+                    decoration: InputDecoration(
+                      labelText: context.l10n.imageFilename,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: DrAiSpacing.xs),
+                Expanded(
+                  child: TextField(
+                    key: const Key('imaging-evidence-size'),
+                    controller: _sizeController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: context.l10n.sizeBytes,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: DrAiSpacing.xs),
+            DropdownButtonFormField<String>(
+              initialValue: _contentType,
+              decoration: InputDecoration(labelText: context.l10n.contentType),
+              items: const <DropdownMenuItem<String>>[
+                DropdownMenuItem(
+                  value: 'application/dicom',
+                  child: Text('application/dicom'),
+                ),
+                DropdownMenuItem(
+                  value: 'application/pdf',
+                  child: Text('application/pdf'),
+                ),
+                DropdownMenuItem(value: 'image/png', child: Text('image/png')),
+                DropdownMenuItem(
+                  value: 'image/jpeg',
+                  child: Text('image/jpeg'),
+                ),
+              ],
+              onChanged: (value) =>
+                  setState(() => _contentType = value ?? 'application/dicom'),
+            ),
+            const SizedBox(height: DrAiSpacing.xs),
+            TextField(
+              key: const Key('imaging-evidence-finding'),
+              controller: _findingController,
+              minLines: 2,
+              maxLines: 3,
+              decoration: InputDecoration(
+                labelText: context.l10n.manualFinding,
+              ),
+            ),
+            const SizedBox(height: DrAiSpacing.xs),
+            Wrap(
+              spacing: DrAiSpacing.xs,
+              runSpacing: DrAiSpacing.xs,
+              children: <Widget>[
+                OutlinedButton.icon(
+                  key: const Key('prepare-imaging-evidence'),
+                  onPressed:
+                      imagingState.isLoading || _evidenceServiceId == null
+                      ? null
+                      : _prepareEvidence,
+                  icon: const Icon(Icons.attach_file_outlined),
+                  label: Text(context.l10n.attachEvidence),
+                ),
+                OutlinedButton.icon(
+                  key: const Key('complete-imaging-evidence'),
+                  onPressed:
+                      imagingState.isLoading ||
+                          imagingState.asData?.value.presign == null
+                      ? null
+                      : _completeEvidence,
+                  icon: const Icon(Icons.cloud_done_outlined),
+                  label: Text(context.l10n.finalizeUpload),
+                ),
+                OutlinedButton.icon(
+                  key: const Key('review-imaging-evidence'),
+                  onPressed:
+                      imagingState.isLoading ||
+                          imagingState.asData?.value.asset?.uploadStatus !=
+                              'uploaded'
+                      ? null
+                      : _reviewEvidence,
+                  icon: const Icon(Icons.fact_check_outlined),
+                  label: Text(context.l10n.markReviewed),
+                ),
+              ],
+            ),
+            imagingState.when(
+              loading: () => const LinearProgressIndicator(),
+              error: (error, stackTrace) =>
+                  _InlineMessage(message: _safeErrorMessage(context, error)),
+              data: (state) => state.message == null
+                  ? const SizedBox.shrink()
+                  : _InlineMessage(
+                      message: state.message!,
+                      icon: Icons.check_circle_outline,
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _serviceCard(
+    BuildContext context,
+    ClinicalServiceItem service,
+    CareCostLedgerData? ledger,
+  ) {
+    final companion = _sourceFinancialCompanion(
+      ledger,
+      sourceType: 'imaging',
+      sourceRecordId: service.id,
+    );
+    return Padding(
+      padding: const EdgeInsets.only(top: DrAiSpacing.xs),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: DrAiColors.white,
+          borderRadius: BorderRadius.circular(DrAiRadii.md),
+          border: Border.all(color: DrAiColors.outline),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(DrAiSpacing.sm),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              Text(service.name, style: Theme.of(context).textTheme.titleSmall),
+              const SizedBox(height: 4),
+              Text(
+                '${service.serviceSubtype ?? ''} · '
+                '${service.bodyRegion ?? ''} · '
+                '${context.l10n.stableValue(service.status)}',
+              ),
+              Text(
+                '${context.l10n.financialStatus}: '
+                '${_financialStatusText(context, companion)}',
+                style: const TextStyle(color: DrAiColors.inkSecondary),
+              ),
+              Text(
+                context.l10n.evidenceFileCount(service.imagingAssetIds.length),
+                style: const TextStyle(color: DrAiColors.inkSecondary),
+              ),
+              Wrap(
+                alignment: WrapAlignment.end,
+                spacing: DrAiSpacing.xs,
+                children: <Widget>[
+                  TextButton(
+                    onPressed: () => _editService(service, companion),
+                    child: Text(context.l10n.editClinicalService),
+                  ),
+                  TextButton.icon(
+                    onPressed: () async {
+                      final financial = await _showFinancialDialog(
+                        context,
+                        companion,
+                      );
+                      if (financial == null) return;
+                      await ref
+                          .read(
+                            clinicalServiceWorkflowControllerProvider.notifier,
+                          )
+                          .updateFinancial(
+                            patientId: widget.bundle.patient.patientId,
+                            serviceId: service.id,
+                            financial: financial,
+                          );
+                    },
+                    icon: const Icon(Icons.price_change_outlined),
+                    label: Text(_financialActionText(context, companion)),
+                  ),
+                  TextButton.icon(
+                    onPressed: () =>
+                        setState(() => _evidenceServiceId = service.id),
+                    icon: const Icon(Icons.attach_file_outlined),
+                    label: Text(context.l10n.attachEvidence),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _saveService() async {
+    final event = widget.selectedEvent;
+    final scheduled = _parseDateTime(_scheduledController.text);
+    final performed = _parseDateTime(_performedController.text);
+    if (event == null ||
+        _nameController.text.trim().length < 2 ||
+        _modalityController.text.trim().length < 2 ||
+        _bodyRegionController.text.trim().length < 2 ||
+        (_status == 'scheduled' && scheduled == null) ||
+        ({'performed', 'completed'}.contains(_status) && performed == null)) {
+      setState(
+        () => _validationError = context.l10n.imagingProcedureValidation,
+      );
+      return;
+    }
+    final financial = _financialDraft(performed ?? scheduled);
+    if (_recordCost && financial == null) return;
+    setState(() => _validationError = null);
+    await ref
+        .read(clinicalServiceWorkflowControllerProvider.notifier)
+        .save(
+          patientId: widget.bundle.patient.patientId,
+          serviceId: _editingServiceId,
+          clinicalEventId: event.id,
+          name: _nameController.text.trim(),
+          serviceSubtype: _modalityController.text.trim(),
+          bodyRegion: _bodyRegionController.text.trim(),
+          status: _status,
+          scheduledAt: scheduled,
+          performedAt: performed,
+          indicationSummary: _indicationController.text.trim(),
+          financial: financial,
+        );
+    final saved = ref
+        .read(clinicalServiceWorkflowControllerProvider)
+        .asData
+        ?.value;
+    if (mounted && saved != null) {
+      setState(() {
+        _editingServiceId = saved.id;
+        _evidenceServiceId = saved.id;
+      });
+    }
+  }
+
+  ClinicalFinancialDraft? _financialDraft(DateTime? serviceDate) {
+    if (!_recordCost) return null;
+    if (_pricingState == 'pending_cost') {
+      return ClinicalFinancialDraft(
+        pricingState: 'pending_cost',
+        totalCostMinor: 0,
+        payerRequestedMinor: 0,
+        patientResponsibilityMinor: 0,
+        serviceDate: serviceDate,
+      );
+    }
+    final total = _moneyMinor(_totalController.text);
+    final payer = _moneyMinor(_payerController.text);
+    final patient = _moneyMinor(_patientController.text);
+    if (total == null ||
+        total <= 0 ||
+        payer == null ||
+        patient == null ||
+        payer + patient != total) {
+      setState(
+        () => _validationError = context.l10n.financialAllocationValidation,
+      );
+      return null;
+    }
+    return ClinicalFinancialDraft(
+      pricingState: _pricingState,
+      totalCostMinor: total,
+      payerRequestedMinor: payer,
+      patientResponsibilityMinor: patient,
+      serviceDate: serviceDate,
+    );
+  }
+
+  void _editService(ClinicalServiceItem service, CareCostItemData? companion) {
+    setState(() {
+      _editingServiceId = service.id;
+      _nameController.text = service.name;
+      _modalityController.text = service.serviceSubtype ?? '';
+      _bodyRegionController.text = service.bodyRegion ?? '';
+      _scheduledController.text = _dateTimeInput(service.scheduledAt);
+      _performedController.text = _dateTimeInput(service.performedAt);
+      _indicationController.text = service.indicationSummary ?? '';
+      _status = service.status;
+      _recordCost = companion != null;
+      _pricingState = companion?.pricingState ?? 'pending_cost';
+      _totalController.text = companion == null
+          ? ''
+          : _yuanText(companion.actualCostMinor);
+      _payerController.text = companion == null
+          ? ''
+          : _yuanText(companion.payerRequestedMinor);
+      _patientController.text = companion == null
+          ? ''
+          : _yuanText(companion.patientResponsibilityMinor);
+    });
+  }
+
+  Future<void> _prepareEvidence() async {
+    final size = int.tryParse(_sizeController.text.trim());
+    if (_filenameController.text.trim().length < 3 ||
+        size == null ||
+        size < 1) {
+      setState(() => _validationError = context.l10n.imageUploadValidation);
+      return;
+    }
+    setState(() => _validationError = null);
+    await ref
+        .read(medicalImagingWorkflowControllerProvider.notifier)
+        .prepare(
+          patientId: widget.bundle.patient.patientId,
+          clinicalEventId: widget.selectedEvent?.id,
+          clinicalServiceId: _evidenceServiceId,
+          filename: _filenameController.text.trim(),
+          contentType: _contentType,
+          sizeBytes: size,
+        );
+  }
+
+  Future<void> _completeEvidence() async {
+    final size = int.tryParse(_sizeController.text.trim());
+    if (size == null || size < 1) return;
+    await ref
+        .read(medicalImagingWorkflowControllerProvider.notifier)
+        .complete(
+          patientId: widget.bundle.patient.patientId,
+          uploadedSizeBytes: size,
+        );
+  }
+
+  Future<void> _reviewEvidence() async {
+    if (_findingController.text.trim().length < 3) {
+      setState(() => _validationError = context.l10n.manualFindingValidation);
+      return;
+    }
+    await ref
+        .read(medicalImagingWorkflowControllerProvider.notifier)
+        .review(
+          patientId: widget.bundle.patient.patientId,
+          reviewStatus: 'reviewed',
+          findingSummary: _findingController.text.trim(),
+          measurementSummary: '',
+        );
+  }
+}
+
+DateTime? _parseDateTime(String value) {
+  final normalized = value.trim().replaceFirst(' ', 'T');
+  if (normalized.isEmpty) return null;
+  return DateTime.tryParse(normalized);
+}
+
+String _dateTimeInput(DateTime? value) {
+  if (value == null) return '';
+  return value
+      .toLocal()
+      .toIso8601String()
+      .substring(0, 16)
+      .replaceFirst('T', ' ');
 }
 
 class _ConsultationActivitySection extends StatelessWidget {
@@ -2413,17 +3045,69 @@ Widget _medicationsListSection(
   PatientCareBundle bundle,
   ClinicalEventItem? selectedEvent,
 ) {
-  return _ItemSection<MedicationItem>(
-    key: const Key('medications-section'),
-    title: context.l10n.medications,
-    icon: Icons.medication_outlined,
-    items: _eventMedications(bundle, selectedEvent),
-    emptyTitle: context.l10n.noMedicationsRecorded,
-    itemBuilder: (item) => _InfoTile(
-      title: item.name,
-      subtitle: '${item.dosage} - ${context.l10n.stableValue(item.status)}',
-      body: '${item.schedule}\n${item.note}',
-    ),
+  return Consumer(
+    builder: (context, ref, child) {
+      final ledger = ref
+          .watch(patientCareCostLedgerProvider(bundle.patient.patientId))
+          .asData
+          ?.value;
+      return _ItemSection<MedicationItem>(
+        key: const Key('medications-section'),
+        title: context.l10n.medications,
+        icon: Icons.medication_outlined,
+        items: _eventMedications(bundle, selectedEvent),
+        emptyTitle: context.l10n.noMedicationsRecorded,
+        itemBuilder: (item) {
+          final companion = _sourceFinancialCompanion(
+            ledger,
+            sourceType: 'medication',
+            sourceRecordId: item.id,
+          );
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              _InfoTile(
+                title: item.name,
+                subtitle:
+                    '${item.dosage} - ${context.l10n.stableValue(item.status)}',
+                body:
+                    '${item.schedule}\n${item.note}\n'
+                    '${context.l10n.financialStatus}: '
+                    '${_financialStatusText(context, companion)}',
+              ),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  key: Key('medication-cost-${item.id}'),
+                  onPressed: () async {
+                    final financial = await _showFinancialDialog(
+                      context,
+                      companion,
+                    );
+                    if (financial == null) return;
+                    await ref
+                        .read(medicationWorkflowControllerProvider.notifier)
+                        .saveMedication(
+                          patientId: bundle.patient.patientId,
+                          clinicalEventId: item.clinicalEventId,
+                          medicationId: item.id,
+                          name: item.name,
+                          dosage: item.dosage,
+                          schedule: item.schedule,
+                          status: item.status,
+                          note: item.note,
+                          financial: financial,
+                        );
+                  },
+                  icon: const Icon(Icons.price_change_outlined),
+                  label: Text(_financialActionText(context, companion)),
+                ),
+              ),
+            ],
+          );
+        },
+      );
+    },
   );
 }
 
@@ -2503,7 +3187,13 @@ class _MedicationWorkflowPanelState
   late TextEditingController _scheduleController;
   late final TextEditingController _noteController;
   late final TextEditingController _prescriptionNoteController;
+  late final TextEditingController _totalCostController;
+  late final TextEditingController _payerRequestedController;
+  late final TextEditingController _patientResponsibilityController;
   String _status = 'active';
+  String _pricingState = 'pending_cost';
+  bool _billable = false;
+  bool _financialLoaded = false;
   String? _validationMessage;
   bool _localizedDefaultsApplied = false;
 
@@ -2528,6 +3218,9 @@ class _MedicationWorkflowPanelState
     );
     _noteController = TextEditingController(text: medication?.note ?? '');
     _prescriptionNoteController = TextEditingController(text: '');
+    _totalCostController = TextEditingController();
+    _payerRequestedController = TextEditingController();
+    _patientResponsibilityController = TextEditingController();
     _status = medication?.status ?? 'active';
   }
 
@@ -2549,12 +3242,21 @@ class _MedicationWorkflowPanelState
     _scheduleController.dispose();
     _noteController.dispose();
     _prescriptionNoteController.dispose();
+    _totalCostController.dispose();
+    _payerRequestedController.dispose();
+    _patientResponsibilityController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(medicationWorkflowControllerProvider);
+    if (widget.mode == _MedicationWorkflowMode.medication) {
+      final ledger = ref.watch(
+        patientCareCostLedgerProvider(widget.bundle.patient.patientId),
+      );
+      _loadFinancialCompanion(ledger.asData?.value);
+    }
     return DecoratedBox(
       decoration: BoxDecoration(
         color: DrAiColors.surfaceSubtle,
@@ -2668,6 +3370,17 @@ class _MedicationWorkflowPanelState
                   labelText: context.l10n.medicationNote,
                 ),
               ),
+              const SizedBox(height: DrAiSpacing.sm),
+              _ClinicalFinancialSection(
+                billable: _billable,
+                pricingState: _pricingState,
+                totalController: _totalCostController,
+                payerController: _payerRequestedController,
+                patientController: _patientResponsibilityController,
+                onBillableChanged: (value) => setState(() => _billable = value),
+                onPricingStateChanged: (value) =>
+                    setState(() => _pricingState = value),
+              ),
             ],
             if (widget.mode ==
                 _MedicationWorkflowMode.prescription) ...<Widget>[
@@ -2749,6 +3462,10 @@ class _MedicationWorkflowPanelState
     if (!_validateMedicationFields()) {
       return;
     }
+    final financial = _financialDraft();
+    if (_billable && financial == null) {
+      return;
+    }
     await ref
         .read(medicationWorkflowControllerProvider.notifier)
         .saveMedication(
@@ -2760,7 +3477,64 @@ class _MedicationWorkflowPanelState
           schedule: _scheduleController.text.trim(),
           status: _status,
           note: _noteController.text.trim(),
+          financial: financial,
         );
+  }
+
+  void _loadFinancialCompanion(CareCostLedgerData? ledger) {
+    if (_financialLoaded || ledger == null) return;
+    _financialLoaded = true;
+    final medication = _selectedMedication;
+    if (medication == null) return;
+    CareCostItemData? companion;
+    for (final event in ledger.events) {
+      for (final item in event.items) {
+        if (item.sourceType == 'medication' &&
+            item.sourceRecordId == medication.id) {
+          companion = item;
+          break;
+        }
+      }
+    }
+    if (companion == null) return;
+    _billable = true;
+    _pricingState = companion.pricingState;
+    _totalCostController.text = _yuanText(companion.actualCostMinor);
+    _payerRequestedController.text = _yuanText(companion.payerRequestedMinor);
+    _patientResponsibilityController.text = _yuanText(
+      companion.patientResponsibilityMinor,
+    );
+  }
+
+  ClinicalFinancialDraft? _financialDraft() {
+    if (!_billable) return null;
+    if (_pricingState == 'pending_cost') {
+      return const ClinicalFinancialDraft(
+        pricingState: 'pending_cost',
+        totalCostMinor: 0,
+        payerRequestedMinor: 0,
+        patientResponsibilityMinor: 0,
+      );
+    }
+    final total = _moneyMinor(_totalCostController.text);
+    final payer = _moneyMinor(_payerRequestedController.text);
+    final patient = _moneyMinor(_patientResponsibilityController.text);
+    if (total == null ||
+        total <= 0 ||
+        payer == null ||
+        patient == null ||
+        payer + patient != total) {
+      setState(() {
+        _validationMessage = context.l10n.financialAllocationValidation;
+      });
+      return null;
+    }
+    return ClinicalFinancialDraft(
+      pricingState: _pricingState,
+      totalCostMinor: total,
+      payerRequestedMinor: payer,
+      patientResponsibilityMinor: patient,
+    );
   }
 
   Future<void> _createPrescription() async {
@@ -2785,6 +3559,357 @@ class _MedicationWorkflowPanelState
           schedule: _scheduleController.text.trim(),
           notes: _prescriptionNoteController.text.trim(),
         );
+  }
+}
+
+class _ClinicalFinancialSection extends StatelessWidget {
+  const _ClinicalFinancialSection({
+    required this.billable,
+    required this.pricingState,
+    required this.totalController,
+    required this.payerController,
+    required this.patientController,
+    required this.onBillableChanged,
+    required this.onPricingStateChanged,
+  });
+
+  final bool billable;
+  final String pricingState;
+  final TextEditingController totalController;
+  final TextEditingController payerController;
+  final TextEditingController patientController;
+  final ValueChanged<bool> onBillableChanged;
+  final ValueChanged<String> onPricingStateChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final amountsEnabled = billable && pricingState != 'pending_cost';
+    return Material(
+      key: const Key('clinical-financial-section'),
+      color: DrAiColors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(DrAiRadii.sm),
+        side: const BorderSide(color: DrAiColors.outline),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(DrAiSpacing.sm),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Text(
+              context.l10n.financialDetails,
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+            ),
+            Text(
+              context.l10n.financialDetailsDescription,
+              style: const TextStyle(
+                color: DrAiColors.inkSecondary,
+                fontSize: 12,
+              ),
+            ),
+            CheckboxListTile(
+              key: const Key('billable-clinical-item-checkbox'),
+              contentPadding: EdgeInsets.zero,
+              value: billable,
+              onChanged: (value) => onBillableChanged(value ?? false),
+              title: Text(context.l10n.billableClinicalItem),
+              subtitle: Text(context.l10n.billableClinicalItemDescription),
+              controlAffinity: ListTileControlAffinity.leading,
+            ),
+            if (billable) ...<Widget>[
+              DropdownButtonFormField<String>(
+                key: const Key('pricing-state-field'),
+                initialValue: pricingState,
+                decoration: InputDecoration(labelText: context.l10n.costStatus),
+                items: <DropdownMenuItem<String>>[
+                  DropdownMenuItem(
+                    value: 'pending_cost',
+                    child: Text(context.l10n.costPending),
+                  ),
+                  DropdownMenuItem(
+                    value: 'estimated',
+                    child: Text(context.l10n.costEstimate),
+                  ),
+                  DropdownMenuItem(
+                    value: 'final',
+                    child: Text(context.l10n.costFinal),
+                  ),
+                ],
+                onChanged: (value) =>
+                    onPricingStateChanged(value ?? 'pending_cost'),
+              ),
+              const SizedBox(height: DrAiSpacing.xs),
+              InputDecorator(
+                decoration: InputDecoration(labelText: context.l10n.currency),
+                child: const Text('CNY'),
+              ),
+              if (!amountsEnabled)
+                Padding(
+                  padding: const EdgeInsets.only(top: DrAiSpacing.xs),
+                  child: Text(
+                    context.l10n.pendingCostSubmissionBlocked,
+                    style: const TextStyle(
+                      color: DrAiColors.inkSecondary,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              if (amountsEnabled) ...<Widget>[
+                const SizedBox(height: DrAiSpacing.xs),
+                _MoneyField(
+                  key: const Key('total-cost-field'),
+                  controller: totalController,
+                  label: context.l10n.totalCostCny,
+                ),
+                const SizedBox(height: DrAiSpacing.xs),
+                _MoneyField(
+                  key: const Key('payer-requested-field'),
+                  controller: payerController,
+                  label: context.l10n.requestedFromPayerCny,
+                ),
+                const SizedBox(height: DrAiSpacing.xs),
+                _MoneyField(
+                  key: const Key('patient-responsibility-field'),
+                  controller: patientController,
+                  label: context.l10n.expectedPatientResponsibilityCny,
+                ),
+                const SizedBox(height: DrAiSpacing.xs),
+                Text(
+                  context.l10n.financialAllocationNotice,
+                  style: const TextStyle(
+                    color: DrAiColors.inkSecondary,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MoneyField extends StatelessWidget {
+  const _MoneyField({required this.controller, required this.label, super.key});
+
+  final TextEditingController controller;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      decoration: InputDecoration(labelText: label, prefixText: '¥ '),
+    );
+  }
+}
+
+int? _moneyMinor(String value) {
+  final amount = double.tryParse(value.trim());
+  if (amount == null || amount < 0) return null;
+  return (amount * 100).round();
+}
+
+String _yuanText(int minor) => (minor / 100).toStringAsFixed(2);
+
+CareCostItemData? _sourceFinancialCompanion(
+  CareCostLedgerData? ledger, {
+  required String sourceType,
+  required String? sourceRecordId,
+}) {
+  if (ledger == null || sourceRecordId == null) return null;
+  for (final event in ledger.events) {
+    for (final item in event.items) {
+      if (item.sourceType == sourceType &&
+          item.sourceRecordId == sourceRecordId) {
+        return item;
+      }
+    }
+  }
+  return null;
+}
+
+String _financialStatusText(BuildContext context, CareCostItemData? companion) {
+  if (companion == null) return context.l10n.noCostRecorded;
+  if (companion.alreadySubmitted) return context.l10n.alreadySubmitted;
+  return switch (companion.pricingState) {
+    'pending_cost' => context.l10n.costPending,
+    'estimated' => context.l10n.estimatedCost(
+      _yuanText(companion.actualCostMinor),
+    ),
+    _ => context.l10n.finalCost(_yuanText(companion.actualCostMinor)),
+  };
+}
+
+String _financialActionText(BuildContext context, CareCostItemData? companion) {
+  if (companion == null) return context.l10n.addCost;
+  if (companion.pricingState == 'pending_cost') {
+    return context.l10n.completeCost;
+  }
+  return context.l10n.editCost;
+}
+
+Future<ClinicalFinancialDraft?> _showFinancialDialog(
+  BuildContext context,
+  CareCostItemData? companion,
+) {
+  return showDialog<ClinicalFinancialDraft>(
+    context: context,
+    builder: (context) => _ClinicalFinancialDialog(companion: companion),
+  );
+}
+
+class _ClinicalFinancialDialog extends StatefulWidget {
+  const _ClinicalFinancialDialog({this.companion});
+
+  final CareCostItemData? companion;
+
+  @override
+  State<_ClinicalFinancialDialog> createState() =>
+      _ClinicalFinancialDialogState();
+}
+
+class _ClinicalFinancialDialogState extends State<_ClinicalFinancialDialog> {
+  late String _pricingState;
+  late final TextEditingController _totalController;
+  late final TextEditingController _payerController;
+  late final TextEditingController _patientController;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    final companion = widget.companion;
+    _pricingState = companion?.pricingState ?? 'pending_cost';
+    _totalController = TextEditingController(
+      text: companion == null ? '' : _yuanText(companion.actualCostMinor),
+    );
+    _payerController = TextEditingController(
+      text: companion == null ? '' : _yuanText(companion.payerRequestedMinor),
+    );
+    _patientController = TextEditingController(
+      text: companion == null
+          ? ''
+          : _yuanText(companion.patientResponsibilityMinor),
+    );
+  }
+
+  @override
+  void dispose() {
+    _totalController.dispose();
+    _payerController.dispose();
+    _patientController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final amountsEnabled = _pricingState != 'pending_cost';
+    return AlertDialog(
+      title: Text(_financialActionText(context, widget.companion)),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            DropdownButtonFormField<String>(
+              key: const Key('cost-dialog-pricing-state'),
+              initialValue: _pricingState,
+              decoration: InputDecoration(labelText: context.l10n.costStatus),
+              items: <DropdownMenuItem<String>>[
+                DropdownMenuItem(
+                  value: 'pending_cost',
+                  child: Text(context.l10n.costPending),
+                ),
+                DropdownMenuItem(
+                  value: 'estimated',
+                  child: Text(context.l10n.costEstimate),
+                ),
+                DropdownMenuItem(
+                  value: 'final',
+                  child: Text(context.l10n.costFinal),
+                ),
+              ],
+              onChanged: (value) =>
+                  setState(() => _pricingState = value ?? 'pending_cost'),
+            ),
+            if (amountsEnabled) ...<Widget>[
+              const SizedBox(height: DrAiSpacing.xs),
+              _MoneyField(
+                controller: _totalController,
+                label: context.l10n.totalCostCny,
+              ),
+              const SizedBox(height: DrAiSpacing.xs),
+              _MoneyField(
+                controller: _payerController,
+                label: context.l10n.requestedFromPayerCny,
+              ),
+              const SizedBox(height: DrAiSpacing.xs),
+              _MoneyField(
+                controller: _patientController,
+                label: context.l10n.expectedPatientResponsibilityCny,
+              ),
+            ],
+            if (_error != null)
+              Padding(
+                padding: const EdgeInsets.only(top: DrAiSpacing.xs),
+                child: Text(
+                  _error!,
+                  style: const TextStyle(color: DrAiColors.danger),
+                ),
+              ),
+          ],
+        ),
+      ),
+      actions: <Widget>[
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(context.l10n.cancel),
+        ),
+        FilledButton(
+          key: const Key('save-cost-dialog'),
+          onPressed: _save,
+          child: Text(context.l10n.saveCost),
+        ),
+      ],
+    );
+  }
+
+  void _save() {
+    if (_pricingState == 'pending_cost') {
+      Navigator.of(context).pop(
+        const ClinicalFinancialDraft(
+          pricingState: 'pending_cost',
+          totalCostMinor: 0,
+          payerRequestedMinor: 0,
+          patientResponsibilityMinor: 0,
+        ),
+      );
+      return;
+    }
+    final total = _moneyMinor(_totalController.text);
+    final payer = _moneyMinor(_payerController.text);
+    final patient = _moneyMinor(_patientController.text);
+    if (total == null ||
+        total <= 0 ||
+        payer == null ||
+        patient == null ||
+        payer + patient != total) {
+      setState(() => _error = context.l10n.financialAllocationValidation);
+      return;
+    }
+    Navigator.of(context).pop(
+      ClinicalFinancialDraft(
+        pricingState: _pricingState,
+        totalCostMinor: total,
+        payerRequestedMinor: payer,
+        patientResponsibilityMinor: patient,
+      ),
+    );
   }
 }
 
@@ -3652,13 +4777,22 @@ class _ConsultationRequestPanelState
     extends ConsumerState<_ConsultationRequestPanel> {
   final _specialtyController = TextEditingController();
   final _summaryController = TextEditingController();
+  final _totalCostController = TextEditingController();
+  final _payerRequestedController = TextEditingController();
+  final _patientResponsibilityController = TextEditingController();
   String _priority = 'routine';
+  String _pricingState = 'pending_cost';
+  bool _billable = false;
+  ConsultationRequestItem? _editingConsultation;
   String? _validationError;
 
   @override
   void dispose() {
     _specialtyController.dispose();
     _summaryController.dispose();
+    _totalCostController.dispose();
+    _payerRequestedController.dispose();
+    _patientResponsibilityController.dispose();
     super.dispose();
   }
 
@@ -3666,6 +4800,10 @@ class _ConsultationRequestPanelState
   Widget build(BuildContext context) {
     final list = ref.watch(consultationListProvider);
     final createState = ref.watch(consultationRequestControllerProvider);
+    final financialLedger = ref
+        .watch(patientCareCostLedgerProvider(widget.patientId))
+        .asData
+        ?.value;
     return DecoratedBox(
       decoration: BoxDecoration(
         color: DrAiColors.surfaceSubtle,
@@ -3733,6 +4871,17 @@ class _ConsultationRequestPanelState
               onSelectionChanged: (values) =>
                   setState(() => _priority = values.first),
             ),
+            const SizedBox(height: DrAiSpacing.sm),
+            _ClinicalFinancialSection(
+              billable: _billable,
+              pricingState: _pricingState,
+              totalController: _totalCostController,
+              payerController: _payerRequestedController,
+              patientController: _patientResponsibilityController,
+              onBillableChanged: (value) => setState(() => _billable = value),
+              onPricingStateChanged: (value) =>
+                  setState(() => _pricingState = value),
+            ),
             if (_validationError != null)
               _InlineMessage(
                 message: _validationError!,
@@ -3765,7 +4914,11 @@ class _ConsultationRequestPanelState
                   ? null
                   : _submit,
               icon: const Icon(Icons.outgoing_mail),
-              label: Text(context.l10n.requestSpecialistReview),
+              label: Text(
+                _editingConsultation == null
+                    ? context.l10n.requestSpecialistReview
+                    : context.l10n.saveConsultationCost,
+              ),
             ),
             const SizedBox(height: DrAiSpacing.sm),
             list.when(
@@ -3796,13 +4949,46 @@ class _ConsultationRequestPanelState
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
                     for (final item in items)
-                      _InfoTile(
-                        title:
-                            '${item.specialty} - ${context.l10n.stableValue(item.status)}',
-                        subtitle: context.l10n.priority(
-                          context.l10n.stableValue(item.priority),
-                        ),
-                        body: item.questionSummary,
+                      Builder(
+                        builder: (context) {
+                          final companion = _sourceFinancialCompanion(
+                            financialLedger,
+                            sourceType: 'consultation',
+                            sourceRecordId: item.clinicalServiceId,
+                          );
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: <Widget>[
+                              _InfoTile(
+                                title:
+                                    '${item.specialty} - ${context.l10n.stableValue(item.status)}',
+                                subtitle: context.l10n.priority(
+                                  context.l10n.stableValue(item.priority),
+                                ),
+                                body:
+                                    '${item.questionSummary}\n'
+                                    '${context.l10n.financialStatus}: '
+                                    '${_financialStatusText(context, companion)}',
+                              ),
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: TextButton.icon(
+                                  key: Key(
+                                    'edit-consultation-cost-${item.consultationId}',
+                                  ),
+                                  onPressed: () => _editConsultationFinancial(
+                                    item,
+                                    financialLedger,
+                                  ),
+                                  icon: const Icon(Icons.price_change_outlined),
+                                  label: Text(
+                                    _financialActionText(context, companion),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
                       ),
                   ],
                 );
@@ -3823,16 +5009,98 @@ class _ConsultationRequestPanelState
       });
       return;
     }
+    final financial = _consultationFinancialDraft();
+    if (_billable && financial == null) return;
     setState(() => _validationError = null);
-    ref
-        .read(consultationRequestControllerProvider.notifier)
-        .create(
-          patientId: widget.patientId,
-          clinicalEventId: widget.clinicalEventId,
-          specialty: specialty,
-          questionSummary: summary,
-          priority: _priority,
-        );
+    final editing = _editingConsultation;
+    final controller = ref.read(consultationRequestControllerProvider.notifier);
+    if (editing != null) {
+      if (financial == null) {
+        setState(() {
+          _validationError = context.l10n.financialAllocationValidation;
+        });
+        return;
+      }
+      controller.updateFinancial(
+        patientId: widget.patientId,
+        consultation: editing,
+        financial: financial,
+      );
+    } else {
+      controller.create(
+        patientId: widget.patientId,
+        clinicalEventId: widget.clinicalEventId,
+        specialty: specialty,
+        questionSummary: summary,
+        priority: _priority,
+        financial: financial,
+      );
+    }
+  }
+
+  ClinicalFinancialDraft? _consultationFinancialDraft() {
+    if (!_billable) return null;
+    if (_pricingState == 'pending_cost') {
+      return const ClinicalFinancialDraft(
+        pricingState: 'pending_cost',
+        totalCostMinor: 0,
+        payerRequestedMinor: 0,
+        patientResponsibilityMinor: 0,
+      );
+    }
+    final total = _moneyMinor(_totalCostController.text);
+    final payer = _moneyMinor(_payerRequestedController.text);
+    final patient = _moneyMinor(_patientResponsibilityController.text);
+    if (total == null ||
+        total <= 0 ||
+        payer == null ||
+        patient == null ||
+        payer + patient != total) {
+      setState(() {
+        _validationError = context.l10n.financialAllocationValidation;
+      });
+      return null;
+    }
+    return ClinicalFinancialDraft(
+      pricingState: _pricingState,
+      totalCostMinor: total,
+      payerRequestedMinor: payer,
+      patientResponsibilityMinor: patient,
+    );
+  }
+
+  void _editConsultationFinancial(
+    ConsultationRequestItem consultation,
+    CareCostLedgerData? ledger,
+  ) {
+    CareCostItemData? companion;
+    for (final event in ledger?.events ?? const <CareCostEventData>[]) {
+      for (final item in event.items) {
+        if (item.sourceType == 'consultation' &&
+            item.sourceRecordId == consultation.clinicalServiceId) {
+          companion = item;
+          break;
+        }
+      }
+    }
+    setState(() {
+      _specialtyController.text = consultation.specialty;
+      _summaryController.text = consultation.questionSummary;
+      _priority = consultation.priority;
+      _editingConsultation = consultation;
+      _billable = true;
+      _pricingState = companion?.pricingState ?? 'pending_cost';
+      _totalCostController.text = companion == null
+          ? ''
+          : _yuanText(companion.actualCostMinor);
+      _payerRequestedController.text = companion == null
+          ? ''
+          : _yuanText(companion.payerRequestedMinor);
+      _patientResponsibilityController.text = companion == null
+          ? ''
+          : _yuanText(companion.patientResponsibilityMinor);
+      _validationError = null;
+    });
   }
 }
 

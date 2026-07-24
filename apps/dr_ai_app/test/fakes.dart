@@ -72,6 +72,21 @@ const payerSession = AuthSession(
   user: payerUser,
 );
 
+const demoPayerProfile = PayerProfileData(
+  membershipId: 'payer-membership-test-id',
+  displayName: 'Lin Reviewer',
+  title: 'Medical expenditure reviewer',
+  status: 'active',
+  scope: 'synthetic_review',
+  organization: PayerOrganizationData(
+    id: 'payer-organization-test-id',
+    name: 'Synthetic Municipal Medical Insurance',
+    organizationType: 'public_payer',
+    jurisdictionCode: 'CN',
+    verificationStatus: 'synthetic_only',
+  ),
+);
+
 const unsupportedRoleSession = AuthSession(
   accessToken: 'test-access',
   refreshToken: 'test-refresh',
@@ -544,6 +559,7 @@ final demoImagingPresign = MedicalImagingPresign(
   assetId: 'imaging-created-id',
   patientId: 'patient-profile-test-id',
   clinicalEventId: 'clinical-event-test-id',
+  clinicalServiceId: 'clinical-service-test-id',
   uploadUrl:
       'https://tencent-cos-upload.invalid/medical-imaging-assets/asset.png',
   method: 'PUT',
@@ -710,6 +726,17 @@ final demoChatResult = ChatMessageResult(
   isRedFlag: false,
   model: 'deepseek-v4-flash',
   createdAt: DateTime(2026, 7, 5, 12),
+  groundingMode: 'approved_evidence',
+  sources: const <ChatSourceCard>[
+    ChatSourceCard(
+      number: 1,
+      passageId: 'KBPASS-SYNTHETIC-DEMO',
+      title: 'Reviewed blood-pressure education',
+      publisher: 'Synthetic health authority',
+      officialLocator: 'https://example.invalid/reviewed-source',
+      lastMedicalReviewDate: '2026-07-16',
+    ),
+  ],
   contextUsed: const <ChatContextCard>[
     ChatContextCard(
       category: 'measurements',
@@ -726,6 +753,7 @@ final demoConsultation = ConsultationRequestItem(
   consultationId: 'consultation-test-id',
   patientId: 'patient-profile-test-id',
   clinicalEventId: 'clinical-event-test-id',
+  clinicalServiceId: 'consultation-service-test-id',
   specialty: 'Pulmonology demo review',
   questionSummary: 'Synthetic review of recovery-plan education questions.',
   priority: 'routine',
@@ -751,9 +779,12 @@ class FakeDrAiRepository implements DrAiRepository {
     AssessmentListData? assessments,
     RecoveryPlanListData? recoveryPlans,
     PatientTodayData? patientToday,
+    ChatMessageResult? chatResult,
     ConsultationListData? consultations,
     List<MedicalResourceFixture>? medicalResources,
     Map<String, MedicalResourceDetail>? medicalResourceDetails,
+    List<PayerRequestData>? payerRequests,
+    PayerProfileData? payerProfile,
     this.patientListError,
     this.patientCareError,
     this.presignError,
@@ -764,6 +795,7 @@ class FakeDrAiRepository implements DrAiRepository {
     this.completionError,
     this.chatError,
     this.consultationError,
+    this.payerProfileUpdateError,
     this.loginCompleter,
   }) : dashboard = dashboard ?? doctorDashboard,
        patientList =
@@ -778,12 +810,17 @@ class FakeDrAiRepository implements DrAiRepository {
            recoveryPlans ??
            RecoveryPlanListData(items: <RecoveryPlanData>[demoRecoveryPlan]),
        patientToday = patientToday ?? demoPatientToday,
+       chatResult = chatResult ?? demoChatResult,
        consultations =
            consultations ??
            const ConsultationListData(items: <ConsultationRequestItem>[]),
        medicalResources =
            medicalResources ?? authoritativeMedicalResourceCatalog,
-       medicalResourceDetails = medicalResourceDetails ?? const {};
+       medicalResourceDetails = medicalResourceDetails ?? const {},
+       _payerRequests = List<PayerRequestData>.from(
+         payerRequests ?? <PayerRequestData>[payerRequestFixture()],
+       ),
+       _payerProfile = payerProfile ?? demoPayerProfile;
 
   AuthSession? restoredSession;
   AuthSession loginSession;
@@ -798,9 +835,12 @@ class FakeDrAiRepository implements DrAiRepository {
   AssessmentListData assessments;
   RecoveryPlanListData recoveryPlans;
   PatientTodayData patientToday;
+  ChatMessageResult chatResult;
   ConsultationListData consultations;
   List<MedicalResourceFixture> medicalResources;
   Map<String, MedicalResourceDetail> medicalResourceDetails;
+  final List<PayerRequestData> _payerRequests;
+  PayerProfileData _payerProfile;
   ApiError? patientListError;
   ApiError? patientCareError;
   ApiError? presignError;
@@ -811,6 +851,7 @@ class FakeDrAiRepository implements DrAiRepository {
   ApiError? completionError;
   ApiError? chatError;
   ApiError? consultationError;
+  ApiError? payerProfileUpdateError;
   Completer<AuthSession>? loginCompleter;
   bool logoutCalled = false;
   bool registerCalled = false;
@@ -824,9 +865,15 @@ class FakeDrAiRepository implements DrAiRepository {
   bool clinicalEventUpdateSubmitted = false;
   bool medicalHistoryReviewCreated = false;
   bool medicationSaved = false;
+  ClinicalFinancialDraft? lastMedicationFinancial;
+  ClinicalFinancialDraft? lastConsultationFinancial;
+  int consultationFinancialUpdates = 0;
   bool prescriptionCreated = false;
   bool medicationReminderSaved = false;
   bool imagingPrepared = false;
+  String? lastImagingClinicalServiceId;
+  bool clinicalServiceSaved = false;
+  int clinicalServiceFinancialUpdates = 0;
   bool imagingCompleted = false;
   bool imagingReviewed = false;
   bool doctorProfileUpdated = false;
@@ -839,6 +886,12 @@ class FakeDrAiRepository implements DrAiRepository {
   String? lastLoginPassword;
   int chatMessagesSent = 0;
   String? lastChatMessage;
+  bool payerRequestCreated = false;
+  List<String> lastPayerRequestItemIds = const <String>[];
+  bool payerProfileUpdated = false;
+  int payerProfileUpdateCount = 0;
+  int payerProfileLoadCount = 0;
+  int payerDashboardLoadCount = 0;
 
   @override
   Future<AuthSession?> restore() async => restoredSession;
@@ -1418,8 +1471,10 @@ class FakeDrAiRepository implements DrAiRepository {
     required String schedule,
     required String status,
     required String note,
+    ClinicalFinancialDraft? financial,
   }) async {
     medicationSaved = true;
+    lastMedicationFinancial = financial;
     final medication = MedicationItem(
       id: medicationId ?? 'created-medication-id',
       clinicalEventId: clinicalEventId,
@@ -1531,6 +1586,7 @@ class FakeDrAiRepository implements DrAiRepository {
   Future<MedicalImagingPresign> presignMedicalImaging({
     required String patientId,
     required String? clinicalEventId,
+    String? clinicalServiceId,
     required String filename,
     required String contentType,
     required int sizeBytes,
@@ -1539,7 +1595,82 @@ class FakeDrAiRepository implements DrAiRepository {
       throw imagingError!;
     }
     imagingPrepared = true;
+    lastImagingClinicalServiceId = clinicalServiceId;
     return demoImagingPresign;
+  }
+
+  @override
+  Future<ClinicalServiceItem> saveClinicalService({
+    required String patientId,
+    required String? serviceId,
+    required String clinicalEventId,
+    required String name,
+    required String serviceSubtype,
+    required String bodyRegion,
+    required String status,
+    required DateTime? scheduledAt,
+    required DateTime? performedAt,
+    required String indicationSummary,
+    ClinicalFinancialDraft? financial,
+  }) async {
+    clinicalServiceSaved = true;
+    final service = ClinicalServiceItem(
+      id: serviceId ?? 'clinical-service-test-id',
+      patientId: patientId,
+      clinicalEventId: clinicalEventId,
+      category: 'imaging',
+      name: name,
+      serviceSubtype: serviceSubtype,
+      bodyRegion: bodyRegion,
+      orderedByDoctorId: 'doctor-profile-test-id',
+      status: status,
+      orderedAt: DateTime(2026, 7, 24),
+      scheduledAt: scheduledAt,
+      performedAt: performedAt,
+      indicationSummary: indicationSummary,
+      imagingAssetIds: const <String>[],
+      createdAt: DateTime(2026, 7, 24),
+      updatedAt: DateTime(2026, 7, 24),
+    );
+    patientCareBundle = _copyCareBundle(
+      patientCareBundle,
+      clinicalServices: <ClinicalServiceItem>[
+        service,
+        ...patientCareBundle.clinicalServices.where(
+          (item) => item.id != service.id,
+        ),
+      ],
+    );
+    return service;
+  }
+
+  @override
+  Future<CareCostItemData> updateClinicalServiceFinancial({
+    required String patientId,
+    required String serviceId,
+    required ClinicalFinancialDraft financial,
+  }) async {
+    clinicalServiceFinancialUpdates += 1;
+    return CareCostItemData(
+      id: 'imaging-cost-test-id',
+      clinicalEventId: 'clinical-event-test-id',
+      itemType: 'imaging',
+      label: 'CT chest',
+      serviceDate: financial.serviceDate ?? DateTime(2026, 7, 24),
+      status: 'scheduled',
+      pricingState: financial.pricingState,
+      sourceType: 'imaging',
+      sourceRecordId: serviceId,
+      submissionEligible: financial.pricingState != 'pending_cost',
+      quantity: 1,
+      currency: 'CNY',
+      actualCostMinor: financial.totalCostMinor,
+      payerRequestedMinor: financial.payerRequestedMinor,
+      patientResponsibilityMinor: financial.patientResponsibilityMinor,
+      aiReviewStatus: 'not_evaluated',
+      createdAt: DateTime(2026, 7, 24),
+      updatedAt: DateTime(2026, 7, 24),
+    );
   }
 
   @override
@@ -1894,7 +2025,7 @@ class FakeDrAiRepository implements DrAiRepository {
     }
     chatMessagesSent += 1;
     lastChatMessage = message;
-    return demoChatResult;
+    return chatResult;
   }
 
   @override
@@ -1922,14 +2053,17 @@ class FakeDrAiRepository implements DrAiRepository {
     required String specialty,
     required String questionSummary,
     required String priority,
+    ClinicalFinancialDraft? financial,
   }) async {
     if (consultationError != null) {
       throw consultationError!;
     }
+    lastConsultationFinancial = financial;
     final request = ConsultationRequestItem(
       consultationId: 'created-consultation-id',
       patientId: patientId,
       clinicalEventId: clinicalEventId,
+      clinicalServiceId: 'created-consultation-service-id',
       specialty: specialty,
       questionSummary: questionSummary,
       priority: priority,
@@ -1943,6 +2077,39 @@ class FakeDrAiRepository implements DrAiRepository {
       items: <ConsultationRequestItem>[request, ...consultations.items],
     );
     return request;
+  }
+
+  @override
+  Future<CareCostItemData> updateConsultationFinancial({
+    required String patientId,
+    required String consultationId,
+    required ClinicalFinancialDraft financial,
+  }) async {
+    if (consultationError != null) {
+      throw consultationError!;
+    }
+    lastConsultationFinancial = financial;
+    consultationFinancialUpdates += 1;
+    return CareCostItemData(
+      id: 'consultation-cost-item-test-id',
+      clinicalEventId: 'clinical-event-test-id',
+      itemType: 'consultation',
+      label: 'Cardiology consultation',
+      serviceDate: DateTime(2026, 7, 24),
+      status: 'scheduled',
+      pricingState: financial.pricingState,
+      sourceType: 'consultation',
+      sourceRecordId: consultationId,
+      submissionEligible: financial.pricingState != 'pending_cost',
+      quantity: 1,
+      currency: 'CNY',
+      actualCostMinor: financial.totalCostMinor,
+      payerRequestedMinor: financial.payerRequestedMinor,
+      patientResponsibilityMinor: financial.patientResponsibilityMinor,
+      aiReviewStatus: 'not_evaluated',
+      createdAt: DateTime(2026, 7, 24),
+      updatedAt: DateTime(2026, 7, 24),
+    );
   }
 
   @override
@@ -1975,6 +2142,10 @@ class FakeDrAiRepository implements DrAiRepository {
       label: label,
       serviceDate: serviceDate,
       status: status,
+      pricingState: 'final',
+      sourceType: 'medication',
+      sourceRecordId: 'created-medication-id',
+      submissionEligible: true,
       quantity: quantity,
       currency: 'CNY',
       actualCostMinor: actualCostMinor,
@@ -2007,12 +2178,19 @@ class FakeDrAiRepository implements DrAiRepository {
     required List<String> careCostItemIds,
     required String doctorSummary,
   }) async {
-    return _fakePayerRequest(patientId: patientId, summary: doctorSummary);
+    payerRequestCreated = true;
+    lastPayerRequestItemIds = List<String>.from(careCostItemIds);
+    final request = _fakePayerRequest(
+      patientId: patientId,
+      summary: doctorSummary,
+    );
+    _payerRequests.insert(0, request);
+    return request;
   }
 
   @override
   Future<List<PayerRequestData>> loadDoctorPayerRequests() async {
-    return <PayerRequestData>[_fakePayerRequest()];
+    return List<PayerRequestData>.unmodifiable(_payerRequests);
   }
 
   @override
@@ -2022,6 +2200,7 @@ class FakeDrAiRepository implements DrAiRepository {
 
   @override
   Future<PayerDashboardData> loadPayerDashboard() async {
+    payerDashboardLoadCount += 1;
     return PayerDashboardData(
       profile: await loadPayerProfile(),
       openRequests: 1,
@@ -2034,14 +2213,29 @@ class FakeDrAiRepository implements DrAiRepository {
 
   @override
   Future<PayerProfileData> loadPayerProfile() async {
-    return PayerProfileData(
-      membershipId: 'payer-membership-test-id',
-      displayName: 'Lin Reviewer',
-      title: 'Medical expenditure reviewer',
-      status: 'active',
-      scope: 'synthetic_review',
-      organization: _fakeOrganization(),
+    payerProfileLoadCount += 1;
+    return _payerProfile;
+  }
+
+  @override
+  Future<PayerProfileData> updatePayerProfile({
+    required String displayName,
+    required String title,
+  }) async {
+    if (payerProfileUpdateError != null) {
+      throw payerProfileUpdateError!;
+    }
+    payerProfileUpdated = true;
+    payerProfileUpdateCount += 1;
+    _payerProfile = PayerProfileData(
+      membershipId: _payerProfile.membershipId,
+      displayName: displayName,
+      title: title,
+      status: _payerProfile.status,
+      scope: _payerProfile.scope,
+      organization: _payerProfile.organization,
     );
+    return _payerProfile;
   }
 
   @override
@@ -2056,7 +2250,15 @@ class FakeDrAiRepository implements DrAiRepository {
     required String reasonCode,
     String? note,
   }) async {
-    return _fakePayerRequest(status: action == 'accept' ? 'accepted' : action);
+    final status = switch (action) {
+      'accept' => 'accepted',
+      'reject' => 'rejected',
+      'request_clarification' => 'clarification_requested',
+      'escalate' => 'escalated',
+      'close' => 'closed',
+      _ => action,
+    };
+    return _fakePayerRequest(status: status);
   }
 
   CareCostLedgerData _fakeLedger({
@@ -2065,10 +2267,14 @@ class FakeDrAiRepository implements DrAiRepository {
     final item = CareCostItemData(
       id: 'care-cost-item-test-id',
       clinicalEventId: 'clinical-event-test-id',
-      itemType: 'imaging',
-      label: 'Chest CT review',
+      itemType: 'medication',
+      label: 'Inhaled medication',
       serviceDate: DateTime(2026, 7, 23),
       status: 'completed',
+      pricingState: 'final',
+      sourceType: 'medication',
+      sourceRecordId: 'medication-test-id',
+      submissionEligible: true,
       quantity: 1,
       currency: 'CNY',
       actualCostMinor: 68000,
@@ -2115,23 +2321,49 @@ class FakeDrAiRepository implements DrAiRepository {
     String summary = 'Clinician-reviewed synthetic care request.',
     String status = 'submitted',
   }) {
+    return payerRequestFixture(
+      patientId: patientId,
+      summary: summary,
+      status: status,
+      organization: _fakeOrganization(),
+    );
+  }
+
+  static PayerRequestData payerRequestFixture({
+    String id = 'payer-request-test-id',
+    String patientId = 'patient-profile-test-id',
+    String clinicalEventTitle = 'Respiratory follow-up',
+    String summary = 'Clinician-reviewed synthetic care request.',
+    String status = 'submitted',
+    DateTime? reviewedAt,
+    List<PayerReviewData> reviews = const <PayerReviewData>[],
+    PayerOrganizationData organization = const PayerOrganizationData(
+      id: 'payer-organization-test-id',
+      name: 'Synthetic Municipal Medical Insurance',
+      organizationType: 'public_payer',
+      jurisdictionCode: 'CN',
+      verificationStatus: 'synthetic_only',
+    ),
+  }) {
     return PayerRequestData(
-      id: 'payer-request-test-id',
+      id: id,
       clinicalEventId: 'clinical-event-test-id',
-      clinicalEventTitle: 'Respiratory follow-up',
+      clinicalEventTitle: clinicalEventTitle,
       patientId: patientId,
       patientDisplayName: 'Riley Demo Patient',
       doctorDisplayName: 'Dr. Avery Demo',
-      payerOrganization: _fakeOrganization(),
+      payerOrganization: organization,
       status: status,
       currency: 'CNY',
       requestedTotalMinor: 50000,
       doctorSummary: summary,
       aiReviewStatus: 'not_evaluated',
       createdAt: DateTime(2026, 7, 23),
+      reviewedAt: reviewedAt,
       lines: <PayerRequestLineData>[
         PayerRequestLineData(
           id: 'payer-request-line-test-id',
+          careCostItemId: 'care-cost-item-test-id',
           itemType: 'imaging',
           label: 'Chest CT review',
           serviceDate: DateTime(2026, 7, 23),
@@ -2141,7 +2373,7 @@ class FakeDrAiRepository implements DrAiRepository {
           patientResponsibilityMinor: 18000,
         ),
       ],
-      reviews: const <PayerReviewData>[],
+      reviews: reviews,
     );
   }
 
@@ -2256,6 +2488,7 @@ PatientCareBundle _copyCareBundle(
   PatientProfile? patient,
   List<MedicationItem>? medications,
   List<ClinicalEventItem>? clinicalEvents,
+  List<ClinicalServiceItem>? clinicalServices,
   List<ClinicalEventUpdateItem>? clinicalEventUpdates,
   List<MedicalHistoryReviewItem>? medicalHistoryReviews,
   List<PatientAllergyItem>? allergies,
@@ -2269,6 +2502,7 @@ PatientCareBundle _copyCareBundle(
   return PatientCareBundle(
     patient: patient ?? bundle.patient,
     clinicalEvents: clinicalEvents ?? bundle.clinicalEvents,
+    clinicalServices: clinicalServices ?? bundle.clinicalServices,
     clinicalEventUpdates: clinicalEventUpdates ?? bundle.clinicalEventUpdates,
     medicalHistoryReviews:
         medicalHistoryReviews ?? bundle.medicalHistoryReviews,

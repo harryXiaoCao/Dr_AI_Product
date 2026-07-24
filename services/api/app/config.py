@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     deepseek_base_url: str = "https://api.deepseek.com/chat/completions"
     deepseek_model: str = "deepseek-v4-flash"
     deepseek_timeout_seconds: float = 8.0
+    chatbot_grounded_generation_enabled: bool = True
+    chatbot_general_model_knowledge_enabled: bool = True
+    chatbot_grounded_answer_schema_version: str = "grounded-answer-v2-2026-07-24"
+    chatbot_general_answer_schema_version: str = "general-knowledge-v1-2026-07-24"
     retrieval_rescue_enabled: bool = True
     retrieval_rescue_max_latency_ms: int = Field(default=2500, ge=100, le=10000)
     retrieval_rescue_max_cost_microunits: int = Field(default=1000, ge=1, le=100000)
@@ -56,9 +60,7 @@ class Settings(BaseSettings):
     knowledge_reranker_model: str = "dr-ai-policy-reranker-v5-central-clinical-concepts"
     knowledge_reranker_timeout_seconds: float = 3.0
     knowledge_reranker_max_candidates: int = Field(default=30, ge=1, le=30)
-    knowledge_model_service_data_region: Literal["hong_kong", "mainland_china"] = (
-        "mainland_china"
-    )
+    knowledge_model_service_data_region: Literal["hong_kong", "mainland_china"] = "mainland_china"
 
     model_config = SettingsConfigDict(
         env_file=".env",

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:dr_ai_app/app/app.dart';
 import 'package:dr_ai_app/features/auth/application/auth_controller.dart';
+import 'package:dr_ai_app/features/care_cost/domain/care_cost_data.dart';
 import 'package:dr_ai_app/shared/widgets/brand_mark.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -71,6 +72,50 @@ void main() {
       await expectLater(
         find.byType(DrAiApp),
         matchesGoldenFile('goldens/payer_review_queue_1280x832.png'),
+      );
+    },
+    skip: skipCareCostGoldensOnCi,
+  );
+
+  testWidgets(
+    'doctor payment request workspace matches the desktop visual target',
+    (tester) async {
+      setCareCostGoldenViewport(tester, const Size(1280, 832));
+      await pumpCareCostGolden(
+        tester,
+        repository: FakeDrAiRepository(
+          restoredSession: doctorSession,
+          payerRequests: const <PayerRequestData>[],
+        ),
+        route:
+            '/doctor/payer-requests?patient=patient-profile-test-id&event=clinical-event-test-id',
+      );
+
+      await expectLater(
+        find.byType(DrAiApp),
+        matchesGoldenFile('goldens/doctor_payment_requests_1280x832.png'),
+      );
+    },
+    skip: skipCareCostGoldensOnCi,
+  );
+
+  testWidgets(
+    'doctor payment request workspace matches the mobile visual target',
+    (tester) async {
+      setCareCostGoldenViewport(tester, const Size(412, 917));
+      await pumpCareCostGolden(
+        tester,
+        repository: FakeDrAiRepository(
+          restoredSession: doctorSession,
+          payerRequests: const <PayerRequestData>[],
+        ),
+        route:
+            '/doctor/payer-requests?patient=patient-profile-test-id&event=clinical-event-test-id',
+      );
+
+      await expectLater(
+        find.byType(DrAiApp),
+        matchesGoldenFile('goldens/doctor_payment_requests_412x917.png'),
       );
     },
     skip: skipCareCostGoldensOnCi,

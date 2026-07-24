@@ -783,14 +783,16 @@ erDiagram
   CLINICS ||--o{ REVENUE_SUMMARIES : summarizes
 ```
 
-## Implemented 2026-07-23 Care-And-Cost Vertical Slice
+## Implemented 2026-07-24 Clinical-Service And Care-Cost Vertical Slice
 
-This thin slice establishes a real three-party workflow without pretending to
-be a claims-adjudication or AI decision system. `care_cost_items` are editable
-doctor-authored rows under an existing Clinical Event. Submission creates a
-`payer_request` and immutable `payer_request_lines` snapshot so later item edits
-do not rewrite what was reviewed. Payer actions are human-authored through an
-active organization membership. AI fields default to `not_evaluated`/`null`.
+This slice establishes a real three-party workflow without pretending to be a
+claims-adjudication or AI decision system. `care_cost_items` are active
+financial companions created and edited through supported price-bearing
+clinical records under an existing Clinical Event. Submission creates a
+`payer_request` and immutable `payer_request_lines` snapshot so later source
+edits do not rewrite what was reviewed. Payer actions are human-authored
+through an active organization membership. AI fields default to
+`not_evaluated`/`null`.
 
 ```mermaid
 erDiagram
@@ -799,6 +801,14 @@ erDiagram
   PATIENT_PROFILES ||--o{ CARE_COST_ITEMS : owns
   CLINICAL_EVENTS ||--o{ CARE_COST_ITEMS : groups
   USERS ||--o{ CARE_COST_ITEMS : creates
+  MEDICATIONS ||--o| CARE_COST_ITEMS : priced_by
+  CLINICAL_SERVICES ||--o| CARE_COST_ITEMS : priced_by
+  CLINICAL_EVENTS ||--o{ CLINICAL_SERVICES : contains
+  PATIENT_PROFILES ||--o{ CLINICAL_SERVICES : receives
+  DOCTOR_PROFILES ||--o{ CLINICAL_SERVICES : orders
+  APPOINTMENTS o|--o{ CLINICAL_SERVICES : schedules
+  CLINICAL_SERVICES ||--o{ MEDICAL_IMAGING_ASSETS : evidenced_by
+  CLINICAL_SERVICES o|--o| CONSULTATION_REQUESTS : fulfills
   CLINICAL_EVENTS ||--o{ PAYER_REQUESTS : packages
   PATIENT_PROFILES ||--o{ PAYER_REQUESTS : concerns
   DOCTOR_PROFILES ||--o{ PAYER_REQUESTS : submits
@@ -828,15 +838,38 @@ erDiagram
     datetime_tz created_at
   }
 
+  CLINICAL_SERVICES {
+    uuid id PK
+    uuid patient_id FK
+    uuid clinical_event_id FK
+    varchar category
+    varchar name
+    varchar service_subtype "nullable"
+    varchar body_region "nullable"
+    varchar service_code "nullable"
+    uuid ordered_by_doctor_id FK
+    varchar performing_provider_name "nullable"
+    uuid clinic_id FK "nullable"
+    uuid appointment_id FK "nullable"
+    varchar status
+    datetime_tz ordered_at "nullable"
+    datetime_tz scheduled_at "nullable"
+    datetime_tz performed_at "nullable"
+    text indication_summary "nullable"
+  }
+
   CARE_COST_ITEMS {
     uuid id PK
     uuid patient_id FK
     uuid clinical_event_id FK
     uuid created_by_user_id FK
+    uuid medication_id FK "nullable; unique when present"
+    uuid clinical_service_id FK "nullable; unique when present"
     varchar item_type
     varchar label
     date service_date
     varchar status
+    varchar pricing_state "pending_cost, estimated, final"
     int quantity
     varchar currency
     int actual_cost_minor
@@ -887,6 +920,37 @@ erDiagram
     datetime_tz created_at
   }
 ```
+
+`care_cost_items` are the active financial companions used by both the patient
+ledger and payer-request preparation, not free-standing clinical records. The
+implemented source link is exactly one of nullable `medication_id` or
+`clinical_service_id`. Foreign keys preserve deletion integrity and partial
+unique indexes prevent duplicate active companions for one source. Historical
+generic rows may have neither link, remain readable, and are
+submission-ineligible.
+
+Medication/product and Clinical Service records are currently price-bearing.
+Specialist consultations use a one-to-one `category = consultation` service;
+imaging procedures use `category = imaging`. Prescription documents reference
+the medication and do not create a second charge. Uploaded imaging
+assets/reports, diagnoses, history, notes, recovery artifacts, reminders, and
+patient updates are evidence or documentation rather than charge sources.
+Future tests and treatment sessions must be persisted as governed Clinical
+Services before they can receive a financial companion.
+
+Appointments schedule; Clinical Services represent ordered or delivered care;
+imaging assets/reports evidence the service. A booking does not become
+billable merely because it exists. Equipment bookings likewise remain
+non-billable until an explicit rental/use/deposit/cancellation policy is
+implemented. The next extension order is: imaging procedures; completed
+consultation/visit plus appointment relationship; laboratory tests;
+treatment/therapy sessions; governed equipment rental/use or explicit fees.
+
+Clinical source and companion writes share one transaction. Editing the source
+synchronizes the active patient-visible row. Deleting it cascades that active
+companion; `payer_request_lines.care_cost_item_id` becomes null while the
+snapshotted label, date, type, and amounts remain immutable historical
+evidence.
 
 `payer_requests` are review packages, not formal claims. The current slice has
 no coverage decision, allowed/paid amount, reference price, expected-care
@@ -1302,7 +1366,12 @@ erDiagram
   patient-owned history without silently overwriting patient identity.
 - `medications`, `prescriptions`, `prescription_medications`, and
   `medication_reminders`: medication-management and reminder state.
-- `medical_imaging_assets`: real imaging metadata and review workflow.
+- `clinical_services`: canonical ordered/scheduled/delivered service lifecycle.
+  The implemented writable category is imaging; consultation requests also
+  resolve through one service. Future laboratory/treatment categories reuse
+  this table only after their real workflows are implemented.
+- `medical_imaging_assets`: imaging metadata, evidence, and review workflow
+  linked optionally to the imaging service; an asset is never itself a charge.
 - `demo_medical_assets`: historical/demo upload-presign foundation; should not
   be treated as the production medical-imaging source of truth.
 - `recovery_plans`, `recovery_tasks`, and `recovery_task_completions`: doctor
@@ -1419,6 +1488,13 @@ erDiagram
   prescriptions, reminders, imaging, recovery plans, notes, consultations, and
   patient updates should link to a clinical event whenever the workflow context
   exists.
+- `care_cost_items` link to exactly one medication/product or canonical
+  Clinical Service when source-linked. Historical unlinked rows remain readable
+  but submission-ineligible. Source patient, Clinical Event, lifecycle, and
+  financial allocation must agree at payer submission.
+- Appointments schedule Clinical Services and imaging assets evidence them.
+  Neither appointments, equipment reservations, uploads, reports, diagnoses,
+  notes, history facts, nor observations become charges implicitly.
 - Medical-history corrections and doctor verification belong in
   `medical_history_reviews`, not by silently overwriting patient-owned identity
   fields.

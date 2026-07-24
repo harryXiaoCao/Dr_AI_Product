@@ -659,6 +659,7 @@ class PatientCareBundle {
   const PatientCareBundle({
     required this.patient,
     this.clinicalEvents = const <ClinicalEventItem>[],
+    this.clinicalServices = const <ClinicalServiceItem>[],
     this.clinicalEventUpdates = const <ClinicalEventUpdateItem>[],
     this.medicalHistoryReviews = const <MedicalHistoryReviewItem>[],
     required this.allergies,
@@ -680,6 +681,12 @@ class PatientCareBundle {
       clinicalEvents: ((json['clinical_events'] as List?) ?? <Object>[])
           .map(
             (item) => ClinicalEventItem.fromJson(item as Map<String, dynamic>),
+          )
+          .toList(),
+      clinicalServices: ((json['clinical_services'] as List?) ?? <Object>[])
+          .map(
+            (item) =>
+                ClinicalServiceItem.fromJson(item as Map<String, dynamic>),
           )
           .toList(),
       clinicalEventUpdates:
@@ -756,6 +763,7 @@ class PatientCareBundle {
 
   final PatientProfile patient;
   final List<ClinicalEventItem> clinicalEvents;
+  final List<ClinicalServiceItem> clinicalServices;
   final List<ClinicalEventUpdateItem> clinicalEventUpdates;
   final List<MedicalHistoryReviewItem> medicalHistoryReviews;
   final List<PatientAllergyItem> allergies;
@@ -771,11 +779,89 @@ class PatientCareBundle {
   final List<DoctorNoteItem> doctorNotes;
 }
 
+class ClinicalServiceItem {
+  const ClinicalServiceItem({
+    required this.id,
+    required this.patientId,
+    required this.clinicalEventId,
+    required this.category,
+    required this.name,
+    required this.status,
+    required this.orderedByDoctorId,
+    required this.imagingAssetIds,
+    required this.createdAt,
+    required this.updatedAt,
+    this.serviceSubtype,
+    this.bodyRegion,
+    this.serviceCode,
+    this.performingProviderName,
+    this.clinicId,
+    this.appointmentId,
+    this.orderedAt,
+    this.scheduledAt,
+    this.performedAt,
+    this.indicationSummary,
+  });
+
+  factory ClinicalServiceItem.fromJson(Map<String, dynamic> json) {
+    DateTime? optionalDate(String key) {
+      final value = json[key] as String?;
+      return value == null ? null : DateTime.parse(value);
+    }
+
+    return ClinicalServiceItem(
+      id: json['id'] as String,
+      patientId: json['patient_id'] as String,
+      clinicalEventId: json['clinical_event_id'] as String,
+      category: json['category'] as String,
+      name: json['name'] as String,
+      serviceSubtype: json['service_subtype'] as String?,
+      bodyRegion: json['body_region'] as String?,
+      serviceCode: json['service_code'] as String?,
+      orderedByDoctorId: json['ordered_by_doctor_id'] as String,
+      performingProviderName: json['performing_provider_name'] as String?,
+      clinicId: json['clinic_id'] as String?,
+      appointmentId: json['appointment_id'] as String?,
+      status: json['status'] as String,
+      orderedAt: optionalDate('ordered_at'),
+      scheduledAt: optionalDate('scheduled_at'),
+      performedAt: optionalDate('performed_at'),
+      indicationSummary: json['indication_summary'] as String?,
+      imagingAssetIds: ((json['imaging_asset_ids'] as List?) ?? <Object>[])
+          .cast<String>(),
+      createdAt: DateTime.parse(json['created_at'] as String),
+      updatedAt: DateTime.parse(json['updated_at'] as String),
+    );
+  }
+
+  final String id;
+  final String patientId;
+  final String clinicalEventId;
+  final String category;
+  final String name;
+  final String? serviceSubtype;
+  final String? bodyRegion;
+  final String? serviceCode;
+  final String orderedByDoctorId;
+  final String? performingProviderName;
+  final String? clinicId;
+  final String? appointmentId;
+  final String status;
+  final DateTime? orderedAt;
+  final DateTime? scheduledAt;
+  final DateTime? performedAt;
+  final String? indicationSummary;
+  final List<String> imagingAssetIds;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+}
+
 class MedicalImagingAsset {
   const MedicalImagingAsset({
     required this.id,
     required this.patientId,
     this.clinicalEventId,
+    this.clinicalServiceId,
     required this.storageProvider,
     required this.contentType,
     required this.fileExtension,
@@ -805,6 +891,7 @@ class MedicalImagingAsset {
       id: json['id'] as String,
       patientId: json['patient_id'] as String,
       clinicalEventId: json['clinical_event_id'] as String?,
+      clinicalServiceId: json['clinical_service_id'] as String?,
       storageProvider: json['storage_provider'] as String,
       contentType: json['content_type'] as String,
       fileExtension: json['file_extension'] as String,
@@ -828,6 +915,7 @@ class MedicalImagingAsset {
   final String id;
   final String patientId;
   final String? clinicalEventId;
+  final String? clinicalServiceId;
   final String storageProvider;
   final String contentType;
   final String fileExtension;
@@ -852,6 +940,7 @@ class MedicalImagingPresign {
     required this.assetId,
     required this.patientId,
     this.clinicalEventId,
+    this.clinicalServiceId,
     required this.uploadUrl,
     required this.method,
     required this.headers,
@@ -868,6 +957,7 @@ class MedicalImagingPresign {
       assetId: json['asset_id'] as String,
       patientId: json['patient_id'] as String,
       clinicalEventId: json['clinical_event_id'] as String?,
+      clinicalServiceId: json['clinical_service_id'] as String?,
       uploadUrl: json['upload_url'] as String,
       method: json['method'] as String,
       headers: (json['headers'] as Map<String, dynamic>).cast<String, String>(),
@@ -883,6 +973,7 @@ class MedicalImagingPresign {
   final String assetId;
   final String patientId;
   final String? clinicalEventId;
+  final String? clinicalServiceId;
   final String uploadUrl;
   final String method;
   final Map<String, String> headers;
@@ -1240,6 +1331,7 @@ class ChatMessageResult {
     required this.isRedFlag,
     required this.model,
     required this.createdAt,
+    this.groundingMode = 'fixed_safety_response',
     this.emergencyLabel,
     this.fallbackReason,
     this.sources = const <ChatSourceCard>[],
@@ -1267,6 +1359,11 @@ class ChatMessageResult {
         fallbackReason: json['fallback_code'] as String?,
         model: json['model_version'] as String? ?? 'fixed-safety-response',
         createdAt: DateTime.now(),
+        groundingMode:
+            json['grounding_mode'] as String? ??
+            (((json['sources'] as List?) ?? <Object>[]).isNotEmpty
+                ? 'approved_evidence'
+                : 'fixed_safety_response'),
         sources: (json['sources'] as List)
             .map(
               (item) => ChatSourceCard.fromJson(item as Map<String, dynamic>),
@@ -1300,6 +1397,7 @@ class ChatMessageResult {
       fallbackReason: json['fallback_reason'] as String?,
       model: json['model'] as String,
       createdAt: DateTime.parse(json['created_at'] as String),
+      groundingMode: 'fixed_safety_response',
     );
   }
 
@@ -1315,6 +1413,7 @@ class ChatMessageResult {
   final String? fallbackReason;
   final String model;
   final DateTime createdAt;
+  final String groundingMode;
   final List<ChatSourceCard> sources;
   final List<ChatContextCard> contextUsed;
   final List<String> uncertainties;
@@ -1458,6 +1557,7 @@ class ConsultationRequestItem {
     required this.consultationId,
     required this.patientId,
     this.clinicalEventId,
+    this.clinicalServiceId,
     required this.specialty,
     required this.questionSummary,
     required this.priority,
@@ -1472,6 +1572,7 @@ class ConsultationRequestItem {
       consultationId: json['consultation_id'] as String,
       patientId: json['patient_id'] as String,
       clinicalEventId: json['clinical_event_id'] as String?,
+      clinicalServiceId: json['clinical_service_id'] as String?,
       specialty: json['specialty'] as String,
       questionSummary: json['question_summary'] as String,
       priority: json['priority'] as String,
@@ -1485,6 +1586,7 @@ class ConsultationRequestItem {
   final String consultationId;
   final String patientId;
   final String? clinicalEventId;
+  final String? clinicalServiceId;
   final String specialty;
   final String questionSummary;
   final String priority;

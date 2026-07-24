@@ -47,6 +47,12 @@ class EvidenceDecision(StrEnum):
     stale_or_superseded_only = "stale_or_superseded_only"
 
 
+class GroundingMode(StrEnum):
+    approved_evidence = "approved_evidence"
+    general_model_knowledge = "general_model_knowledge"
+    fixed_safety_response = "fixed_safety_response"
+
+
 class SafetyCode(StrEnum):
     permitted_education = "permitted_education"
     permitted_symptom_guidance = "permitted_symptom_guidance"
@@ -330,6 +336,18 @@ class StructuredModelOutput(BaseModel):
         return self
 
 
+class GeneralModelOutput(BaseModel):
+    """Citation-free output for the separately governed model-knowledge mode."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    answer_language: Literal["zh-Hans", "en"]
+    answer_sections: list[str] = Field(min_length=1, max_length=5)
+    uncertainties: list[str] = Field(default_factory=list, max_length=8)
+    next_action_code: NextActionCode = NextActionCode.none
+    declined_portion: str | None = Field(default=None, max_length=500)
+
+
 class PatientChatRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
@@ -343,10 +361,12 @@ class RetrievalQueryPlan(BaseModel):
 
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
+    normalized_intent: str = Field(min_length=1, max_length=120)
     concepts: list[str] = Field(min_length=1, max_length=8)
     synonyms: list[str] = Field(default_factory=list, max_length=12)
     language: Literal["zh-Hans", "en"]
     jurisdiction: Literal["CN"] = "CN"
+    ambiguity_reason: str | None = Field(default=None, max_length=240)
     excluded_content_classes: list[
         Literal[
             "clinical_guideline_doctor_only",
@@ -370,6 +390,12 @@ class RetrievalQueryPlan(BaseModel):
         if any(len(value) < 2 or len(value) > 300 for value in values):
             raise ValueError("Candidate queries must contain 2 to 300 characters.")
         return list(dict.fromkeys(values))
+
+    @model_validator(mode="after")
+    def require_ambiguity_reason_for_clarification(self) -> "RetrievalQueryPlan":
+        if self.clarification_needed != bool(self.ambiguity_reason):
+            raise ValueError("clarification_needed and ambiguity_reason must be present together.")
+        return self
 
 
 class PatientChatSourceCard(BaseModel):
@@ -395,6 +421,7 @@ class PatientChatContextCard(BaseModel):
 class PatientChatResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    grounding_mode: GroundingMode = GroundingMode.fixed_safety_response
     request_id: str
     session_id: str
     answer_language: Literal["zh-Hans", "en"]
@@ -405,19 +432,48 @@ class PatientChatResponse(BaseModel):
     limitation: str
     next_action_code: NextActionCode
     safety_code: SafetyCode
-    urgency_route: Literal[
-        "emergency_120",
-        "urgent_same_day",
-        "clinician_contact",
-        "routine_education",
-        "prohibited_medication_change",
-    ] | None = None
+    urgency_route: (
+        Literal[
+            "emergency_120",
+            "urgent_same_day",
+            "clinician_contact",
+            "routine_education",
+            "prohibited_medication_change",
+        ]
+        | None
+    ) = None
     evidence_decision: EvidenceDecision | None = None
     fallback_code: FallbackCode | None = None
     model_version: str | None = None
     emergency: bool = False
     suggested_action_codes: list[NextActionCode] = Field(default_factory=list, max_length=4)
     follow_up_question: str | None = Field(default=None, max_length=240)
+
+    @model_validator(mode="before")
+    @classmethod
+    def infer_historical_grounding_mode(cls, data: object) -> object:
+        if not isinstance(data, dict) or data.get("grounding_mode") is not None:
+            return data
+        migrated = dict(data)
+        migrated["grounding_mode"] = (
+            GroundingMode.approved_evidence
+            if migrated.get("sources")
+            else GroundingMode.fixed_safety_response
+        )
+        return migrated
+
+    @model_validator(mode="after")
+    def enforce_grounding_mode_contract(self) -> "PatientChatResponse":
+        if self.grounding_mode == GroundingMode.approved_evidence and not self.sources:
+            raise ValueError("Approved-evidence responses require real source cards.")
+        if self.grounding_mode != GroundingMode.approved_evidence and self.sources:
+            raise ValueError("Only approved-evidence responses may contain source cards.")
+        if self.grounding_mode == GroundingMode.general_model_knowledge:
+            if self.context_used:
+                raise ValueError("General-model-knowledge responses cannot use patient context.")
+            if self.fallback_code is not None:
+                raise ValueError("Generated general knowledge is not a fixed fallback.")
+        return self
 
 
 class PatientChatThreadSummary(BaseModel):
@@ -549,6 +605,14 @@ class ChatbotTelemetryEvent(BaseModel):
     retrieved_source_ids: list[str] = Field(default_factory=list, max_length=8)
     retrieved_passage_ids: list[str] = Field(default_factory=list, max_length=8)
     evidence_decision: EvidenceDecision | None = None
+    grounding_mode: GroundingMode = GroundingMode.fixed_safety_response
+    original_retrieval_adequate: bool | None = None
+    searched_query_variant_count: int = Field(default=0, ge=0, le=3)
+    retrieval_decision: str | None = Field(default=None, max_length=80)
+    general_knowledge_eligible: bool = False
+    general_knowledge_outcome: str | None = Field(default=None, max_length=80)
+    answer_schema_version: str | None = Field(default=None, max_length=120)
+    structured_output_repair_count: int = Field(default=0, ge=0, le=1)
     model_version: str | None = None
     policy_version: str
     tool_schema_version: str

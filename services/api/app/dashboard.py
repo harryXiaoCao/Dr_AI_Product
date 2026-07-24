@@ -9,10 +9,12 @@ from fastapi import APIRouter, Query, Request, Response, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
+from app.care_cost import sync_clinical_financial
 from app.chatbot_contracts import PatientChatRequest
 from app.dependencies import AppSettings, CurrentUser, DbSession
 from app.errors import ApiError
 from app.models import (
+    Appointment,
     AuditEvent,
     CareRelationship,
     ChatMessage,
@@ -21,6 +23,7 @@ from app.models import (
     ChronicDisease,
     ClinicalEvent,
     ClinicalEventUpdate,
+    ClinicalService,
     ConsultationRequest,
     DashboardSnapshot,
     DemoMedicalAsset,
@@ -61,6 +64,9 @@ from app.schemas import (
     ClinicalEventUpdateListResponse,
     ClinicalEventUpdateRequest,
     ClinicalEventUpdateResponse,
+    ClinicalServiceListResponse,
+    ClinicalServiceRequest,
+    ClinicalServiceResponse,
     ConsultationCreateRequest,
     ConsultationListResponse,
     ConsultationResponse,
@@ -146,6 +152,10 @@ DEMO_UPLOAD_ALLOWED_EXTENSIONS: dict[str, set[str]] = {
     "image/jpeg": {"jpg", "jpeg"},
     "image/png": {"png"},
     "application/dicom": {"dcm", "dicom"},
+}
+IMAGING_UPLOAD_ALLOWED_EXTENSIONS: dict[str, set[str]] = {
+    **DEMO_UPLOAD_ALLOWED_EXTENSIONS,
+    "application/pdf": {"pdf"},
 }
 
 
@@ -344,6 +354,12 @@ def _clinical_event_linked_counts(
             .where(ConsultationRequest.clinical_event_id == event.id)
         )
         or 0,
+        "clinical_services": db.scalar(
+            select(func.count())
+            .select_from(ClinicalService)
+            .where(ClinicalService.clinical_event_id == event.id)
+        )
+        or 0,
         "notifications": db.scalar(
             select(func.count())
             .select_from(Notification)
@@ -473,6 +489,22 @@ def _clinical_event_timeline(
                 resource_id=request.id,
                 title=f"Specialist consultation {request.status}",
                 occurred_at=request.created_at,
+            )
+        )
+    for service in db.scalars(
+        select(ClinicalService).where(ClinicalService.clinical_event_id == event.id)
+    ).all():
+        entries.append(
+            ClinicalEventTimelineEntry(
+                entry_type="clinical_service",
+                resource_id=service.id,
+                title=f"{service.name} {service.status}",
+                occurred_at=(
+                    service.performed_at
+                    or service.scheduled_at
+                    or service.ordered_at
+                    or service.created_at
+                ),
             )
         )
     for update in db.scalars(
@@ -616,6 +648,7 @@ def _imaging_asset_response(asset: MedicalImagingAsset) -> MedicalImagingAssetRe
         id=asset.id,
         patient_id=asset.patient_id,
         clinical_event_id=asset.clinical_event_id,
+        clinical_service_id=asset.clinical_service_id,
         storage_provider=asset.storage_provider,  # type: ignore[arg-type]
         content_type=asset.content_type,
         file_extension=asset.file_extension,
@@ -633,6 +666,31 @@ def _imaging_asset_response(asset: MedicalImagingAsset) -> MedicalImagingAssetRe
         uploaded_at=asset.uploaded_at,
         reviewed_at=asset.reviewed_at,
         safety_label=SYNTHETIC_DATA_LABEL,
+    )
+
+
+def _clinical_service_response(service: ClinicalService) -> ClinicalServiceResponse:
+    return ClinicalServiceResponse(
+        id=service.id,
+        patient_id=service.patient_id,
+        clinical_event_id=service.clinical_event_id,
+        category=service.category,
+        name=service.name,
+        service_subtype=service.service_subtype,
+        body_region=service.body_region,
+        service_code=service.service_code,
+        ordered_by_doctor_id=service.ordered_by_doctor_id,
+        performing_provider_name=service.performing_provider_name,
+        clinic_id=service.clinic_id,
+        appointment_id=service.appointment_id,
+        status=service.status,  # type: ignore[arg-type]
+        ordered_at=service.ordered_at,
+        scheduled_at=service.scheduled_at,
+        performed_at=service.performed_at,
+        indication_summary=service.indication_summary,
+        imaging_asset_ids=[asset.id for asset in service.imaging_assets],
+        created_at=service.created_at,
+        updated_at=service.updated_at,
     )
 
 
@@ -850,6 +908,7 @@ def _consultation_response(request: ConsultationRequest) -> ConsultationResponse
         consultation_id=request.id,
         patient_id=request.patient_id,
         clinical_event_id=request.clinical_event_id,
+        clinical_service_id=request.clinical_service_id,
         specialty=request.specialty,
         question_summary=request.question_summary,
         priority=request.priority,  # type: ignore[arg-type]
@@ -858,6 +917,36 @@ def _consultation_response(request: ConsultationRequest) -> ConsultationResponse
         created_at=request.created_at,
         updated_at=request.updated_at,
     )
+
+
+def _ensure_consultation_service(
+    request: ConsultationRequest,
+    user: CurrentUser,
+    db: DbSession,
+) -> ClinicalService | None:
+    if request.clinical_service_id is not None:
+        return db.get(ClinicalService, request.clinical_service_id)
+    if (
+        request.clinical_event_id is None
+        or user.doctor_profile is None
+        or user.role != UserRole.doctor
+    ):
+        return None
+    service = ClinicalService(
+        patient_id=request.patient_id,
+        clinical_event_id=request.clinical_event_id,
+        category="consultation",
+        name=f"{request.specialty} consultation",
+        service_subtype=request.specialty,
+        body_region=None,
+        ordered_by_doctor_id=user.doctor_profile.id,
+        status="requested",
+        ordered_at=request.created_at or datetime.now(UTC),
+    )
+    db.add(service)
+    db.flush()
+    request.clinical_service_id = service.id
+    return service
 
 
 def _chat_thread_for_request(
@@ -1161,6 +1250,67 @@ def _authorized_imaging_asset(
     if asset is None:
         raise _neutral_not_found()
     return profile, asset
+
+
+def _authorized_clinical_service(
+    patient_id: uuid.UUID,
+    service_id: uuid.UUID,
+    user: CurrentUser,
+    db: DbSession,
+) -> tuple[PatientProfile, ClinicalService]:
+    profile = _authorized_patient(patient_id, user, db)
+    service = db.scalar(
+        select(ClinicalService)
+        .options(selectinload(ClinicalService.imaging_assets))
+        .where(
+            ClinicalService.id == service_id,
+            ClinicalService.patient_id == profile.id,
+        )
+    )
+    if service is None:
+        raise _neutral_not_found()
+    return profile, service
+
+
+def _apply_clinical_service_request(
+    service: ClinicalService,
+    request: ClinicalServiceRequest,
+    *,
+    profile: PatientProfile,
+    user: CurrentUser,
+    db: DbSession,
+) -> ClinicalEvent:
+    event = _optional_clinical_event(
+        request.clinical_event_id,
+        patient_id=profile.id,
+        user=user,
+        db=db,
+    )
+    assert event is not None
+    if request.appointment_id is not None:
+        appointment = db.scalar(
+            select(Appointment).where(
+                Appointment.id == request.appointment_id,
+                Appointment.patient_id == profile.id,
+            )
+        )
+        if appointment is None:
+            raise _neutral_not_found()
+    service.clinical_event_id = event.id
+    service.category = request.category
+    service.name = request.name
+    service.service_subtype = request.service_subtype
+    service.body_region = request.body_region
+    service.service_code = request.service_code
+    service.performing_provider_name = request.performing_provider_name
+    service.appointment_id = request.appointment_id
+    service.status = request.status
+    if request.ordered_at is not None:
+        service.ordered_at = request.ordered_at
+    service.scheduled_at = request.scheduled_at
+    service.performed_at = request.performed_at
+    service.indication_summary = request.indication_summary
+    return event
 
 
 def _apply_demographics_update(
@@ -1608,17 +1758,19 @@ def _validate_demo_asset_presign_request(request: DemoAssetPresignRequest) -> st
 
 def _validate_imaging_presign_request(request: MedicalImagingPresignRequest) -> tuple[str, str]:
     content_type = request.content_type.strip().lower()
-    allowed_extensions = DEMO_UPLOAD_ALLOWED_EXTENSIONS.get(content_type)
+    allowed_extensions = IMAGING_UPLOAD_ALLOWED_EXTENSIONS.get(content_type)
     if allowed_extensions is None:
         raise ApiError(
             415,
             "unsupported_media_type",
-            "Only PNG, JPEG, or DICOM imaging upload metadata is supported.",
+            "Only PNG, JPEG, DICOM, or PDF imaging evidence is supported.",
             [
                 {
                     "field": "content_type",
                     "code": "unsupported_value",
-                    "message": "Use image/png, image/jpeg, or application/dicom.",
+                    "message": (
+                        "Use image/png, image/jpeg, application/dicom, or application/pdf."
+                    ),
                 }
             ],
         )
@@ -2258,6 +2410,17 @@ def create_patient_medication(
     )
     db.add(medication)
     db.flush()
+    financial_item = sync_clinical_financial(
+        db,
+        user,
+        patient_id=profile.id,
+        clinical_event_id=medication.clinical_event_id,
+        source_type="medication",
+        source_record_id=medication.id,
+        label=medication.name,
+        source_status=medication.status,
+        financial=request.financial,
+    )
     _record_audit_event(
         db,
         actor_user_id=user.id,
@@ -2269,6 +2432,7 @@ def create_patient_medication(
             "status": medication.status,
             "actor_role": user.role.value,
             "clinical_event_id": str(event.id) if event else None,
+            "has_financial_companion": financial_item is not None,
         },
     )
     db.commit()
@@ -2298,6 +2462,17 @@ def update_patient_medication(
     medication.schedule = request.schedule
     medication.status = request.status
     medication.note = request.note
+    financial_item = sync_clinical_financial(
+        db,
+        user,
+        patient_id=profile.id,
+        clinical_event_id=medication.clinical_event_id,
+        source_type="medication",
+        source_record_id=medication.id,
+        label=medication.name,
+        source_status=medication.status,
+        financial=request.financial,
+    )
     _record_audit_event(
         db,
         actor_user_id=user.id,
@@ -2309,6 +2484,7 @@ def update_patient_medication(
             "status": medication.status,
             "actor_role": user.role.value,
             "clinical_event_id": str(event.id) if event else None,
+            "has_financial_companion": financial_item is not None,
         },
     )
     db.commit()
@@ -3320,6 +3496,12 @@ def patient_care_bundle(
         .where(ClinicalEvent.patient_id == profile.id)
         .order_by(ClinicalEvent.updated_at.desc())
     ).all()
+    clinical_services = db.scalars(
+        select(ClinicalService)
+        .options(selectinload(ClinicalService.imaging_assets))
+        .where(ClinicalService.patient_id == profile.id)
+        .order_by(ClinicalService.created_at.desc())
+    ).all()
     clinical_event_updates = db.scalars(
         select(ClinicalEventUpdate)
         .where(ClinicalEventUpdate.patient_id == profile.id)
@@ -3405,6 +3587,7 @@ def patient_care_bundle(
         metadata={
             "actor_role": user.role.value,
             "clinical_event_count": len(clinical_events),
+            "clinical_service_count": len(clinical_services),
             "clinical_event_update_count": len(clinical_event_updates),
             "medical_history_review_count": len(medical_history_reviews),
             "allergy_count": len(allergies),
@@ -3424,6 +3607,7 @@ def patient_care_bundle(
     return PatientCareBundleResponse(
         patient=_patient_response(profile),
         clinical_events=[_clinical_event_response(item, db) for item in clinical_events],
+        clinical_services=[_clinical_service_response(item) for item in clinical_services],
         clinical_event_updates=[
             _clinical_event_update_response(item) for item in clinical_event_updates
         ],
@@ -3584,6 +3768,150 @@ def presign_demo_asset_upload(
     )
 
 
+@router.get(
+    "/patients/{patient_id}/clinical-services",
+    response_model=ClinicalServiceListResponse,
+)
+def patient_clinical_services(
+    patient_id: uuid.UUID,
+    user: CurrentUser,
+    db: DbSession,
+) -> ClinicalServiceListResponse:
+    profile = _authorized_patient(patient_id, user, db)
+    services = db.scalars(
+        select(ClinicalService)
+        .options(selectinload(ClinicalService.imaging_assets))
+        .where(ClinicalService.patient_id == profile.id)
+        .order_by(ClinicalService.created_at.desc(), ClinicalService.id)
+    ).all()
+    return ClinicalServiceListResponse(
+        items=[_clinical_service_response(service) for service in services]
+    )
+
+
+@router.post(
+    "/patients/{patient_id}/clinical-services",
+    response_model=ClinicalServiceResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_patient_clinical_service(
+    patient_id: uuid.UUID,
+    request: ClinicalServiceRequest,
+    user: CurrentUser,
+    db: DbSession,
+) -> ClinicalServiceResponse:
+    _require_doctor_user(user)
+    profile = _authorized_patient(patient_id, user, db)
+    assert user.doctor_profile is not None
+    service = ClinicalService(
+        patient_id=profile.id,
+        clinical_event_id=request.clinical_event_id,
+        category=request.category,
+        name=request.name,
+        ordered_by_doctor_id=user.doctor_profile.id,
+    )
+    event = _apply_clinical_service_request(
+        service,
+        request,
+        profile=profile,
+        user=user,
+        db=db,
+    )
+    if service.ordered_at is None:
+        service.ordered_at = datetime.now(UTC)
+    db.add(service)
+    db.flush()
+    financial_item = sync_clinical_financial(
+        db,
+        user,
+        patient_id=profile.id,
+        clinical_event_id=event.id,
+        source_type="service",
+        source_record_id=service.id,
+        label=service.name,
+        source_status=service.status,
+        financial=request.financial,
+    )
+    _record_audit_event(
+        db,
+        actor_user_id=user.id,
+        patient_id=profile.id,
+        event_type="clinical_service_created",
+        resource_type="clinical_service",
+        resource_id=service.id,
+        metadata={
+            "actor_role": user.role.value,
+            "category": service.category,
+            "status": service.status,
+            "clinical_event_id": str(service.clinical_event_id),
+            "appointment_linked": service.appointment_id is not None,
+            "has_financial_companion": financial_item is not None,
+        },
+    )
+    db.commit()
+    saved = db.scalar(
+        select(ClinicalService)
+        .options(selectinload(ClinicalService.imaging_assets))
+        .where(ClinicalService.id == service.id)
+    )
+    assert saved is not None
+    return _clinical_service_response(saved)
+
+
+@router.put(
+    "/patients/{patient_id}/clinical-services/{service_id}",
+    response_model=ClinicalServiceResponse,
+)
+def update_patient_clinical_service(
+    patient_id: uuid.UUID,
+    service_id: uuid.UUID,
+    request: ClinicalServiceRequest,
+    user: CurrentUser,
+    db: DbSession,
+) -> ClinicalServiceResponse:
+    _require_doctor_user(user)
+    profile, service = _authorized_clinical_service(patient_id, service_id, user, db)
+    if service.category != "imaging":
+        raise _neutral_not_found()
+    event = _apply_clinical_service_request(
+        service,
+        request,
+        profile=profile,
+        user=user,
+        db=db,
+    )
+    financial_item = sync_clinical_financial(
+        db,
+        user,
+        patient_id=profile.id,
+        clinical_event_id=event.id,
+        source_type="service",
+        source_record_id=service.id,
+        label=service.name,
+        source_status=service.status,
+        financial=request.financial,
+    )
+    _record_audit_event(
+        db,
+        actor_user_id=user.id,
+        patient_id=profile.id,
+        event_type="clinical_service_updated",
+        resource_type="clinical_service",
+        resource_id=service.id,
+        metadata={
+            "actor_role": user.role.value,
+            "category": service.category,
+            "status": service.status,
+            "clinical_event_id": str(service.clinical_event_id),
+            "appointment_linked": service.appointment_id is not None,
+            "has_financial_companion": financial_item is not None,
+        },
+    )
+    db.commit()
+    db.refresh(service)
+    return _clinical_service_response(service)
+
+
 @router.post("/patients/{patient_id}/imaging/presign", response_model=MedicalImagingPresignResponse)
 def presign_medical_imaging_upload(
     patient_id: uuid.UUID,
@@ -3598,6 +3926,15 @@ def presign_medical_imaging_upload(
         user=user,
         db=db,
     )
+    service: ClinicalService | None = None
+    if request.clinical_service_id is not None:
+        _, service = _authorized_clinical_service(patient_id, request.clinical_service_id, user, db)
+        if service.category != "imaging":
+            raise _neutral_not_found()
+        if event is not None and service.clinical_event_id != event.id:
+            raise _neutral_not_found()
+        if event is None:
+            event = service.clinical_event
     content_type, extension = _validate_imaging_presign_request(request)
     expires_at = datetime.now(UTC) + timedelta(minutes=DEMO_UPLOAD_TTL_MINUTES)
     asset_id = uuid.uuid4()
@@ -3606,6 +3943,7 @@ def presign_medical_imaging_upload(
         id=asset_id,
         patient_id=profile.id,
         clinical_event_id=event.id if event else None,
+        clinical_service_id=service.id if service else None,
         uploaded_by_user_id=user.id,
         storage_provider=IMAGING_STORAGE_PROVIDER,
         content_type=content_type,
@@ -3633,6 +3971,7 @@ def presign_medical_imaging_upload(
             "upload_status": "pending_upload",
             "review_status": "not_ready",
             "clinical_event_id": str(event.id) if event else None,
+            "clinical_service_id": str(service.id) if service else None,
         },
     )
     db.commit()
@@ -3640,6 +3979,7 @@ def presign_medical_imaging_upload(
         asset_id=asset.id,
         patient_id=profile.id,
         clinical_event_id=asset.clinical_event_id,
+        clinical_service_id=asset.clinical_service_id,
         upload_url=f"https://tencent-cos-upload.invalid/{object_key}",
         headers={
             "Content-Type": content_type,
@@ -4476,6 +4816,12 @@ def own_patient_care(user: CurrentUser, db: DbSession) -> PatientCareBundleRespo
         .where(ClinicalEvent.patient_id == profile.id)
         .order_by(ClinicalEvent.updated_at.desc())
     ).all()
+    clinical_services = db.scalars(
+        select(ClinicalService)
+        .options(selectinload(ClinicalService.imaging_assets))
+        .where(ClinicalService.patient_id == profile.id)
+        .order_by(ClinicalService.created_at.desc())
+    ).all()
     clinical_event_updates = db.scalars(
         select(ClinicalEventUpdate)
         .where(ClinicalEventUpdate.patient_id == profile.id)
@@ -4552,6 +4898,7 @@ def own_patient_care(user: CurrentUser, db: DbSession) -> PatientCareBundleRespo
         metadata={
             "actor_role": user.role.value,
             "clinical_event_count": len(clinical_events),
+            "clinical_service_count": len(clinical_services),
             "clinical_event_update_count": len(clinical_event_updates),
             "medical_history_review_count": len(medical_history_reviews),
             "allergy_count": len(allergies),
@@ -4571,6 +4918,7 @@ def own_patient_care(user: CurrentUser, db: DbSession) -> PatientCareBundleRespo
     return PatientCareBundleResponse(
         patient=_patient_response(profile),
         clinical_events=[_clinical_event_response(item, db) for item in clinical_events],
+        clinical_services=[_clinical_service_response(item) for item in clinical_services],
         clinical_event_updates=[
             _clinical_event_update_response(item) for item in clinical_event_updates
         ],
@@ -4707,6 +5055,21 @@ def create_consultation(
         )
     )
     if existing is not None:
+        service = _ensure_consultation_service(existing, user, db)
+        if service is not None:
+            sync_clinical_financial(
+                db,
+                user,
+                patient_id=profile.id,
+                clinical_event_id=service.clinical_event_id,
+                source_type="service",
+                source_record_id=service.id,
+                label=service.name,
+                source_status=service.status,
+                financial=request.financial,
+            )
+        db.commit()
+        db.refresh(existing)
         return _consultation_response(existing)
     consultation = ConsultationRequest(
         patient_id=profile.id,
@@ -4720,6 +5083,22 @@ def create_consultation(
     )
     db.add(consultation)
     db.flush()
+    service = _ensure_consultation_service(consultation, user, db)
+    financial_item = (
+        sync_clinical_financial(
+            db,
+            user,
+            patient_id=profile.id,
+            clinical_event_id=service.clinical_event_id,
+            source_type="service",
+            source_record_id=service.id,
+            label=service.name,
+            source_status=service.status,
+            financial=request.financial,
+        )
+        if service is not None
+        else None
+    )
     _record_audit_event(
         db,
         actor_user_id=user.id,
@@ -4732,6 +5111,8 @@ def create_consultation(
             "priority": consultation.priority,
             "status": consultation.status,
             "clinical_event_id": str(event.id) if event else None,
+            "clinical_service_id": str(service.id) if service else None,
+            "has_financial_companion": financial_item is not None,
         },
     )
     db.commit()

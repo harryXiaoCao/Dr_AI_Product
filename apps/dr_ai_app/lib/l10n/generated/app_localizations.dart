@@ -254,6 +254,198 @@ abstract class AppLocalizations {
   /// **'Manage your profile, language preferences, and account settings.'**
   String get doctorAccountDescription;
 
+  /// No description provided for @payerAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Payer Account'**
+  String get payerAccount;
+
+  /// No description provided for @payerAccountDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage your reviewer identity and account security while keeping organization authorization administrator-controlled.'**
+  String get payerAccountDescription;
+
+  /// No description provided for @loadingPayerAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading payer account'**
+  String get loadingPayerAccount;
+
+  /// No description provided for @payerAccountLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to load the payer account. Check your connection and try again.'**
+  String get payerAccountLoadFailed;
+
+  /// No description provided for @payerAccessUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Your payer organization access is unavailable. Contact an administrator if this is unexpected.'**
+  String get payerAccessUnavailable;
+
+  /// No description provided for @reviewerProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Reviewer profile'**
+  String get reviewerProfile;
+
+  /// No description provided for @reviewerProfileDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'These personal identity fields belong to your reviewer account.'**
+  String get reviewerProfileDescription;
+
+  /// No description provided for @reviewerIdentityHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Use the name and professional title colleagues should recognize in the review workspace.'**
+  String get reviewerIdentityHint;
+
+  /// No description provided for @professionalTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Professional title'**
+  String get professionalTitle;
+
+  /// No description provided for @payerTitleTooShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Use at least 2 characters.'**
+  String get payerTitleTooShort;
+
+  /// No description provided for @payerEmailDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Used to sign in and for account communication. Leave empty to remove it.'**
+  String get payerEmailDescription;
+
+  /// No description provided for @payerProfileValidationFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Check the reviewer name and professional title, then try again.'**
+  String get payerProfileValidationFailed;
+
+  /// No description provided for @organizationAndAccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Organization & access'**
+  String get organizationAndAccess;
+
+  /// No description provided for @organizationAndAccessDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Your current institutional membership and review boundary.'**
+  String get organizationAndAccessDescription;
+
+  /// No description provided for @organizationAccessManaged.
+  ///
+  /// In en, this message translates to:
+  /// **'These fields are read-only. Only an authorized administrator can change membership, scope, or verification.'**
+  String get organizationAccessManaged;
+
+  /// No description provided for @organizationType.
+  ///
+  /// In en, this message translates to:
+  /// **'Organization type'**
+  String get organizationType;
+
+  /// No description provided for @jurisdiction.
+  ///
+  /// In en, this message translates to:
+  /// **'Jurisdiction'**
+  String get jurisdiction;
+
+  /// No description provided for @membershipStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Membership status'**
+  String get membershipStatus;
+
+  /// No description provided for @accessScope.
+  ///
+  /// In en, this message translates to:
+  /// **'Access scope'**
+  String get accessScope;
+
+  /// No description provided for @organizationVerification.
+  ///
+  /// In en, this message translates to:
+  /// **'Organization verification'**
+  String get organizationVerification;
+
+  /// No description provided for @publicPayer.
+  ///
+  /// In en, this message translates to:
+  /// **'Public payer'**
+  String get publicPayer;
+
+  /// No description provided for @commercialPayer.
+  ///
+  /// In en, this message translates to:
+  /// **'Commercial payer'**
+  String get commercialPayer;
+
+  /// No description provided for @observerOrganization.
+  ///
+  /// In en, this message translates to:
+  /// **'Observer organization'**
+  String get observerOrganization;
+
+  /// No description provided for @activeMembership.
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get activeMembership;
+
+  /// No description provided for @suspended.
+  ///
+  /// In en, this message translates to:
+  /// **'Suspended'**
+  String get suspended;
+
+  /// No description provided for @revoked.
+  ///
+  /// In en, this message translates to:
+  /// **'Revoked'**
+  String get revoked;
+
+  /// No description provided for @syntheticReviewScope.
+  ///
+  /// In en, this message translates to:
+  /// **'Synthetic review'**
+  String get syntheticReviewScope;
+
+  /// No description provided for @syntheticOnlyVerification.
+  ///
+  /// In en, this message translates to:
+  /// **'Synthetic-only'**
+  String get syntheticOnlyVerification;
+
+  /// No description provided for @verified.
+  ///
+  /// In en, this message translates to:
+  /// **'Verified'**
+  String get verified;
+
+  /// No description provided for @sessionActions.
+  ///
+  /// In en, this message translates to:
+  /// **'Session actions'**
+  String get sessionActions;
+
+  /// No description provided for @payerSessionActionsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out of this device when you have finished working with restricted review information.'**
+  String get payerSessionActionsDescription;
+
+  /// No description provided for @saving.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving'**
+  String get saving;
+
   /// No description provided for @preferredLanguage.
   ///
   /// In en, this message translates to:
@@ -4455,7 +4647,7 @@ abstract class AppLocalizations {
   /// No description provided for @aiChatSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Practical health guidance grounded in reviewed sources.'**
+  /// **'Practical health guidance with a clear source or general-AI label.'**
   String get aiChatSubtitle;
 
   /// No description provided for @aiChatSafetyNotice.
@@ -4589,6 +4781,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Reviewed sources'**
   String get aiSources;
+
+  /// No description provided for @aiApprovedEvidenceBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Source-grounded answer — supported by reviewed Dr. AI passages.'**
+  String get aiApprovedEvidenceBanner;
+
+  /// No description provided for @aiGeneralKnowledgeBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'General AI-generated information — no supporting Dr. AI source was found.'**
+  String get aiGeneralKnowledgeBanner;
+
+  /// No description provided for @aiFixedSafetyBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Server-controlled safety response.'**
+  String get aiFixedSafetyBanner;
+
+  /// No description provided for @aiOpenOfficialSource.
+  ///
+  /// In en, this message translates to:
+  /// **'Open official source'**
+  String get aiOpenOfficialSource;
 
   /// No description provided for @aiImportantUncertainty.
   ///
@@ -5674,6 +5890,294 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This is an unofficial AI-generated Chinese translation that has completed medical and native-Chinese review. Use the publisher\'s English original for authoritative verification. The translation remains separate from retrieval approval.'**
   String get unofficialAiTranslationNotice;
+
+  /// No description provided for @financialDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Financial details'**
+  String get financialDetails;
+
+  /// No description provided for @financialDetailsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Financial information belongs to the billable service or product that produced it.'**
+  String get financialDetailsDescription;
+
+  /// No description provided for @billableClinicalItem.
+  ///
+  /// In en, this message translates to:
+  /// **'This clinical item is billable'**
+  String get billableClinicalItem;
+
+  /// No description provided for @billableClinicalItemDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave this off when the record is clinical documentation only.'**
+  String get billableClinicalItemDescription;
+
+  /// No description provided for @costStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Cost status'**
+  String get costStatus;
+
+  /// No description provided for @costPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Cost pending'**
+  String get costPending;
+
+  /// No description provided for @costEstimate.
+  ///
+  /// In en, this message translates to:
+  /// **'Estimate'**
+  String get costEstimate;
+
+  /// No description provided for @costFinal.
+  ///
+  /// In en, this message translates to:
+  /// **'Final'**
+  String get costFinal;
+
+  /// No description provided for @currency.
+  ///
+  /// In en, this message translates to:
+  /// **'Currency'**
+  String get currency;
+
+  /// No description provided for @pendingCostSubmissionBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'You can save the clinical record now. It cannot be selected for a payer request until the full allocation is recorded.'**
+  String get pendingCostSubmissionBlocked;
+
+  /// No description provided for @totalCostCny.
+  ///
+  /// In en, this message translates to:
+  /// **'Total cost (CNY)'**
+  String get totalCostCny;
+
+  /// No description provided for @requestedFromPayerCny.
+  ///
+  /// In en, this message translates to:
+  /// **'Requested from payer (CNY)'**
+  String get requestedFromPayerCny;
+
+  /// No description provided for @expectedPatientResponsibilityCny.
+  ///
+  /// In en, this message translates to:
+  /// **'Expected patient responsibility (CNY)'**
+  String get expectedPatientResponsibilityCny;
+
+  /// No description provided for @financialAllocationNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Requested from payer is not a payment guarantee. Expected patient responsibility is not a final adjudicated obligation.'**
+  String get financialAllocationNotice;
+
+  /// No description provided for @financialAllocationValidation.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter non-negative amounts. Requested payer amount plus expected patient responsibility must equal the total.'**
+  String get financialAllocationValidation;
+
+  /// No description provided for @imagingArtifactNotBillable.
+  ///
+  /// In en, this message translates to:
+  /// **'The uploaded image and report are clinical evidence, not a second charge. A distinct imaging-procedure record is required before procedure costs can be captured.'**
+  String get imagingArtifactNotBillable;
+
+  /// No description provided for @editConsultationCost.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete or edit cost'**
+  String get editConsultationCost;
+
+  /// No description provided for @saveConsultationCost.
+  ///
+  /// In en, this message translates to:
+  /// **'Save consultation cost'**
+  String get saveConsultationCost;
+
+  /// No description provided for @financialStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Financial status'**
+  String get financialStatus;
+
+  /// No description provided for @noCostRecorded.
+  ///
+  /// In en, this message translates to:
+  /// **'No cost recorded'**
+  String get noCostRecorded;
+
+  /// No description provided for @estimatedCost.
+  ///
+  /// In en, this message translates to:
+  /// **'Estimated ¥{amount}'**
+  String estimatedCost(String amount);
+
+  /// No description provided for @finalCost.
+  ///
+  /// In en, this message translates to:
+  /// **'Final ¥{amount}'**
+  String finalCost(String amount);
+
+  /// No description provided for @alreadySubmitted.
+  ///
+  /// In en, this message translates to:
+  /// **'Already submitted'**
+  String get alreadySubmitted;
+
+  /// No description provided for @addCost.
+  ///
+  /// In en, this message translates to:
+  /// **'Add cost'**
+  String get addCost;
+
+  /// No description provided for @completeCost.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete cost'**
+  String get completeCost;
+
+  /// No description provided for @editCost.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit cost'**
+  String get editCost;
+
+  /// No description provided for @saveCost.
+  ///
+  /// In en, this message translates to:
+  /// **'Save cost'**
+  String get saveCost;
+
+  /// No description provided for @imagingProcedure.
+  ///
+  /// In en, this message translates to:
+  /// **'Imaging procedure'**
+  String get imagingProcedure;
+
+  /// No description provided for @imagingProcedures.
+  ///
+  /// In en, this message translates to:
+  /// **'Imaging procedures'**
+  String get imagingProcedures;
+
+  /// No description provided for @imagingProcedureDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Create the ordered, scheduled, or performed service first. Scheduling and evidence remain separate from its financial companion.'**
+  String get imagingProcedureDescription;
+
+  /// No description provided for @clinicalDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Clinical details'**
+  String get clinicalDetails;
+
+  /// No description provided for @procedureName.
+  ///
+  /// In en, this message translates to:
+  /// **'Procedure name'**
+  String get procedureName;
+
+  /// No description provided for @modality.
+  ///
+  /// In en, this message translates to:
+  /// **'Modality or procedure type'**
+  String get modality;
+
+  /// No description provided for @bodyRegion.
+  ///
+  /// In en, this message translates to:
+  /// **'Body region'**
+  String get bodyRegion;
+
+  /// No description provided for @clinicalIndication.
+  ///
+  /// In en, this message translates to:
+  /// **'Clinical indication or summary (optional)'**
+  String get clinicalIndication;
+
+  /// No description provided for @schedulingServiceDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Scheduling and service details'**
+  String get schedulingServiceDetails;
+
+  /// No description provided for @scheduledDateTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Scheduled date and time'**
+  String get scheduledDateTime;
+
+  /// No description provided for @performedDateTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Performed date and time'**
+  String get performedDateTime;
+
+  /// No description provided for @createImagingProcedure.
+  ///
+  /// In en, this message translates to:
+  /// **'Create imaging procedure'**
+  String get createImagingProcedure;
+
+  /// No description provided for @updateImagingProcedure.
+  ///
+  /// In en, this message translates to:
+  /// **'Update imaging procedure'**
+  String get updateImagingProcedure;
+
+  /// No description provided for @editClinicalService.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit details'**
+  String get editClinicalService;
+
+  /// No description provided for @imagingProcedureSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} saved.'**
+  String imagingProcedureSaved(String name);
+
+  /// No description provided for @noImagingProcedures.
+  ///
+  /// In en, this message translates to:
+  /// **'No imaging procedure has been created for this Clinical Event.'**
+  String get noImagingProcedures;
+
+  /// No description provided for @imagingEvidence.
+  ///
+  /// In en, this message translates to:
+  /// **'Imaging evidence and results'**
+  String get imagingEvidence;
+
+  /// No description provided for @selectImagingProcedure.
+  ///
+  /// In en, this message translates to:
+  /// **'Imaging procedure'**
+  String get selectImagingProcedure;
+
+  /// No description provided for @attachEvidence.
+  ///
+  /// In en, this message translates to:
+  /// **'Attach evidence'**
+  String get attachEvidence;
+
+  /// No description provided for @evidenceFileCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No linked files} =1{1 linked file} other{{count} linked files}}'**
+  String evidenceFileCount(int count);
+
+  /// No description provided for @imagingProcedureValidation.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a procedure name, modality, and body region. Scheduled services need a scheduled time; performed or completed services need a performed time.'**
+  String get imagingProcedureValidation;
 }
 
 class _AppLocalizationsDelegate

@@ -557,11 +557,13 @@ workflow:
 Patient message
   -> authentication, validation, and rate limit
   -> deterministic emergency/prohibited-request router
-  -> approved-source retrieval and minimal authorized patient context
-  -> provider-neutral model adapter
-  -> structured-output validation
-  -> grounding and policy checks
-  -> bounded patient response or fixed fallback
+  -> literal-query approved-source retrieval
+  -> optional bounded planner plus independent query retrieval and fusion
+  -> adequate evidence: grounded adapter with minimal authorized patient context
+  -> no adequate evidence: separately governed citation-free general adapter,
+     or fixed fallback when disabled, unsafe, or unavailable
+  -> mode-specific structured-output and policy validation
+  -> explicitly labeled approved, general-knowledge, or fixed response
   -> metadata-only operational and safety record
 ```
 
@@ -569,6 +571,15 @@ The Flutter client never calls a model provider directly. The backend controls
 provider credentials, model selection, timeouts, quota handling, structured
 output, fallbacks, and model provenance. Chain-of-thought is neither exposed to
 patients nor treated as a clinically auditable explanation.
+
+The 2026-07-24 early-stage product decision changes implementation behavior,
+not historical evaluation evidence: previous no-evidence refusal results
+remain truthful. Future evaluation must score `approved_evidence` grounding
+separately from `general_model_knowledge` usefulness/safety and from
+`fixed_safety_response` correctness. A disclosure is not a substitute for
+emergency, authorization, privacy, record-access, or action-execution gates.
+The call budget is zero or one planner request, one answer request, and at most
+one bounded malformed-output repair; open-ended model loops remain prohibited.
 
 ## 13. Deployment And Governance Risks
 

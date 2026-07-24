@@ -50,7 +50,7 @@ class DoctorAccountScreen extends ConsumerWidget {
     final email = auth.value?.user?.email ?? '';
     return ResponsiveAppShell(
       role: AppRole.doctor,
-      selectedIndex: 4,
+      selectedIndex: 5,
       child: profile.when(
         loading: () =>
             DashboardLoadingView(label: context.l10n.loadingDoctorAccount),

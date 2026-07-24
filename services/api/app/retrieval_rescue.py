@@ -67,6 +67,7 @@ class RescueMetadata:
     resolved_topic_evidence_only: bool | None = None
     planner_latency_ms: int = 0
     retry_latency_ms: int = 0
+    searched_query_variant_count: int = 1
 
 
 @dataclass(frozen=True)
@@ -272,8 +273,30 @@ def validate_rewrite(
     trusted_presentation: ClinicalPresentation | None = None,
     trusted_context_message: str | None = None,
 ) -> str | None:
+    queries = _validated_queries(
+        plan,
+        original_message=original_message,
+        recent_user_messages=recent_user_messages,
+        language=language,
+        require_recent_anchor=require_recent_anchor,
+        trusted_presentation=trusted_presentation,
+        trusted_context_message=trusted_context_message,
+    )
+    return queries[0] if queries else None
+
+
+def _validated_queries(
+    plan: RetrievalQueryPlan,
+    *,
+    original_message: str,
+    recent_user_messages: list[str],
+    language: str,
+    require_recent_anchor: bool = False,
+    trusted_presentation: ClinicalPresentation | None = None,
+    trusted_context_message: str | None = None,
+) -> list[str]:
     if plan.language != language or plan.jurisdiction != "CN" or plan.clarification_needed:
-        return None
+        return []
     basis = trusted_context_message or " ".join([*recent_user_messages[-1:], original_message])
     trusted_presentation = trusted_presentation or extract_clinical_presentation(basis)
     basis_concepts = clinical_concepts(basis)
@@ -281,6 +304,7 @@ def validate_rewrite(
     recent_basis = " ".join(recent_user_messages[-1:])
     recent_concepts = clinical_concepts(recent_basis)
     recent_tokens = set(relevance_tokens(recent_basis))
+    accepted: list[str] = []
     for candidate in plan.candidate_queries:
         if DRIFT_BLOCK_PATTERN.search(candidate) and not DRIFT_BLOCK_PATTERN.search(basis):
             continue
@@ -307,8 +331,8 @@ def validate_rewrite(
         normalized_original = normalize_medical_text(original_message)
         if not normalized_candidate or normalized_candidate == normalized_original:
             continue
-        return candidate
-    return None
+        accepted.append(candidate)
+    return list(dict.fromkeys(accepted))[:2]
 
 
 def _contextual_query(original_message: str, recent_user_messages: list[str]) -> str | None:
@@ -360,22 +384,36 @@ def _resolved_topic_quality(result: RetrievalResult) -> float:
 
 
 def _fuse(initial: RetrievalResult, retry: RetrievalResult, top_k: int) -> RetrievalResult:
-    if initial.release.id != retry.release.id:
+    return _fuse_many(initial, [retry], top_k, context_authoritative=True)
+
+
+def _fuse_many(
+    initial: RetrievalResult,
+    retries: list[RetrievalResult],
+    top_k: int,
+    *,
+    context_authoritative: bool,
+) -> RetrievalResult:
+    if not retries or any(initial.release.id != retry.release.id for retry in retries):
         return _without_evidence(initial)
-    initial_ranks = {
-        item.passage.content_checksum: rank
-        for rank, item in enumerate(initial.ranked_candidates, start=1)
-    }
+    result_lists = retries if context_authoritative else [initial, *retries]
     rank_scores: dict[str, float] = {}
     by_checksum: dict[str, RetrievalCandidate] = {}
-    for rank, item in enumerate(retry.ranked_candidates, start=1):
-        checksum = item.passage.content_checksum
-        corroboration = 0.5 / (60 + initial_ranks[checksum]) if checksum in initial_ranks else 0.0
-        rank_scores[checksum] = 2.0 / (60 + rank) + corroboration
-        # The retry object owns query-relative coverage and scores. The initial
-        # result may corroborate its rank, but can never replace it or introduce
-        # an original-only passage into rescued evidence.
-        by_checksum[checksum] = item
+    for result in result_lists:
+        for rank, item in enumerate(result.ranked_candidates, start=1):
+            checksum = item.passage.content_checksum
+            rank_scores[checksum] = rank_scores.get(checksum, 0.0) + 1.0 / (60 + rank)
+            current = by_checksum.get(checksum)
+            if current is None or item.rerank_score > current.rerank_score:
+                by_checksum[checksum] = item
+    if context_authoritative:
+        initial_ranks = {
+            item.passage.content_checksum: rank
+            for rank, item in enumerate(initial.ranked_candidates, start=1)
+        }
+        for checksum in tuple(rank_scores):
+            if checksum in initial_ranks:
+                rank_scores[checksum] += 0.5 / (60 + initial_ranks[checksum])
     ordered = sorted(
         by_checksum.values(),
         key=lambda item: (
@@ -466,6 +504,7 @@ def attempt_retrieval_rescue(
         if trigger == RescueTrigger.short_reference
         else None
     )
+    rewritten_queries = [rewritten] if rewritten is not None else []
     common: dict[str, object] = {
         "trigger": trigger,
         "attempted": True,
@@ -473,6 +512,7 @@ def attempt_retrieval_rescue(
         "cost_microunits": 0 if rewritten is not None else None,
         "planner_latency_ms": 0,
         "retry_latency_ms": 0,
+        "searched_query_variant_count": 1,
     }
     if rewritten is None:
         try:
@@ -521,7 +561,7 @@ def attempt_retrieval_rescue(
                 safe_fallback,
                 RescueMetadata(**common, outcome=RescueOutcome.cost_exceeded),
             )
-        rewritten = validate_rewrite(
+        rewritten_queries = _validated_queries(
             planned.output,
             original_message=original_message,
             recent_user_messages=recent_user_messages,
@@ -530,9 +570,10 @@ def attempt_retrieval_rescue(
             trusted_presentation=trusted_presentation,
             trusted_context_message=trusted_context_message,
         )
-        if rewritten is None and trigger == RescueTrigger.ambiguous:
-            rewritten = _contextual_query(original_message, recent_user_messages)
-        if planned.output.clarification_needed and rewritten is None:
+        if not rewritten_queries and trigger == RescueTrigger.ambiguous:
+            contextual = _contextual_query(original_message, recent_user_messages)
+            rewritten_queries = [contextual] if contextual else []
+        if planned.output.clarification_needed and not rewritten_queries:
             return RescueResult(
                 safe_fallback,
                 RescueMetadata(
@@ -541,20 +582,26 @@ def attempt_retrieval_rescue(
                     clarification_needed=True,
                 ),
             )
-    if rewritten is None:
+    if not rewritten_queries:
         return RescueResult(
             safe_fallback, RescueMetadata(**common, outcome=RescueOutcome.meaning_drift)
         )
-    retry_request = request.model_copy(update={"query": rewritten})
     retry_started = time.perf_counter()
+    retries: list[RetrievalResult] = []
     try:
-        retry = retrieve(
-            db,
-            retry_request,
-            audience="patient",
-            reranker_candidate_limit=1,
-            presentation=replace(trusted_presentation, literal_query=rewritten),
-        )
+        for rewritten_query in rewritten_queries:
+            retries.append(
+                retrieve(
+                    db,
+                    request.model_copy(update={"query": rewritten_query}),
+                    audience="patient",
+                    reranker_candidate_limit=1,
+                    presentation=replace(
+                        trusted_presentation,
+                        literal_query=rewritten_query,
+                    ),
+                )
+            )
     except ApiError as exc:
         if exc.code != "retrieval_unavailable":
             raise
@@ -562,9 +609,18 @@ def attempt_retrieval_rescue(
             safe_fallback,
             RescueMetadata(**common, outcome=RescueOutcome.retry_unavailable),
         )
+    common["searched_query_variant_count"] = 1 + len(retries)
     common["retry_latency_ms"] = max(0, round((time.perf_counter() - retry_started) * 1000))
-    fused = _fuse(initial, retry, request.top_k)
-    retry_checksums = {item.passage.content_checksum for item in retry.ranked_candidates}
+    context_authoritative = trigger in CONTEXT_RESOLVED_TRIGGERS
+    fused = _fuse_many(
+        initial,
+        retries,
+        request.top_k,
+        context_authoritative=context_authoritative,
+    )
+    retry_checksums = {
+        item.passage.content_checksum for retry in retries for item in retry.ranked_candidates
+    }
     fused_checksums = {item.passage.content_checksum for item in fused.candidates}
     resolved_topic_evidence_only = bool(fused_checksums) and fused_checksums.issubset(
         retry_checksums
@@ -586,14 +642,18 @@ def attempt_retrieval_rescue(
         if trigger in CONTEXT_RESOLVED_TRIGGERS
         else round(resolved_quality - initial_quality, 4)
     )
-    if retry.decision != EvidenceDecision.sufficient or resolved_quality <= 0 or delta <= 0:
+    if (
+        not any(retry.decision == EvidenceDecision.sufficient for retry in retries)
+        or resolved_quality <= 0
+        or delta <= 0
+    ):
         return RescueResult(
             safe_fallback,
             RescueMetadata(
                 **common,
                 outcome=RescueOutcome.no_improvement,
                 retrieval_delta=delta,
-                retry_request_id=retry.request_id,
+                retry_request_id=",".join(retry.request_id for retry in retries)[:120],
                 context_dominant=context_dominant,
                 resolved_topic_evidence_only=resolved_topic_evidence_only,
             ),
@@ -604,7 +664,7 @@ def attempt_retrieval_rescue(
             **common,
             outcome=RescueOutcome.improved,
             retrieval_delta=delta,
-            retry_request_id=retry.request_id,
+            retry_request_id=",".join(retry.request_id for retry in retries)[:120],
             context_dominant=context_dominant,
             resolved_topic_evidence_only=resolved_topic_evidence_only,
         ),

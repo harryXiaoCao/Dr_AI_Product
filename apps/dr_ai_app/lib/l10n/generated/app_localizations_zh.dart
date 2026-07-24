@@ -87,6 +87,102 @@ class AppLocalizationsZh extends AppLocalizations {
   String get doctorAccountDescription => '管理个人资料、语言偏好和账户设置。';
 
   @override
+  String get payerAccount => '支付方账户';
+
+  @override
+  String get payerAccountDescription => '管理审核员个人身份与账户安全；机构授权继续由管理员维护。';
+
+  @override
+  String get loadingPayerAccount => '正在加载支付方账户';
+
+  @override
+  String get payerAccountLoadFailed => '无法加载支付方账户，请检查网络连接后重试。';
+
+  @override
+  String get payerAccessUnavailable => '当前支付机构访问权限不可用。如非预期，请联系管理员。';
+
+  @override
+  String get reviewerProfile => '审核员资料';
+
+  @override
+  String get reviewerProfileDescription => '这些个人身份字段属于您的审核员账户。';
+
+  @override
+  String get reviewerIdentityHint => '请使用审核工作区中的同事能够识别的姓名和专业职务。';
+
+  @override
+  String get professionalTitle => '专业职务';
+
+  @override
+  String get payerTitleTooShort => '请至少输入 2 个字符。';
+
+  @override
+  String get payerEmailDescription => '用于登录和账户联系；留空可移除邮箱。';
+
+  @override
+  String get payerProfileValidationFailed => '请检查审核员姓名和专业职务后重试。';
+
+  @override
+  String get organizationAndAccess => '机构与访问权限';
+
+  @override
+  String get organizationAndAccessDescription => '您当前的机构成员关系与审核权限边界。';
+
+  @override
+  String get organizationAccessManaged => '以下字段为只读。仅获授权的管理员可更改成员关系、访问范围或认证状态。';
+
+  @override
+  String get organizationType => '机构类型';
+
+  @override
+  String get jurisdiction => '适用地区';
+
+  @override
+  String get membershipStatus => '成员状态';
+
+  @override
+  String get accessScope => '访问范围';
+
+  @override
+  String get organizationVerification => '机构认证状态';
+
+  @override
+  String get publicPayer => '公共支付机构';
+
+  @override
+  String get commercialPayer => '商业支付机构';
+
+  @override
+  String get observerOrganization => '观察机构';
+
+  @override
+  String get activeMembership => '有效';
+
+  @override
+  String get suspended => '已暂停';
+
+  @override
+  String get revoked => '已撤销';
+
+  @override
+  String get syntheticReviewScope => '合成数据审核';
+
+  @override
+  String get syntheticOnlyVerification => '仅限合成数据';
+
+  @override
+  String get verified => '已认证';
+
+  @override
+  String get sessionActions => '会话操作';
+
+  @override
+  String get payerSessionActionsDescription => '完成受限审核信息相关工作后，请退出此设备上的账户。';
+
+  @override
+  String get saving => '正在保存';
+
+  @override
   String get preferredLanguage => '偏好语言';
 
   @override
@@ -2321,7 +2417,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aiPlaceholderNotice => '在安全工作完成前，医生和患者均可访问此统一的 AI 入口。';
 
   @override
-  String get aiChatSubtitle => '基于经审核资料，提供实用、可核实的健康指引。';
+  String get aiChatSubtitle => '提供实用健康信息，并清楚标明来源或一般 AI 信息模式。';
 
   @override
   String get aiChatSafetyNotice =>
@@ -2389,6 +2485,18 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aiSources => '经审核来源';
+
+  @override
+  String get aiApprovedEvidenceBanner => '有来源支持的回答——基于 Dr. AI 已审核资料。';
+
+  @override
+  String get aiGeneralKnowledgeBanner => '一般 AI 生成信息——未找到支持此回答的 Dr. AI 来源。';
+
+  @override
+  String get aiFixedSafetyBanner => '由服务器控制的安全回复。';
+
+  @override
+  String get aiOpenOfficialSource => '打开官方来源';
 
   @override
   String get aiImportantUncertainty => '需要注意的不确定性';
@@ -2951,4 +3059,168 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get unofficialAiTranslationNotice =>
       '这是经医学与中文审核的非官方 AI 生成中文译文。权威核验请以发布方英文原文为准。译文审核与检索准入仍为独立门槛。';
+
+  @override
+  String get financialDetails => '费用信息';
+
+  @override
+  String get financialDetailsDescription => '费用信息应归属于产生该费用的服务或产品。';
+
+  @override
+  String get billableClinicalItem => '此临床项目需要计费';
+
+  @override
+  String get billableClinicalItemDescription => '如果此记录仅用于临床文档，请勿启用。';
+
+  @override
+  String get costStatus => '费用状态';
+
+  @override
+  String get costPending => '费用待补充';
+
+  @override
+  String get costEstimate => '预估';
+
+  @override
+  String get costFinal => '最终';
+
+  @override
+  String get currency => '币种';
+
+  @override
+  String get pendingCostSubmissionBlocked =>
+      '现在可以先保存临床记录；完整记录费用分配前，不能选择此项目提交支付申请。';
+
+  @override
+  String get totalCostCny => '总费用（人民币）';
+
+  @override
+  String get requestedFromPayerCny => '向支付方申请（人民币）';
+
+  @override
+  String get expectedPatientResponsibilityCny => '预计患者承担（人民币）';
+
+  @override
+  String get financialAllocationNotice => '“向支付方申请”不代表付款保证；“预计患者承担”也不是最终审定责任。';
+
+  @override
+  String get financialAllocationValidation =>
+      '请输入非负金额；向支付方申请金额与预计患者承担金额之和必须等于总费用。';
+
+  @override
+  String get imagingArtifactNotBillable =>
+      '上传的影像和报告属于临床证据，不应形成第二笔费用。只有独立的影像检查项目记录才能承载检查费用。';
+
+  @override
+  String get editConsultationCost => '补充或编辑费用';
+
+  @override
+  String get saveConsultationCost => '保存会诊费用';
+
+  @override
+  String get financialStatus => '费用状态';
+
+  @override
+  String get noCostRecorded => '尚未记录费用';
+
+  @override
+  String estimatedCost(String amount) {
+    return '预估 ¥$amount';
+  }
+
+  @override
+  String finalCost(String amount) {
+    return '最终 ¥$amount';
+  }
+
+  @override
+  String get alreadySubmitted => '已提交支付申请';
+
+  @override
+  String get addCost => '添加费用';
+
+  @override
+  String get completeCost => '补全费用';
+
+  @override
+  String get editCost => '编辑费用';
+
+  @override
+  String get saveCost => '保存费用';
+
+  @override
+  String get imagingProcedure => '影像检查项目';
+
+  @override
+  String get imagingProcedures => '影像检查项目';
+
+  @override
+  String get imagingProcedureDescription =>
+      '请先创建已开立、已预约或已完成的检查服务。预约信息、影像证据和费用记录保持分离。';
+
+  @override
+  String get clinicalDetails => '临床信息';
+
+  @override
+  String get procedureName => '检查项目名称';
+
+  @override
+  String get modality => '影像方式或检查类型';
+
+  @override
+  String get bodyRegion => '检查部位';
+
+  @override
+  String get clinicalIndication => '临床指征或摘要（可选）';
+
+  @override
+  String get schedulingServiceDetails => '预约与服务信息';
+
+  @override
+  String get scheduledDateTime => '预约日期与时间';
+
+  @override
+  String get performedDateTime => '实际检查日期与时间';
+
+  @override
+  String get createImagingProcedure => '创建影像检查项目';
+
+  @override
+  String get updateImagingProcedure => '更新影像检查项目';
+
+  @override
+  String get editClinicalService => '编辑详情';
+
+  @override
+  String imagingProcedureSaved(String name) {
+    return '已保存$name。';
+  }
+
+  @override
+  String get noImagingProcedures => '此临床事件下尚未创建影像检查项目。';
+
+  @override
+  String get imagingEvidence => '影像证据与结果';
+
+  @override
+  String get selectImagingProcedure => '影像检查项目';
+
+  @override
+  String get attachEvidence => '关联证据';
+
+  @override
+  String evidenceFileCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 个关联文件',
+      one: '1 个关联文件',
+      zero: '无关联文件',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get imagingProcedureValidation =>
+      '请输入检查项目名称、影像方式和检查部位。已预约项目需要预约时间；已执行或已完成项目需要实际检查时间。';
 }

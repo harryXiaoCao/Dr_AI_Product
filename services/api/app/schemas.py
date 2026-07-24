@@ -387,6 +387,40 @@ class MedicationResponse(BaseModel):
     note: str
 
 
+class ClinicalFinancialInput(BaseModel):
+    """Doctor-entered financial companion for a price-bearing clinical source."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    pricing_state: Literal["pending_cost", "estimated", "final"] = "pending_cost"
+    service_date: date | None = None
+    currency: Literal["CNY"] = "CNY"
+    total_cost_minor: int = Field(default=0, ge=0, le=1_000_000_000)
+    payer_requested_minor: int = Field(default=0, ge=0, le=1_000_000_000)
+    patient_responsibility_minor: int = Field(default=0, ge=0, le=1_000_000_000)
+
+    @model_validator(mode="after")
+    def validate_allocation(self) -> "ClinicalFinancialInput":
+        allocated = self.payer_requested_minor + self.patient_responsibility_minor
+        if self.pricing_state == "pending_cost":
+            if any(
+                (
+                    self.total_cost_minor,
+                    self.payer_requested_minor,
+                    self.patient_responsibility_minor,
+                )
+            ):
+                raise ValueError("Pending-cost records cannot contain partial amounts.")
+            return self
+        if self.total_cost_minor <= 0:
+            raise ValueError("Estimated and final costs must be greater than zero.")
+        if allocated != self.total_cost_minor:
+            raise ValueError(
+                "Requested payer and expected patient amounts must equal the total cost."
+            )
+        return self
+
+
 class MedicationListResponse(BaseModel):
     items: list[MedicationResponse]
     next_cursor: None = None
@@ -401,6 +435,7 @@ class MedicationRequest(BaseModel):
     schedule: str = Field(min_length=2, max_length=160)
     status: Literal["active", "paused", "stopped", "entered_in_error"] = "active"
     note: str = Field(default="", max_length=800)
+    financial: ClinicalFinancialInput | None = None
 
 
 class PrescriptionMedicationInput(BaseModel):
@@ -521,6 +556,7 @@ class DoctorNoteListResponse(BaseModel):
 class PatientCareBundleResponse(BaseModel):
     patient: PatientProfileResponse
     clinical_events: list["ClinicalEventResponse"]
+    clinical_services: list["ClinicalServiceResponse"]
     clinical_event_updates: list["ClinicalEventUpdateResponse"]
     medical_history_reviews: list["MedicalHistoryReviewResponse"]
     allergies: list["PatientAllergyResponse"]
@@ -746,6 +782,81 @@ class ClinicalEventListResponse(BaseModel):
     next_cursor: None = None
 
 
+ClinicalServiceStatus = Literal[
+    "ordered",
+    "requested",
+    "scheduled",
+    "in_progress",
+    "performed",
+    "completed",
+    "cancelled",
+    "not_completed",
+]
+
+
+class ClinicalServiceRequest(BaseModel):
+    """Current writable contract for the imaging-service vertical slice."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    clinical_event_id: UUID
+    category: Literal["imaging"] = "imaging"
+    name: str = Field(min_length=2, max_length=200)
+    service_subtype: str = Field(min_length=2, max_length=80)
+    body_region: str = Field(min_length=2, max_length=120)
+    service_code: str | None = Field(default=None, max_length=80)
+    performing_provider_name: str | None = Field(default=None, max_length=160)
+    appointment_id: UUID | None = None
+    status: ClinicalServiceStatus = "ordered"
+    ordered_at: datetime | None = None
+    scheduled_at: datetime | None = None
+    performed_at: datetime | None = None
+    indication_summary: str | None = Field(default=None, max_length=1200)
+    financial: ClinicalFinancialInput | None = None
+
+    @model_validator(mode="after")
+    def validate_lifecycle_dates(self) -> "ClinicalServiceRequest":
+        if (
+            self.ordered_at is not None
+            and self.scheduled_at is not None
+            and self.scheduled_at < self.ordered_at
+        ):
+            raise ValueError("The scheduled time cannot precede the ordered time.")
+        if self.status in {"scheduled", "in_progress"} and self.scheduled_at is None:
+            raise ValueError("A scheduled time is required for this service status.")
+        if self.status in {"performed", "completed"} and self.performed_at is None:
+            raise ValueError("A performed time is required for this service status.")
+        return self
+
+
+class ClinicalServiceResponse(BaseModel):
+    id: UUID
+    patient_id: UUID
+    clinical_event_id: UUID
+    category: str
+    name: str
+    service_subtype: str | None
+    body_region: str | None
+    service_code: str | None
+    ordered_by_doctor_id: UUID
+    performing_provider_name: str | None
+    clinic_id: UUID | None
+    appointment_id: UUID | None
+    status: ClinicalServiceStatus
+    ordered_at: datetime | None
+    scheduled_at: datetime | None
+    performed_at: datetime | None
+    indication_summary: str | None
+    imaging_asset_ids: list[UUID]
+    created_at: datetime
+    updated_at: datetime
+
+
+class ClinicalServiceListResponse(BaseModel):
+    items: list[ClinicalServiceResponse]
+    next_cursor: None = None
+
+
 class DoctorNoteCreateRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
@@ -784,6 +895,7 @@ class MedicalImagingPresignRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
     clinical_event_id: UUID | None = None
+    clinical_service_id: UUID | None = None
     filename: str = Field(min_length=3, max_length=160, pattern=r"^[A-Za-z0-9._ -]+$")
     content_type: str = Field(min_length=3, max_length=80)
     size_bytes: int = Field(ge=1)
@@ -793,6 +905,7 @@ class MedicalImagingPresignResponse(BaseModel):
     asset_id: UUID
     patient_id: UUID
     clinical_event_id: UUID | None
+    clinical_service_id: UUID | None
     upload_url: str
     method: Literal["PUT"] = "PUT"
     headers: dict[str, str]
@@ -838,6 +951,7 @@ class MedicalImagingAssetResponse(BaseModel):
     id: UUID
     patient_id: UUID
     clinical_event_id: UUID | None
+    clinical_service_id: UUID | None
     storage_provider: Literal["tencent_cos"]
     content_type: str
     file_extension: str
@@ -997,19 +1111,21 @@ class ChatMessageResponse(BaseModel):
 
 
 class ConsultationCreateRequest(BaseModel):
-    model_config = ConfigDict(str_strip_whitespace=True)
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
     patient_id: UUID
     clinical_event_id: UUID | None = None
     specialty: str = Field(min_length=3, max_length=120)
     question_summary: str = Field(min_length=8, max_length=240)
     priority: Literal["routine", "soon"] = "routine"
+    financial: ClinicalFinancialInput | None = None
 
 
 class ConsultationResponse(BaseModel):
     consultation_id: UUID
     patient_id: UUID
     clinical_event_id: UUID | None
+    clinical_service_id: UUID | None
     specialty: str
     question_summary: str
     priority: Literal["routine", "soon"]

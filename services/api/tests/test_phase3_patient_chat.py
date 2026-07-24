@@ -11,11 +11,13 @@ from sqlalchemy.orm import Session
 from app.ai_chat import (
     DeepSeekChatAdapter,
     DeepSeekChatError,
+    DeepSeekGeneralResult,
     DeepSeekQueryPlanResult,
     DeepSeekStructuredResult,
 )
 from app.chatbot_contracts import (
     EvidenceDecision,
+    GeneralModelOutput,
     ModelAnswerSection,
     PatientChatRequest,
     PatientEvidenceRequest,
@@ -46,6 +48,7 @@ from app.retrieval_rescue import (
     RescueOutcome,
     RescueTrigger,
     _fuse,
+    _fuse_many,
     attempt_retrieval_rescue,
     choose_trigger,
     validate_rewrite,
@@ -147,6 +150,43 @@ class FakeGroundedAdapter:
         )
 
 
+class FakeGeneralAdapter:
+    def __init__(self) -> None:
+        self.calls = 0
+        self.payloads: list[dict[str, object]] = []
+
+    def complete_general_knowledge(self, **kwargs):
+        self.calls += 1
+        self.payloads.append(kwargs)
+        decline = kwargs["decline_prohibited_portion"]
+        return DeepSeekGeneralResult(
+            output=GeneralModelOutput(
+                answer_language=kwargs["language"],
+                answer_sections=[
+                    (
+                        "头晕可能与脱水、睡眠不足、血压变化或其他原因有关，"
+                        "仅凭这句话不能判断个人原因。"
+                        if kwargs["language"] == "zh-Hans"
+                        else "Dizziness can have several explanations; this cannot identify "
+                        "the cause for one person."
+                    )
+                ],
+                uncertainties=(
+                    ["仅凭现有信息不能确认原因。"]
+                    if kwargs["response_mode"] != "permitted_education"
+                    else []
+                ),
+                next_action_code="contact_connected_doctor",
+                declined_portion=(
+                    "我不能告诉你停药或改变剂量；请向开药医生确认。" if decline else None
+                ),
+            ),
+            model="test-general-model",
+            input_tokens=40,
+            output_tokens=30,
+        )
+
+
 @pytest.mark.parametrize(
     "message",
     [
@@ -181,6 +221,7 @@ def test_query_planner_is_one_bounded_schema_call(settings, monkeypatch) -> None
                     "message": {
                         "content": json.dumps(
                             {
+                                "normalized_intent": "高血压血压测量教育",
                                 "concepts": ["高血压", "血压测量"],
                                 "synonyms": ["血压监测"],
                                 "language": "zh-Hans",
@@ -246,6 +287,7 @@ def test_query_planner_malformed_output_has_no_repair_call(settings, monkeypatch
 
 def _query_plan(candidate: str) -> RetrievalQueryPlan:
     return RetrievalQueryPlan(
+        normalized_intent="症状教育检索",
         concepts=["症状"],
         synonyms=[],
         language="zh-Hans",
@@ -337,6 +379,7 @@ def test_retrieval_rescue_separates_latency_and_cost_outcomes(
         def plan_retrieval_query(self, **kwargs):
             return DeepSeekQueryPlanResult(
                 output=RetrievalQueryPlan(
+                    normalized_intent="测量教育检索",
                     concepts=["测量"],
                     synonyms=[],
                     language="zh-Hans",
@@ -428,6 +471,34 @@ def test_rescue_fusion_excludes_uncorroborated_original_only_candidates() -> Non
 
     assert [item.passage.content_checksum for item in fused.candidates] == ["blood-pressure"]
     assert fused.candidates[0] is resolved
+
+
+def test_self_contained_rescue_rrf_keeps_original_and_planned_candidates() -> None:
+    original_only = _rescue_candidate(
+        "original-only",
+        "source-original",
+        coverage=0.62,
+        score=0.82,
+    )
+    planned_only = _rescue_candidate(
+        "planned-only",
+        "source-planned",
+        coverage=0.64,
+        score=0.84,
+    )
+
+    fused = _fuse_many(
+        _rescue_retrieval(original_only),
+        [_rescue_retrieval(planned_only)],
+        6,
+        context_authoritative=False,
+    )
+
+    assert fused.decision == EvidenceDecision.sufficient
+    assert {item.passage.content_checksum for item in fused.candidates} == {
+        "original-only",
+        "planned-only",
+    }
 
 
 def test_reference_rescue_does_not_claim_improvement_without_resolved_evidence(
@@ -621,6 +692,7 @@ def test_critical_variants_make_zero_retrieval_or_model_calls(
 def test_entire_candidate_premodel_set_makes_zero_retrieval_or_model_calls(
     settings, monkeypatch
 ) -> None:
+    monkeypatch.setattr(settings, "chatbot_general_model_knowledge_enabled", False)
     contract = json.loads(CANONICAL_CONTRACT.read_text(encoding="utf-8"))
     inputs: list[tuple[str, str, tuple[str, ...]]] = []
     for case in contract["cases"]:
@@ -740,7 +812,8 @@ def test_live_multi_turn_presentation_carries_only_needed_user_context(
 
     first = _post(client, settings, "我怀孕八个月。")
     assert first.status_code == 200
-    assert first.json()["fallback_code"] == "retrieval_unavailable"
+    assert first.json()["grounding_mode"] == "fixed_safety_response"
+    assert first.json()["fallback_code"] == "provider_unavailable"
 
     captured = {}
 
@@ -793,6 +866,7 @@ def test_live_exposure_follow_up_routes_emergency_before_retrieval_or_model(
 def test_missing_patient_release_fails_closed_without_model(
     client: TestClient, settings, monkeypatch
 ) -> None:
+    monkeypatch.setattr(settings, "chatbot_general_model_knowledge_enabled", False)
     with Session(engine) as db:
         seed_database(db, settings)
         db.commit()
@@ -807,9 +881,70 @@ def test_missing_patient_release_fails_closed_without_model(
     assert adapter.calls == 0
 
 
+def test_missing_patient_release_uses_separate_general_knowledge_mode(
+    client: TestClient, settings, monkeypatch
+) -> None:
+    with Session(engine) as db:
+        seed_database(db, settings)
+        db.commit()
+    adapter = FakeGeneralAdapter()
+    monkeypatch.setattr("app.patient_chat.deepseek_chat_adapter", adapter)
+
+    response = _post(client, settings, "我最近头晕，可能有哪些原因？")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["grounding_mode"] == "general_model_knowledge"
+    assert payload["sources"] == []
+    assert payload["context_used"] == []
+    assert payload["fallback_code"] is None
+    assert payload["model_version"] is None
+    assert payload["uncertainties"]
+    assert adapter.calls == 1
+    with Session(engine) as db:
+        event = db.scalar(select(ChatbotEvent))
+        assert event is not None
+        assert event.grounding_mode == "general_model_knowledge"
+        assert event.general_knowledge_eligible is True
+        assert event.general_knowledge_outcome == "generated"
+        assert event.model_version == "test-general-model"
+        assert "头晕" not in str(event.__dict__)
+
+
+def test_mixed_medication_request_answers_safe_portion_and_declines_change(
+    client: TestClient, settings, monkeypatch
+) -> None:
+    with Session(engine) as db:
+        seed_database(db, settings)
+        db.commit()
+    adapter = FakeGeneralAdapter()
+    monkeypatch.setattr("app.patient_chat.deepseek_chat_adapter", adapter)
+    monkeypatch.setattr(
+        "app.patient_chat.retrieve",
+        lambda *args, **kwargs: pytest.fail("mixed prohibited request reached retrieval"),
+    )
+
+    response = _post(
+        client,
+        settings,
+        "阿司匹林有什么作用和常见副作用？我可以现在停药吗？",
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["grounding_mode"] == "general_model_knowledge"
+    assert payload["safety_code"] == "prohibited_medication_change"
+    assert payload["next_action_code"] == "contact_connected_doctor"
+    assert "停药" in payload["answer_sections"][-1]
+    assert payload["sources"] == []
+    assert adapter.calls == 1
+    assert adapter.payloads[0]["decline_prohibited_portion"] is True
+
+
 def test_same_day_route_survives_missing_evidence_without_model(
     client: TestClient, settings, monkeypatch
 ) -> None:
+    monkeypatch.setattr(settings, "chatbot_general_model_knowledge_enabled", False)
     with Session(engine) as db:
         seed_database(db, settings)
         db.commit()
@@ -982,6 +1117,7 @@ def test_short_reference_rescue_rewrites_once_and_improves_retrieval(
 def test_retrieval_rescue_rejects_meaning_drift_without_retrying_generation(
     client: TestClient, settings, monkeypatch, tmp_path
 ) -> None:
+    monkeypatch.setattr(settings, "chatbot_general_model_knowledge_enabled", False)
     with Session(engine) as db:
         seed_database(db, settings)
         _activate_retrieval_corpus(db, tmp_path)
@@ -992,6 +1128,7 @@ def test_retrieval_rescue_rejects_meaning_drift_without_retrying_generation(
     def drifted_rewrite(**kwargs):
         return DeepSeekQueryPlanResult(
             output=RetrievalQueryPlan(
+                normalized_intent="高血压检索",
                 concepts=["高血压"],
                 synonyms=[],
                 language="zh-Hans",
@@ -1063,6 +1200,7 @@ def test_ambiguous_rewrite_falls_back_to_context_anchored_query(
     def generic_rewrite(**kwargs):
         return DeepSeekQueryPlanResult(
             output=RetrievalQueryPlan(
+                normalized_intent="测量教育检索",
                 concepts=["测量"],
                 synonyms=[],
                 language="zh-Hans",
@@ -1108,7 +1246,8 @@ def test_grounded_answer_maps_citations_and_records_only_metadata(
     payload = response.json()
     assert payload["fallback_code"] is None
     assert payload["evidence_decision"] == "sufficient"
-    assert payload["model_version"] == "deepseek-v4-flash"
+    assert payload["grounding_mode"] == "approved_evidence"
+    assert payload["model_version"] is None
     assert len(payload["answer_sections"]) == 3
     assert payload["sources"][0]["passage_id"].startswith("KBPASS-SYNTHETIC-")
     with Session(engine) as db:
@@ -1117,6 +1256,7 @@ def test_grounded_answer_maps_citations_and_records_only_metadata(
         assert event.query_length == len(message)
         assert message not in str(event.__dict__)
         assert event.provider_input_tokens == 120
+        assert event.model_version == "deepseek-v4-flash"
 
 
 def test_revoked_transmission_rights_fail_before_provider_call(
@@ -1134,7 +1274,7 @@ def test_revoked_transmission_rights_fail_before_provider_call(
     response = _post(client, settings, "血压高时，平时记录血压有什么作用？")
 
     assert response.status_code == 200
-    assert response.json()["fallback_code"] == "retrieval_unavailable"
+    assert response.json()["fallback_code"] == "authorization_denied"
     assert adapter.calls == 0
 
 
@@ -1404,11 +1544,12 @@ def test_generation_policy_requests_bounded_longer_answers(
     assert len(response.json()["answer_sections"]) == 3
     assert captured["max_tokens"] == 1400
     system_prompt = captured["messages"][0]["content"]
-    assert "3 to 5 non-repetitive" in system_prompt
+    assert "intent-adaptive length" in system_prompt
+    assert "2 to 5 non-repetitive" in system_prompt
     user_payload = json.loads(captured["messages"][1]["content"])
     assert user_payload["urgency_route"] == "routine_education"
     assert "call_120" not in user_payload["response_policy"]["allowed_next_actions"]
-    assert user_payload["response_policy"]["section_count"] == "3-5"
+    assert user_payload["response_policy"]["section_count"] == "2-5"
     assert user_payload["response_policy"]["target_length"] == ("350-700 Chinese characters")
 
 

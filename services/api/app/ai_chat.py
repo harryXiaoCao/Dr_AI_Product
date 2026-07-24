@@ -8,6 +8,7 @@ from pydantic import ValidationError
 
 from app.chatbot_contracts import (
     EvidencePassage,
+    GeneralModelOutput,
     PatientContextBundle,
     RetrievalQueryPlan,
     StructuredModelOutput,
@@ -41,6 +42,15 @@ class DeepSeekChatError(Exception):
 @dataclass(frozen=True)
 class DeepSeekStructuredResult:
     output: StructuredModelOutput
+    model: str
+    input_tokens: int | None
+    output_tokens: int | None
+    attempt_count: int = 1
+
+
+@dataclass(frozen=True)
+class DeepSeekGeneralResult:
+    output: GeneralModelOutput
     model: str
     input_tokens: int | None
     output_tokens: int | None
@@ -88,7 +98,9 @@ class DeepSeekChatAdapter:
                         "Return exactly one JSON object matching the schema. You only clarify "
                         "retrieval wording. Preserve the user's meaning. Do not diagnose, classify "
                         "safety, select evidence, add treatment instructions, access records, or "
-                        "execute tools. Produce at most two concise search candidates. Mark "
+                        "execute tools. State a short advisory normalized_intent, extract only "
+                        "core medical concepts and genuine synonyms, and produce at most two "
+                        "concise search candidates. Mark "
                         "clarification_needed when the intended topic cannot be resolved from the "
                         "question and bounded recent user messages. Each candidate must be a "
                         "standalone search query. When recent user messages resolve a reference "
@@ -187,6 +199,14 @@ class DeepSeekChatAdapter:
                 "prepare_symptom_summary",
             ],
         }.get(urgency_route, ["contact_connected_doctor"])
+        concise_definition = bool(
+            re.search(
+                r"^(what is|what does .+ mean|define|什么是|.+是什么意思)[^?？]{0,80}[?？]?$",
+                message.strip(),
+                re.IGNORECASE,
+            )
+        )
+        section_count = "1-3" if concise_definition else "2-5"
         schema_example = {
             "answer_language": language,
             "answer_sections": [
@@ -200,11 +220,17 @@ class DeepSeekChatAdapter:
                     "supporting_passage_ids": [second_passage_id],
                     "supporting_context_ids": [],
                 },
-                {
-                    "text": "A practical next step supported by the reviewed evidence.",
-                    "supporting_passage_ids": [evidence[0].passage_id],
-                    "supporting_context_ids": [],
-                },
+                *(
+                    []
+                    if concise_definition
+                    else [
+                        {
+                            "text": "A practical next step supported by the reviewed evidence.",
+                            "supporting_passage_ids": [evidence[0].passage_id],
+                            "supporting_context_ids": [],
+                        }
+                    ]
+                ),
             ],
             "uses_patient_context": bool(example_context_ids),
             "patient_context_attribution": (
@@ -240,8 +266,9 @@ class DeepSeekChatAdapter:
                         "rank a disease as personally likely, give a probability, or present a "
                         "possibility as the user's diagnosis. Include at least one concise "
                         "uncertainty. "
-                        "For an ordinary evidence-backed question, write 3 to 5 non-repetitive "
-                        "sections: a direct answer, a clear explanation, practical educational "
+                        "Use intent-adaptive length. A short definition may use 1 to 3 concise "
+                        "sections. Other questions may use 2 to 5 non-repetitive sections: a "
+                        "direct answer, a clear explanation, practical educational "
                         "context, what remains uncertain when relevant, and when to contact a "
                         "clinician. Aim for 350-700 Chinese characters or 220-450 English words "
                         "in total. Use short "
@@ -273,7 +300,7 @@ class DeepSeekChatAdapter:
                             "patient_context": context_payload,
                             "response_policy": {
                                 "allowed_next_actions": allowed_next_actions,
-                                "section_count": "3-5",
+                                "section_count": section_count,
                                 "section_purposes": [
                                     "direct_answer",
                                     "why_it_matters",
@@ -320,6 +347,7 @@ class DeepSeekChatAdapter:
             repair_content,
             validation_issues,
             response_schema,
+            grounding_mode="approved_evidence",
         )
         try:
             return self._request_and_parse(repair_body, settings, attempt_count=2)
@@ -331,6 +359,143 @@ class DeepSeekChatAdapter:
                 diagnostic_code=second_error.diagnostic_code,
                 attempt_count=2,
             ) from second_error
+
+    def complete_general_knowledge(
+        self,
+        *,
+        message: str,
+        language: str,
+        response_mode: str,
+        urgency_route: str,
+        allowed_next_actions: list[str],
+        decline_prohibited_portion: bool,
+        settings: Settings,
+    ) -> DeepSeekGeneralResult:
+        """Generate citation-free general information without patient-record context."""
+        if settings.deepseek_api_key is None:
+            raise DeepSeekChatError("service_unavailable")
+        response_schema = GeneralModelOutput.model_json_schema()
+        request_body = {
+            "model": settings.deepseek_model,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": (
+                        "Return exactly one JSON object matching the supplied schema. Answer from "
+                        "general model knowledge only. No reviewed Dr. AI evidence or patient "
+                        "record context is available. Never invent citations, source IDs, medical "
+                        "review, evidence status, patient facts, or provider details. For symptoms "
+                        "or medically consequential topics, state material uncertainty, give "
+                        "multiple plausible explanations when appropriate, say what information "
+                        "would help, and give a sensible next step. Never confirm or rule out a "
+                        "diagnosis, reassure that an emergency is absent, or recommend a "
+                        "patient-specific medication start, stop, substitution, or dose. If the "
+                        "request mixes safe medicine education with a prohibited treatment change, "
+                        "briefly answer the general education portion and explicitly decline the "
+                        "personalized change. Non-medical questions may be answered briefly. The "
+                        "server-owned urgency route and allowed actions are immutable."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": json.dumps(
+                        {
+                            "question": message,
+                            "answer_language": language,
+                            "response_mode": response_mode,
+                            "urgency_route": urgency_route,
+                            "allowed_next_actions": allowed_next_actions,
+                            "decline_prohibited_portion": decline_prohibited_portion,
+                            "requirements": {
+                                "no_citations_or_sources": True,
+                                "no_patient_record_context": True,
+                                "material_uncertainty_required_for_medical_consequence": True,
+                                "intent_adaptive_length": True,
+                            },
+                            "json_schema": response_schema,
+                        },
+                        ensure_ascii=False,
+                    ),
+                },
+            ],
+            "response_format": {"type": "json_object"},
+            "thinking": {"type": "disabled"},
+            "stream": False,
+            "max_tokens": 1000,
+            "temperature": 0.0,
+        }
+        repair_content: str | None = None
+        validation_issues: tuple[str, ...] = ()
+        try:
+            return self._request_and_parse_general(request_body, settings, attempt_count=1)
+        except DeepSeekChatError as first_error:
+            if first_error.fallback_reason != "malformed":
+                raise
+            repair_content = first_error.repair_content
+            validation_issues = first_error.validation_issues
+        repair_body = self._repair_request_body(
+            request_body,
+            repair_content,
+            validation_issues,
+            response_schema,
+            grounding_mode="general_model_knowledge",
+        )
+        try:
+            return self._request_and_parse_general(repair_body, settings, attempt_count=2)
+        except DeepSeekChatError as second_error:
+            if second_error.fallback_reason != "malformed":
+                raise
+            raise DeepSeekChatError(
+                "malformed",
+                diagnostic_code=second_error.diagnostic_code,
+                attempt_count=2,
+            ) from second_error
+
+    def _request_and_parse_general(
+        self,
+        request_body: dict[str, object],
+        settings: Settings,
+        *,
+        attempt_count: int,
+    ) -> DeepSeekGeneralResult:
+        try:
+            payload = self._request(request_body, settings)
+        except DeepSeekChatError as exc:
+            if exc.fallback_reason == "malformed":
+                exc.attempt_count = attempt_count
+            raise
+        content: object = None
+        try:
+            content = payload["choices"][0]["message"]["content"]
+            if not isinstance(content, str):
+                raise TypeError("provider content is not text")
+            decoded = json.loads(content)
+            output = GeneralModelOutput.model_validate(decoded)
+        except (KeyError, IndexError, TypeError, json.JSONDecodeError, ValidationError) as exc:
+            validation_issues = (
+                self._validation_issue_codes(exc) if isinstance(exc, ValidationError) else ()
+            )
+            raise DeepSeekChatError(
+                "malformed",
+                diagnostic_code=(
+                    self._schema_diagnostic_code(validation_issues)
+                    if validation_issues
+                    else "provider_general_content_invalid"
+                ),
+                attempt_count=attempt_count,
+                repair_content=content if isinstance(content, str) else None,
+                validation_issues=validation_issues,
+            ) from exc
+        usage = payload.get("usage") or {}
+        if not isinstance(usage, dict):
+            usage = {}
+        return DeepSeekGeneralResult(
+            output=output,
+            model=str(payload.get("model") or settings.deepseek_model),
+            input_tokens=usage.get("prompt_tokens"),
+            output_tokens=usage.get("completion_tokens"),
+            attempt_count=attempt_count,
+        )
 
     def _request_and_parse(
         self,
@@ -396,6 +561,8 @@ class DeepSeekChatAdapter:
         malformed_content: str | None,
         validation_issues: tuple[str, ...],
         response_schema: dict[str, object],
+        *,
+        grounding_mode: str = "approved_evidence",
     ) -> dict[str, object]:
         repaired = dict(request_body)
         messages = list(request_body.get("messages") or [])
@@ -410,7 +577,11 @@ class DeepSeekChatAdapter:
                         "validation_issues": list(validation_issues),
                         "requirements": [
                             "Match the supplied JSON Schema exactly.",
-                            "Preserve provided evidence passage IDs exactly.",
+                            (
+                                "Preserve provided evidence passage IDs exactly."
+                                if grounding_mode == "approved_evidence"
+                                else "Do not add citations, sources, passage IDs, or patient facts."
+                            ),
                             "Include every required field and only schema-defined fields.",
                             "Use only enum values permitted by the schema.",
                             "Do not add Markdown or commentary.",

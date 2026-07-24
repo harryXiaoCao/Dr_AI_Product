@@ -1,6 +1,8 @@
 import 'package:dr_ai_app/core/api/api_error.dart';
 import 'package:dr_ai_app/features/auth/application/auth_controller.dart';
 import 'package:dr_ai_app/features/auth/data/dr_ai_repository.dart';
+import 'package:dr_ai_app/features/care_cost/application/care_cost_providers.dart';
+import 'package:dr_ai_app/features/care_cost/domain/care_cost_data.dart';
 import 'package:dr_ai_app/features/patient/domain/patient_care_data.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
@@ -336,6 +338,7 @@ class MedicalImagingWorkflowController
   Future<void> prepare({
     required String patientId,
     required String? clinicalEventId,
+    String? clinicalServiceId,
     required String filename,
     required String contentType,
     required int sizeBytes,
@@ -345,6 +348,7 @@ class MedicalImagingWorkflowController
       final presign = await _repository.presignMedicalImaging(
         patientId: patientId,
         clinicalEventId: clinicalEventId,
+        clinicalServiceId: clinicalServiceId,
         filename: filename,
         contentType: contentType,
         sizeBytes: sizeBytes,
@@ -418,6 +422,82 @@ class MedicalImagingWorkflowController
       );
     } catch (error, stackTrace) {
       state = AsyncError<MedicalImagingWorkflowState>(error, stackTrace);
+    }
+  }
+}
+
+final clinicalServiceWorkflowControllerProvider =
+    StateNotifierProvider.autoDispose<
+      ClinicalServiceWorkflowController,
+      AsyncValue<ClinicalServiceItem?>
+    >((ref) {
+      return ClinicalServiceWorkflowController(
+        ref.read(repositoryProvider),
+        ref,
+      );
+    });
+
+class ClinicalServiceWorkflowController
+    extends StateNotifier<AsyncValue<ClinicalServiceItem?>> {
+  ClinicalServiceWorkflowController(this._repository, this._ref)
+    : super(const AsyncData<ClinicalServiceItem?>(null));
+
+  final DrAiRepository _repository;
+  final Ref _ref;
+
+  Future<void> save({
+    required String patientId,
+    required String? serviceId,
+    required String clinicalEventId,
+    required String name,
+    required String serviceSubtype,
+    required String bodyRegion,
+    required String status,
+    required DateTime? scheduledAt,
+    required DateTime? performedAt,
+    required String indicationSummary,
+    ClinicalFinancialDraft? financial,
+  }) async {
+    state = const AsyncLoading<ClinicalServiceItem?>();
+    try {
+      final service = await _repository.saveClinicalService(
+        patientId: patientId,
+        serviceId: serviceId,
+        clinicalEventId: clinicalEventId,
+        name: name,
+        serviceSubtype: serviceSubtype,
+        bodyRegion: bodyRegion,
+        status: status,
+        scheduledAt: scheduledAt,
+        performedAt: performedAt,
+        indicationSummary: indicationSummary,
+        financial: financial,
+      );
+      state = AsyncData(service);
+      _ref.invalidate(patientCareBundleProvider(patientId));
+      await refreshDoctorCareCostData(_ref, patientId);
+    } catch (error, stackTrace) {
+      state = AsyncError<ClinicalServiceItem?>(error, stackTrace);
+    }
+  }
+
+  Future<void> updateFinancial({
+    required String patientId,
+    required String serviceId,
+    required ClinicalFinancialDraft financial,
+  }) async {
+    state = const AsyncLoading<ClinicalServiceItem?>();
+    try {
+      await _repository.updateClinicalServiceFinancial(
+        patientId: patientId,
+        serviceId: serviceId,
+        financial: financial,
+      );
+      await refreshDoctorCareCostData(_ref, patientId);
+      _ref.invalidate(patientCareBundleProvider(patientId));
+      state = const AsyncData<ClinicalServiceItem?>(null);
+    } catch (error, stackTrace) {
+      state = AsyncError<ClinicalServiceItem?>(error, stackTrace);
     }
   }
 }
@@ -590,6 +670,7 @@ class MedicationWorkflowController extends StateNotifier<AsyncValue<String?>> {
     required String schedule,
     required String status,
     required String note,
+    ClinicalFinancialDraft? financial,
   }) async {
     state = const AsyncLoading<String?>();
     try {
@@ -602,9 +683,11 @@ class MedicationWorkflowController extends StateNotifier<AsyncValue<String?>> {
         schedule: schedule,
         status: status,
         note: note,
+        financial: financial,
       );
       state = const AsyncData<String?>('Medication saved.');
       _ref.invalidate(patientCareBundleProvider(patientId));
+      await refreshDoctorCareCostData(_ref, patientId);
     } catch (error, stackTrace) {
       state = AsyncError<String?>(error, stackTrace);
     }
@@ -1017,6 +1100,7 @@ class ConsultationRequestController
     required String specialty,
     required String questionSummary,
     required String priority,
+    ClinicalFinancialDraft? financial,
   }) async {
     state = const AsyncLoading<ConsultationRequestItem?>();
     try {
@@ -1026,9 +1110,31 @@ class ConsultationRequestController
         specialty: specialty,
         questionSummary: questionSummary,
         priority: priority,
+        financial: financial,
       );
       state = AsyncData(result);
       _ref.invalidate(consultationListProvider);
+      await refreshDoctorCareCostData(_ref, patientId);
+    } catch (error, stackTrace) {
+      state = AsyncError<ConsultationRequestItem?>(error, stackTrace);
+    }
+  }
+
+  Future<void> updateFinancial({
+    required String patientId,
+    required ConsultationRequestItem consultation,
+    required ClinicalFinancialDraft financial,
+  }) async {
+    state = const AsyncLoading<ConsultationRequestItem?>();
+    try {
+      await _repository.updateConsultationFinancial(
+        patientId: patientId,
+        consultationId: consultation.consultationId,
+        financial: financial,
+      );
+      state = AsyncData(consultation);
+      _ref.invalidate(consultationListProvider);
+      await refreshDoctorCareCostData(_ref, patientId);
     } catch (error, stackTrace) {
       state = AsyncError<ConsultationRequestItem?>(error, stackTrace);
     }

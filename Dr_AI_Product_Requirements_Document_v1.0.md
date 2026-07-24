@@ -180,8 +180,8 @@ public program, or insurance organization. They need to:
   version, confidence, and missing-information notes.
 - See explainable variance reason codes without treating an alert as a fraud
   determination.
-- Request clarification, accept a clinician explanation, escalate for human
-  review, or close the review with a recorded reason.
+- Request clarification, accept or reject a request with a recorded reason,
+  escalate for additional human review, or close the review.
 - Keep reimbursement and suspected-abuse decisions human-owned and auditable.
 
 Payer organizations, policies, coverage, claim records, and reviewer accounts
@@ -246,6 +246,10 @@ v1.0 must include a production-quality patient/doctor/payer platform:
 - Clinical Event / Care Episode management.
 - Patient profile and medical-history read/update/review workflow.
 - Medication, prescription, reminder, recovery-plan, imaging, consultation, and activity workflows linked to Clinical Events.
+- A canonical Clinical Service lifecycle for real ordered, scheduled, or
+  delivered billable services. Medication remains a product source;
+  specialist consultations and imaging procedures resolve through a service;
+  appointments only schedule; uploads/reports only evidence.
 - Patient Today view and recovery-plan progress.
 - Patient educational chat with safety escalation.
 - Support, feedback, and account deletion request submission/status foundation.
@@ -282,6 +286,23 @@ production-ready three-party care-and-cost core:
 - Analytics subset: disease statistics, recovery progress, referrals, AI usage, and operational activity.
 - Monitoring, backup/restore rehearsal, release signing, and deployment runbook.
 - Simplified Chinese and English localization foundation.
+
+### 8.2.1 Billable clinical-source boundary
+
+The active patient ledger and Payment Requests must share the same
+foreign-key-linked financial companion. A medication/product or canonical
+Clinical Service may own one active companion in `pending_cost`, `estimated`,
+or `final` state. Clinical saves remain available while cost is unknown;
+pending cost is patient-visible and payer-submission ineligible.
+
+The following artifacts do not create charges automatically: prescription
+documents, appointments/meetings, image/report uploads, diagnoses, notes,
+history facts, observations, reminders, recovery artifacts, and equipment
+reservations. A completed visit, imaging procedure, future laboratory test, or
+treatment/therapy session becomes price-bearing only through a real Clinical
+Service lifecycle. Equipment rental/use, deposits, cancellation, and no-show
+fees require a separately approved policy, source type, status, and
+patient-facing explanation.
 
 ### 8.3 Explicit Live-Deployment And Expansion Gates
 
@@ -579,15 +600,37 @@ Acceptance criteria:
 Requirements:
 
 - Patient chat supports educational question preparation, symptom explanation at a safe general level, medication education, and care-plan clarification.
+- Every valid text question should receive a useful answer when technically
+  possible. Responses carry one explicit `grounding_mode`:
+  `approved_evidence`, `general_model_knowledge`, or
+  `fixed_safety_response`.
+- `approved_evidence` uses only authorized, versioned, patient-approved
+  passages and exposes real reviewed source cards. `general_model_knowledge`
+  is a separately enabled early-stage mode used only when adequate approved
+  evidence is unavailable; it exposes no citations or source cards and must
+  say that no supporting Dr. AI source was found. It may be incorrect and is
+  not evidence-grounded.
 - Emergency red-flag escalation must run before model calls.
 - The chat must not provide diagnosis, emergency triage replacement, or medication-change instructions.
+- General-model output must not use patient-record fields as evidence, confirm
+  or rule out diagnosis, reassure that an emergency is absent, or give
+  patient-specific medication starts, stops, substitutions, or doses. A mixed
+  request may receive safe general medicine education while the personalized
+  treatment-change portion is declined.
 - The server must proxy LLM calls and handle timeouts, quota errors, malformed responses, unsafe prompts, and rate limits.
+- Grounded generation and general-model-knowledge generation have independent
+  configuration controls and schema/prompt versions. Disabling the latter
+  restores fixed no-evidence behavior without changing retrieval releases.
+- The chatbot does not perform arbitrary answer-time web browsing.
 - Conversation history may be stored only with appropriate safety and privacy rules.
 
 Acceptance criteria:
 
 - Red-flag prompts return fixed emergency guidance.
 - Unsafe prompts and provider failures return bounded fallback copy.
+- Approved answers show reviewed sources; general-model answers show a
+  conspicuous no-supporting-source label and never show an empty or fabricated
+  Sources section; fixed server responses remain visually distinct.
 - Raw prompts, secrets, and raw model output are not written to logs.
 
 ### 11.10 Specialist Consultation
@@ -647,8 +690,9 @@ Requirements:
   is `review_recommended`, not `abuse_detected`.
 - Let doctors submit versioned explanations and supporting references without
   changing the original claim or AI output.
-- Let authorized payer reviewers request information, accept an explanation,
-  escalate to another human, or close a review with a reason and audit event.
+- Let authorized payer reviewers request information, accept or reject a
+  request with a reason, escalate to another human, or close a review with an
+  audit event.
 - Give patients a separate plain-language cost view. Do not expose confidential
   reviewer notes, hidden models, negotiated rates without permission, or
   suspected-fraud labels.
@@ -807,6 +851,7 @@ Primary entities:
 - CareRelationship
 - ClinicalEvent
 - ClinicalEventUpdate
+- ClinicalService
 - MedicalRecord
 - MedicalHistoryReview
 - Allergy
