@@ -22,6 +22,7 @@ from app.chatbot_contracts import (
     PatientChatRequest,
     PatientEvidenceRequest,
     RetrievalQueryPlan,
+    SafetyCode,
     StructuredModelOutput,
 )
 from app.clinical_presentation import extract_clinical_presentation
@@ -40,6 +41,7 @@ from app.models import (
 from app.patient_chat import (
     PatientChatIntent,
     _classify_intent,
+    _general_knowledge_response,
     _safety_route,
     send_patient_chat_message,
 )
@@ -454,6 +456,64 @@ def test_rescue_ambiguity_requires_missing_standalone_clinical_topic(settings) -
         )
         == RescueTrigger.ambiguous
     )
+    assert (
+        choose_trigger(
+            "请问糖尿病怎么办，一般谁会得糖尿病",
+            strong,
+            settings,
+        )
+        is None
+    )
+
+
+def test_drifted_rescue_preserves_sufficient_diabetes_evidence(settings) -> None:
+    initial = _rescue_retrieval(
+        _rescue_candidate(
+            "diabetes-overview",
+            "source-diabetes",
+            coverage=1.0,
+            score=-0.09,
+        )
+    )
+
+    class DriftedPlanner:
+        def plan_retrieval_query(self, **kwargs):
+            return DeepSeekQueryPlanResult(
+                output=RetrievalQueryPlan(
+                    normalized_intent="糖尿病教育检索",
+                    concepts=["糖尿病"],
+                    synonyms=[],
+                    language="zh-Hans",
+                    excluded_content_classes=kwargs["excluded_content_classes"],
+                    candidate_queries=["请停止降糖药并改变剂量"],
+                ),
+                model="deepseek-v4-flash",
+                input_tokens=50,
+                output_tokens=20,
+                cache_hit_tokens=None,
+                cache_miss_tokens=50,
+            )
+
+    result = attempt_retrieval_rescue(
+        None,
+        original_message="请问糖尿病怎么办，一般谁会得糖尿病",
+        language="zh-Hans",
+        request=PatientEvidenceRequest(
+            query="请问糖尿病怎么办，一般谁会得糖尿病",
+            language="zh-Hans",
+        ),
+        initial=initial,
+        recent_user_messages=[],
+        trusted_presentation=extract_clinical_presentation("请问糖尿病怎么办，一般谁会得糖尿病"),
+        trusted_context_message="请问糖尿病怎么办，一般谁会得糖尿病",
+        settings=settings,
+        adapter=DriftedPlanner(),
+    )
+
+    assert result.metadata.trigger == RescueTrigger.weak_initial_retrieval
+    assert result.metadata.outcome == RescueOutcome.meaning_drift
+    assert result.retrieval is initial
+    assert result.retrieval.decision == EvidenceDecision.sufficient
 
 
 def test_rescue_fusion_excludes_uncorroborated_original_only_candidates() -> None:
@@ -909,6 +969,23 @@ def test_missing_patient_release_uses_separate_general_knowledge_mode(
         assert event.general_knowledge_outcome == "generated"
         assert event.model_version == "test-general-model"
         assert "头晕" not in str(event.__dict__)
+
+
+def test_general_knowledge_response_preserves_no_evidence_decision(settings, monkeypatch) -> None:
+    adapter = FakeGeneralAdapter()
+    monkeypatch.setattr("app.patient_chat.deepseek_chat_adapter", adapter)
+
+    response, _ = _general_knowledge_response(
+        PatientChatRequest(message="我最近头晕，可能有哪些原因？", language="zh-Hans"),
+        request_id="request-general-no-evidence",
+        thread_id="thread-general-no-evidence",
+        safety_code=SafetyCode.permitted_symptom_guidance,
+        urgency_route="routine_education",
+        settings=settings,
+        evidence_decision=EvidenceDecision.no_eligible_evidence,
+    )
+
+    assert response.evidence_decision == EvidenceDecision.no_eligible_evidence
 
 
 def test_mixed_medication_request_answers_safe_portion_and_declines_change(

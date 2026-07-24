@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     deepseek_api_key: SecretStr | None = None
     deepseek_base_url: str = "https://api.deepseek.com/chat/completions"
     deepseek_model: str = "deepseek-v4-flash"
-    deepseek_timeout_seconds: float = 8.0
+    deepseek_timeout_seconds: float = 15.0
     chatbot_grounded_generation_enabled: bool = True
     chatbot_general_model_knowledge_enabled: bool = True
     chatbot_grounded_answer_schema_version: str = "grounded-answer-v2-2026-07-24"

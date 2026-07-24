@@ -515,6 +515,7 @@ def _general_knowledge_response(
         next_action_code=provider.output.next_action_code,
         safety_code=safety_code,
         urgency_route=urgency_route,
+        evidence_decision=evidence_decision,
         model_version=None,
         suggested_action_codes=_suggested_actions(
             safety_code,

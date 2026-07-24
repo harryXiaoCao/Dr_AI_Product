@@ -375,6 +375,22 @@ def test_cross_encoder_reranker_uses_declared_service_response(monkeypatch) -> N
         assert reranked[0].rerank_score == pytest.approx(1.18)
 
 
+def test_cross_encoder_skips_service_when_no_candidates(monkeypatch) -> None:
+    settings = get_settings()
+    monkeypatch.setattr(settings, "knowledge_reranker_backend", "http_service")
+    monkeypatch.setattr(
+        "urllib.request.urlopen",
+        lambda *args, **kwargs: pytest.fail("empty candidate set reached reranker service"),
+    )
+
+    with Session(engine) as db:
+        reranked, backend, fallback = _cross_encoder_rerank(db, "阑尾炎", [])
+
+    assert reranked == []
+    assert backend == "not_applicable"
+    assert fallback is None
+
+
 def test_cross_encoder_budget_selects_distinct_sources(monkeypatch) -> None:
     with Session(engine) as db:
         versions = [

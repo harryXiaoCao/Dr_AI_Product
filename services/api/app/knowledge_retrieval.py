@@ -451,6 +451,8 @@ def _cross_encoder_rerank(
         selected.append(candidate)
         if len(selected) == candidate_limit:
             break
+    if not selected:
+        return candidates, "not_applicable", None
     try:
         assert_passages_provider_transmittable(db, [item.passage.stable_id for item in selected])
     except PermissionError as exc:
