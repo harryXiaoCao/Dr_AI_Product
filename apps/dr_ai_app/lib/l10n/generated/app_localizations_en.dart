@@ -602,7 +602,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get privacyNoticeBody =>
-      'Dr. AI is preparing its production account, consent, and support policies. This placeholder keeps the current staging surface clear while those policies are finalized.';
+      'This synthetic-development environment is governed by the account, consent, privacy, and support boundaries shown here. It is not authorized for real patient data or live clinical use.';
 
   @override
   String get privacyNoData =>
@@ -703,15 +703,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get accountPolicyStaging =>
-      'Account policy placeholders for Dr. AI staging.';
+      'Synthetic-development account and privacy boundaries for Dr. AI.';
 
   @override
   String accountPolicyUser(String name) {
-    return 'Account policy placeholders for $name.';
+    return 'Synthetic-development account and privacy boundaries for $name.';
   }
 
   @override
-  String get stagingPolicyPlaceholder => 'Staging policy placeholder';
+  String get stagingPolicyPlaceholder => 'Synthetic-development policy';
 
   @override
   String get passwordUpdated => 'Password updated';
@@ -2571,7 +2571,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aiPlaceholderNotice =>
-      'This placeholder keeps AI access consistent for doctors and patients while safety work is completed.';
+      'Generative replies stay unavailable until an evaluated DeepSeek release is activated. Deterministic safety and structured fallback remain active.';
 
   @override
   String get aiChatSubtitle =>
@@ -2608,6 +2608,25 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get aiHistoryRetentionNotice =>
       'Each conversation is kept for at least 60 days and is visible only in your account.';
+
+  @override
+  String get aiArchiveChat => 'Archive conversation';
+
+  @override
+  String get aiReopenChat => 'Reopen conversation';
+
+  @override
+  String get aiDeleteChat => 'Delete from my history';
+
+  @override
+  String get aiArchivedChat => 'Archived';
+
+  @override
+  String get aiChatLifecycleFailed =>
+      'The conversation could not be updated. Try again.';
+
+  @override
+  String get retry => 'Retry';
 
   @override
   String get aiFollowUpQuestion => 'One detail would help';

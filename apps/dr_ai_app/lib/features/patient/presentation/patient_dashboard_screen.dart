@@ -110,6 +110,253 @@ class PatientRecoveryPlanScreen extends ConsumerWidget {
   }
 }
 
+enum PatientMedicalSection { records, imaging, medications }
+
+class PatientMedicalServiceScreen extends ConsumerWidget {
+  const PatientMedicalServiceScreen({required this.initialSection, super.key});
+
+  final PatientMedicalSection initialSection;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final care = ref.watch(ownPatientCareProvider);
+    return ResponsiveAppShell(
+      role: AppRole.patient,
+      child: ColoredBox(
+        color: DrAiColors.pageBackground,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 760),
+            child: care.when(
+              loading: () => const DashboardLoadingView(),
+              error: (error, stackTrace) => DashboardErrorView(
+                message: _patientCopy(
+                  context,
+                  'Your medical information is temporarily unavailable.',
+                  '医疗信息暂时无法加载。',
+                ),
+                onRetry: () => ref.invalidate(ownPatientCareProvider),
+              ),
+              data: (bundle) => _PatientMedicalServiceView(
+                bundle: bundle,
+                initialSection: initialSection,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PatientMedicalServiceView extends ConsumerStatefulWidget {
+  const _PatientMedicalServiceView({
+    required this.bundle,
+    required this.initialSection,
+  });
+
+  final PatientCareBundle bundle;
+  final PatientMedicalSection initialSection;
+
+  @override
+  ConsumerState<_PatientMedicalServiceView> createState() =>
+      _PatientMedicalServiceViewState();
+}
+
+class _PatientMedicalServiceViewState
+    extends ConsumerState<_PatientMedicalServiceView> {
+  late PatientMedicalSection _section = widget.initialSection;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      key: const Key('patient-medical-service-list'),
+      padding: const EdgeInsets.all(DrAiSpacing.md),
+      children: <Widget>[
+        Text(
+          _patientCopy(context, 'My medical information', '我的医疗信息'),
+          style: Theme.of(
+            context,
+          ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: DrAiSpacing.xs),
+        Text(
+          _patientCopy(
+            context,
+            'Read-only records shared through your authorized care relationship.',
+            '查看通过已授权医患关系共享的只读记录。',
+          ),
+          style: const TextStyle(color: DrAiColors.inkSecondary),
+        ),
+        const SizedBox(height: DrAiSpacing.md),
+        SegmentedButton<PatientMedicalSection>(
+          segments: <ButtonSegment<PatientMedicalSection>>[
+            ButtonSegment(
+              value: PatientMedicalSection.records,
+              icon: const Icon(Icons.description_outlined),
+              label: Text(context.l10n.records),
+            ),
+            ButtonSegment(
+              value: PatientMedicalSection.imaging,
+              icon: const Icon(Icons.document_scanner_outlined),
+              label: Text(context.l10n.imaging),
+            ),
+            ButtonSegment(
+              value: PatientMedicalSection.medications,
+              icon: const Icon(Icons.medication_outlined),
+              label: Text(_patientCopy(context, 'Medications', '用药')),
+            ),
+          ],
+          selected: <PatientMedicalSection>{_section},
+          onSelectionChanged: (value) =>
+              setState(() => _section = value.single),
+        ),
+        const SizedBox(height: DrAiSpacing.md),
+        switch (_section) {
+          PatientMedicalSection.records => _PersistedMedicalList(
+            emptyText: _patientCopy(
+              context,
+              'No medical records have been shared yet.',
+              '尚未共享医疗记录。',
+            ),
+            children: widget.bundle.records
+                .map(
+                  (record) => ListTile(
+                    leading: const Icon(Icons.description_outlined),
+                    title: Text(record.title),
+                    subtitle: Text('${record.category}\n${record.summary}'),
+                    isThreeLine: true,
+                    trailing: Text(
+                      MaterialLocalizations.of(
+                        context,
+                      ).formatShortDate(record.recordedAt),
+                    ),
+                  ),
+                )
+                .toList(),
+          ),
+          PatientMedicalSection.imaging => _PersistedMedicalList(
+            emptyText: _patientCopy(
+              context,
+              'No imaging files have been shared yet.',
+              '尚未共享影像文件。',
+            ),
+            children: widget.bundle.imagingAssets
+                .map(
+                  (asset) => ListTile(
+                    leading: const Icon(Icons.document_scanner_outlined),
+                    title: Text(
+                      '${asset.contentType} · ${asset.fileExtension.toUpperCase()}',
+                    ),
+                    subtitle: Text(
+                      '${_patientCopy(context, 'Upload', '上传')}: '
+                      '${asset.uploadStatus}\n'
+                      '${_patientCopy(context, 'Doctor review', '医生审核')}: '
+                      '${asset.reviewStatus} · '
+                      '${asset.provenanceVersions.length} '
+                      '${_patientCopy(context, 'verified version(s)', '个已验证版本')}',
+                    ),
+                    isThreeLine: true,
+                    trailing: asset.uploadStatus != 'uploaded'
+                        ? null
+                        : IconButton(
+                            tooltip: _patientCopy(
+                              context,
+                              'Verify and download',
+                              '验证并下载',
+                            ),
+                            onPressed: () => _downloadImaging(asset),
+                            icon: const Icon(Icons.download_outlined),
+                          ),
+                  ),
+                )
+                .toList(),
+          ),
+          PatientMedicalSection.medications => _PersistedMedicalList(
+            emptyText: _patientCopy(
+              context,
+              'No medications have been recorded yet.',
+              '尚未记录用药。',
+            ),
+            children: widget.bundle.medications
+                .map(
+                  (medication) => ListTile(
+                    leading: const Icon(Icons.medication_outlined),
+                    title: Text(medication.name),
+                    subtitle: Text(
+                      '${medication.dosage} · ${medication.schedule}\n'
+                      '${medication.note}',
+                    ),
+                    isThreeLine: true,
+                    trailing: Text(medication.status),
+                  ),
+                )
+                .toList(),
+          ),
+        },
+      ],
+    );
+  }
+
+  Future<void> _downloadImaging(MedicalImagingAsset asset) async {
+    try {
+      final bytes = await ref
+          .read(repositoryProvider)
+          .downloadMedicalImagingBytes(
+            patientId: widget.bundle.patient.patientId,
+            assetId: asset.id,
+          );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _patientCopy(
+              context,
+              '${bytes.length} verified bytes downloaded. File export is unavailable in this build.',
+              '已下载并验证 ${bytes.length} 字节。此版本暂不支持导出文件。',
+            ),
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_patientSafeErrorMessage(context, error))),
+      );
+    }
+  }
+}
+
+class _PersistedMedicalList extends StatelessWidget {
+  const _PersistedMedicalList({
+    required this.emptyText,
+    required this.children,
+  });
+
+  final String emptyText;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    if (children.isEmpty) {
+      return Semantics(
+        liveRegion: true,
+        child: Card(
+          child: Padding(
+            padding: const EdgeInsets.all(DrAiSpacing.lg),
+            child: Text(
+              emptyText,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: DrAiColors.inkSecondary),
+            ),
+          ),
+        ),
+      );
+    }
+    return Card(child: Column(children: children));
+  }
+}
+
 class _PatientDashboard extends ConsumerWidget {
   const _PatientDashboard({required this.data});
 
@@ -682,6 +929,7 @@ class _CareRecordStatus extends StatelessWidget {
             icon: Icons.description_outlined,
             label: context.l10n.records,
             value: hasRecords ? context.l10n.available : context.l10n.noneYet,
+            onTap: () => context.go('/patient/medical-service/records'),
           ),
         ),
         const SizedBox(width: DrAiSpacing.xs),
@@ -690,6 +938,7 @@ class _CareRecordStatus extends StatelessWidget {
             icon: Icons.document_scanner_outlined,
             label: context.l10n.imaging,
             value: hasImages ? context.l10n.available : context.l10n.noneYet,
+            onTap: () => context.go('/patient/medical-service/imaging'),
           ),
         ),
       ],
@@ -702,50 +951,64 @@ class _CareStatusPill extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.value,
+    required this.onTap,
   });
 
   final IconData icon;
   final String label;
   final String value;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: DrAiColors.surfaceSubtle,
+    return Semantics(
+      button: true,
+      label: '$label, $value',
+      child: InkWell(
         borderRadius: BorderRadius.circular(DrAiRadii.md),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(DrAiSpacing.xs),
-        child: Row(
-          children: <Widget>[
-            Icon(icon, color: DrAiColors.brand, size: 20),
-            const SizedBox(width: DrAiSpacing.xs),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(
-                    label,
-                    style: const TextStyle(
-                      color: DrAiColors.mutedInk,
-                      fontSize: 12,
-                    ),
+        onTap: onTap,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: DrAiColors.surfaceSubtle,
+            borderRadius: BorderRadius.circular(DrAiRadii.md),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(DrAiSpacing.xs),
+            child: Row(
+              children: <Widget>[
+                Icon(icon, color: DrAiColors.brand, size: 20),
+                const SizedBox(width: DrAiSpacing.xs),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        label,
+                        style: const TextStyle(
+                          color: DrAiColors.mutedInk,
+                          fontSize: 12,
+                        ),
+                      ),
+                      Text(
+                        value,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                    ],
                   ),
-                  Text(
-                    value,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.w800),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
   }
+}
+
+String _patientCopy(BuildContext context, String en, String zh) {
+  return Localizations.localeOf(context).languageCode == 'zh' ? zh : en;
 }
 
 String _compactContact(BuildContext context, String? name, String? phone) {

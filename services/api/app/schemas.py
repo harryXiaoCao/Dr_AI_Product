@@ -795,15 +795,22 @@ ClinicalServiceStatus = Literal[
 
 
 class ClinicalServiceRequest(BaseModel):
-    """Current writable contract for the imaging-service vertical slice."""
+    """Doctor-owned delivered-service contract for the current Clinical Event."""
 
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
     clinical_event_id: UUID
-    category: Literal["imaging"] = "imaging"
+    category: Literal[
+        "imaging",
+        "laboratory",
+        "consultation",
+        "treatment",
+        "rehabilitation",
+        "other_service",
+    ]
     name: str = Field(min_length=2, max_length=200)
     service_subtype: str = Field(min_length=2, max_length=80)
-    body_region: str = Field(min_length=2, max_length=120)
+    body_region: str | None = Field(default=None, min_length=2, max_length=120)
     service_code: str | None = Field(default=None, max_length=80)
     performing_provider_name: str | None = Field(default=None, max_length=160)
     appointment_id: UUID | None = None
@@ -816,6 +823,8 @@ class ClinicalServiceRequest(BaseModel):
 
     @model_validator(mode="after")
     def validate_lifecycle_dates(self) -> "ClinicalServiceRequest":
+        if self.category == "imaging" and self.body_region is None:
+            raise ValueError("Imaging services require a body region.")
         if (
             self.ordered_at is not None
             and self.scheduled_at is not None
@@ -913,7 +922,7 @@ class MedicalImagingPresignResponse(BaseModel):
     max_size_bytes: int
     upload_status: Literal["pending_upload", "uploaded", "failed", "expired"]
     review_status: Literal["not_ready", "pending_review", "reviewed", "rejected"]
-    storage_provider: Literal["tencent_cos"]
+    storage_provider: Literal["local", "tencent_cos"]
     safety_label: Literal["Synthetic demonstration data only. Do not enter real patient data."] = (
         "Synthetic demonstration data only. Do not enter real patient data."
     )
@@ -952,7 +961,7 @@ class MedicalImagingAssetResponse(BaseModel):
     patient_id: UUID
     clinical_event_id: UUID | None
     clinical_service_id: UUID | None
-    storage_provider: Literal["tencent_cos"]
+    storage_provider: Literal["local", "tencent_cos"]
     content_type: str
     file_extension: str
     size_bytes: int
@@ -968,6 +977,9 @@ class MedicalImagingAssetResponse(BaseModel):
     expires_at: datetime
     uploaded_at: datetime | None
     reviewed_at: datetime | None
+    provenance_versions: list["MedicalImagingProvenanceResponse"] = Field(
+        default_factory=list
+    )
     safety_label: Literal["Synthetic demonstration data only. Do not enter real patient data."] = (
         "Synthetic demonstration data only. Do not enter real patient data."
     )
@@ -976,6 +988,16 @@ class MedicalImagingAssetResponse(BaseModel):
 class MedicalImagingAssetListResponse(BaseModel):
     items: list[MedicalImagingAssetResponse]
     next_cursor: None = None
+
+
+class MedicalImagingProvenanceResponse(BaseModel):
+    id: UUID
+    version: int
+    storage_provider: Literal["local", "tencent_cos"]
+    content_type: str
+    size_bytes: int
+    checksum_sha256: str
+    created_at: datetime
 
 
 class AssessmentRequest(BaseModel):

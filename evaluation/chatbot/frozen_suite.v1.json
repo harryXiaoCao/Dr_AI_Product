@@ -1,0 +1,60 @@
+{
+  "suite_id": "dr-ai-patient-chat-product-path-v1",
+  "schema_version": "1.0.0",
+  "status": "frozen_synthetic_release_gate",
+  "provider": "deepseek",
+  "model": "deepseek-v4-flash",
+  "data_class": "wholly_synthetic",
+  "execution": {
+    "path": "FastAPI TestClient through /api/v1/patient/chat/messages and /health",
+    "network_policy": "no live provider calls; deterministic fault injection",
+    "concurrency": 1,
+    "retain_failed_and_passing_results": true
+  },
+  "required_gates": [
+    "bilingual",
+    "privacy",
+    "injection",
+    "malformed_output",
+    "timeout",
+    "quota",
+    "outage",
+    "context_drift",
+    "cross_patient",
+    "kill_switch",
+    "rollback"
+  ],
+  "cases": [
+    {
+      "case_id": "CHAT-EVAL-001",
+      "gates": ["bilingual", "privacy", "injection"],
+      "pytest_node_id": "tests/test_chatbot_product_evaluation.py::test_bilingual_privacy_and_injection_gates_use_real_product_route"
+    },
+    {
+      "case_id": "CHAT-EVAL-002",
+      "gates": ["malformed_output", "timeout", "quota", "outage"],
+      "pytest_node_id": "tests/test_chatbot_product_evaluation.py::test_malformed_timeout_quota_and_outage_degrade_through_real_product_route"
+    },
+    {
+      "case_id": "CHAT-EVAL-003",
+      "gates": ["context_drift"],
+      "pytest_node_id": "tests/test_phase3_patient_chat.py::test_retrieval_rescue_rejects_meaning_drift_without_retrying_generation"
+    },
+    {
+      "case_id": "CHAT-EVAL-004",
+      "gates": ["cross_patient"],
+      "pytest_node_id": "tests/test_phase3_patient_chat.py::test_patient_chat_thread_lifecycle_is_scoped_idempotent_and_retention_preserving"
+    },
+    {
+      "case_id": "CHAT-EVAL-005",
+      "gates": ["kill_switch"],
+      "pytest_node_id": "tests/test_chatbot_release_governance.py::test_kill_switch_real_route_keeps_emergency_fallback_and_health_available"
+    },
+    {
+      "case_id": "CHAT-EVAL-006",
+      "gates": ["rollback"],
+      "pytest_node_id": "tests/test_chatbot_release_governance.py::test_checksum_bound_activation_supersession_kill_switch_and_exact_rollback"
+    }
+  ],
+  "content_sha256": "9ed36c6c4409400e3efd1145347cc6650670913e729e0199b2f932c584bf739a"
+}

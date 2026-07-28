@@ -84,7 +84,9 @@ class _ContactList extends StatelessWidget {
           iconColor: DrAiColors.accentIndigo,
           title: context.l10n.appName,
           subtitle: context.l10n.drAiContactDescription,
-          badge: context.l10n.comingLater,
+          badge: Localizations.localeOf(context).languageCode == 'zh'
+              ? '可用'
+              : 'Available',
           onTap: () => context.push('/patient/contact/ai'),
         ),
         const SizedBox(height: DrAiSpacing.lg),
@@ -109,18 +111,6 @@ class _ContactList extends StatelessWidget {
             _DoctorContactTile(doctor: doctor),
             const SizedBox(height: DrAiSpacing.sm),
           ],
-        const SizedBox(height: DrAiSpacing.md),
-        _SectionLabel(context.l10n.groups),
-        const SizedBox(height: DrAiSpacing.sm),
-        _ContactTile(
-          key: Key('group-contact-placeholder'),
-          icon: Icons.groups_2_outlined,
-          iconBackground: Color(0xFFF1F3F5),
-          iconColor: DrAiColors.inkSecondary,
-          title: context.l10n.careGroups,
-          subtitle: context.l10n.careGroupsDescription,
-          badge: context.l10n.comingLater,
-        ),
         const SizedBox(height: DrAiSpacing.lg),
       ],
     );

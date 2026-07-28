@@ -31,7 +31,11 @@ WHO/NHC passage corpus inactive until rights and clinician-review approval.
 The 2026-07-23 care-and-cost slice adds payer registration and membership,
 event-level cost-item CRUD/readback, immutable payer-request snapshots, and an
 organization-scoped human review queue. It does not add claims adjudication,
-coverage decisions, reference pricing, or AI utilization decisions.
+coverage decisions, or AI utilization decisions. The 2026-07-25 Slices B/C
+add internal provider-neutral reference persistence and a model-free
+deterministic evaluation service, but intentionally add no public HTTP route.
+Slice D adds a separate internal schema-constrained expected-care candidate
+service and immutable persistence, also without a public HTTP route.
 
 Contract version: `1.1.0`
 
@@ -57,7 +61,8 @@ Today progress endpoints added: 2026-07-08; Phase 2 Clinical Event/Care
 Episode backend model, endpoints, resource links, and care-bundle readback
 added: 2026-07-08; payer identity and the first three-party care-and-cost
 workflow added: 2026-07-23; canonical Clinical Service and imaging-procedure
-financial workflow added: 2026-07-24
+financial workflow added: 2026-07-24; internal governed care-reference
+persistence and deterministic engine added without HTTP routes: 2026-07-25
 
 This contract preserves the public HTTP boundary implemented for the historical
 Dr. AI v1.0.0-beta.1 demo and records the intended shape of production v1.0
@@ -552,6 +557,22 @@ fail-closed unless the configured Mainland-China location, field allowlist,
 no-training, no-retention, privacy, legal, and product approval gates all pass.
 This restriction does not change Dr. AI's production/commercial positioning.
 
+### Generated-answer release readiness
+
+The only enabled v1 generated-answer provider is `deepseek`. Provider
+independence is retained only for deterministic tests and product-owned fixed
+fallbacks. Generation is fail-closed unless the purpose is enabled, its kill
+switch is off, and the active `patient_chat_generated_answer` release has the
+exact expected purpose, provider, prompt, schema, contract checksum, release
+checksum, and passing machine gates.
+
+Release content and transition events are append-only at the database boundary.
+Activation, supersession, and rollback use advisory locking, expected active
+version/checksum preconditions, and idempotency keys. Rollback may target only
+the active release's exact predecessor. Missing or drifted release state,
+provider timeout/quota/outage, or malformed output returns a deterministic
+product-owned fallback; emergency routing and unrelated APIs remain available.
+
 ## Error envelope
 
 Every non-2xx application response uses this shape:
@@ -669,8 +690,11 @@ this slice calculates a necessity, abuse, fraud, coverage, or payment decision.
 The implemented price-bearing sources are medications/products and canonical
 Clinical Services. Specialist consultation requests create a one-to-one
 `category = consultation` Clinical Service when linked to a Clinical Event;
-imaging procedures use `category = imaging`. Medication create/update,
-consultation create, and imaging-service create/update accept an optional
+imaging procedures use `category = imaging`. The doctor-owned Clinical Service
+write contract also accepts `laboratory`, `treatment`, `rehabilitation`, and
+`other_service`; category is immutable after creation, and imaging alone
+requires a body region. Medication create/update, consultation create, and
+Clinical Service create/update accept an optional
 `financial` object with `pricing_state` (`pending_cost`,
 `estimated`, or `final`), optional `service_date`, CNY `currency`,
 `total_cost_minor`, `payer_requested_minor`, and
@@ -759,6 +783,170 @@ current status, review action, reason code, and review timestamp but redacts the
 reviewer-only note. These are human workflow states, not automatic
 reimbursement, payment, coverage, adjudication, or care decisions. Request
 existence and reviewer notes remain organization-scoped.
+
+## Internal Governed Care-Reference And Deterministic Contract
+
+Slices B/C intentionally add no HTTP endpoint. Callers inside the API process
+must provide four exact compatible releases: scenario definition, care plan,
+pricing reference, and utilization rules. Each release carries its ID, key,
+version, payload checksum, jurisdiction/region/facility/currency scope,
+effective interval, freshness date, lifecycle state, and rights state.
+
+The internal deterministic request contains:
+
+- evaluation date and service/reference date;
+- jurisdiction, region, encounter type, facility ownership/level, currency,
+  and applicable population fields;
+- structured delivered-line identifiers, code system/code, unit, integer
+  quantity, currency, and integer-minor-unit amount; and
+- an optional attributable justified-exception code, rationale, author, and
+  affected line IDs.
+
+The internal result contains:
+
+- `status`, including `suppressed`, `missing_information`, `unsupported`,
+  `invalid_reference`, `invalid_observation`, `comparison_not_ready`,
+  `within_range`, `review_recommended`, and `exception_recorded`;
+- exact integer `total_low_minor`, `total_high_minor`, and
+  `observed_total_minor` when calculation is valid;
+- item-level ranges and observations;
+- transparent `reason_codes`, `missing_information`, and
+  `suppression_reasons`;
+- the engine contract version, structured input snapshot and checksum, exact
+  release IDs/versions/checksums, and result checksum; and
+- an optional `prior_evaluation_id`. Re-evaluation inserts a new row and
+  cannot update or delete the earlier result.
+
+Release review, activation, supersession, and rollback are server-controlled
+internal operations. Activation fails unless the release is effective, fresh,
+rights-compatible, and approved by all required checksum-bound review types.
+Database triggers prevent content mutation after activation and make reviews,
+activation history, and evaluations append-only. No path in this contract
+calls DeepSeek, activates the blocked Shanghai candidate, changes a Clinical
+Event/Clinical Service/CareCostItem, or rewrites payer-request snapshots.
+
+The implemented resolver accepts exact scenario, care-plan, pricing,
+utilization, and scope keys and follows four active pointers. It rejects a
+missing specialization, incompatible scenario binding, or missing release
+items; it never selects an inferred “latest” version. The orchestration caller
+must be an active doctor with an active relationship to the patient, and the
+Clinical Event must belong to that patient. If a payer request is supplied, it
+must also belong to that patient and event, have been submitted by the same
+doctor, and its immutable line-ID set, currencies, and actual amounts must
+exactly match the observed input. Any mismatch uses the neutral internal
+`not_found` authorization boundary. Success appends an evaluation and a
+content-free audit event; it does not mutate the Clinical Event, delivered
+service/cost source, payer request, or prior evaluation.
+
+## Internal Expected-Care Candidate Contract
+
+Slice D intentionally adds no HTTP endpoint. Its purpose code is
+`expected_care_candidate`, with independent purpose-contract, output-schema,
+prompt, and model-configuration versions. It does not reuse patient-chat
+prompts, schemas, evaluation, fallback, or activation state.
+
+Before a provider call, the service verifies the active doctor-patient
+relationship, exact Clinical Event, and optional submitting-doctor
+payer-request scope with neutral `not_found` failures. It resolves the exact
+four active releases, runs the B/C deterministic engine, checks freshness,
+rights, provider-transmission permission, checksums, compatibility, and
+confidentiality, then builds a minimum-necessary structured input.
+
+Provider input contains applicability fields, admitted item/rule/reference
+identifiers, server-owned integer-minor-unit ranges/totals, and exact release
+lineage. It excludes patient/event identifiers, Clinical Event free text,
+payer-review notes, unrelated history, attachments, credentials, contacts,
+confidential reference content, and raw source content.
+
+The strict output contains exact echoed applicability and release lineage,
+bounded assumptions, missing information, attributable exceptions, confidence
+limitations, and structured items. Each item must exactly match an admitted
+item key, category, code system/code, unit, integer quantity range,
+integer-minor-unit range, pricing-reference item ID, and utilization-rule ID.
+The service revalidates every field and reconciles totals with the deterministic
+engine. Schema errors, unsupported fields, incompatible or stale releases,
+checksum drift, active-release changes, currency mismatch, and deterministic
+disagreement fail closed.
+
+Every terminal invocation inserts one append-only request, zero to two
+append-only content-free provider attempts, and one append-only result.
+Persistence retains case scope, idempotency fingerprint, optional predecessor,
+purpose/configuration versions, provider/model metadata, exact release
+IDs/checksums, minimum-input and output checksums, lifecycle and validation
+outcomes, provider-reported usage, and deterministic-result lineage.
+
+Terminal candidate states are `generated_pending_review`, `invalid`,
+`suppressed`, or `provider_unavailable`. A validated candidate is copied
+exactly into the separate `validated_baseline_published` domain; none of these
+states means clinically correct or payer-approved. Retry is bounded to one additional attempt;
+timeout, conservative cost reservation, default-off kill switch, local/test
+synthetic-only gating, transaction-scoped idempotency locking, and fixed safe
+fallbacks apply. Provider failure preserves manual and `pending_cost`
+workflows.
+
+The DeepSeek adapter is used only when explicitly enabled with a server-side
+credential. All Slice D verification uses deterministic provider stubs and
+prohibits external requests. Slice E baseline publication and clinician
+responses never invoke this adapter.
+Explanation generation remains outside this contract.
+
+## Authenticated Expected-Care Baseline Contract
+
+All existence-sensitive authorization failures are neutral `404 not_found`.
+Stale response versions, release/checksum drift, suppressed or invalid
+candidates, and deterministic disagreement return fixed `409 conflict` or
+`422 validation_failed` responses. Mutations require an `Idempotency-Key`;
+replay with the same content returns the original clinician response, while
+reuse with different content returns `409 conflict`.
+
+### Doctor
+
+- `GET /api/v1/patients/{patient_id}/clinical-events/{event_id}/expected-care/candidates`
+- `GET /api/v1/patients/{patient_id}/clinical-events/{event_id}/expected-care/candidates/{candidate_result_id}`
+- `GET /api/v1/patients/{patient_id}/clinical-events/{event_id}/expected-care/candidates/{candidate_result_id}/history`
+- `POST /api/v1/patients/{patient_id}/clinical-events/{event_id}/expected-care/candidates/{candidate_result_id}/responses`
+
+The list/history response includes the immutable candidate and separately
+published baseline, exact admitted
+release IDs/versions/checksums/effective dates, assumptions, missing
+information, limitations, item ranges, totals, validation state, and immutable
+clinician-response history. It also includes the immutable
+`cost_estimation_fact_snapshot`, with server-selected `facts_used`,
+`facts_not_used`, `missing_facts`, category counts, provenance, and authority
+boundary. Doctor, patient, payer, and provider serialization use separate
+allow-lists. It excludes provider prompts, raw provider output, credentials,
+storage keys, contact/account identifiers, reviewer-only notes, and
+content-free internal diagnostic codes.
+
+Response input is one of `acknowledge`, `concur`, `disagree`, or `exception`,
+with `expected_version`. `disagree` and `exception` require an attributable
+structured rationale; `acknowledge` and `concur` may include one. The input
+accepts no replacement items, quantities, codes, units, currency, reference
+IDs, amounts, or totals. A rationale can carry an exception code, optional
+patient-safe summary, and admitted item keys. Reviewer-only notes are
+doctor-only. Every accepted response re-runs deterministic validation, but no
+response can alter, reject, unpublish, or hide the baseline.
+
+### Patient and payer
+
+- `GET /api/v1/patient/clinical-events/{event_id}/expected-care-envelope`
+- `GET /api/v1/payer/requests/{payer_request_id}/expected-care-envelope`
+
+The patient route returns the latest deterministically validated, immutable
+baseline for the authenticated patient even when no clinician response exists.
+It labels the baseline as a system reference range, never a prescribed plan,
+quote, bill, coverage determination, reimbursement amount, or final patient
+responsibility. It includes patient-safe clinician positions separately and
+omits reviewer-only notes, codes, rate IDs, checksums, and suspicion labels.
+
+The payer route additionally requires an active membership in the exact
+organization addressed by the immutable request and a baseline bound to that
+request/patient/event. Its read-only response separates preserved AI candidate,
+deterministic validation, immutable baseline, clinician response, submitted
+facts, and human payer review. The clinician cannot hide or modify the
+baseline. Payer reimbursement approval, partial approval, clarification, or
+decline remains a separate human action; the baseline route exposes no clinical
+approval or automated reimbursement action.
 
 ## Authenticated support request contract
 
@@ -913,12 +1101,14 @@ Implemented service endpoints:
 - `PUT /api/v1/patients/{patient_id}/clinical-services/{service_id}`
 - `PUT /api/v1/patients/{patient_id}/clinical-services/{service_id}/financial`
 
-Only an active treating doctor may create or mutate the current imaging
-service slice. Authorized patients receive read-only service data through the
-care bundle and patient-scoped list. Writable request fields are explicitly
-allow-listed; the current public create/update schema accepts only
-`category = imaging`, leaving laboratory and treatment forms unavailable until
-their real lifecycle and authorization paths are implemented.
+Only an active treating doctor may create or mutate a Clinical Service.
+Authorized patients receive read-only service data through the care bundle and
+patient-scoped list. Writable request fields are explicitly allow-listed.
+Supported categories are `imaging`, `laboratory`, `consultation`, `treatment`,
+`rehabilitation`, and `other_service`. Category cannot change after creation.
+Each service may retain `pending_cost` until the exact financial allocation is
+known; payer submission remains unavailable until the existing reconciliation
+contract passes.
 
 The asset layer remains a production-separated metadata/status workflow. It is
 Tencent-COS-compatible in shape, but this slice does not call Tencent COS,
@@ -1603,3 +1793,50 @@ The current non-emergency care-timing rule table and fixed same-day fallback
 copy are local candidates pending named clinical, native-Simplified-Chinese,
 and product review. Their presence in the response schema is not production
 approval.
+
+## Expected-care deterministic comparison and explanation (Slices F/G)
+
+All routes are authenticated and use neutral `404 not_found` boundaries for
+wrong role, patient, Clinical Event, payer organization, membership, request,
+baseline, or comparison scope. A clinician response is not required for any
+baseline or comparison read.
+
+| Method | Route | Authorization | Behavior |
+|---|---|---|---|
+| `POST` | `/api/v1/patients/{patient_id}/clinical-events/{event_id}/expected-care/baselines/{baseline_id}/comparisons` | Assigned doctor | Creates or replays one immutable server-calculated comparison. Requires `Idempotency-Key`; conflicting reuse returns `409 conflict`. |
+| `POST` | `/api/v1/patients/{patient_id}/clinical-events/{event_id}/expected-care/comparisons` | Assigned doctor | Creates or replays a comparison from the latest immutable baseline; Flutter never supplies baseline/provider facts. |
+| `GET` | `/api/v1/patients/{patient_id}/clinical-events/{event_id}/expected-care/comparisons/latest` | Assigned doctor | Latest authorized comparison with technical line evidence. |
+| `GET` | `/api/v1/patients/{patient_id}/clinical-events/{event_id}/expected-care/comparisons/history` | Assigned doctor | Immutable comparison history and predecessor differences. |
+| `GET` | `/api/v1/patient/clinical-events/{event_id}/expected-care-comparison` | Exact patient | Patient-filtered comparison without service codes, source IDs, reviewer notes, or confidential lineage. |
+| `GET` | `/api/v1/payer/requests/{payer_request_id}/expected-care-comparison` | Active membership in exact request organization | Exact request-scoped comparison. |
+| `POST/GET` | doctor comparison `/explanations`, `/explanations/latest`, and `/explanations/history` routes | Assigned doctor | Requests, reads, or lists immutable doctor fact-object explanations. History is bounded by `limit=1..100`. |
+| `POST/GET` | patient comparison `/explanations`, `/explanations/latest`, and `/explanations/history` routes | Exact patient | Requests, reads, or lists patient-safe explanation attempts. History is bounded by `limit=1..100`. |
+| `POST/GET` | payer request comparison `/explanations`, `/explanations/latest`, and `/explanations/history` routes | Active exact-organization membership | Requests, reads, or lists immutable request-scoped payer explanations. History is bounded by `limit=1..100`. |
+
+Comparison creation accepts only `{"include_submitted_facts": boolean}`.
+Server arithmetic uses integer minor units and returns
+`within_reference_range`, `below_reference_range`,
+`above_reference_range`, `not_comparable`, or `missing_cost`. Cross-scope
+records, inactive/checksum-drifted releases, incompatible currency, incomplete
+allocations, or submitted-total mismatch return `409 conflict` and do not hide
+the baseline or block ordinary care/cost work.
+
+Explanation requests accept only `{"locale":"en"|"zh-Hans"}` plus
+`Idempotency-Key`. Public output contains the validated display artifact or a
+fixed structured fallback. It never exposes prompt text, raw provider output,
+credentials, reviewer-only fields outside doctor authorization, confidential
+rates, hidden identifiers, or content-bearing operational diagnostics.
+Provider, validation, release, or kill-switch failure leaves the immutable
+baseline and deterministic comparison available.
+
+Provider output is the canonical
+`expected-care-role-explanation-claim-graph.v2` selection contract, not free
+prose. It contains admitted fact IDs, controlled claim types, and allow-listed
+connectives. The server renders protected values and both languages from the
+same claims.
+
+Activation, supersession, kill switch, rollback, early-stage waiver, and
+unsuitable-release correction are server-operator commands. They require
+advisory locking, exact expected versions, content-bound idempotency,
+checksum/contract verification, mandatory executable gates, and an explicit
+rollback target, and they append only content-free transition evidence.

@@ -2,7 +2,7 @@
 
 Status: formal production-readiness PRD
 Owner: Harry Cao
-Last updated: 2026-07-23
+Last updated: 2026-07-25
 Primary platforms: Flutter mobile, Flutter web, FastAPI, PostgreSQL, Tencent Cloud
 Product stage: production-quality development in progress; the patient/doctor
 and governed-AI foundation is preserved while Dr. AI adds a China-first,
@@ -82,9 +82,12 @@ This PRD is grounded in:
 - The original Word PRD at `/Users/Harry-Cao/Downloads/Dr_AI_Product_Requirements_Document_v1.0.docx`.
 - The current implementation source of truth in `docs/Dr_AI_v1.0_Implementation_Plan.md`.
 - The product-quality gate in `docs/Dr_AI_v1.0_Product_Quality_Gate.md`.
-- The Phase 2 patient/doctor progress record in `docs/Phase_2_Patient_Doctor_Core_Progress_Record.md`.
+- The Phase 2 patient/doctor progress record in
+  `docs/periodic_dev_docs/Phase_2_Patient_Doctor_Core_Progress_Record.md`.
 - The API contract in `docs/Dr_AI_v1.0_API_Contract.md`.
 - The implemented-plus-planned data boundary in `docs/Dr_AI_v1.0_ERD.md`.
+- The provider-neutral AI control plane and expected-care-envelope architecture
+  in `docs/Dr_AI_v1.0_AI_Platform_Architecture.md`.
 - The current Flutter and FastAPI code.
 
 Current verified product state:
@@ -102,16 +105,30 @@ Current verified product state:
   payer-request line snapshots, and a scoped human payer-review queue are
   implemented as the first local three-party vertical slice. Amounts use CNY
   integer minor units.
-- External push, SMS, email, native local notifications, real model inference,
-  production claims/adjudication, reference-pricing and coverage engines,
-  analytics dashboards, clinic operations, specialist workflows, and admin
-  workflows are not production-ready.
-- The implementation plan records the Phase 2.5 product-quality gate as complete. Phase 3 chatbot development is open, while each AI workflow still requires its own retrieval, medical-review, safety, privacy, legal, provider, and regulatory release gates.
+- Provider-neutral governed scenario/care-plan/pricing/utilization releases,
+  deterministic range validation, and a separate schema-constrained
+  expected-care candidate purpose are implemented internally. Candidate
+  requests, provider attempts, and results are immutable and retain exact
+  release/checksum lineage. Immutable published baselines, separate clinician
+  responses, deterministic comparison, role-filtered validated explanations,
+  public role-scoped reads, and responsive Flutter presentation are now
+  implemented locally. Explanation runtime defaults off and remains blocked
+  pending external review.
+- External push, SMS, email, native local notifications,
+  production-authorized model inference, production claims/adjudication,
+  reference-pricing and coverage engines, analytics dashboards, clinic
+  operations, specialist workflows, and admin workflows are not
+  production-ready.
+- The implementation plan records the Phase 2.5 product-quality gate as
+  complete. The bounded Phase 3 chatbot foundation is implemented and deployed
+  to controlled staging, while its production evidence gates and every other
+  AI purpose's independent data, retrieval, model, medical/domain review,
+  safety, privacy, legal, provider, and regulatory release gates remain open.
 - Payer organizations and memberships now exist for synthetic-only review.
-  Coverage enrollment, formal claim/claim-line semantics, reference pricing,
-  expected-care envelopes, deterministic variance alerts, appeals, and live
-  organizational onboarding remain planned and must not be represented as
-  current functionality.
+  Coverage enrollment, formal claim/claim-line semantics, appeals, and live
+  organizational onboarding remain planned. The implemented immutable
+  baseline and neutral comparison must not be represented as clinical approval,
+  coverage, reimbursement, payment, wrongdoing, or patient liability.
 
 ## 5. Target Users
 
@@ -258,7 +275,7 @@ v1.0 must include a production-quality patient/doctor/payer platform:
 - Synthetic payer organization, plan/coverage, and reviewer access.
 - A configurable China-first end-to-end workflow from doctor-authored clinical
   plan to itemized charge review and patient-facing cost explanation across a
-  clinician-reviewed set of representative scenario families. The system must
+  frozen, independently reviewed set of representative scenario families. The system must
   not hardcode one disease, encounter, hospital, or payer fixture.
 - Versioned expected-care envelope with plausible care categories, an
   estimated cost range, sources, jurisdiction, effective date, confidence,
@@ -405,12 +422,15 @@ separate records with independent provenance and timestamps.
    same production contract until live-data gates close.
 2. Dr. AI generates a draft expected-care envelope from versioned, admitted
    clinical/utilization rules and jurisdiction-specific price references.
-3. The doctor reviews the envelope before submission, corrects factual errors,
-   and records why an exceptional pathway is clinically justified.
+3. The system publishes a deterministically validated immutable baseline
+   independently of clinician response. A doctor may append concurrence,
+   disagreement, or an exception rationale but cannot edit, reject, or hide
+   the baseline.
 4. Synthetic delivered-service and claim line items are recorded separately
    from the plan and AI output.
-5. The review engine compares itemized amounts and utilization, then emits
-   explainable `review_recommended` alerts for material differences.
+5. The deterministic engine compares itemized delivered/submitted facts
+   without waiting for clinician concurrence, then emits neutral range labels.
+   Any later `review_recommended` alert remains a separate human-review signal.
 6. The payer reviewer inspects sources and clinician rationale, requests
    clarification or records a human resolution, and never delegates the final
    reimbursement or abuse decision to the model.
@@ -545,7 +565,6 @@ Requirements:
 - Plans include medication, exercise, diet, follow-up, and recovery tasks.
 - Patients can complete and uncomplete Today tasks.
 - Patient Today view shows progress, remaining tasks, and what happens next.
-- Phase 3 may add AI recovery-plan drafts, but the doctor-owned workflow must remain clear.
 
 Acceptance criteria:
 
@@ -690,6 +709,9 @@ Requirements:
   is `review_recommended`, not `abuse_detected`.
 - Let doctors submit versioned explanations and supporting references without
   changing the original claim or AI output.
+- Display the immutable baseline and deterministic comparison without requiring
+  clinician approval. Preserve clinician responses as separate attributable
+  evidence.
 - Let authorized payer reviewers request information, accept or reject a
   request with a reason, escalate to another human, or close a review with an
   audit event.
@@ -705,7 +727,8 @@ Requirements:
 
 Acceptance criteria:
 
-- A frozen, clinician-reviewed China-first scenario suite can complete the full
+- A frozen China-first scenario suite with honestly recorded clinical,
+  pricing, language, privacy, security, legal, payer, and regulatory review can complete the full
   seven-step journey in Section 10.5 without hidden manual database edits. The
   suite must exercise materially different care pathways, justified
   exceptions, price/utilization alert types, and patient-responsibility states.
@@ -790,6 +813,10 @@ Requirements:
 - PostgreSQL database with Alembic migrations.
 - Tencent Cloud for staging and later production infrastructure.
 - LLM/AI calls routed through the backend, never directly from the client.
+- Each AI purpose has a separate input allow-list, prompt/schema/model
+  configuration, deterministic validators, human-review rule, telemetry,
+  budget, fallback, kill switch, evaluation suite, and release decision as
+  defined in `docs/Dr_AI_v1.0_AI_Platform_Architecture.md`.
 - Same-origin hosting preferred for web/API staging.
 - Jurisdiction adapters must isolate Chinese coding/payment references from any
   future U.S. coding, contracted-rate, and claim rules.
@@ -1059,8 +1086,14 @@ Purpose:
 
 ### Phase 4: Payer And Multi-Scenario Data Foundation
 
-Status: in progress locally; the first care-and-cost vertical slice is
-implemented, while the expanded multi-scenario foundation remains open.
+Status: Slices B–G are implemented locally for controlled synthetic
+engineering. This includes exact active-release resolution, authorized
+Clinical Event/immutable payer-request orchestration, candidate and immutable
+baseline lineage, separate clinician responses, versioned deterministic
+delivered/submitted comparisons, role-filtered explanation artifacts, frozen
+paid DeepSeek evaluation, and a checksum-bound pending release. Coverage,
+formal claims, live reference admission, external review, runtime activation,
+staging deployment, and real-world use remain open.
 
 Purpose:
 
@@ -1069,9 +1102,13 @@ Purpose:
 - Preserve the implemented payer role, payer organization/membership,
   event-level care-cost items, submitted request snapshots, human reviews,
   RBAC, audit events, and focused tests as the thin workflow foundation.
-- Add payer organization/membership, synthetic coverage, encounter, planned
-  care, claim/line, pricing-reference, rule-release, expected-care-envelope,
-  alert, rationale, review, and transition models with RBAC and audit tests.
+- Preserve the implemented shared governed-release metadata, scenario
+  definitions, care plans/items, pricing-reference sets/items,
+  utilization-rule sets/rules, append-only reviews/activation history, active
+  pointers, immutable deterministic evaluations, system-published baselines,
+  clinician responses, comparisons, explanations, and pending release history.
+  Add broader synthetic coverage, formal claim/line, and expanded transition
+  models with RBAC and audit tests.
 - Define configurable scenario definitions and applicability rules so new
   diseases, encounter types, hospital levels, regions, and payer policies enter
   through reviewed data/releases rather than code forks.
@@ -1094,6 +1131,11 @@ Purpose:
 - Add deterministic totals and variance checks, structured AI drafting and
   explanations, clinician rationale, payer human resolution, and
   patient-readable transparency.
+- Preserve the implemented model-free comparison engine as the authority for
+  codes, units, quantities, currency, dates, facility applicability, release
+  freshness/rights, integer-minor-unit ranges/totals, reason codes, missing
+  information, justified exceptions, suppression, and immutable re-evaluation.
+  Product routes and UI remain a later authorized slice.
 - Validate with a frozen, representative synthetic/de-identified scenario
   suite and keep specialist/admin/legacy billing work outside the critical
   path.

@@ -8,6 +8,7 @@ import 'package:dr_ai_app/features/care_cost/domain/care_cost_data.dart';
 import 'package:dr_ai_app/features/dashboard/domain/dashboard_data.dart';
 import 'package:dr_ai_app/features/doctor/domain/doctor_profile.dart';
 import 'package:dr_ai_app/features/doctor/domain/medical_resource_fixture.dart';
+import 'package:dr_ai_app/features/expected_care/domain/expected_care_data.dart';
 import 'package:dr_ai_app/features/patient/domain/patient_care_data.dart';
 
 const doctorUser = SessionUser(
@@ -780,6 +781,7 @@ class FakeDrAiRepository implements DrAiRepository {
     RecoveryPlanListData? recoveryPlans,
     PatientTodayData? patientToday,
     ChatMessageResult? chatResult,
+    List<PatientChatThreadSummary>? chatThreads,
     ConsultationListData? consultations,
     List<MedicalResourceFixture>? medicalResources,
     Map<String, MedicalResourceDetail>? medicalResourceDetails,
@@ -811,6 +813,9 @@ class FakeDrAiRepository implements DrAiRepository {
            RecoveryPlanListData(items: <RecoveryPlanData>[demoRecoveryPlan]),
        patientToday = patientToday ?? demoPatientToday,
        chatResult = chatResult ?? demoChatResult,
+       chatThreads = List<PatientChatThreadSummary>.from(
+         chatThreads ?? const <PatientChatThreadSummary>[],
+       ),
        consultations =
            consultations ??
            const ConsultationListData(items: <ConsultationRequestItem>[]),
@@ -836,6 +841,7 @@ class FakeDrAiRepository implements DrAiRepository {
   RecoveryPlanListData recoveryPlans;
   PatientTodayData patientToday;
   ChatMessageResult chatResult;
+  List<PatientChatThreadSummary> chatThreads;
   ConsultationListData consultations;
   List<MedicalResourceFixture> medicalResources;
   Map<String, MedicalResourceDetail> medicalResourceDetails;
@@ -893,8 +899,337 @@ class FakeDrAiRepository implements DrAiRepository {
   int payerProfileLoadCount = 0;
   int payerDashboardLoadCount = 0;
 
+  static const expectedCareFactSnapshot = CostEstimationFactSnapshotData(
+    available: true,
+    factsUsed: <CostEstimationFactData>[
+      CostEstimationFactData(
+        category: 'symptoms',
+        label: 'Clinical Event symptoms and complaint',
+        reason: null,
+        count: 1,
+        value: <String, Object>{
+          'chief_complaint': 'Synthetic rehabilitation follow-up',
+          'symptom_summary': 'Synthetic mobility limitation',
+        },
+        sourceType: 'clinical_event',
+        sourceScope: 'exact_clinical_event',
+      ),
+      CostEstimationFactData(
+        category: 'clinical_service',
+        label: 'Event-linked clinical service',
+        reason: null,
+        count: 1,
+        value: <String, Object>{
+          'category': 'rehabilitation',
+          'status': 'completed',
+          'quantity': 2,
+        },
+        sourceType: 'clinical_service',
+        sourceScope: 'exact_clinical_event',
+      ),
+    ],
+    factsNotUsed: <CostEstimationFactData>[
+      CostEstimationFactData(
+        category: 'medical_record',
+        label: '',
+        reason: 'patient_wide_record_has_no_clinical_event_binding',
+        count: 1,
+        value: null,
+        sourceType: 'medical_record',
+        sourceScope: 'authorized_patient_but_not_exact_event',
+      ),
+    ],
+    missingFacts: <CostEstimationFactData>[
+      CostEstimationFactData(
+        category: 'ai_imaging_observation_draft',
+        label: '',
+        reason:
+            'DeepSeek image input is unsupported; no AI imaging draft is used.',
+        count: 1,
+        value: null,
+        sourceType: null,
+        sourceScope: null,
+      ),
+    ],
+  );
+
+  static const expectedCareCandidate = ExpectedCareCandidateData(
+    id: 'candidate-result-test-id',
+    state: 'validated_baseline_published',
+    responseVersion: 0,
+    latestClinicianPosition: 'not_recorded',
+    clinicianResponses: <ClinicianResponseData>[],
+    currency: 'CNY',
+    totalLowMinor: 2000,
+    totalHighMinor: 6000,
+    referenceDate: '2026-07-25',
+    assumptions: <String>['Public primary-care facility'],
+    missingInformation: <String>['delivered_cost_lines'],
+    limitations: <String>[
+      'Synthetic reference data; clinician responses remain separate.',
+    ],
+    items: <ExpectedCareItemData>[
+      ExpectedCareItemData(
+        itemKey: 'initial_assessment',
+        category: 'Assessment',
+        unit: 'visit',
+        quantityLow: 1,
+        quantityHigh: 1,
+        amountLowMinor: 1000,
+        amountHighMinor: 2000,
+      ),
+      ExpectedCareItemData(
+        itemKey: 'rehabilitation_session',
+        category: 'Rehabilitation',
+        unit: 'session',
+        quantityLow: 1,
+        quantityHigh: 2,
+        amountLowMinor: 1000,
+        amountHighMinor: 4000,
+      ),
+    ],
+    references: <ExpectedCareReferenceData>[
+      ExpectedCareReferenceData(
+        releaseType: 'scenario_definition',
+        version: '2026.07.1',
+        releaseId: 'scenario-release-id',
+        checksum: 'abc123',
+        effectiveFrom: '2026-07-01',
+        effectiveTo: '2027-12-31',
+        sourceAuthority: 'Synthetic reference authority',
+      ),
+      ExpectedCareReferenceData(
+        releaseType: 'pricing_reference',
+        version: '2026.07.1',
+        releaseId: 'price-release-id',
+        checksum: 'def456',
+        effectiveFrom: '2026-07-01',
+        effectiveTo: '2027-12-31',
+        sourceAuthority: 'Synthetic pricing authority',
+      ),
+    ],
+    validationState: 'validated',
+    factSnapshot: expectedCareFactSnapshot,
+  );
+
+  static final expectedCareBaseline = ExpectedCareBaselineData(
+    id: 'baseline-test-id',
+    clinicalEventId: 'clinical-event-test-id',
+    version: 1,
+    state: 'validated_baseline_published',
+    currency: 'CNY',
+    amountType: 'reference_range',
+    totalLowMinor: 2000,
+    totalHighMinor: 6000,
+    assumptions: <String>['Public primary-care facility'],
+    missingInformation: <String>[
+      'Delivered services have not been reconciled.',
+    ],
+    limitations: <String>[
+      'The range may change when the care plan or facility changes.',
+    ],
+    items: expectedCareCandidate.items,
+    references: expectedCareCandidate.references,
+    latestClinicianPosition: 'not_recorded',
+    clinicianResponses: const <ClinicianResponseData>[],
+    factSnapshot: expectedCareFactSnapshot,
+    nextAction:
+        'Discuss the baseline and any clinician difference with the responsible doctor; payer reimbursement remains a separate decision.',
+    disclaimer:
+        'This immutable system-generated reference range is not a quote, bill, coverage determination, reimbursement amount, prescribed care plan, or final patient responsibility.',
+  );
+
+  static const expectedCareComparison = ExpectedCareComparisonData(
+    id: 'comparison-test-id',
+    baselineId: 'baseline-test-id',
+    version: 1,
+    state: 'comparison_published',
+    currency: 'CNY',
+    baselineTotalLowMinor: 2000,
+    baselineTotalHighMinor: 6000,
+    deliveredTotalMinor: 5200,
+    submittedTotalMinor: 5200,
+    deliveredTotalLabel: 'within_reference_range',
+    submittedTotalLabel: 'within_reference_range',
+    items: <ExpectedCareComparisonItemData>[
+      ExpectedCareComparisonItemData(
+        itemKey: 'initial_assessment',
+        unit: 'visit',
+        baselineAmountLowMinor: 1000,
+        baselineAmountHighMinor: 2000,
+        deliveredAmountMinor: 1800,
+        submittedAmountMinor: 1800,
+        deliveredLabel: 'within_reference_range',
+        submittedLabel: 'within_reference_range',
+      ),
+      ExpectedCareComparisonItemData(
+        itemKey: 'rehabilitation_session',
+        unit: 'session',
+        baselineAmountLowMinor: 1000,
+        baselineAmountHighMinor: 4000,
+        deliveredAmountMinor: 3400,
+        submittedAmountMinor: 3400,
+        deliveredLabel: 'within_reference_range',
+        submittedLabel: 'within_reference_range',
+      ),
+    ],
+    disclaimer:
+        'This deterministic numeric comparison is not a clinical, coverage, reimbursement, payment, misconduct, fraud, or patient-liability decision.',
+  );
+
+  static const expectedCareExplanation = ExpectedCareExplanationData(
+    id: 'explanation-test-id',
+    comparisonId: 'comparison-test-id',
+    state: 'validated_displayable',
+    displayMode: 'validated_ai_explanation',
+    artifact: <String, dynamic>{
+      'en': <String, dynamic>{
+        'plain_language_range': <String, dynamic>{
+          'text':
+              'The validated facts place the delivered amount within the reference range.',
+        },
+        'uncertainty_and_limitations': <String, dynamic>{
+          'text':
+              'This explanation does not determine prescribed care or payment.',
+        },
+        'responsible_next_action': <String, dynamic>{
+          'text':
+              'Review the structured facts with the responsible human party.',
+        },
+      },
+      'zh_hans': <String, dynamic>{
+        'plain_language_range': <String, dynamic>{
+          'text': '已验证事实显示，已交付金额位于参考范围内。',
+        },
+        'uncertainty_and_limitations': <String, dynamic>{
+          'text': '本解释不决定处方诊疗或付款结果。',
+        },
+        'responsible_next_action': <String, dynamic>{'text': '请与相关负责人核对结构化事实。'},
+      },
+    },
+  );
+
   @override
   Future<AuthSession?> restore() async => restoredSession;
+
+  @override
+  Future<List<ExpectedCareCandidateData>> loadExpectedCareCandidates(
+    String patientId,
+    String eventId,
+  ) async => const <ExpectedCareCandidateData>[expectedCareCandidate];
+
+  @override
+  Future<ClinicianResponseResultData> submitExpectedCareClinicianResponse({
+    required String patientId,
+    required String eventId,
+    required String candidateId,
+    required int expectedVersion,
+    required String position,
+    required String idempotencyKey,
+    String? exceptionCode,
+    String? rationale,
+    String? patientSafeSummary,
+    String? reviewerOnlyNote,
+  }) async {
+    return ClinicianResponseResultData(
+      responseId: 'clinician-response-test-id',
+      state: switch (position) {
+        'acknowledge' => 'doctor_acknowledged',
+        'concur' => 'doctor_concurred',
+        'disagree' => 'doctor_disagreed',
+        _ => 'doctor_exception_recorded',
+      },
+      version: expectedVersion + 1,
+      idempotentReplay: false,
+    );
+  }
+
+  @override
+  Future<ExpectedCareBaselineData> loadPatientExpectedCareEnvelope(
+    String eventId,
+  ) async => expectedCareBaseline;
+
+  @override
+  Future<PayerExpectedCareData> loadPayerExpectedCareEnvelope(
+    String requestId,
+  ) async {
+    return PayerExpectedCareData(
+      baseline: expectedCareBaseline,
+      payerRequestId: 'payer-request-test-id',
+      submittedState: 'submitted',
+      requestedTotalMinor: 5200,
+      humanReviewState: 'submitted',
+    );
+  }
+
+  @override
+  Future<ExpectedCareComparisonData> loadDoctorExpectedCareComparison(
+    String patientId,
+    String eventId,
+  ) async => expectedCareComparison;
+
+  @override
+  Future<ExpectedCareComparisonData> loadPatientExpectedCareComparison(
+    String eventId,
+  ) async => expectedCareComparison;
+
+  @override
+  Future<ExpectedCareComparisonData> loadPayerExpectedCareComparison(
+    String requestId,
+  ) async => expectedCareComparison;
+
+  @override
+  Future<ExpectedCareComparisonData> createDoctorExpectedCareComparison({
+    required String patientId,
+    required String eventId,
+    String? baselineId,
+    required bool includeSubmittedFacts,
+    required String idempotencyKey,
+  }) async => expectedCareComparison;
+
+  @override
+  Future<List<ExpectedCareComparisonData>>
+  loadDoctorExpectedCareComparisonHistory({
+    required String patientId,
+    required String eventId,
+  }) async => <ExpectedCareComparisonData>[expectedCareComparison];
+
+  @override
+  Future<ExpectedCareExplanationData> requestExpectedCareExplanation({
+    required String role,
+    required String parentId,
+    required String eventId,
+    required String comparisonId,
+    required String locale,
+    required String idempotencyKey,
+  }) async => expectedCareExplanation;
+
+  @override
+  Future<List<ExpectedCareExplanationData>> loadExpectedCareExplanationHistory({
+    required String role,
+    required String parentId,
+    required String eventId,
+    required String comparisonId,
+  }) async => <ExpectedCareExplanationData>[expectedCareExplanation];
+
+  @override
+  Future<ExpectedCareExplanationData> loadDoctorExpectedCareExplanation({
+    required String patientId,
+    required String eventId,
+    required String comparisonId,
+  }) async => expectedCareExplanation;
+
+  @override
+  Future<ExpectedCareExplanationData> loadPatientExpectedCareExplanation({
+    required String eventId,
+    required String comparisonId,
+  }) async => expectedCareExplanation;
+
+  @override
+  Future<ExpectedCareExplanationData> loadPayerExpectedCareExplanation({
+    required String requestId,
+    required String comparisonId,
+  }) async => expectedCareExplanation;
 
   @override
   Future<AuthSession> login(String email, String password) async {
@@ -1604,9 +1939,10 @@ class FakeDrAiRepository implements DrAiRepository {
     required String patientId,
     required String? serviceId,
     required String clinicalEventId,
+    required String category,
     required String name,
     required String serviceSubtype,
-    required String bodyRegion,
+    required String? bodyRegion,
     required String status,
     required DateTime? scheduledAt,
     required DateTime? performedAt,
@@ -1618,7 +1954,7 @@ class FakeDrAiRepository implements DrAiRepository {
       id: serviceId ?? 'clinical-service-test-id',
       patientId: patientId,
       clinicalEventId: clinicalEventId,
-      category: 'imaging',
+      category: category,
       name: name,
       serviceSubtype: serviceSubtype,
       bodyRegion: bodyRegion,
@@ -1642,6 +1978,26 @@ class FakeDrAiRepository implements DrAiRepository {
       ],
     );
     return service;
+  }
+
+  @override
+  Future<MedicalImagingAsset> uploadMedicalImagingBytes({
+    required String patientId,
+    required String assetId,
+    required String contentType,
+    required List<int> bytes,
+  }) async {
+    if (imagingError != null) throw imagingError!;
+    return demoImagingUploaded;
+  }
+
+  @override
+  Future<List<int>> downloadMedicalImagingBytes({
+    required String patientId,
+    required String assetId,
+  }) async {
+    if (imagingError != null) throw imagingError!;
+    return List<int>.filled(demoImagingUploaded.sizeBytes, 7);
   }
 
   @override
@@ -2029,13 +2385,84 @@ class FakeDrAiRepository implements DrAiRepository {
   }
 
   @override
-  Future<List<PatientChatThreadSummary>> loadEducationalChatThreads() async {
-    return const <PatientChatThreadSummary>[];
+  Future<PatientChatThreadSummary> createEducationalChatThread(
+    String title,
+  ) async {
+    final now = DateTime.utc(2026, 7, 27);
+    final thread = PatientChatThreadSummary(
+      threadId: 'created-chat-thread-id',
+      title: title,
+      status: 'active',
+      createdAt: now,
+      lastMessageAt: now,
+      retentionUntil: now.add(const Duration(days: 60)),
+    );
+    chatThreads = <PatientChatThreadSummary>[thread, ...chatThreads];
+    return thread;
+  }
+
+  @override
+  Future<List<PatientChatThreadSummary>> loadEducationalChatThreads({
+    bool includeArchived = false,
+  }) async {
+    return chatThreads
+        .where((thread) => includeArchived || !thread.isArchived)
+        .toList();
   }
 
   @override
   Future<PatientChatHistory> loadEducationalChatThread(String threadId) async {
     throw StateError('No fake chat history for $threadId.');
+  }
+
+  @override
+  Future<PatientChatThreadSummary> archiveEducationalChatThread(
+    String threadId,
+  ) async {
+    final current = chatThreads.firstWhere(
+      (thread) => thread.threadId == threadId,
+    );
+    final archived = PatientChatThreadSummary(
+      threadId: current.threadId,
+      title: current.title,
+      status: 'archived',
+      createdAt: current.createdAt,
+      lastMessageAt: current.lastMessageAt,
+      retentionUntil: current.retentionUntil,
+      archivedAt: DateTime.utc(2026, 7, 27),
+    );
+    chatThreads = chatThreads
+        .map((thread) => thread.threadId == threadId ? archived : thread)
+        .toList();
+    return archived;
+  }
+
+  @override
+  Future<PatientChatThreadSummary> reopenEducationalChatThread(
+    String threadId,
+  ) async {
+    final current = chatThreads.firstWhere(
+      (thread) => thread.threadId == threadId,
+    );
+    final reopened = PatientChatThreadSummary(
+      threadId: current.threadId,
+      title: current.title,
+      status: 'active',
+      createdAt: current.createdAt,
+      lastMessageAt: current.lastMessageAt,
+      retentionUntil: current.retentionUntil,
+    );
+    chatThreads = chatThreads
+        .map((thread) => thread.threadId == threadId ? reopened : thread)
+        .toList();
+    return reopened;
+  }
+
+  @override
+  Future<void> deleteEducationalChatThread(String threadId) async {
+    chatThreads = chatThreads
+        .where((thread) => thread.threadId != threadId)
+        .toList();
   }
 
   @override
@@ -2248,6 +2675,8 @@ class FakeDrAiRepository implements DrAiRepository {
     required String requestId,
     required String action,
     required String reasonCode,
+    required int expectedVersion,
+    required String idempotencyKey,
     String? note,
   }) async {
     final status = switch (action) {
@@ -2259,6 +2688,19 @@ class FakeDrAiRepository implements DrAiRepository {
       _ => action,
     };
     return _fakePayerRequest(status: status);
+  }
+
+  @override
+  Future<PayerRequestData> appendDoctorPayerResponse({
+    required String requestId,
+    required int expectedVersion,
+    required String responseType,
+    required String summary,
+    required String idempotencyKey,
+    String? baselineId,
+    String? comparisonId,
+  }) async {
+    return _fakePayerRequest();
   }
 
   CareCostLedgerData _fakeLedger({

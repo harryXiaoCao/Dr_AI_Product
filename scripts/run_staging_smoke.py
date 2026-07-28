@@ -54,9 +54,7 @@ def request_json(
     if token is not None:
         headers["Authorization"] = f"Bearer {token}"
 
-    request = Request(
-        f"{base_url.rstrip('/')}{path}", data=data, headers=headers, method=method
-    )
+    request = Request(f"{base_url.rstrip('/')}{path}", data=data, headers=headers, method=method)
     try:
         with urlopen(request, timeout=20) as response:  # noqa: S310 - approved staging origin.
             status = response.status
@@ -70,13 +68,9 @@ def request_json(
     try:
         body = json.loads(raw_body) if raw_body else None
     except json.JSONDecodeError as exc:
-        raise SmokeFailure(
-            f"{method} {path} returned non-JSON body with status {status}"
-        ) from exc
+        raise SmokeFailure(f"{method} {path} returned non-JSON body with status {status}") from exc
 
-    expected = (
-        {expected_status} if isinstance(expected_status, int) else expected_status
-    )
+    expected = {expected_status} if isinstance(expected_status, int) else expected_status
     if status not in expected:
         safe_code = None
         if isinstance(body, dict):
@@ -107,13 +101,9 @@ def request_text(
     except URLError as exc:
         raise SmokeFailure(f"{method} {path} failed to connect: {exc.reason}") from exc
 
-    expected = (
-        {expected_status} if isinstance(expected_status, int) else expected_status
-    )
+    expected = {expected_status} if isinstance(expected_status, int) else expected_status
     if status not in expected:
-        raise SmokeFailure(
-            f"{method} {path} returned {status}, expected {sorted(expected)}"
-        )
+        raise SmokeFailure(f"{method} {path} returned {status}, expected {sorted(expected)}")
     return status, body
 
 
@@ -147,13 +137,24 @@ def main() -> int:
     unrelated_patient_id = os.environ.get("DR_AI_STAGING_UNRELATED_PATIENT_ID")
 
     health = request_json(base_url, "GET", "/health")
-    if health.body != {
+    required_health = {
         "status": "ok",
         "service": "dr-ai-api",
         "environment": "staging",
         "database": "ok",
-    }:
+    }
+    if health.body is None or any(
+        health.body.get(key) != value for key, value in required_health.items()
+    ):
         raise SmokeFailure(f"Unexpected health payload: {health.body}")
+    if health.body.get("expected_care_explanation") not in {
+        None,
+        "disabled",
+        "kill_switched",
+        "no_active_compatible_release",
+        "ready",
+    }:
+        raise SmokeFailure("Expected-care readiness category is not content-free")
     ok("health reports staging database ok")
 
     doctor_tokens = login(base_url, doctor_email, doctor_password)
@@ -194,9 +195,7 @@ def main() -> int:
         duplicate_email.body is None
         or duplicate_email.body.get("error", {}).get("code") != "email_already_in_use"
     ):
-        raise SmokeFailure(
-            "Duplicate account email did not return the safe conflict response"
-        )
+        raise SmokeFailure("Duplicate account email did not return the safe conflict response")
     ok("patient profile database write and duplicate-email conflict")
 
     resources = request_json(
@@ -208,9 +207,7 @@ def main() -> int:
     assert resources.body is not None
     resource_ids = {item["source_id"] for item in resources.body.get("items", [])}
     if "KBS-MEDLINEPLUS-HIGH-BLOOD-PRESSURE" not in resource_ids:
-        raise SmokeFailure(
-            "Doctor resource search did not match the approved English summary"
-        )
+        raise SmokeFailure("Doctor resource search did not match the approved English summary")
     ok("doctor resource approved-summary search")
 
     rotated = request_json(
@@ -276,10 +273,7 @@ def main() -> int:
         token=doctor_access,
         expected_status=404,
     )
-    if (
-        cross_patient.body is None
-        or cross_patient.body.get("error", {}).get("code") != "not_found"
-    ):
+    if cross_patient.body is None or cross_patient.body.get("error", {}).get("code") != "not_found":
         raise SmokeFailure("Cross-patient probe did not return neutral not_found")
     ok("neutral cross-patient denial")
 
@@ -310,12 +304,9 @@ def main() -> int:
     )
     if (
         assessment.body is None
-        or assessment.body.get("safety_label")
-        != "Research simulation - not for diagnosis."
+        or assessment.body.get("safety_label") != "Research simulation - not for diagnosis."
     ):
-        raise SmokeFailure(
-            "Assessment response did not include the simulation safety label"
-        )
+        raise SmokeFailure("Assessment response did not include the simulation safety label")
     ok("simulated assessment")
 
     plan_payload = {
@@ -369,9 +360,7 @@ def main() -> int:
 
     patient_tokens = login(base_url, patient_email, patient_password)
     patient_access = patient_tokens["access_token"]
-    today = request_json(
-        base_url, "GET", "/api/v1/patient/me/today", token=patient_access
-    )
+    today = request_json(base_url, "GET", "/api/v1/patient/me/today", token=patient_access)
     assert today.body is not None
     data = today.body.get("data", {})
     tasks = data.get("today_tasks", [])
@@ -384,9 +373,7 @@ def main() -> int:
         token=patient_access,
         payload={"completed": True},
     )
-    if completion.body is None or not completion.body.get("task", {}).get(
-        "is_completed"
-    ):
+    if completion.body is None or not completion.body.get("task", {}).get("is_completed"):
         raise SmokeFailure("Task completion did not return completed task")
     ok("patient Today readback and task completion")
 
@@ -395,18 +382,12 @@ def main() -> int:
         "POST",
         "/api/v1/chat/threads/patient-education/messages",
         token=patient_access,
-        payload={
-            "message": "What general questions should I prepare for my clinician?"
-        },
+        payload={"message": "What general questions should I prepare for my clinician?"},
     )
     if chat.body is None or chat.body.get("response_mode") != "stream_ready":
-        raise SmokeFailure(
-            "Ask Dr. AI did not return stream-ready educational response"
-        )
+        raise SmokeFailure("Ask Dr. AI did not return stream-ready educational response")
     if chat.body.get("is_red_flag"):
-        raise SmokeFailure(
-            "Normal educational chat was incorrectly classified as red flag"
-        )
+        raise SmokeFailure("Normal educational chat was incorrectly classified as red flag")
     ok("patient Ask Dr. AI educational response")
 
     consultation = request_json(
@@ -423,17 +404,11 @@ def main() -> int:
     )
     if consultation.body is None or consultation.body.get("status") != "requested":
         raise SmokeFailure("Consultation request did not return requested status")
-    patient_status = request_json(
-        base_url, "GET", "/api/v1/consultations", token=patient_access
-    )
+    patient_status = request_json(base_url, "GET", "/api/v1/consultations", token=patient_access)
     assert patient_status.body is not None
-    consultation_ids = {
-        item["consultation_id"] for item in patient_status.body.get("items", [])
-    }
+    consultation_ids = {item["consultation_id"] for item in patient_status.body.get("items", [])}
     if consultation.body["consultation_id"] not in consultation_ids:
-        raise SmokeFailure(
-            "Patient consultation status did not include the new request"
-        )
+        raise SmokeFailure("Patient consultation status did not include the new request")
     ok("doctor consultation request and patient status readback")
 
     patient_contacts = request_json(
@@ -458,9 +433,7 @@ def main() -> int:
     assert sent_message.body is not None
     message_id = sent_message.body.get("message_id")
     if sent_message.body.get("sender_role") != "patient" or not message_id:
-        raise SmokeFailure(
-            "Patient private message did not return its identifier and role"
-        )
+        raise SmokeFailure("Patient private message did not return its identifier and role")
     doctor_messages = request_json(
         base_url,
         "GET",
@@ -468,9 +441,7 @@ def main() -> int:
         token=doctor_access,
     )
     assert doctor_messages.body is not None
-    delivered_ids = {
-        item["message_id"] for item in doctor_messages.body.get("items", [])
-    }
+    delivered_ids = {item["message_id"] for item in doctor_messages.body.get("items", [])}
     if message_id not in delivered_ids:
         raise SmokeFailure("Doctor did not receive the patient's private message")
     request_json(

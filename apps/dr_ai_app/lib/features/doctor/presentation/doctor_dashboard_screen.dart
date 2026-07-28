@@ -1389,7 +1389,12 @@ class _DoctorIdentityColumn extends StatelessWidget {
             _TeamManagementTile(label: context.l10n.stableValue(member)),
             const SizedBox(height: DrAiSpacing.xs),
           ],
-          const _TeamManagementTile(addAction: true),
+          Text(
+            Localizations.localeOf(context).languageCode == 'zh'
+                ? '团队信息由机构管理员维护；医生工作区仅供查看。'
+                : 'Team membership is administrator-managed and read-only here.',
+            style: const TextStyle(color: DrAiColors.inkSecondary),
+          ),
         ],
       ),
     );
@@ -1397,10 +1402,9 @@ class _DoctorIdentityColumn extends StatelessWidget {
 }
 
 class _TeamManagementTile extends StatelessWidget {
-  const _TeamManagementTile({this.label, this.addAction = false});
+  const _TeamManagementTile({required this.label});
 
-  final String? label;
-  final bool addAction;
+  final String label;
 
   @override
   Widget build(BuildContext context) {
@@ -1415,24 +1419,20 @@ class _TeamManagementTile extends StatelessWidget {
       child: Row(
         children: <Widget>[
           Icon(
-            addAction
-                ? Icons.add_circle_outline
-                : Icons.account_circle_outlined,
-            color: addAction ? DrAiColors.outlineMuted : DrAiColors.white,
+            Icons.account_circle_outlined,
+            color: DrAiColors.white,
             size: 30,
           ),
-          if (!addAction) ...<Widget>[
-            const SizedBox(width: DrAiSpacing.sm),
-            Expanded(
-              child: Text(
-                label!,
-                style: const TextStyle(
-                  color: DrAiColors.white,
-                  fontWeight: FontWeight.w700,
-                ),
+          const SizedBox(width: DrAiSpacing.sm),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: DrAiColors.white,
+                fontWeight: FontWeight.w700,
               ),
             ),
-          ],
+          ),
         ],
       ),
     );
@@ -1478,12 +1478,14 @@ class _DoctorMainColumn extends StatelessWidget {
                 Icons.medical_services_outlined,
                 Icons.outbox_outlined,
               ];
-              final opensPayerRequests = index == quickAccess.length - 1;
+              final destination = switch (index) {
+                1 => '/doctor/resources',
+                7 => '/doctor/payer-requests',
+                _ => '/doctor/patients',
+              };
               return InkWell(
                 borderRadius: BorderRadius.circular(DrAiRadii.md),
-                onTap: opensPayerRequests
-                    ? () => context.go('/doctor/payer-requests')
-                    : null,
+                onTap: () => context.go(destination),
                 child: Container(
                   decoration: BoxDecoration(
                     color: index.isEven

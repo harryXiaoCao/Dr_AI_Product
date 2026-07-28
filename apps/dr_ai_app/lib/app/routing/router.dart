@@ -11,6 +11,7 @@ import 'package:dr_ai_app/features/doctor/presentation/doctor_payer_requests_scr
 import 'package:dr_ai_app/features/doctor/presentation/doctor_resource_reader_screen.dart';
 import 'package:dr_ai_app/features/doctor/presentation/doctor_resources_screen.dart';
 import 'package:dr_ai_app/features/doctor/presentation/patient_management_screen.dart';
+import 'package:dr_ai_app/features/expected_care/presentation/expected_care_screens.dart';
 import 'package:dr_ai_app/features/foundation/presentation/unauthorized_screen.dart';
 import 'package:dr_ai_app/features/patient/presentation/patient_contacts_screen.dart';
 import 'package:dr_ai_app/features/patient/presentation/patient_dashboard_screen.dart';
@@ -110,13 +111,7 @@ GoRouter createRouter(AppRole? role, {String? initialLocation}) {
               ),
               GoRoute(
                 path: 'ai',
-                pageBuilder: (context, state) => _drAiPage(
-                  state,
-                  const ServiceChatScreen(
-                    role: AppRole.doctor,
-                    isSystem: false,
-                  ),
-                ),
+                redirect: (context, state) => '/doctor/contact',
               ),
               GoRoute(
                 path: 'private',
@@ -145,6 +140,27 @@ GoRouter createRouter(AppRole? role, {String? initialLocation}) {
               DoctorPayerRequestsScreen(
                 initialPatientId: state.uri.queryParameters['patient'],
                 initialClinicalEventId: state.uri.queryParameters['event'],
+              ),
+            ),
+          ),
+          GoRoute(
+            path: 'expected-care',
+            redirect: (context, state) {
+              final patient = state.uri.queryParameters['patient'];
+              final event = state.uri.queryParameters['event'];
+              if (patient == null ||
+                  patient.isEmpty ||
+                  event == null ||
+                  event.isEmpty) {
+                return '/doctor/payer-requests';
+              }
+              return null;
+            },
+            pageBuilder: (context, state) => _drAiPage(
+              state,
+              DoctorExpectedCareReviewScreen(
+                patientId: state.uri.queryParameters['patient']!,
+                eventId: state.uri.queryParameters['event']!,
               ),
             ),
           ),
@@ -192,7 +208,23 @@ GoRouter createRouter(AppRole? role, {String? initialLocation}) {
           ),
           GoRoute(
             path: 'medical-service',
-            redirect: (context, state) => '/patient',
+            redirect: (context, state) => '/patient/medical-service/records',
+            routes: <RouteBase>[
+              GoRoute(
+                path: ':section',
+                pageBuilder: (context, state) {
+                  final section = switch (state.pathParameters['section']) {
+                    'imaging' => PatientMedicalSection.imaging,
+                    'medications' => PatientMedicalSection.medications,
+                    _ => PatientMedicalSection.records,
+                  };
+                  return _drAiPage(
+                    state,
+                    PatientMedicalServiceScreen(initialSection: section),
+                  );
+                },
+              ),
+            ],
           ),
           GoRoute(
             path: 'recovery-plan',
@@ -203,6 +235,15 @@ GoRouter createRouter(AppRole? role, {String? initialLocation}) {
             path: 'care-costs',
             pageBuilder: (context, state) =>
                 _drAiPage(state, const PatientCareCostScreen()),
+          ),
+          GoRoute(
+            path: 'expected-care/:eventId',
+            pageBuilder: (context, state) => _drAiPage(
+              state,
+              PatientExpectedCareScreen(
+                eventId: state.pathParameters['eventId']!,
+              ),
+            ),
           ),
           GoRoute(
             path: 'account',
@@ -222,6 +263,15 @@ GoRouter createRouter(AppRole? role, {String? initialLocation}) {
                 _drAiPage(state, const PayerRequestsScreen()),
           ),
           GoRoute(
+            path: 'requests/:requestId/expected-care',
+            pageBuilder: (context, state) => _drAiPage(
+              state,
+              PayerExpectedCareScreen(
+                requestId: state.pathParameters['requestId']!,
+              ),
+            ),
+          ),
+          GoRoute(
             path: 'account',
             pageBuilder: (context, state) =>
                 _drAiPage(state, const PayerAccountScreen()),
@@ -237,14 +287,20 @@ GoRouter createRouter(AppRole? role, {String? initialLocation}) {
         path: '/terms',
         pageBuilder: (context, state) => _drAiPage(
           state,
-          LegalPlaceholderScreen(title: context.l10n.termsOfService),
+          LegalPlaceholderScreen(
+            title: context.l10n.termsOfService,
+            isPrivacy: false,
+          ),
         ),
       ),
       GoRoute(
         path: '/privacy-policy',
         pageBuilder: (context, state) => _drAiPage(
           state,
-          LegalPlaceholderScreen(title: context.l10n.privacyPolicy),
+          LegalPlaceholderScreen(
+            title: context.l10n.privacyPolicy,
+            isPrivacy: true,
+          ),
         ),
       ),
       GoRoute(

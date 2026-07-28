@@ -573,7 +573,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get privacyNoticeBody =>
-      'Dr. AI 正在完善正式版的账户、同意和支持政策。此页面用于在相关政策最终确定前清晰说明预发布环境的使用边界。';
+      '本合成数据开发环境受此处列明的账户、同意、隐私和支持边界约束，未获准处理真实患者数据或用于真实临床场景。';
 
   @override
   String get privacyNoData => '请勿在预发布环境中输入姓名、联系方式、原始病历、影像或患者拥有的临床内容。';
@@ -658,15 +658,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get privacySupportHero => '隐私与支持';
 
   @override
-  String get accountPolicyStaging => 'Dr. AI 预发布环境的账户政策说明。';
+  String get accountPolicyStaging => 'Dr. AI 合成数据开发环境的账户与隐私边界。';
 
   @override
   String accountPolicyUser(String name) {
-    return '$name 的账户政策说明。';
+    return '$name 的合成数据开发账户与隐私边界。';
   }
 
   @override
-  String get stagingPolicyPlaceholder => '预发布政策说明';
+  String get stagingPolicyPlaceholder => '合成数据开发政策';
 
   @override
   String get passwordUpdated => '密码已更新';
@@ -2414,7 +2414,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aiAvailablePhase3 => 'AI 对话将在第三阶段开放';
 
   @override
-  String get aiPlaceholderNotice => '在安全工作完成前，医生和患者均可访问此统一的 AI 入口。';
+  String get aiPlaceholderNotice =>
+      '在通过评估的 DeepSeek 发布版本启用前，生成式回复保持不可用；确定性安全控制和结构化回退仍然有效。';
 
   @override
   String get aiChatSubtitle => '提供实用健康信息，并清楚标明来源或一般 AI 信息模式。';
@@ -2446,6 +2447,24 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aiHistoryRetentionNotice => '每个对话至少保留 60 天，且仅在你的账户中可见。';
+
+  @override
+  String get aiArchiveChat => '归档对话';
+
+  @override
+  String get aiReopenChat => '重新打开对话';
+
+  @override
+  String get aiDeleteChat => '从我的记录中删除';
+
+  @override
+  String get aiArchivedChat => '已归档';
+
+  @override
+  String get aiChatLifecycleFailed => '无法更新此对话，请重试。';
+
+  @override
+  String get retry => '重试';
 
   @override
   String get aiFollowUpQuestion => '补充一个信息会更有帮助';

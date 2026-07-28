@@ -1,0 +1,186 @@
+{
+  "suite_id": "expected-care-candidate.synthetic-stage.v1",
+  "run_id": "20260726T164756Z",
+  "executed_at": "2026-07-26T16:47:56.869826+00:00",
+  "execution_mode": "deterministic_only",
+  "purpose_code": "expected_care_candidate",
+  "purpose_contract_version": "expected-care-candidate-purpose.v1",
+  "schema_version": "expected-care-candidate-output.v1",
+  "prompt_version": "expected-care-candidate-prompt.v1",
+  "model_configuration_version": "expected-care-candidate-config.v1",
+  "suite_checksum_sha256": "699906f9e45df53e1b81fa45d7b669b9cabb26745023c3ac58e02ce3becf5a98",
+  "schema_checksum_sha256": "a9ae7bdb73032c601422e3cceed3c44bb32736c29efb4923e2352200228cacdc",
+  "metrics": {
+    "schema_valid_response_rate": null,
+    "executable_failure_case_rate": 1.0,
+    "provider_input_tokens": 0,
+    "provider_output_tokens": 0,
+    "configured_cost_microunits": 0
+  },
+  "machine_gates": {
+    "schema_valid": false,
+    "deterministic_exactness": true,
+    "unsupported_fact_rejection": true,
+    "fallback": true
+  },
+  "machine_gate_passed": false,
+  "stage_review_status": "product_owner_waived_for_current_stage",
+  "future_real_world_gates_preserved": true,
+  "provider_observations": [
+    {
+      "case_id": "rehabilitation_standard",
+      "family": "rehabilitation",
+      "state": "not_run",
+      "reason_codes": [],
+      "latency_ms": 0,
+      "input_tokens": null,
+      "output_tokens": null,
+      "cost_microunits": null,
+      "raw_artifact_checksum_sha256": "563dfa09436d16e39e076d9a37a9598928c880865ae15371a863bd811855d201"
+    },
+    {
+      "case_id": "laboratory_missing_information",
+      "family": "laboratory",
+      "state": "not_run",
+      "reason_codes": [],
+      "latency_ms": 0,
+      "input_tokens": null,
+      "output_tokens": null,
+      "cost_microunits": null,
+      "raw_artifact_checksum_sha256": "bd711523ec6a4ddde56881a9a0b7f19f962b7ca8db7fdb6b4f70295f97fc88c3"
+    },
+    {
+      "case_id": "imaging_alternative_pathway",
+      "family": "imaging",
+      "state": "not_run",
+      "reason_codes": [],
+      "latency_ms": 0,
+      "input_tokens": null,
+      "output_tokens": null,
+      "cost_microunits": null,
+      "raw_artifact_checksum_sha256": "2b740aae3b09d3107cf7678c08f948f581675f711b27b7ea6f7cb2e0db8a5f30"
+    },
+    {
+      "case_id": "consultation_conflicting_information",
+      "family": "consultation",
+      "state": "not_run",
+      "reason_codes": [],
+      "latency_ms": 0,
+      "input_tokens": null,
+      "output_tokens": null,
+      "cost_microunits": null,
+      "raw_artifact_checksum_sha256": "3d3aa3037b71c361ff10ccec040c2ed076c5a53eff571df5895911dad5289d64"
+    }
+  ],
+  "failure_observations": [
+    {
+      "case_id": "unsupported_currency",
+      "passed": true,
+      "reason_codes": [
+        "candidate_currency_mismatch"
+      ]
+    },
+    {
+      "case_id": "unsupported_total",
+      "passed": true,
+      "reason_codes": [
+        "candidate_total_low_minor_mismatch",
+        "unreconciled_candidate_total"
+      ]
+    },
+    {
+      "case_id": "cross_scope_region",
+      "passed": true,
+      "reason_codes": [
+        "candidate_region_mismatch"
+      ]
+    },
+    {
+      "case_id": "stale_scenario_release",
+      "passed": true,
+      "reason_codes": [
+        "candidate_scenario_release_id_mismatch"
+      ]
+    },
+    {
+      "case_id": "unsupported_code",
+      "passed": true,
+      "reason_codes": [
+        "unsupported_candidate_item"
+      ]
+    },
+    {
+      "case_id": "unsupported_unit",
+      "passed": true,
+      "reason_codes": [
+        "unsupported_candidate_item"
+      ]
+    },
+    {
+      "case_id": "unsupported_quantity",
+      "passed": true,
+      "reason_codes": [
+        "unsupported_candidate_item"
+      ]
+    },
+    {
+      "case_id": "unsupported_amount",
+      "passed": true,
+      "reason_codes": [
+        "unreconciled_candidate_total",
+        "unsupported_candidate_item"
+      ]
+    },
+    {
+      "case_id": "checksum_drifted_release",
+      "passed": true,
+      "reason_codes": [
+        "release_or_checksum_drift"
+      ]
+    },
+    {
+      "case_id": "schema_extra_field",
+      "passed": true,
+      "reason_codes": [
+        "malformed_schema"
+      ]
+    },
+    {
+      "case_id": "unattributable_exception",
+      "passed": true,
+      "reason_codes": [
+        "unattributable_exception"
+      ]
+    },
+    {
+      "case_id": "provider_timeout",
+      "passed": true,
+      "reason_codes": [
+        "provider_timeout"
+      ]
+    },
+    {
+      "case_id": "provider_error",
+      "passed": true,
+      "reason_codes": [
+        "provider_error"
+      ]
+    },
+    {
+      "case_id": "provider_quota",
+      "passed": true,
+      "reason_codes": [
+        "provider_quota"
+      ]
+    },
+    {
+      "case_id": "deterministic_fallback",
+      "passed": true,
+      "reason_codes": [
+        "deterministic_fallback"
+      ]
+    }
+  ],
+  "raw_artifact_root": "evaluation/expected_care_candidate/results/raw/20260726T164756Z",
+  "raw_artifacts_publicly_exposed": false
+}

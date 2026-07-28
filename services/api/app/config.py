@@ -30,6 +30,28 @@ class Settings(BaseSettings):
     deepseek_base_url: str = "https://api.deepseek.com/chat/completions"
     deepseek_model: str = "deepseek-v4-flash"
     deepseek_timeout_seconds: float = 15.0
+    imaging_storage_backend: Literal["local", "tencent_cos"] = "local"
+    imaging_local_storage_root: str = "/tmp/dr_ai_synthetic_imaging"
+    imaging_tencent_cos_bucket: str | None = None
+    imaging_tencent_cos_region: str | None = None
+    chatbot_provider: Literal["deepseek"] = "deepseek"
+    chatbot_purpose_enabled: bool = False
+    chatbot_kill_switch: bool = True
+    chatbot_release_governance_bypass_for_tests: bool = False
+    expected_care_candidate_enabled: bool = False
+    expected_care_provider: str = "deepseek"
+    expected_care_model: str = "deepseek-v4-flash"
+    expected_care_timeout_seconds: float = Field(default=15.0, ge=0.1, le=30.0)
+    expected_care_max_attempts: int = Field(default=2, ge=1, le=2)
+    expected_care_max_output_tokens: int = Field(default=1200, ge=100, le=2000)
+    expected_care_max_cost_microunits: int = Field(default=2500, ge=1, le=10000)
+    expected_care_explanation_enabled: bool = False
+    expected_care_explanation_provider: Literal["deepseek"] = "deepseek"
+    expected_care_explanation_model: str = "deepseek-v4-flash"
+    expected_care_explanation_timeout_seconds: float = Field(default=8.0, ge=0.1, le=30.0)
+    expected_care_explanation_max_attempts: int = Field(default=2, ge=1, le=2)
+    expected_care_explanation_max_output_tokens: int = Field(default=1200, ge=400, le=2000)
+    expected_care_explanation_kill_switch: bool = True
     chatbot_grounded_generation_enabled: bool = True
     chatbot_general_model_knowledge_enabled: bool = True
     chatbot_grounded_answer_schema_version: str = "grounded-answer-v2-2026-07-24"
@@ -105,6 +127,12 @@ class Settings(BaseSettings):
             raise ValueError("HTTP knowledge reranking requires a service URL")
         if self.retrieval_rescue_enabled and self.retrieval_rescue_max_cost_microunits <= 0:
             raise ValueError("Retrieval rescue requires a positive per-request cost budget")
+        if self.imaging_storage_backend == "tencent_cos" and (
+            not self.imaging_tencent_cos_bucket or not self.imaging_tencent_cos_region
+        ):
+            raise ValueError(
+                "Tencent COS imaging requires an explicitly configured bucket and region"
+            )
         if self.environment == "production" and (
             self.knowledge_embedding_backend != "http_service"
             or self.knowledge_reranker_backend != "http_service"

@@ -17,7 +17,7 @@ from app.schemas import (
 
 router = APIRouter(prefix="/api/v1", tags=["support"])
 
-SUPPORT_ALLOWED_ROLES = {UserRole.doctor, UserRole.patient}
+SUPPORT_ALLOWED_ROLES = {UserRole.doctor, UserRole.patient, UserRole.payer}
 SYNTHETIC_DATA_LABEL = "Synthetic demonstration data only. Do not enter real patient data."
 CONTACT_PATTERN = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+|\+?\d[\d .-]{7,}\d")
 CLINICAL_CONTENT_PATTERNS = (

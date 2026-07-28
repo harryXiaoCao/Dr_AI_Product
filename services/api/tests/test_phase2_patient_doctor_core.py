@@ -1,4 +1,6 @@
+import hashlib
 import uuid
+from datetime import UTC, datetime, timedelta
 
 from fastapi.testclient import TestClient
 from sqlalchemy import select, text
@@ -666,6 +668,12 @@ def test_clinical_event_links_phase2_resources_with_safe_boundaries(
     asset_id = imaging.json()["asset_id"]
     assert imaging.json()["clinical_event_id"] == event_id
 
+    uploaded_imaging = client.put(
+        f"/api/v1/patients/{assigned_id}/imaging/{asset_id}/content",
+        headers={**doctor_headers, "Content-Type": "image/png"},
+        content=b"x" * 1024,
+    )
+    assert uploaded_imaging.status_code == 200
     completed_imaging = client.post(
         f"/api/v1/patients/{assigned_id}/imaging/{asset_id}/complete",
         headers=doctor_headers,
@@ -1256,18 +1264,54 @@ def test_phase2_imaging_upload_completion_review_and_safe_boundaries(
     assert presign.status_code == 200
     presign_payload = presign.json()
     asset_id = presign_payload["asset_id"]
-    assert presign_payload["storage_provider"] == "tencent_cos"
+    assert presign_payload["storage_provider"] == "local"
     assert presign_payload["upload_status"] == "pending_upload"
     assert presign_payload["review_status"] == "not_ready"
     assert "object_key" not in presign_payload
 
+    content = b"x" * 4096
+    wrong_content_type = client.put(
+        f"/api/v1/patients/{assigned_id}/imaging/{asset_id}/content",
+        headers={**doctor_headers, "Content-Type": "image/jpeg"},
+        content=content,
+    )
+    assert wrong_content_type.status_code == 415
+    wrong_size = client.put(
+        f"/api/v1/patients/{assigned_id}/imaging/{asset_id}/content",
+        headers={**doctor_headers, "Content-Type": "image/png"},
+        content=content[:-1],
+    )
+    assert wrong_size.status_code == 422
+    uploaded = client.put(
+        f"/api/v1/patients/{assigned_id}/imaging/{asset_id}/content",
+        headers={**doctor_headers, "Content-Type": "image/png"},
+        content=content,
+    )
+    assert uploaded.status_code == 200, uploaded.text
+    assert (
+        uploaded.json()["provenance_versions"][0]["checksum_sha256"]
+        == hashlib.sha256(content).hexdigest()
+    )
+    replayed_upload = client.put(
+        f"/api/v1/patients/{assigned_id}/imaging/{asset_id}/content",
+        headers={**doctor_headers, "Content-Type": "image/png"},
+        content=content,
+    )
+    assert replayed_upload.status_code == 200
+    assert len(replayed_upload.json()["provenance_versions"]) == 1
+    conflicting_upload = client.put(
+        f"/api/v1/patients/{assigned_id}/imaging/{asset_id}/content",
+        headers={**doctor_headers, "Content-Type": "image/png"},
+        content=b"y" * 4096,
+    )
+    assert conflicting_upload.status_code == 409
     complete = client.post(
         f"/api/v1/patients/{assigned_id}/imaging/{asset_id}/complete",
         headers=doctor_headers,
         json={
             "uploaded_size_bytes": 4096,
-            "etag": '"phase2etag"',
-            "checksum_sha256": "a" * 64,
+            "etag": f'"{hashlib.sha256(content).hexdigest()}"',
+            "checksum_sha256": hashlib.sha256(content).hexdigest(),
         },
     )
     assert complete.status_code == 200
@@ -1275,6 +1319,15 @@ def test_phase2_imaging_upload_completion_review_and_safe_boundaries(
     assert complete_payload["upload_status"] == "uploaded"
     assert complete_payload["review_status"] == "pending_review"
     assert "object_key" not in complete_payload
+    replayed_complete = client.post(
+        f"/api/v1/patients/{assigned_id}/imaging/{asset_id}/complete",
+        headers=doctor_headers,
+        json={
+            "uploaded_size_bytes": 4096,
+            "checksum_sha256": hashlib.sha256(content).hexdigest(),
+        },
+    )
+    assert replayed_complete.status_code == 200
 
     doctor_list = client.get(f"/api/v1/patients/{assigned_id}/imaging", headers=doctor_headers)
     assert doctor_list.status_code == 200
@@ -1287,6 +1340,12 @@ def test_phase2_imaging_upload_completion_review_and_safe_boundaries(
     patient_detail = client.get(f"/api/v1/patient/me/imaging/{asset_id}", headers=patient_headers)
     assert patient_detail.status_code == 200
     assert patient_detail.json()["review_status"] == "pending_review"
+    patient_download = client.get(
+        f"/api/v1/patients/{assigned_id}/imaging/{asset_id}/download",
+        headers=patient_headers,
+    )
+    assert patient_download.status_code == 200
+    assert patient_download.content == content
 
     patient_review = client.post(
         f"/api/v1/patients/{assigned_id}/imaging/{asset_id}/review",
@@ -1320,10 +1379,54 @@ def test_phase2_imaging_upload_completion_review_and_safe_boundaries(
     )
     assert cross_patient_complete.status_code == 404
     assert cross_patient_complete.json()["error"]["code"] == "not_found"
+    cross_patient_upload = client.put(
+        f"/api/v1/patients/{unrelated_id}/imaging/{asset_id}/content",
+        headers={**doctor_headers, "Content-Type": "image/png"},
+        content=content,
+    )
+    assert cross_patient_upload.status_code == 404
+    assert cross_patient_upload.json()["error"]["code"] == "not_found"
+    cross_patient_download = client.get(
+        f"/api/v1/patients/{unrelated_id}/imaging/{asset_id}/download",
+        headers=doctor_headers,
+    )
+    assert cross_patient_download.status_code == 404
+    assert cross_patient_download.json()["error"]["code"] == "not_found"
+
+    expiring = client.post(
+        f"/api/v1/patients/{assigned_id}/imaging/presign",
+        headers=doctor_headers,
+        json={
+            "filename": "synthetic-expired-retry.png",
+            "content_type": "image/png",
+            "size_bytes": 16,
+        },
+    )
+    assert expiring.status_code == 200
+    expired_asset_id = expiring.json()["asset_id"]
+    with Session(engine) as db:
+        expired_asset = db.get(MedicalImagingAsset, expired_asset_id)
+        assert expired_asset is not None
+        expired_asset.expires_at = datetime.now(UTC) - timedelta(seconds=1)
+        db.commit()
+    expired_upload = client.put(
+        f"/api/v1/patients/{assigned_id}/imaging/{expired_asset_id}/content",
+        headers={**doctor_headers, "Content-Type": "image/png"},
+        content=b"z" * 16,
+    )
+    assert expired_upload.status_code == 409
+    assert expired_upload.json()["error"]["code"] == "conflict"
 
     patient_care = client.get("/api/v1/patient/me/care", headers=patient_headers)
     assert patient_care.status_code == 200
-    assert patient_care.json()["imaging_assets"][0]["id"] == asset_id
+    assert any(
+        item["id"] == asset_id and item["upload_status"] == "uploaded"
+        for item in patient_care.json()["imaging_assets"]
+    )
+    assert any(
+        item["id"] == expired_asset_id and item["upload_status"] == "expired"
+        for item in patient_care.json()["imaging_assets"]
+    )
 
     with Session(engine) as db:
         asset = db.scalar(select(MedicalImagingAsset).where(MedicalImagingAsset.id == asset_id))
@@ -1339,6 +1442,8 @@ def test_phase2_imaging_upload_completion_review_and_safe_boundaries(
             "medical_imaging_assets_listed",
             "medical_imaging_asset_read",
             "medical_imaging_asset_reviewed",
+            "medical_imaging_bytes_verified",
+            "medical_imaging_bytes_downloaded",
         }.issubset(event_types)
         serialized_metadata = " ".join(str(audit.metadata_json) for audit in audits)
         assert "synthetic-phase2-scan" not in serialized_metadata

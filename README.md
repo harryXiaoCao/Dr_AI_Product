@@ -1,27 +1,41 @@
 # Dr. AI
 
-Dr. AI is moving from a completed invited, non-clinical beta foundation toward
-production/commercial v1.0. Phase 2 patient/doctor workflow foundations are
-implemented, but the visible app is not yet commercial-quality. Before Phase 3
-AI work starts, the project must close the product-quality gate in
-`docs/Dr_AI_v1.0_Product_Quality_Gate.md`: real-app onboarding, patient
-avatar/profile setup, credible typography, calmer patient/doctor workflows,
-useful empty states, and removal of normal-flow synthetic/demo language.
+Slices A-G are hardened for wholly synthetic development and controlled
+staging: governed synthetic rehabilitation, laboratory, imaging, and
+consultation reference families; immutable deterministic comparison;
+canonical-claim role explanations; separately evaluated Slice D and Slice F
+DeepSeek purposes; executable machine gates; append-only release operations;
+and complete doctor/patient/payer actions. Baseline display and comparison do
+not require clinician approval; clinician responses remain separate evidence.
+Pending v3 and the separate Slice D release use truthful current-stage waivers
+and remain kill-switched. Real-patient, real-provider, live-payer,
+public-production, and commercial gates remain separate. See
+`docs/periodic_dev_docs/Phase_4_Slices_F_G_Comparison_Explanation_Governance_Record.md`
+and `docs/runbooks/Expected_Care_Explanation_Controlled_Staging_Runbook.md`.
+
+Dr. AI is a production-quality product in development for China-first,
+multi-scenario care-and-cost transparency. The implemented foundation includes
+patient, doctor, and organization-scoped payer-reviewer workflows, Clinical
+Events and Clinical Services, source-linked care-cost records, immutable payer
+request snapshots, human payer-review outcomes, governed medical knowledge,
+and a bounded patient chatbot. An internal, default-off expected-care candidate
+purpose now produces schema-constrained, source-linked synthetic candidates
+over versioned clinical/utilization and pricing references, then revalidates
+every field deterministically. Slice E publishes the validated result as an
+immutable baseline and records clinician positions separately; no doctor can
+edit, reject, or hide the baseline.
 
 The repository accepts clearly synthetic demonstration data only. Do not enter
 real patient data.
 
-The historical beta foundation includes authentication/authorization, seeded
-doctor and patient dashboards, the doctor-led care loop through demo upload and
-simulated assessment, recovery plans and Today tasks, educational chat,
-consultation request/status readback, same-origin Tencent staging web/API
-deployment, Android debug access, beta support surfaces, and release evidence.
-That beta foundation is not the full production v1.0 definition:
-specialist/admin roles, support/deletion/feedback admin queue handling,
-external notification delivery beyond metadata-only in-app records, billing
-workflows, analytics dashboards, clinic operations workflows, real model
-inference, store uploads, final-domain production deployment, tester invites,
-monitoring/account changes, and clinical workflows remain gated or unstarted.
+The historical invited-beta foundation is preserved, but it is not the current
+product boundary. Production claims/adjudication, live coverage and payment,
+live reference-pricing releases, production immutable expected-care baselines,
+public AI cost assistance,
+external notification delivery, specialist/admin/clinic operations, public
+store distribution, final-domain production deployment, real-patient use, and
+live institutional integration remain independently gated until their
+implementation, evaluation, authorization, and external requirements close.
 
 ## Repository map
 
@@ -34,14 +48,14 @@ monitoring/account changes, and clinical workflows remain gated or unstarted.
 
 Current production docs:
 
+- `Dr_AI_Product_Requirements_Document_v1.0.md`
 - `docs/Dr_AI_v1.0_Implementation_Plan.md`
-- `docs/Dr_AI_v1.0_Product_Quality_Gate.md`
-- `docs/Phase_0_Production_v1_Surface_Audit.md`
-- `docs/Phase_0_Production_v1_Closure_Record.md`
-- `docs/Phase_1_Production_Data_Foundation_Record.md`
-- `docs/Phase_2_Patient_Doctor_Core_Progress_Record.md`
+- `docs/Dr_AI_v1.0_AI_Platform_Architecture.md`
+- `docs/Dr_AI_v1.0_ERD.md`
 - `docs/Dr_AI_v1.0_API_Contract.md`
-- `docs/Dr_AI_v1.0_Design_Freeze.md`
+- `docs/Dr_AI_v1.0_Product_Quality_Gate.md`
+- `docs/periodic_dev_docs/Phase_3_Chatbot_Intended_Use_and_Safety_Boundary.md`
+- `docs/periodic_dev_docs/Phase_3_Chatbot_RAG_Agentic_Architecture_and_Knowledge_Base.md`
 
 Historical beta records:
 
@@ -60,10 +74,13 @@ cp .env.example .env
 uv sync --locked --dev
 uv run alembic upgrade head
 uv run python -m app.seed
+uv run python -m scripts.bootstrap_synthetic_expected_care_demo
 uv run uvicorn app.main:app --reload
 ```
 
 Populate seed passwords and local secrets only in the untracked `.env`.
+The Slice E bootstrap is idempotent, wholly synthetic, restricted to
+local/test environments, and performs no external provider call.
 For normal local development, use Flutter web, widget tests, and CI rather than
 loading iOS or Android simulators. From the repository root, verify Flutter
 with:

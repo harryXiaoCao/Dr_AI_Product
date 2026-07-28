@@ -91,6 +91,8 @@ class _PatientAiChatScreenState extends ConsumerState<PatientAiChatScreen> {
   bool _loadingHistory = false;
   bool _historyOpen = true;
   bool _historyWidthInitialized = false;
+  bool _historyLoadFailed = false;
+  String? _failedSendText;
   String? _error;
 
   @override
@@ -118,19 +120,34 @@ class _PatientAiChatScreenState extends ConsumerState<PatientAiChatScreen> {
     try {
       final threads = await ref
           .read(repositoryProvider)
-          .loadEducationalChatThreads();
-      if (mounted) setState(() => _threads = threads);
+          .loadEducationalChatThreads(includeArchived: true);
+      if (mounted) {
+        setState(() {
+          _threads = threads;
+          _historyLoadFailed = false;
+        });
+      }
     } catch (_) {
-      // A fresh chat remains usable when history cannot be loaded.
+      if (mounted) setState(() => _historyLoadFailed = true);
     }
   }
 
-  void _startNewChat() {
-    setState(() {
-      _threadId = null;
-      _messages.clear();
-      _error = null;
-    });
+  Future<void> _startNewChat() async {
+    try {
+      final thread = await ref
+          .read(repositoryProvider)
+          .createEducationalChatThread(context.l10n.aiNewChat);
+      if (!mounted) return;
+      setState(() {
+        _threadId = thread.threadId;
+        _messages.clear();
+        _error = null;
+        _failedSendText = null;
+      });
+      await _refreshThreads();
+    } catch (_) {
+      if (mounted) setState(() => _error = context.l10n.aiChatLifecycleFailed);
+    }
   }
 
   Future<void> _openThread(PatientChatThreadSummary thread) async {
@@ -146,6 +163,7 @@ class _PatientAiChatScreenState extends ConsumerState<PatientAiChatScreen> {
       if (!mounted) return;
       setState(() {
         _threadId = thread.threadId;
+        _failedSendText = null;
         _messages
           ..clear()
           ..addAll(history.messages.map(_AiSessionMessage.fromHistory));
@@ -157,15 +175,18 @@ class _PatientAiChatScreenState extends ConsumerState<PatientAiChatScreen> {
     }
   }
 
-  Future<void> _send() async {
-    final text = _controller.text.trim();
+  Future<void> _send({String? retryText}) async {
+    final text = (retryText ?? _controller.text).trim();
     if (text.length < 2 || _sending) return;
     setState(() {
-      _messages.add(_AiSessionMessage.user(text));
+      if (retryText == null) {
+        _messages.add(_AiSessionMessage.user(text));
+      }
       _sending = true;
       _error = null;
+      _failedSendText = null;
     });
-    _controller.clear();
+    if (retryText == null) _controller.clear();
     try {
       final language = Localizations.localeOf(context).languageCode == 'zh'
           ? 'zh-Hans'
@@ -181,14 +202,78 @@ class _PatientAiChatScreenState extends ConsumerState<PatientAiChatScreen> {
         setState(() {
           _threadId = response.threadId;
           _messages.add(_AiSessionMessage.assistant(response));
+          _failedSendText = null;
         });
         await _refreshThreads();
       }
     } catch (_) {
-      if (mounted) setState(() => _error = context.l10n.aiChatSendFailed);
+      if (mounted) {
+        setState(() {
+          _error = context.l10n.aiChatSendFailed;
+          _failedSendText = text;
+        });
+      }
     } finally {
       if (mounted) setState(() => _sending = false);
     }
+  }
+
+  Future<void> _archiveThread(PatientChatThreadSummary thread) async {
+    await _updateThread(
+      thread,
+      () => ref
+          .read(repositoryProvider)
+          .archiveEducationalChatThread(thread.threadId),
+    );
+  }
+
+  Future<void> _reopenThread(PatientChatThreadSummary thread) async {
+    await _updateThread(
+      thread,
+      () => ref
+          .read(repositoryProvider)
+          .reopenEducationalChatThread(thread.threadId),
+    );
+  }
+
+  Future<void> _deleteThread(PatientChatThreadSummary thread) async {
+    try {
+      await ref
+          .read(repositoryProvider)
+          .deleteEducationalChatThread(thread.threadId);
+      if (!mounted) return;
+      setState(() {
+        if (_threadId == thread.threadId) {
+          _threadId = null;
+          _messages.clear();
+        }
+        _error = null;
+      });
+      await _refreshThreads();
+    } catch (_) {
+      if (mounted) setState(() => _error = context.l10n.aiChatLifecycleFailed);
+    }
+  }
+
+  Future<void> _updateThread(
+    PatientChatThreadSummary thread,
+    Future<PatientChatThreadSummary> Function() update,
+  ) async {
+    try {
+      await update();
+      if (!mounted) return;
+      setState(() => _error = null);
+      await _refreshThreads();
+    } catch (_) {
+      if (mounted) setState(() => _error = context.l10n.aiChatLifecycleFailed);
+    }
+  }
+
+  bool get _selectedThreadArchived {
+    for (final thread in _threads) {
+      if (thread.threadId == _threadId) return thread.isArchived;
+    }
+    return false;
   }
 
   void _handleSuggestedAction(String action) {
@@ -294,8 +379,13 @@ class _PatientAiChatScreenState extends ConsumerState<PatientAiChatScreen> {
                                       threads: _threads,
                                       selectedThreadId: _threadId,
                                       loading: _loadingHistory,
+                                      loadFailed: _historyLoadFailed,
                                       onNewChat: _startNewChat,
                                       onThreadSelected: _openThread,
+                                      onArchive: _archiveThread,
+                                      onReopen: _reopenThread,
+                                      onDelete: _deleteThread,
+                                      onRetry: _refreshThreads,
                                     )
                                   : const SizedBox.shrink(),
                             ),
@@ -367,9 +457,23 @@ class _PatientAiChatScreenState extends ConsumerState<PatientAiChatScreen> {
           if (_error != null)
             Padding(
               padding: const EdgeInsets.only(bottom: DrAiSpacing.xs),
-              child: Text(
-                _error!,
-                style: const TextStyle(color: DrAiColors.danger),
+              child: Row(
+                children: <Widget>[
+                  Expanded(
+                    child: Text(
+                      _error!,
+                      style: const TextStyle(color: DrAiColors.danger),
+                    ),
+                  ),
+                  if (_failedSendText != null)
+                    TextButton(
+                      key: const Key('patient-ai-retry-send'),
+                      onPressed: _sending
+                          ? null
+                          : () => _send(retryText: _failedSendText),
+                      child: Text(context.l10n.retry),
+                    ),
+                ],
               ),
             ),
           Row(
@@ -379,6 +483,7 @@ class _PatientAiChatScreenState extends ConsumerState<PatientAiChatScreen> {
                 child: TextField(
                   key: const Key('patient-ai-input'),
                   controller: _controller,
+                  enabled: !_selectedThreadArchived,
                   minLines: 1,
                   maxLines: 4,
                   decoration: InputDecoration(
@@ -390,7 +495,7 @@ class _PatientAiChatScreenState extends ConsumerState<PatientAiChatScreen> {
               const SizedBox(width: DrAiSpacing.sm),
               IconButton.filled(
                 key: const Key('patient-ai-send'),
-                onPressed: _sending ? null : _send,
+                onPressed: _sending || _selectedThreadArchived ? null : _send,
                 tooltip: context.l10n.sendMessage,
                 icon: _sending
                     ? const SizedBox.square(
@@ -412,15 +517,25 @@ class _AiThreadSidebar extends StatelessWidget {
     required this.threads,
     required this.selectedThreadId,
     required this.loading,
+    required this.loadFailed,
     required this.onNewChat,
     required this.onThreadSelected,
+    required this.onArchive,
+    required this.onReopen,
+    required this.onDelete,
+    required this.onRetry,
   });
 
   final List<PatientChatThreadSummary> threads;
   final String? selectedThreadId;
   final bool loading;
+  final bool loadFailed;
   final VoidCallback onNewChat;
   final ValueChanged<PatientChatThreadSummary> onThreadSelected;
+  final ValueChanged<PatientChatThreadSummary> onArchive;
+  final ValueChanged<PatientChatThreadSummary> onReopen;
+  final ValueChanged<PatientChatThreadSummary> onDelete;
+  final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) {
@@ -453,7 +568,27 @@ class _AiThreadSidebar extends StatelessWidget {
             ),
             const SizedBox(height: DrAiSpacing.xs),
             Expanded(
-              child: threads.isEmpty
+              child: loadFailed
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          Text(
+                            context.l10n.conversationLoadFailed,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: DrAiColors.inkSecondary,
+                            ),
+                          ),
+                          TextButton(
+                            key: const Key('patient-ai-retry-history'),
+                            onPressed: onRetry,
+                            child: Text(context.l10n.retry),
+                          ),
+                        ],
+                      ),
+                    )
+                  : threads.isEmpty
                   ? Text(
                       context.l10n.aiNoPreviousChats,
                       style: const TextStyle(color: DrAiColors.inkSecondary),
@@ -466,24 +601,71 @@ class _AiThreadSidebar extends StatelessWidget {
                         final selected = thread.threadId == selectedThreadId;
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 4),
-                          child: ListTile(
-                            key: Key('patient-ai-thread-${thread.threadId}'),
-                            selected: selected,
-                            enabled: !loading,
-                            dense: true,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(DrAiRadii.md),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: ListTile(
+                              key: Key('patient-ai-thread-${thread.threadId}'),
+                              selected: selected,
+                              enabled: !loading,
+                              dense: true,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(
+                                  DrAiRadii.md,
+                                ),
+                              ),
+                              leading: Icon(
+                                thread.isArchived
+                                    ? Icons.archive_outlined
+                                    : Icons.chat_bubble_outline,
+                                size: 19,
+                              ),
+                              title: Text(
+                                thread.title,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              subtitle: thread.isArchived
+                                  ? Text(context.l10n.aiArchivedChat)
+                                  : null,
+                              trailing: PopupMenuButton<_AiThreadAction>(
+                                key: Key(
+                                  'patient-ai-thread-menu-${thread.threadId}',
+                                ),
+                                enabled: !loading,
+                                onSelected: (action) {
+                                  switch (action) {
+                                    case _AiThreadAction.archive:
+                                      onArchive(thread);
+                                    case _AiThreadAction.reopen:
+                                      onReopen(thread);
+                                    case _AiThreadAction.delete:
+                                      onDelete(thread);
+                                  }
+                                },
+                                itemBuilder: (context) =>
+                                    <PopupMenuEntry<_AiThreadAction>>[
+                                      if (thread.isArchived)
+                                        PopupMenuItem<_AiThreadAction>(
+                                          value: _AiThreadAction.reopen,
+                                          child: Text(
+                                            context.l10n.aiReopenChat,
+                                          ),
+                                        )
+                                      else
+                                        PopupMenuItem<_AiThreadAction>(
+                                          value: _AiThreadAction.archive,
+                                          child: Text(
+                                            context.l10n.aiArchiveChat,
+                                          ),
+                                        ),
+                                      PopupMenuItem<_AiThreadAction>(
+                                        value: _AiThreadAction.delete,
+                                        child: Text(context.l10n.aiDeleteChat),
+                                      ),
+                                    ],
+                              ),
+                              onTap: () => onThreadSelected(thread),
                             ),
-                            leading: const Icon(
-                              Icons.chat_bubble_outline,
-                              size: 19,
-                            ),
-                            title: Text(
-                              thread.title,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            onTap: () => onThreadSelected(thread),
                           ),
                         );
                       },
@@ -503,6 +685,8 @@ class _AiThreadSidebar extends StatelessWidget {
     );
   }
 }
+
+enum _AiThreadAction { archive, reopen, delete }
 
 class _AiChatWelcome extends StatelessWidget {
   const _AiChatWelcome({required this.onSuggestion});

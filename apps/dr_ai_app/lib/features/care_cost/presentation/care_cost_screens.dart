@@ -334,7 +334,7 @@ class _ClinicalEventLedger extends StatelessWidget {
                                 children: <Widget>[
                                   Text(
                                     item.label,
-                                    maxLines: 2,
+                                    maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                   Text(
@@ -581,15 +581,46 @@ class _PayerRequestSummary extends StatelessWidget {
   final PayerRequestData request;
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      title: Text(request.clinicalEventTitle),
-      subtitle: Text(
-        '${request.payerOrganization.name} · ${request.status.replaceAll('_', ' ')}',
-      ),
-      trailing: Text(
-        _money(request.currency, request.requestedTotalMinor),
-        style: const TextStyle(fontWeight: FontWeight.w800),
+    return Material(
+      color: Colors.transparent,
+      child: ListTile(
+        key: Key('patient-expected-care-${request.clinicalEventId}'),
+        contentPadding: EdgeInsets.zero,
+        onTap: () =>
+            context.go('/patient/expected-care/${request.clinicalEventId}'),
+        title: Text(request.clinicalEventTitle),
+        subtitle: Text.rich(
+          TextSpan(
+            children: <InlineSpan>[
+              TextSpan(
+                text:
+                    '${request.payerOrganization.name} · ${request.status.replaceAll('_', ' ')}\n',
+              ),
+              TextSpan(
+                text: _copy(
+                  context,
+                  'View immutable expected-care baseline',
+                  '查看不可变预期诊疗基线',
+                ),
+                style: const TextStyle(
+                  color: DrAiColors.brand,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+        trailing: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: <Widget>[
+            Text(
+              _money(request.currency, request.requestedTotalMinor),
+              style: const TextStyle(fontWeight: FontWeight.w800),
+            ),
+            const Icon(Icons.arrow_forward, size: 18, color: DrAiColors.brand),
+          ],
+        ),
       ),
     );
   }
@@ -638,6 +669,21 @@ class _PayerRequestDetail extends StatelessWidget {
           ),
           const SizedBox(height: DrAiSpacing.sm),
           Text(request.doctorSummary),
+          if (request.doctorResponses.isNotEmpty) ...<Widget>[
+            const SizedBox(height: DrAiSpacing.md),
+            Text(
+              _copy(context, 'Doctor responses', '医生补充说明'),
+              style: const TextStyle(fontWeight: FontWeight.w800),
+            ),
+            for (final response in request.doctorResponses)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.medical_information_outlined),
+                title: Text(response.responseType.replaceAll('_', ' ')),
+                subtitle: Text(response.summary),
+                trailing: Text('v${response.version}'),
+              ),
+          ],
           const SizedBox(height: DrAiSpacing.md),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
@@ -700,7 +746,45 @@ class _PayerRequestDetail extends StatelessWidget {
               ),
             ],
           ),
+          const SizedBox(height: DrAiSpacing.md),
+          Align(
+            alignment: Alignment.centerRight,
+            child: OutlinedButton.icon(
+              key: Key('payer-expected-care-${request.id}'),
+              onPressed: () =>
+                  context.go('/payer/requests/${request.id}/expected-care'),
+              icon: const Icon(Icons.fact_check_outlined),
+              label: Text(
+                _copy(
+                  context,
+                  'View authorized expected-care evidence',
+                  '查看已授权的预期诊疗证据',
+                ),
+              ),
+            ),
+          ),
           if (payerActions) ...<Widget>[
+            if (request.reviews.isNotEmpty) ...<Widget>[
+              const Divider(height: DrAiSpacing.lg),
+              Text(
+                _copy(context, 'Manual transition history', '人工状态变更记录'),
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+              for (final review in request.reviews)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.history),
+                  title: Text(
+                    '${review.fromStatus.replaceAll('_', ' ')} → '
+                    '${review.toStatus.replaceAll('_', ' ')}',
+                  ),
+                  subtitle: Text(
+                    '${review.reviewerDisplayName} · ${review.reviewerTitle}\n'
+                    '${review.reasonCode.replaceAll('_', ' ')}',
+                  ),
+                  trailing: Text('v${review.version}'),
+                ),
+            ],
             const SizedBox(height: DrAiSpacing.md),
             Align(
               alignment: Alignment.centerRight,
@@ -822,6 +906,9 @@ Future<void> _showReviewDialog(
                       requestId: request.id,
                       action: action,
                       reasonCode: reason,
+                      expectedVersion: request.version,
+                      idempotencyKey:
+                          'payer-review-${request.id}-${DateTime.now().microsecondsSinceEpoch}',
                       note: note.text.trim().isEmpty ? null : note.text.trim(),
                     );
                 ref.invalidate(payerRequestsProvider);

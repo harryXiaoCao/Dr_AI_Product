@@ -14,8 +14,22 @@ def test_health_returns_service_and_database_status(client: TestClient) -> None:
         "service": "dr-ai-api",
         "environment": "test",
         "database": "ok",
+        "patient_chat_generation": "ready_test_bypass",
+        "expected_care_explanation": "disabled",
     }
     assert response.headers["X-Request-ID"].startswith("req_")
+
+
+def test_health_reports_missing_explanation_release_without_details(
+    client: TestClient, settings, monkeypatch
+) -> None:
+    monkeypatch.setattr(settings, "expected_care_explanation_enabled", True)
+    monkeypatch.setattr(settings, "expected_care_explanation_kill_switch", False)
+
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    assert response.json()["expected_care_explanation"] == ("blocked_no_compatible_release")
 
 
 def test_openapi_describes_non_clinical_foundation(client: TestClient) -> None:

@@ -7,6 +7,16 @@ Caddy-managed HTTPS, an immutable internal retrieval-model service, and an
 existing TencentDB for PostgreSQL instance. It does not create billable
 resources or change account-wide settings.
 
+The Slice F/G handoff is configuration-ready but deliberately inactive:
+`.env.example` keeps the expected-care explanation purpose disabled and its
+kill switch on. The pending checksum-bound release, frozen synthetic result,
+and runbook live under `evaluation/expected_care/` and
+`docs/runbooks/Expected_Care_Explanation_Controlled_Staging_Runbook.md`.
+The product owner authorized the 2026-07-26 wholly synthetic controlled-staging
+refresh recorded in the Phase 4 F/G closure record. That one staging action
+does not authorize real-patient transmission, real-provider use, live payer
+integration, public production, commercial use, or release activation.
+
 ## Required existing resources
 
 - Tencent Cloud compute host with Docker Compose and inbound TCP 80/443.

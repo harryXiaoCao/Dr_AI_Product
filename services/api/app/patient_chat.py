@@ -7,6 +7,7 @@ import uuid
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
+from typing import Literal
 
 from fastapi import APIRouter, Request
 from sqlalchemy import select
@@ -33,6 +34,7 @@ from app.chatbot_contracts import (
     PatientChatRequest,
     PatientChatResponse,
     PatientChatSourceCard,
+    PatientChatThreadCreate,
     PatientChatThreadList,
     PatientChatThreadSummary,
     PatientContextBundle,
@@ -40,6 +42,7 @@ from app.chatbot_contracts import (
     SafetyCode,
     StructuredModelOutput,
 )
+from app.chatbot_release_governance import chatbot_generation_readiness
 from app.claim_support import validate_claim_support
 from app.clinical_presentation import (
     SafetyAssessment,
@@ -548,12 +551,22 @@ def _thread_summary(thread: ChatThread) -> PatientChatThreadSummary:
     retention_until = thread.retention_until or (
         last_message_at + timedelta(days=MINIMUM_CHAT_RETENTION_DAYS)
     )
+    status = (
+        "deleted"
+        if thread.deleted_at is not None
+        else "archived"
+        if thread.archived_at is not None
+        else "active"
+    )
     return PatientChatThreadSummary(
         thread_id=thread.id,
         title=thread.title,
+        status=status,
         created_at=thread.created_at,
         last_message_at=last_message_at,
         retention_until=retention_until,
+        archived_at=thread.archived_at,
+        deleted_at=thread.deleted_at,
     )
 
 
@@ -572,6 +585,7 @@ def _patient_thread(
             ChatThread.id == parsed_id,
             ChatThread.patient_id == patient_id,
             ChatThread.thread_type == AI_THREAD_TYPE,
+            ChatThread.deleted_at.is_(None),
         )
     )
     if thread is None:
@@ -603,9 +617,16 @@ def _thread_for_message(
                     ChatThread.id == parsed_id,
                     ChatThread.patient_id == profile.id,
                     ChatThread.thread_type.in_((AI_THREAD_TYPE, "educational")),
+                    ChatThread.deleted_at.is_(None),
                 )
             )
             if existing_by_id is not None:
+                if existing_by_id.archived_at is not None:
+                    raise ApiError(
+                        409,
+                        "conversation_archived",
+                        "Reopen this conversation before sending another message.",
+                    )
                 return existing_by_id
             raise ApiError(404, "not_found", "The requested resource was not found.")
         if parsed_id is None:
@@ -616,6 +637,8 @@ def _thread_for_message(
                     ChatThread.patient_id == profile.id,
                     ChatThread.thread_key == legacy_thread_key,
                     ChatThread.thread_type == AI_THREAD_TYPE,
+                    ChatThread.archived_at.is_(None),
+                    ChatThread.deleted_at.is_(None),
                 )
             )
             if existing is not None:
@@ -1000,7 +1023,12 @@ def _deliver_general_or_fixed(
     clarification_needed: bool = False,
     decline_prohibited_portion: bool = False,
 ) -> PatientChatResponse:
-    eligible = settings.chatbot_general_model_knowledge_enabled and not clarification_needed
+    release_ready = chatbot_generation_readiness(db, settings).ready
+    eligible = (
+        settings.chatbot_general_model_knowledge_enabled
+        and release_ready
+        and not clarification_needed
+    )
     if eligible:
         try:
             response, provider = _general_knowledge_response(
@@ -1117,17 +1145,50 @@ def _deliver_general_or_fixed(
     )
 
 
-@router.get("/threads", response_model=PatientChatThreadList)
-def list_patient_chat_threads(user: CurrentUser, db: DbSession) -> PatientChatThreadList:
+@router.post("/threads", response_model=PatientChatThreadSummary, status_code=201)
+def create_patient_chat_thread(
+    body: PatientChatThreadCreate,
+    user: CurrentUser,
+    db: DbSession,
+) -> PatientChatThreadSummary:
     if user.role != UserRole.patient or user.patient_profile is None:
         raise ApiError(404, "not_found", "The requested resource was not found.")
+    now = datetime.now(UTC)
+    thread = ChatThread(
+        patient_id=user.patient_profile.id,
+        created_by_user_id=user.id,
+        thread_key=f"ai-{uuid.uuid4()}",
+        thread_type=AI_THREAD_TYPE,
+        title=body.title,
+        created_at=now,
+        last_message_at=now,
+        retention_until=now + timedelta(days=MINIMUM_CHAT_RETENTION_DAYS),
+    )
+    db.add(thread)
+    db.commit()
+    db.refresh(thread)
+    return _thread_summary(thread)
+
+
+@router.get("/threads", response_model=PatientChatThreadList)
+def list_patient_chat_threads(
+    user: CurrentUser,
+    db: DbSession,
+    status: Literal["active", "archived", "all"] = "active",
+) -> PatientChatThreadList:
+    if user.role != UserRole.patient or user.patient_profile is None:
+        raise ApiError(404, "not_found", "The requested resource was not found.")
+    query = select(ChatThread).where(
+        ChatThread.patient_id == user.patient_profile.id,
+        ChatThread.thread_type == AI_THREAD_TYPE,
+        ChatThread.deleted_at.is_(None),
+    )
+    if status == "active":
+        query = query.where(ChatThread.archived_at.is_(None))
+    elif status == "archived":
+        query = query.where(ChatThread.archived_at.is_not(None))
     threads = db.scalars(
-        select(ChatThread)
-        .where(
-            ChatThread.patient_id == user.patient_profile.id,
-            ChatThread.thread_type == AI_THREAD_TYPE,
-        )
-        .order_by(ChatThread.last_message_at.desc(), ChatThread.created_at.desc())
+        query.order_by(ChatThread.last_message_at.desc(), ChatThread.created_at.desc())
     ).all()
     return PatientChatThreadList(items=[_thread_summary(thread) for thread in threads])
 
@@ -1165,6 +1226,60 @@ def get_patient_chat_thread(
             )
         )
     return PatientChatHistory(thread=_thread_summary(thread), messages=history)
+
+
+@router.post("/threads/{thread_id}/archive", response_model=PatientChatThreadSummary)
+def archive_patient_chat_thread(
+    thread_id: str,
+    user: CurrentUser,
+    db: DbSession,
+) -> PatientChatThreadSummary:
+    if user.role != UserRole.patient or user.patient_profile is None:
+        raise ApiError(404, "not_found", "The requested resource was not found.")
+    thread = _patient_thread(db, patient_id=user.patient_profile.id, thread_id=thread_id)
+    if thread.archived_at is None:
+        thread.archived_at = datetime.now(UTC)
+        db.commit()
+        db.refresh(thread)
+    return _thread_summary(thread)
+
+
+@router.post("/threads/{thread_id}/reopen", response_model=PatientChatThreadSummary)
+def reopen_patient_chat_thread(
+    thread_id: str,
+    user: CurrentUser,
+    db: DbSession,
+) -> PatientChatThreadSummary:
+    if user.role != UserRole.patient or user.patient_profile is None:
+        raise ApiError(404, "not_found", "The requested resource was not found.")
+    thread = _patient_thread(db, patient_id=user.patient_profile.id, thread_id=thread_id)
+    if thread.archived_at is not None:
+        thread.archived_at = None
+        db.commit()
+        db.refresh(thread)
+    return _thread_summary(thread)
+
+
+@router.delete("/threads/{thread_id}", response_model=PatientChatThreadSummary)
+def delete_patient_chat_thread(
+    thread_id: str,
+    user: CurrentUser,
+    db: DbSession,
+) -> PatientChatThreadSummary:
+    if user.role != UserRole.patient or user.patient_profile is None:
+        raise ApiError(404, "not_found", "The requested resource was not found.")
+    thread = _patient_thread(db, patient_id=user.patient_profile.id, thread_id=thread_id)
+    now = datetime.now(UTC)
+    thread.archived_at = thread.archived_at or now
+    thread.deleted_at = now
+    minimum_retention = (thread.last_message_at or thread.created_at) + timedelta(
+        days=MINIMUM_CHAT_RETENTION_DAYS
+    )
+    if thread.retention_until is None or thread.retention_until < minimum_retention:
+        thread.retention_until = minimum_retention
+    db.commit()
+    db.refresh(thread)
+    return _thread_summary(thread)
 
 
 @router.post("/messages", response_model=PatientChatResponse)
@@ -1387,7 +1502,10 @@ def send_patient_chat_message(
             ),
         )
 
-    if not settings.chatbot_grounded_generation_enabled:
+    if (
+        not settings.chatbot_grounded_generation_enabled
+        or not chatbot_generation_readiness(db, settings).ready
+    ):
         fallback = FallbackCode.provider_unavailable
         _observe(
             db,

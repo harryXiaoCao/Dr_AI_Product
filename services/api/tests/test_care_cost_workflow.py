@@ -1,11 +1,13 @@
 import hashlib
+import uuid
 from datetime import datetime
 
 from fastapi.testclient import TestClient
 from sqlalchemy import update
+from sqlalchemy.orm import Session
 
 from app.database import engine
-from app.models import PayerMembership
+from app.models import PayerMembership, PayerOrganization
 from tests.helpers import auth_header, register
 
 
@@ -243,46 +245,106 @@ def test_three_role_care_cost_and_human_review_workflow(client: TestClient) -> N
 
     review = client.post(
         f"/api/v1/payer/me/requests/{request_id}/reviews",
-        headers=payer_headers,
+        headers={**payer_headers, "Idempotency-Key": "payer-review-clarification-001"},
         json={
             "action": "request_clarification",
+            "expected_version": 1,
             "reason_code": "documentation_needed",
             "note": "Attach the imaging interpretation before human resolution.",
         },
     )
     assert review.status_code == 200, review.text
     assert review.json()["status"] == "clarification_requested"
+    assert review.json()["version"] == 2
+    assert review.json()["reviews"][0]["from_status"] == "submitted"
+    assert review.json()["reviews"][0]["to_status"] == "clarification_requested"
+    assert review.json()["reviews"][0]["reviewer_display_name"]
     assert review.json()["reviews"][0]["note"].startswith("Attach")
+    replayed_review = client.post(
+        f"/api/v1/payer/me/requests/{request_id}/reviews",
+        headers={**payer_headers, "Idempotency-Key": "payer-review-clarification-001"},
+        json={
+            "action": "request_clarification",
+            "expected_version": 1,
+            "reason_code": "documentation_needed",
+            "note": "Attach the imaging interpretation before human resolution.",
+        },
+    )
+    assert replayed_review.status_code == 200
+    assert len(replayed_review.json()["reviews"]) == 1
+    stale_review = client.post(
+        f"/api/v1/payer/me/requests/{request_id}/reviews",
+        headers={**payer_headers, "Idempotency-Key": "payer-review-stale-version-001"},
+        json={
+            "action": "accept",
+            "expected_version": 1,
+            "reason_code": "review_complete",
+        },
+    )
+    assert stale_review.status_code == 409
+    assert stale_review.json()["error"]["details"][0]["code"] == "stale_version"
+
+    doctor_response = client.post(
+        f"/api/v1/doctor/me/payer-requests/{request_id}/responses",
+        headers={**doctor_headers, "Idempotency-Key": "doctor-clarification-response-001"},
+        json={
+            "expected_version": 2,
+            "response_type": "clarification_response",
+            "summary": (
+                "The synthetic consultation and medication amounts reflect the "
+                "documented care episode and delivered-service records."
+            ),
+        },
+    )
+    assert doctor_response.status_code == 200, doctor_response.text
+    assert doctor_response.json()["status"] == "under_review"
+    assert doctor_response.json()["version"] == 3
+    assert doctor_response.json()["doctor_responses"][0]["version"] == 3
+    replayed_response = client.post(
+        f"/api/v1/doctor/me/payer-requests/{request_id}/responses",
+        headers={**doctor_headers, "Idempotency-Key": "doctor-clarification-response-001"},
+        json={
+            "expected_version": 2,
+            "response_type": "clarification_response",
+            "summary": (
+                "The synthetic consultation and medication amounts reflect the "
+                "documented care episode and delivered-service records."
+            ),
+        },
+    )
+    assert replayed_response.status_code == 200
+    assert len(replayed_response.json()["doctor_responses"]) == 1
 
     patient_requests = client.get("/api/v1/patient/me/payer-requests", headers=patient_headers)
     assert patient_requests.status_code == 200
     patient_view = patient_requests.json()["items"][0]
-    assert patient_view["status"] == "clarification_requested"
+    assert patient_view["status"] == "under_review"
+    assert patient_view["doctor_responses"][0]["response_type"] == "clarification_response"
     assert patient_view["reviews"][0]["note"] is None
 
     dashboard = client.get("/api/v1/payer/me/dashboard", headers=payer_headers)
     assert dashboard.status_code == 200
     assert dashboard.json()["open_requests"] == 1
-    assert dashboard.json()["clarification_requests"] == 1
+    assert dashboard.json()["clarification_requests"] == 0
     assert dashboard.json()["pending_requested_total_minor"] == 58000
 
     rejected = client.post(
         f"/api/v1/payer/me/requests/{request_id}/reviews",
-        headers=payer_headers,
+        headers={**payer_headers, "Idempotency-Key": "payer-review-reject-001"},
         json={
             "action": "reject",
+            "expected_version": 3,
             "reason_code": "unsupported_request",
             "note": "Reviewer-only explanation that doctors and patients must not receive.",
         },
     )
     assert rejected.status_code == 200, rejected.text
     assert rejected.json()["status"] == "rejected"
+    assert rejected.json()["version"] == 4
     assert rejected.json()["reviews"][-1]["action"] == "reject"
     assert rejected.json()["reviews"][-1]["note"].startswith("Reviewer-only")
 
-    doctor_requests = client.get(
-        "/api/v1/doctor/me/payer-requests", headers=doctor_headers
-    )
+    doctor_requests = client.get("/api/v1/doctor/me/payer-requests", headers=doctor_headers)
     assert doctor_requests.status_code == 200
     doctor_view = doctor_requests.json()["items"][0]
     assert doctor_view["status"] == "rejected"
@@ -473,6 +535,17 @@ def test_imaging_clinical_service_is_the_single_billable_source(
         )
         assert prepared.status_code == 200, prepared.text
         assert prepared.json()["clinical_service_id"] == service["id"]
+        uploaded = client.put(
+            (f"/api/v1/patients/{patient_id}/imaging/{prepared.json()['asset_id']}/content"),
+            headers={
+                **doctor_headers,
+                "Content-Type": (
+                    "application/dicom" if filename.endswith(".dcm") else "application/pdf"
+                ),
+            },
+            content=b"x" * 4096,
+        )
+        assert uploaded.status_code == 200, uploaded.text
         completed = client.post(
             f"/api/v1/patients/{patient_id}/imaging/{prepared.json()['asset_id']}/complete",
             headers=doctor_headers,
@@ -576,6 +649,48 @@ def test_imaging_clinical_service_is_the_single_billable_source(
     assert patient_write.status_code == 404
 
 
+def test_doctor_can_record_non_imaging_delivered_services_and_costs(
+    client: TestClient,
+) -> None:
+    patient_headers, doctor_headers, patient_id, event_id = _connected_event(client)
+
+    for index, category in enumerate(("laboratory", "consultation", "treatment", "rehabilitation")):
+        response = client.post(
+            f"/api/v1/patients/{patient_id}/clinical-services",
+            headers=doctor_headers,
+            json={
+                "clinical_event_id": event_id,
+                "category": category,
+                "name": f"Synthetic {category} service",
+                "service_subtype": f"{category}-fixture",
+                "status": "completed",
+                "performed_at": f"2026-07-{20 + index}T02:00:00Z",
+                "financial": {
+                    "pricing_state": "final",
+                    "service_date": f"2026-07-{20 + index}",
+                    "total_cost_minor": 10000 + index,
+                    "payer_requested_minor": 8000,
+                    "patient_responsibility_minor": 2000 + index,
+                },
+            },
+        )
+        assert response.status_code == 201, response.text
+        assert response.json()["category"] == category
+        assert response.json()["body_region"] is None
+
+    patient_view = client.get(
+        f"/api/v1/patients/{patient_id}/clinical-services",
+        headers=patient_headers,
+    )
+    assert patient_view.status_code == 200
+    assert {item["category"] for item in patient_view.json()["items"]} == {
+        "laboratory",
+        "consultation",
+        "treatment",
+        "rehabilitation",
+    }
+
+
 def test_payer_can_update_only_reviewer_owned_profile_fields(client: TestClient) -> None:
     payer_session, payer_headers = _register_payer(
         client,
@@ -658,3 +773,37 @@ def test_payer_can_update_only_reviewer_owned_profile_fields(client: TestClient)
     )
     assert wrong_role.status_code == 404
     assert wrong_role.json()["error"]["code"] == "not_found"
+
+
+def test_payer_with_ambiguous_active_organization_fails_closed(
+    client: TestClient,
+) -> None:
+    payer_session, payer_headers = _register_payer(
+        client,
+        email="payer.ambiguous@example.com",
+        organization_name="Synthetic Primary Payer",
+    )
+    with Session(engine) as db:
+        secondary = PayerOrganization(
+            name=f"Synthetic Secondary Payer {uuid.uuid4()}",
+            organization_type="public_payer",
+            jurisdiction_code="CN",
+            verification_status="synthetic_only",
+        )
+        db.add(secondary)
+        db.flush()
+        db.add(
+            PayerMembership(
+                payer_organization_id=secondary.id,
+                user_id=uuid.UUID(payer_session["user"]["id"]),
+                display_name="Ambiguous Reviewer",
+                title="Synthetic reviewer",
+                status="active",
+                scope="synthetic_review",
+            )
+        )
+        db.commit()
+
+    response = client.get("/api/v1/payer/me/dashboard", headers=payer_headers)
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "payer_organization_context_ambiguous"

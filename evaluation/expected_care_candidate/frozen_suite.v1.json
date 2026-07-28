@@ -1,0 +1,59 @@
+{
+  "suite_id": "expected-care-candidate.synthetic-stage.v1",
+  "data_class": "wholly_synthetic",
+  "purpose_code": "expected_care_candidate",
+  "provider_cases": [
+    {
+      "case_id": "rehabilitation_standard",
+      "family": "rehabilitation",
+      "service_code": "SYN-REHAB-SESSION-01",
+      "unit": "session",
+      "quantity_low": 2,
+      "quantity_high": 4,
+      "amount_low_minor": 2000,
+      "amount_high_minor": 6000,
+      "missing_information": []
+    },
+    {
+      "case_id": "laboratory_missing_information",
+      "family": "laboratory",
+      "service_code": "SYN-LAB-PANEL-07",
+      "unit": "panel",
+      "quantity_low": 1,
+      "quantity_high": 1,
+      "amount_low_minor": 700,
+      "amount_high_minor": 900,
+      "missing_information": ["Synthetic specimen timing is not recorded."]
+    },
+    {
+      "case_id": "imaging_alternative_pathway",
+      "family": "imaging",
+      "service_code": "SYN-IMG-STUDY-11",
+      "unit": "study",
+      "quantity_low": 1,
+      "quantity_high": 2,
+      "amount_low_minor": 8800,
+      "amount_high_minor": 25200,
+      "missing_information": ["Synthetic alternative observation pathway remains applicable."]
+    },
+    {
+      "case_id": "consultation_conflicting_information",
+      "family": "consultation",
+      "service_code": "SYN-CONSULT-SESSION-21",
+      "unit": "session",
+      "quantity_low": 1,
+      "quantity_high": 3,
+      "amount_low_minor": 2400,
+      "amount_high_minor": 14400,
+      "missing_information": ["Synthetic submitted and delivered quantities conflict."]
+    }
+  ],
+  "mandatory_machine_thresholds": {
+    "schema_valid_response_rate": 1.0,
+    "deterministic_exactness_rate": 1.0,
+    "unsupported_fact_rejection_rate": 1.0,
+    "fallback_success_rate": 1.0
+  },
+  "stage_review_status": "product_owner_waived_for_current_stage",
+  "future_real_world_gates_preserved": true
+}

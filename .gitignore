@@ -47,3 +47,6 @@ tmp/
 
 # Sealed chatbot benchmark outputs may contain private evaluation prompts.
 evaluation/chatbot/results/
+# Expected-care evaluation may retain raw provider content for research audit.
+evaluation/expected_care/results/raw/
+evaluation/expected_care_candidate/results/raw/

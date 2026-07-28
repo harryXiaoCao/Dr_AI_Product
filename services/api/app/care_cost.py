@@ -1,8 +1,10 @@
+import hashlib
+import json
 import uuid
 from datetime import UTC, date, datetime
 from typing import Literal
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Header, status
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -16,7 +18,10 @@ from app.models import (
     ClinicalEvent,
     ClinicalService,
     ConsultationRequest,
+    ExpectedCareComparison,
+    ExpectedCarePublishedBaseline,
     PatientProfile,
+    PayerDoctorResponse,
     PayerMembership,
     PayerOrganization,
     PayerRequest,
@@ -24,6 +29,7 @@ from app.models import (
     PayerReview,
     UserRole,
 )
+from app.payer_scope import require_active_payer_membership
 from app.schemas import ClinicalFinancialInput
 
 router = APIRouter(prefix="/api/v1", tags=["care-and-cost transparency"])
@@ -169,6 +175,7 @@ class PayerReviewRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
     action: ReviewAction
+    expected_version: int = Field(ge=1)
     reason_code: str = Field(min_length=2, max_length=80)
     note: str | None = Field(default=None, max_length=4000)
 
@@ -178,6 +185,34 @@ class PayerReviewResponse(BaseModel):
     action: str
     reason_code: str
     note: str | None
+    reviewer_membership_id: uuid.UUID
+    reviewer_display_name: str
+    reviewer_title: str
+    from_status: str
+    to_status: str
+    version: int
+    created_at: datetime
+
+
+class PayerDoctorResponseCreate(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    expected_version: int = Field(ge=1)
+    response_type: Literal["justification", "clarification_response", "additional_information"]
+    summary: str = Field(min_length=10, max_length=4000)
+    baseline_id: uuid.UUID | None = None
+    comparison_id: uuid.UUID | None = None
+
+
+class PayerDoctorResponseResponse(BaseModel):
+    id: uuid.UUID
+    response_type: str
+    summary: str
+    doctor_id: uuid.UUID
+    doctor_display_name: str
+    baseline_id: uuid.UUID | None
+    comparison_id: uuid.UUID | None
+    version: int
     created_at: datetime
 
 
@@ -190,6 +225,7 @@ class PayerRequestResponse(BaseModel):
     doctor_display_name: str
     payer_organization: PayerOrganizationResponse
     status: str
+    version: int
     currency: str
     requested_total_minor: int
     doctor_summary: str
@@ -199,6 +235,7 @@ class PayerRequestResponse(BaseModel):
     created_at: datetime
     reviewed_at: datetime | None
     lines: list[PayerRequestLineResponse]
+    doctor_responses: list[PayerDoctorResponseResponse]
     reviews: list[PayerReviewResponse]
 
 
@@ -267,16 +304,7 @@ def _require_event(db: DbSession, patient_id: uuid.UUID, event_id: uuid.UUID) ->
 
 
 def _require_membership(db: DbSession, user: CurrentUser) -> PayerMembership:
-    if user.role != UserRole.payer:
-        raise _not_found()
-    membership = db.scalar(
-        select(PayerMembership)
-        .options(selectinload(PayerMembership.organization))
-        .where(PayerMembership.user_id == user.id, PayerMembership.status == "active")
-    )
-    if membership is None:
-        raise _not_found()
-    return membership
+    return require_active_payer_membership(db, user)
 
 
 def _item_response(item: CareCostItem, *, already_submitted: bool = False) -> CareCostItemResponse:
@@ -559,6 +587,7 @@ def _request_response(
         doctor_display_name=request.doctor.display_name,
         payer_organization=_organization_response(request.payer_organization),
         status=request.status,
+        version=request.version,
         currency=request.currency,
         requested_total_minor=request.requested_total_minor,
         doctor_summary=request.doctor_summary,
@@ -581,12 +610,34 @@ def _request_response(
             )
             for line in sorted(request.lines, key=lambda row: (row.service_date, row.id))
         ],
+        doctor_responses=[
+            PayerDoctorResponseResponse(
+                id=response.id,
+                response_type=response.response_type,
+                summary=response.summary,
+                doctor_id=response.doctor_id,
+                doctor_display_name=response.doctor.display_name,
+                baseline_id=response.baseline_id,
+                comparison_id=response.comparison_id,
+                version=response.version,
+                created_at=response.created_at,
+            )
+            for response in sorted(
+                request.doctor_responses, key=lambda row: (row.created_at, row.id)
+            )
+        ],
         reviews=[
             PayerReviewResponse(
                 id=review.id,
                 action=review.action,
                 reason_code=review.reason_code,
                 note=review.note if include_reviewer_notes else None,
+                reviewer_membership_id=review.payer_membership_id,
+                reviewer_display_name=review.payer_membership.display_name,
+                reviewer_title=review.payer_membership.title,
+                from_status=review.from_status,
+                to_status=review.to_status,
+                version=review.version,
                 created_at=review.created_at,
             )
             for review in sorted(request.reviews, key=lambda row: (row.created_at, row.id))
@@ -601,7 +652,33 @@ def _request_query():
         selectinload(PayerRequest.doctor),
         selectinload(PayerRequest.payer_organization),
         selectinload(PayerRequest.lines),
-        selectinload(PayerRequest.reviews),
+        selectinload(PayerRequest.reviews).selectinload(PayerReview.payer_membership),
+        selectinload(PayerRequest.doctor_responses).selectinload(PayerDoctorResponse.doctor),
+    )
+
+
+def _content_checksum(payload: BaseModel) -> str:
+    canonical = json.dumps(
+        payload.model_dump(mode="json", exclude_none=True),
+        ensure_ascii=True,
+        separators=(",", ":"),
+        sort_keys=True,
+    )
+    return hashlib.sha256(canonical.encode()).hexdigest()
+
+
+def _version_conflict(current_version: int) -> ApiError:
+    return ApiError(
+        409,
+        "conflict",
+        "The payer request changed. Reload it before recording another action.",
+        [
+            {
+                "field": "expected_version",
+                "code": "stale_version",
+                "message": f"The current request version is {current_version}.",
+            }
+        ],
     )
 
 
@@ -980,6 +1057,105 @@ def doctor_payer_requests(user: CurrentUser, db: DbSession) -> PayerRequestListR
     )
 
 
+@router.post(
+    "/doctor/me/payer-requests/{request_id}/responses",
+    response_model=PayerRequestResponse,
+)
+def append_doctor_payer_response(
+    request_id: uuid.UUID,
+    body: PayerDoctorResponseCreate,
+    user: CurrentUser,
+    db: DbSession,
+    idempotency_key: str = Header(alias="Idempotency-Key", min_length=12, max_length=120),
+) -> PayerRequestResponse:
+    if user.role != UserRole.doctor or user.doctor_profile is None:
+        raise _not_found()
+    payer_request = db.scalar(
+        _request_query()
+        .where(
+            PayerRequest.id == request_id,
+            PayerRequest.doctor_id == user.doctor_profile.id,
+        )
+        .with_for_update()
+    )
+    if payer_request is None:
+        raise _not_found()
+    checksum = _content_checksum(body)
+    replay = db.scalar(
+        select(PayerDoctorResponse).where(
+            PayerDoctorResponse.payer_request_id == payer_request.id,
+            PayerDoctorResponse.doctor_id == user.doctor_profile.id,
+            PayerDoctorResponse.idempotency_key == idempotency_key,
+        )
+    )
+    if replay is not None:
+        if replay.request_checksum != checksum:
+            raise ApiError(
+                409,
+                "conflict",
+                "The idempotency key was already used for different response content.",
+            )
+        return _request_response(payer_request, include_reviewer_notes=False)
+    if body.expected_version != payer_request.version:
+        raise _version_conflict(payer_request.version)
+    if payer_request.status in {"accepted", "rejected", "closed"}:
+        raise ApiError(409, "conflict", "This payer request is already in a terminal state.")
+    baseline = None
+    if body.baseline_id is not None:
+        baseline = db.scalar(
+            select(ExpectedCarePublishedBaseline).where(
+                ExpectedCarePublishedBaseline.id == body.baseline_id,
+                ExpectedCarePublishedBaseline.patient_id == payer_request.patient_id,
+                ExpectedCarePublishedBaseline.clinical_event_id == payer_request.clinical_event_id,
+            )
+        )
+        if baseline is None:
+            raise _not_found()
+    comparison = None
+    if body.comparison_id is not None:
+        comparison = db.scalar(
+            select(ExpectedCareComparison).where(
+                ExpectedCareComparison.id == body.comparison_id,
+                ExpectedCareComparison.patient_id == payer_request.patient_id,
+                ExpectedCareComparison.clinical_event_id == payer_request.clinical_event_id,
+            )
+        )
+        if comparison is None or (baseline is not None and comparison.baseline_id != baseline.id):
+            raise _not_found()
+    payer_request.version += 1
+    if payer_request.status == "clarification_requested":
+        payer_request.status = "under_review"
+    response = PayerDoctorResponse(
+        payer_request_id=payer_request.id,
+        doctor_id=user.doctor_profile.id,
+        baseline_id=baseline.id if baseline else None,
+        comparison_id=comparison.id if comparison else None,
+        response_type=body.response_type,
+        summary=body.summary,
+        request_checksum=checksum,
+        idempotency_key=idempotency_key,
+        version=payer_request.version,
+        doctor=user.doctor_profile,
+    )
+    payer_request.doctor_responses.append(response)
+    _audit(
+        db,
+        user,
+        "payer_doctor_response_appended",
+        target_id=payer_request.id,
+        patient_id=str(payer_request.patient_id),
+        clinical_event_id=str(payer_request.clinical_event_id),
+        response_type=body.response_type,
+        baseline_linked=baseline is not None,
+        comparison_linked=comparison is not None,
+        version=payer_request.version,
+    )
+    db.commit()
+    saved = db.scalar(_request_query().where(PayerRequest.id == payer_request.id))
+    assert saved is not None
+    return _request_response(saved, include_reviewer_notes=False)
+
+
 @router.get("/patient/me/payer-requests", response_model=PayerRequestListResponse)
 def own_payer_requests(user: CurrentUser, db: DbSession) -> PayerRequestListResponse:
     if user.role != UserRole.patient or user.patient_profile is None:
@@ -1099,16 +1275,37 @@ def review_payer_request(
     body: PayerReviewRequest,
     user: CurrentUser,
     db: DbSession,
+    idempotency_key: str = Header(alias="Idempotency-Key", min_length=12, max_length=120),
 ) -> PayerRequestResponse:
     membership = _require_membership(db, user)
     payer_request = db.scalar(
-        _request_query().where(
+        _request_query()
+        .where(
             PayerRequest.id == request_id,
             PayerRequest.payer_organization_id == membership.payer_organization_id,
         )
+        .with_for_update()
     )
     if payer_request is None:
         raise _not_found()
+    checksum = _content_checksum(body)
+    replay = db.scalar(
+        select(PayerReview).where(
+            PayerReview.payer_request_id == payer_request.id,
+            PayerReview.payer_membership_id == membership.id,
+            PayerReview.idempotency_key == idempotency_key,
+        )
+    )
+    if replay is not None:
+        if replay.request_checksum != checksum:
+            raise ApiError(
+                409,
+                "conflict",
+                "The idempotency key was already used for different review content.",
+            )
+        return _request_response(payer_request, include_reviewer_notes=True)
+    if body.expected_version != payer_request.version:
+        raise _version_conflict(payer_request.version)
     next_status = {
         "request_clarification": "clarification_requested",
         "accept": "accepted",
@@ -1116,12 +1313,31 @@ def review_payer_request(
         "escalate": "escalated",
         "close": "closed",
     }[body.action]
+    allowed_actions = {
+        "submitted": {"request_clarification", "accept", "reject", "escalate", "close"},
+        "clarification_requested": {"request_clarification", "escalate", "close"},
+        "under_review": {"request_clarification", "accept", "reject", "escalate", "close"},
+        "escalated": {"request_clarification", "accept", "reject", "close"},
+    }
+    if body.action not in allowed_actions.get(payer_request.status, set()):
+        raise ApiError(
+            409,
+            "conflict",
+            "This review action is not valid from the request's current state.",
+        )
+    from_status = payer_request.status
+    payer_request.version += 1
     payer_request.reviews.append(
         PayerReview(
             payer_membership_id=membership.id,
             action=body.action,
             reason_code=body.reason_code,
             note=body.note,
+            request_checksum=checksum,
+            idempotency_key=idempotency_key,
+            from_status=from_status,
+            to_status=next_status,
+            version=payer_request.version,
         )
     )
     payer_request.status = next_status
@@ -1134,6 +1350,9 @@ def review_payer_request(
         payer_organization_id=str(membership.payer_organization_id),
         action=body.action,
         reason_code=body.reason_code,
+        from_status=from_status,
+        to_status=next_status,
+        version=payer_request.version,
     )
     db.commit()
     saved = db.scalar(_request_query().where(PayerRequest.id == payer_request.id))

@@ -1,0 +1,52 @@
+{
+  "release_key": "expected-care-role-explanation",
+  "version": "v2-2026-07-26",
+  "purpose_code": "expected_care_role_explanation",
+  "purpose_contract_version": "expected-care-role-explanation-purpose.v1",
+  "schema_version": "expected-care-role-explanation-output.v1",
+  "prompt_version": "expected-care-role-explanation-prompt.v2",
+  "model_configuration_version": "expected-care-role-explanation-deepseek.v1",
+  "provider": "deepseek",
+  "model": "deepseek-v4-flash",
+  "source_checksums": {
+    "frozen_suite_file_sha256": "63a397e1f594661227739adc41d7cf4cb9df4f18f29eefdbfef51ec3121a180c",
+    "frozen_suite_canonical_sha256": "a22127d01cd114e0e35c4651fab380b8f2f7d7b5e48174ec6c5f09a1d27e3454",
+    "sanitized_result_file_sha256": "cd57f6d9d1742eb7193d6ee2802537d7be97bb043cd25502f1143b8ce3b942a2",
+    "output_schema_sha256": "494a949fe6a434f169807e12cb5ad767516b1aeb82ac55d887592a02fd9000af",
+    "explanation_source_sha256": "0a7ea03eacb3fd489a970428576cc05e62cd6f96b72e3e170ed1b4261d4cfec9",
+    "comparison_source_sha256": "92fa2e6133352a7df2a802c95e9a2bd450014b55521cc5b9e88e05bcd9d70e0b"
+  },
+  "evaluation_manifest_checksum_sha256": "a22127d01cd114e0e35c4651fab380b8f2f7d7b5e48174ec6c5f09a1d27e3454",
+  "evaluation_result_checksum_sha256": "cd57f6d9d1742eb7193d6ee2802537d7be97bb043cd25502f1143b8ce3b942a2",
+  "machine_gates": {
+    "schema_valid": true,
+    "fact_id_citations": true,
+    "exactness": true,
+    "unsupported_claims": true,
+    "leakage": true,
+    "bilingual": true,
+    "comparison": true,
+    "authorization": true,
+    "fallback": true
+  },
+  "review_requirements": [
+    {"review_type": "clinical", "status": "pending"},
+    {"review_type": "pricing", "status": "pending"},
+    {"review_type": "native_simplified_chinese", "status": "pending"},
+    {"review_type": "privacy", "status": "pending"},
+    {"review_type": "security", "status": "pending"},
+    {"review_type": "legal", "status": "pending"},
+    {"review_type": "payer_workflow", "status": "pending"},
+    {"review_type": "regulatory", "status": "pending"}
+  ],
+  "activation_state": "blocked_pending_external_reviews",
+  "kill_switch_state": "on",
+  "predecessor_release_id": null,
+  "predecessor_release_version": "v1-2026-07-26",
+  "rollback_target_release_id": null,
+  "rollback_evidence": {
+    "fixed_structured_fallback_verified": true,
+    "baseline_and_comparison_remain_visible": true,
+    "external_activation_performed": false
+  }
+}

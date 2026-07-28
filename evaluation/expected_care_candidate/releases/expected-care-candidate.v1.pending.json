@@ -1,0 +1,80 @@
+{
+  "release_key": "expected-care-candidate",
+  "version": "v1-synthetic-stage-2026-07-26",
+  "purpose_code": "expected_care_candidate",
+  "purpose_contract_version": "expected-care-candidate-purpose.v1",
+  "schema_version": "expected-care-candidate-output.v1",
+  "prompt_version": "expected-care-candidate-prompt.v1",
+  "model_configuration_version": "expected-care-candidate-config.v1",
+  "provider": "deepseek",
+  "model": "deepseek-v4-flash",
+  "source_checksums": {
+    "frozen_suite_file_sha256": "4c09452b7f859b56cab2beb73c6a6f17485cfc91a5f17357ffc1613e70c82ead",
+    "sanitized_result_file_sha256": "1d774dde4c1f5b5ba7c1cf168fd34f937ddf9fb3f95cd5a549ab7be4d55e5422",
+    "candidate_source_sha256": "b322595da5ba8792b4345f1a68af0947ef9d3cd5dc84c87124f26585abfe0eb6",
+    "output_schema_sha256": "a9ae7bdb73032c601422e3cceed3c44bb32736c29efb4923e2352200228cacdc"
+  },
+  "evaluation_manifest_checksum_sha256": "699906f9e45df53e1b81fa45d7b669b9cabb26745023c3ac58e02ce3becf5a98",
+  "evaluation_result_checksum_sha256": "1d774dde4c1f5b5ba7c1cf168fd34f937ddf9fb3f95cd5a549ab7be4d55e5422",
+  "review_requirements": [
+    {
+      "review_type": "clinical",
+      "status": "product_owner_waived_for_current_stage",
+      "scope": "early_synthetic_development_and_controlled_staging_only",
+      "future_real_world_gate_preserved": true
+    },
+    {
+      "review_type": "pricing",
+      "status": "product_owner_waived_for_current_stage",
+      "scope": "early_synthetic_development_and_controlled_staging_only",
+      "future_real_world_gate_preserved": true
+    },
+    {
+      "review_type": "native_simplified_chinese",
+      "status": "product_owner_waived_for_current_stage",
+      "scope": "early_synthetic_development_and_controlled_staging_only",
+      "future_real_world_gate_preserved": true
+    },
+    {
+      "review_type": "privacy",
+      "status": "product_owner_waived_for_current_stage",
+      "scope": "early_synthetic_development_and_controlled_staging_only",
+      "future_real_world_gate_preserved": true
+    },
+    {
+      "review_type": "security",
+      "status": "product_owner_waived_for_current_stage",
+      "scope": "early_synthetic_development_and_controlled_staging_only",
+      "future_real_world_gate_preserved": true
+    },
+    {
+      "review_type": "legal",
+      "status": "product_owner_waived_for_current_stage",
+      "scope": "early_synthetic_development_and_controlled_staging_only",
+      "future_real_world_gate_preserved": true
+    },
+    {
+      "review_type": "payer_workflow",
+      "status": "product_owner_waived_for_current_stage",
+      "scope": "early_synthetic_development_and_controlled_staging_only",
+      "future_real_world_gate_preserved": true
+    },
+    {
+      "review_type": "regulatory",
+      "status": "product_owner_waived_for_current_stage",
+      "scope": "early_synthetic_development_and_controlled_staging_only",
+      "future_real_world_gate_preserved": true
+    }
+  ],
+  "machine_gates": {
+    "schema_valid": true,
+    "deterministic_exactness": true,
+    "unsupported_fact_rejection": true,
+    "fallback": true
+  },
+  "activation_state": "pending_controlled_synthetic_staging",
+  "kill_switch_state": "on",
+  "predecessor_release_version": null,
+  "rollback_target": "fixed_safe_fallback",
+  "real_world_activation_allowed": false
+}

@@ -1,0 +1,221 @@
+{
+  "suite_id": "expected-care-role-explanation-frozen-v1",
+  "run_id": "20260726T111243Z",
+  "executed_at": "2026-07-26T11:13:18.962176+00:00",
+  "execution_mode": "live_deepseek",
+  "provider": "deepseek",
+  "model": "deepseek-v4-flash",
+  "suite_checksum_sha256": "a22127d01cd114e0e35c4651fab380b8f2f7d7b5e48174ec6c5f09a1d27e3454",
+  "output_schema_checksum_sha256": "494a949fe6a434f169807e12cb5ad767516b1aeb82ac55d887592a02fd9000af",
+  "metrics": {
+    "schema_valid_response_rate": 1.0,
+    "fact_id_citation_validity_rate": 1.0,
+    "numerical_date_code_exactness_rate": 1.0,
+    "unsupported_claim_rate": 0.0,
+    "prohibited_field_leakage_rate": 0.0,
+    "bilingual_factual_consistency_rate": 1.0,
+    "deterministic_comparison_correctness_rate": 1.0,
+    "authorization_isolation_rate": 1.0,
+    "fallback_success_rate": 1.0,
+    "role_visibility_rate": 1.0,
+    "p50_latency_ms": 5742,
+    "p95_latency_ms": 6737,
+    "provider_failures": 0,
+    "provider_input_tokens": 8528,
+    "provider_output_tokens": 4946,
+    "configured_cost_microunits": 2578
+  },
+  "machine_gates": {
+    "schema_valid": true,
+    "fact_id_citations": true,
+    "exactness": true,
+    "unsupported_claims": true,
+    "leakage": true,
+    "bilingual": true,
+    "comparison": true,
+    "authorization": true,
+    "fallback": true
+  },
+  "machine_gate_passed": true,
+  "external_review_gates": [
+    {
+      "review_type": "clinical",
+      "status": "pending"
+    },
+    {
+      "review_type": "pricing",
+      "status": "pending"
+    },
+    {
+      "review_type": "native_simplified_chinese",
+      "status": "pending"
+    },
+    {
+      "review_type": "privacy",
+      "status": "pending"
+    },
+    {
+      "review_type": "security",
+      "status": "pending"
+    },
+    {
+      "review_type": "legal",
+      "status": "pending"
+    },
+    {
+      "review_type": "payer_workflow",
+      "status": "pending"
+    },
+    {
+      "review_type": "regulatory",
+      "status": "pending"
+    }
+  ],
+  "activation_state": "blocked_pending_external_reviews",
+  "observations": [
+    {
+      "case_id": "rehabilitation_doctor_within",
+      "role": "doctor",
+      "state": "validated",
+      "diagnostic_codes": [],
+      "latency_ms": 6737,
+      "input_tokens": 1422,
+      "output_tokens": 947,
+      "cost_microunits": 464,
+      "raw_artifact_checksum_sha256": "cbeb7c639d413cf6a83f9fe943f45f8186c8ffd59d04382167baec84cb6da7f6",
+      "schema_valid": true,
+      "fact_ids_valid": true,
+      "numbers_exact": true,
+      "bilingual_consistent": true,
+      "unsupported_claim": false,
+      "prohibited_leakage": false,
+      "provider_failure": false
+    },
+    {
+      "case_id": "laboratory_patient_missing_cost",
+      "role": "patient",
+      "state": "validated",
+      "diagnostic_codes": [],
+      "latency_ms": 5428,
+      "input_tokens": 1355,
+      "output_tokens": 812,
+      "cost_microunits": 417,
+      "raw_artifact_checksum_sha256": "272f15a97c6bc5450a61245344dce9f582377c11bd9cc6100db1cb6ef3df8c34",
+      "schema_valid": true,
+      "fact_ids_valid": true,
+      "numbers_exact": true,
+      "bilingual_consistent": true,
+      "unsupported_claim": false,
+      "prohibited_leakage": false,
+      "provider_failure": false
+    },
+    {
+      "case_id": "rehabilitation_payer_above_with_exception",
+      "role": "payer",
+      "state": "validated",
+      "diagnostic_codes": [],
+      "latency_ms": 5394,
+      "input_tokens": 1496,
+      "output_tokens": 800,
+      "cost_microunits": 433,
+      "raw_artifact_checksum_sha256": "27cc39704ee42164018fe5162f3b4a27fb67bacafec9945a0d0011e26d83eeaa",
+      "schema_valid": true,
+      "fact_ids_valid": true,
+      "numbers_exact": true,
+      "bilingual_consistent": true,
+      "unsupported_claim": false,
+      "prohibited_leakage": false,
+      "provider_failure": false
+    },
+    {
+      "case_id": "alternative_pathway_doctor_below",
+      "role": "doctor",
+      "state": "validated",
+      "diagnostic_codes": [],
+      "latency_ms": 5506,
+      "input_tokens": 1421,
+      "output_tokens": 807,
+      "cost_microunits": 425,
+      "raw_artifact_checksum_sha256": "d2b2eabdb53f08b010629fd40efb47664d8169339045c604608e3774b003d6e2",
+      "schema_valid": true,
+      "fact_ids_valid": true,
+      "numbers_exact": true,
+      "bilingual_consistent": true,
+      "unsupported_claim": false,
+      "prohibited_leakage": false,
+      "provider_failure": false
+    },
+    {
+      "case_id": "multiple_quantity_patient_not_comparable",
+      "role": "patient",
+      "state": "validated",
+      "diagnostic_codes": [],
+      "latency_ms": 5989,
+      "input_tokens": 1411,
+      "output_tokens": 822,
+      "cost_microunits": 428,
+      "raw_artifact_checksum_sha256": "0381df49365904414b2157ac0c5f8b93d82bf8f830aa9ff59a19c8c3480a63ac",
+      "schema_valid": true,
+      "fact_ids_valid": true,
+      "numbers_exact": true,
+      "bilingual_consistent": true,
+      "unsupported_claim": false,
+      "prohibited_leakage": false,
+      "provider_failure": false
+    },
+    {
+      "case_id": "conflicting_information_payer",
+      "role": "payer",
+      "state": "validated",
+      "diagnostic_codes": [],
+      "latency_ms": 5978,
+      "input_tokens": 1423,
+      "output_tokens": 758,
+      "cost_microunits": 411,
+      "raw_artifact_checksum_sha256": "90cbf87ead1229b9fb63ad85ddce003d172d73d03dabeadcc66ff8ec58407296",
+      "schema_valid": true,
+      "fact_ids_valid": true,
+      "numbers_exact": true,
+      "bilingual_consistent": true,
+      "unsupported_claim": false,
+      "prohibited_leakage": false,
+      "provider_failure": false
+    }
+  ],
+  "deterministic_checks": {
+    "comparison_cases": 4,
+    "comparison_passes": 4,
+    "failure_cases": {
+      "provider_timeout": "structured_fallback",
+      "provider_quota": "structured_fallback",
+      "provider_error": "structured_fallback",
+      "malformed_json": "schema_invalid",
+      "schema_extra_field": "schema_invalid",
+      "unknown_fact_id": "unknown_fact_id",
+      "unsupported_number": "unsupported_number",
+      "prohibited_conclusion": "prohibited_conclusion",
+      "uuid_leakage": "unauthorized_identifier",
+      "prompt_injection": "schema_invalid",
+      "contradictory_bilingual_fact_references": "bilingual_fact_reference_mismatch",
+      "patient_reviewer_note_leakage": "role_filter_test",
+      "patient_service_code_leakage": "role_filter_test",
+      "payer_wrong_organization": "authorization_test",
+      "cross_patient": "authorization_test",
+      "cross_doctor": "authorization_test",
+      "mixed_currency": "comparison_conflict",
+      "arithmetic_error": "comparison_conflict",
+      "pending_cost": "missing_cost",
+      "checksum_drift": "comparison_conflict",
+      "inactive_release": "comparison_conflict",
+      "structured_fallback": "structured_fallback"
+    },
+    "fallback_passes": 4,
+    "fallback_cases": 4,
+    "authorization_cases": 3,
+    "authorization_passes": 3,
+    "role_visibility_cases": 2,
+    "role_visibility_passes": 2
+  },
+  "raw_artifact_root": "evaluation/expected_care/results/raw/20260726T111243Z",
+  "raw_artifacts_publicly_exposed": false
+}

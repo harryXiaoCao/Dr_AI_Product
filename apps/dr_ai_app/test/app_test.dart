@@ -178,6 +178,37 @@ void main() {
   );
 
   testWidgets(
+    'doctor request history opens the expected-care review workspace',
+    (tester) async {
+      setViewport(tester, const Size(1280, 900));
+      await pumpApp(tester, FakeDrAiRepository(restoredSession: doctorSession));
+
+      await tester.tap(find.text('Payment requests').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Request history'));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const Key('payment-request-history-payer-request-test-id')),
+      );
+      await tester.pumpAndSettle();
+      final openReview = find.byKey(
+        const Key('doctor-expected-care-payer-request-test-id'),
+      );
+      await tester.ensureVisible(openReview);
+      await tester.tap(openReview);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Immutable expected-care baseline'), findsOneWidget);
+      expect(find.text('Acknowledge'), findsOneWidget);
+      expect(find.text('Record disagreement'), findsOneWidget);
+      expect(find.text('Append comparison'), findsOneWidget);
+      expect(find.text('Request or retry scoped explanation'), findsOneWidget);
+      expect(find.text('View history'), findsOneWidget);
+      expect(find.text('Reject'), findsNothing);
+    },
+  );
+
+  testWidgets(
     'doctor request history separates accepted and rejected payer outcomes',
     (tester) async {
       setViewport(tester, const Size(1280, 832));
@@ -679,7 +710,7 @@ void main() {
     expect(find.byKey(const Key('login-error')), findsNothing);
   });
 
-  testWidgets('patient contacts show services, groups, and multiple doctors', (
+  testWidgets('patient contacts show services and multiple doctors', (
     tester,
   ) async {
     setViewport(tester, const Size(412, 917));
@@ -712,12 +743,7 @@ void main() {
       find.byKey(const Key('doctor-contact-doctor-profile-test-id-2')),
       findsOneWidget,
     );
-    await tester.dragUntilVisible(
-      find.byKey(const Key('group-contact-placeholder')),
-      find.byKey(const Key('patient-contact-list')),
-      const Offset(0, -300),
-    );
-    expect(find.byKey(const Key('group-contact-placeholder')), findsOneWidget);
+    expect(find.byKey(const Key('group-contact-placeholder')), findsNothing);
   });
 
   testWidgets('patient AI chat keeps the conversation in the current session', (
@@ -868,6 +894,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Terms of Service'), findsOneWidget);
 
+    await tester.ensureVisible(find.text('Back to registration'));
     await tester.tap(find.text('Back to registration'));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('register-role-selector')), findsOneWidget);
@@ -1184,6 +1211,58 @@ void main() {
 
     expect(find.text('Accept request'), findsOneWidget);
     expect(find.text('Reject request'), findsOneWidget);
+  });
+
+  testWidgets(
+    'patient payer status opens the immutable expected-care baseline',
+    (tester) async {
+      setViewport(tester, const Size(412, 917));
+      await pumpApp(
+        tester,
+        FakeDrAiRepository(
+          restoredSession: patientSession,
+          loginSession: patientSession,
+          dashboard: patientDashboard,
+        ),
+      );
+
+      await tester.tap(find.text('Care & costs'));
+      await tester.pumpAndSettle();
+      final openRange = find.byKey(
+        const Key('patient-expected-care-clinical-event-test-id'),
+      );
+      await tester.dragUntilVisible(
+        openRange,
+        find.byKey(const Key('care-cost-ledger-list')),
+        const Offset(0, -260),
+      );
+      tester.widget<ListTile>(openRange).onTap!();
+      await tester.pumpAndSettle();
+
+      expect(find.text('System expected-care baseline'), findsOneWidget);
+      expect(find.textContaining('not a quote'), findsOneWidget);
+      expect(find.text('Request or retry safe explanation'), findsOneWidget);
+    },
+  );
+
+  testWidgets('payer request opens authorized expected-care evidence', (
+    tester,
+  ) async {
+    setViewport(tester, const Size(1280, 900));
+    await pumpApp(tester, FakeDrAiRepository(restoredSession: payerSession));
+
+    await tester.tap(find.text('Review queue'));
+    await tester.pumpAndSettle();
+    final openEvidence = find.byKey(
+      const Key('payer-expected-care-payer-request-test-id'),
+    );
+    await tester.ensureVisible(openEvidence);
+    await tester.tap(openEvidence);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Authorized expected-care evidence'), findsOneWidget);
+    expect(find.text('Human payer review'), findsOneWidget);
+    expect(find.text('Request or retry scoped explanation'), findsOneWidget);
   });
 
   testWidgets(
@@ -1940,6 +2019,37 @@ void main() {
       find.textContaining('Diagnoses: Synthetic observation'),
       findsOneWidget,
     );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('patient medical destinations read persisted records', (
+    tester,
+  ) async {
+    setViewport(tester, const Size(900, 760));
+    await pumpApp(
+      tester,
+      FakeDrAiRepository(
+        restoredSession: patientSession,
+        loginSession: patientSession,
+        dashboard: patientDashboard,
+      ),
+    );
+
+    GoRouter.of(
+      tester.element(find.byKey(const Key('patient-dashboard-list'))),
+    ).go('/patient/medical-service/records');
+    await tester.pumpAndSettle();
+    expect(find.text('My medical information'), findsOneWidget);
+    expect(find.text('Synthetic intake summary'), findsOneWidget);
+
+    await tester.tap(find.text('Imaging'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('image/png'), findsOneWidget);
+    expect(find.textContaining('pending_review'), findsOneWidget);
+
+    await tester.tap(find.text('Medications'));
+    await tester.pumpAndSettle();
+    expect(find.text('Demo Sumatriptan Fixture'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

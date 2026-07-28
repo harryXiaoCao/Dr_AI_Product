@@ -1,0 +1,33 @@
+{
+  "release_key": "patient-chat-generated-answer",
+  "version": "v1-synthetic-2026-07-27",
+  "purpose_code": "patient_chat_generated_answer",
+  "purpose_contract_version": "patient-chat-generated-answer-purpose.v1",
+  "grounded_schema_version": "grounded-answer-v2-2026-07-24",
+  "general_schema_version": "general-knowledge-v1-2026-07-24",
+  "prompt_version": "patient-chat-deepseek-prompts.v1",
+  "provider": "deepseek",
+  "model": "deepseek-v4-flash",
+  "contract_checksum_sha256": "b8a1cf336bcd66d4996b036c7fb612fce3cd5952a653f82e8f3c35bf79185bf9",
+  "evaluation_manifest_checksum_sha256": "9ed36c6c4409400e3efd1145347cc6650670913e729e0199b2f932c584bf739a",
+  "evaluation_result_checksum_sha256": "10cd06f6b85ba2a988b310d0168618926f97cfca51f404c6efe8c89af527d837",
+  "machine_gates": {
+    "bilingual": true,
+    "privacy": true,
+    "injection": true,
+    "malformed_output": true,
+    "timeout": true,
+    "quota": true,
+    "outage": true,
+    "context_drift": true,
+    "cross_patient": true,
+    "kill_switch": true,
+    "rollback": true
+  },
+  "predecessor_release_id": null,
+  "content_checksum_sha256": "fd9d9ef90cf45cf03f387d5ec7317922513eeb6179fd2f25161a6f924f418dd6",
+  "activation_state": "pending_controlled_synthetic_staging",
+  "kill_switch_state": "on",
+  "live_provider_evaluation_completed": false,
+  "real_world_activation_allowed": false
+}

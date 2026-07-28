@@ -3,6 +3,7 @@ import uuid
 from datetime import date, datetime
 
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     CheckConstraint,
     Date,
@@ -10,6 +11,7 @@ from sqlalchemy import (
     Enum,
     Float,
     ForeignKey,
+    Identity,
     Index,
     Integer,
     String,
@@ -496,6 +498,7 @@ class PayerRequest(Base):
     ai_review_status: Mapped[str] = mapped_column(String(40), default="not_evaluated")
     ai_review_score: Mapped[int | None] = mapped_column(Integer)
     ai_review_summary: Mapped[str | None] = mapped_column(Text)
+    version: Mapped[int] = mapped_column(Integer, default=1)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
@@ -510,6 +513,9 @@ class PayerRequest(Base):
         back_populates="payer_request", cascade="all, delete-orphan"
     )
     reviews: Mapped[list["PayerReview"]] = relationship(
+        back_populates="payer_request", cascade="all, delete-orphan"
+    )
+    doctor_responses: Mapped[list["PayerDoctorResponse"]] = relationship(
         back_populates="payer_request", cascade="all, delete-orphan"
     )
 
@@ -542,7 +548,15 @@ class PayerRequestLine(Base):
 
 class PayerReview(Base):
     __tablename__ = "payer_reviews"
-    __table_args__ = (Index("ix_payer_reviews_request_created", "payer_request_id", "created_at"),)
+    __table_args__ = (
+        Index("ix_payer_reviews_request_created", "payer_request_id", "created_at"),
+        UniqueConstraint(
+            "payer_request_id",
+            "payer_membership_id",
+            "idempotency_key",
+            name="uq_payer_review_idempotency",
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     payer_request_id: Mapped[uuid.UUID] = mapped_column(
@@ -554,10 +568,1064 @@ class PayerReview(Base):
     action: Mapped[str] = mapped_column(String(40))
     reason_code: Mapped[str] = mapped_column(String(80))
     note: Mapped[str | None] = mapped_column(Text)
+    request_checksum: Mapped[str] = mapped_column(String(64))
+    idempotency_key: Mapped[str] = mapped_column(String(120))
+    from_status: Mapped[str] = mapped_column(String(40))
+    to_status: Mapped[str] = mapped_column(String(40))
+    version: Mapped[int] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     payer_request: Mapped[PayerRequest] = relationship(back_populates="reviews")
     payer_membership: Mapped[PayerMembership] = relationship()
+
+
+class PayerDoctorResponse(Base):
+    """Append-only clinician response bound to one immutable payer request."""
+
+    __tablename__ = "payer_doctor_responses"
+    __table_args__ = (
+        Index("ix_payer_doctor_response_request_created", "payer_request_id", "created_at"),
+        UniqueConstraint(
+            "payer_request_id",
+            "doctor_id",
+            "idempotency_key",
+            name="uq_payer_doctor_response_idempotency",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    payer_request_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("payer_requests.id", ondelete="CASCADE")
+    )
+    doctor_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("doctor_profiles.id", ondelete="RESTRICT")
+    )
+    baseline_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("expected_care_reviewed_envelopes.id", ondelete="RESTRICT")
+    )
+    comparison_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("expected_care_comparisons.id", ondelete="RESTRICT")
+    )
+    response_type: Mapped[str] = mapped_column(String(40))
+    summary: Mapped[str] = mapped_column(Text)
+    request_checksum: Mapped[str] = mapped_column(String(64))
+    idempotency_key: Mapped[str] = mapped_column(String(120))
+    version: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    payer_request: Mapped[PayerRequest] = relationship(back_populates="doctor_responses")
+    doctor: Mapped[DoctorProfile] = relationship()
+
+
+class GovernedCareRelease(Base):
+    """Immutable, provider-neutral release metadata shared by care reference types."""
+
+    __tablename__ = "governed_care_releases"
+    __table_args__ = (
+        UniqueConstraint(
+            "release_type",
+            "release_key",
+            "version",
+            name="uq_governed_care_release_version",
+        ),
+        Index(
+            "ix_governed_care_release_lookup",
+            "release_type",
+            "release_key",
+            "jurisdiction",
+        ),
+        CheckConstraint(
+            "effective_to IS NULL OR effective_to >= effective_from",
+            name="ck_governed_care_release_effective_interval",
+        ),
+        CheckConstraint(
+            "next_review_on IS NULL OR last_verified_on IS NULL "
+            "OR next_review_on >= last_verified_on",
+            name="ck_governed_care_release_review_interval",
+        ),
+        CheckConstraint(
+            "source_checksum_sha256 ~ '^[0-9a-f]{64}$'",
+            name="ck_governed_care_release_source_checksum",
+        ),
+        CheckConstraint(
+            "payload_checksum_sha256 ~ '^[0-9a-f]{64}$'",
+            name="ck_governed_care_release_payload_checksum",
+        ),
+        CheckConstraint(
+            "jsonb_typeof(required_review_types_json) = 'array' "
+            "AND jsonb_array_length(required_review_types_json) > 0",
+            name="ck_governed_care_release_required_reviews",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    release_type: Mapped[str] = mapped_column(String(40))
+    release_key: Mapped[str] = mapped_column(String(160))
+    version: Mapped[str] = mapped_column(String(80))
+    schema_version: Mapped[str] = mapped_column(String(80))
+    lifecycle_status: Mapped[str] = mapped_column(String(40), default="draft")
+    jurisdiction: Mapped[str] = mapped_column(String(40))
+    region: Mapped[str | None] = mapped_column(String(120))
+    facility_scope_json: Mapped[dict[str, object]] = mapped_column(JSONB, default=dict)
+    currency: Mapped[str | None] = mapped_column(String(3))
+    effective_from: Mapped[date] = mapped_column(Date)
+    effective_to: Mapped[date | None] = mapped_column(Date)
+    source_authority: Mapped[str] = mapped_column(String(240))
+    source_locator: Mapped[str] = mapped_column(Text)
+    retrieved_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    source_checksum_sha256: Mapped[str] = mapped_column(String(64))
+    payload_checksum_sha256: Mapped[str] = mapped_column(String(64))
+    provenance_json: Mapped[dict[str, object]] = mapped_column(JSONB, default=dict)
+    required_review_types_json: Mapped[list[str]] = mapped_column(JSONB)
+    rights_status: Mapped[str] = mapped_column(String(80))
+    storage_allowed: Mapped[bool] = mapped_column(Boolean, default=False)
+    derivation_allowed: Mapped[bool] = mapped_column(Boolean, default=False)
+    redistribution_allowed: Mapped[bool] = mapped_column(Boolean, default=False)
+    provider_transmission_allowed: Mapped[bool] = mapped_column(Boolean, default=False)
+    last_verified_on: Mapped[date | None] = mapped_column(Date)
+    next_review_on: Mapped[date | None] = mapped_column(Date)
+    supersedes_release_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("governed_care_releases.id", ondelete="RESTRICT")
+    )
+    created_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL")
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    reviews: Mapped[list["GovernedCareReleaseReview"]] = relationship(
+        back_populates="release", cascade="all, delete-orphan"
+    )
+
+
+class GovernedCareReleaseReview(Base):
+    __tablename__ = "governed_care_release_reviews"
+    __table_args__ = (
+        UniqueConstraint(
+            "release_id",
+            "review_type",
+            "reviewer_user_id",
+            name="uq_governed_care_release_review",
+        ),
+        Index("ix_governed_care_release_review_release", "release_id", "review_type"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    release_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("governed_care_releases.id", ondelete="CASCADE")
+    )
+    review_type: Mapped[str] = mapped_column(String(60))
+    decision: Mapped[str] = mapped_column(String(80))
+    reviewer_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL")
+    )
+    reviewer_name: Mapped[str] = mapped_column(String(160))
+    reviewed_payload_checksum_sha256: Mapped[str] = mapped_column(String(64))
+    rationale: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    release: Mapped[GovernedCareRelease] = relationship(back_populates="reviews")
+
+
+class GovernedCareReleaseActivation(Base):
+    """Append-only activation, supersession, withdrawal, and rollback history."""
+
+    __tablename__ = "governed_care_release_activations"
+    __table_args__ = (
+        Index(
+            "ix_governed_care_release_activation_scope",
+            "release_type",
+            "release_key",
+            "scope_key",
+            "created_at",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    release_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("governed_care_releases.id", ondelete="RESTRICT")
+    )
+    release_type: Mapped[str] = mapped_column(String(40))
+    release_key: Mapped[str] = mapped_column(String(160))
+    scope_key: Mapped[str] = mapped_column(String(240))
+    action: Mapped[str] = mapped_column(String(40))
+    prior_release_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("governed_care_releases.id", ondelete="RESTRICT")
+    )
+    actor_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL")
+    )
+    reason_code: Mapped[str] = mapped_column(String(80))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class GovernedActiveCareRelease(Base):
+    """Mutable pointer whose changes are fully represented by activation history."""
+
+    __tablename__ = "governed_active_care_releases"
+    __table_args__ = (
+        UniqueConstraint(
+            "release_type",
+            "release_key",
+            "scope_key",
+            name="uq_governed_active_care_release_scope",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    release_type: Mapped[str] = mapped_column(String(40))
+    release_key: Mapped[str] = mapped_column(String(160))
+    scope_key: Mapped[str] = mapped_column(String(240))
+    release_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("governed_care_releases.id", ondelete="RESTRICT")
+    )
+    activation_event_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("governed_care_release_activations.id", ondelete="RESTRICT")
+    )
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class CareScenarioDefinition(Base):
+    __tablename__ = "care_scenario_definitions"
+
+    release_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("governed_care_releases.id", ondelete="CASCADE"), primary_key=True
+    )
+    scenario_family: Mapped[str] = mapped_column(String(120))
+    encounter_type: Mapped[str] = mapped_column(String(120))
+    applicability_json: Mapped[dict[str, object]] = mapped_column(JSONB)
+    required_inputs_json: Mapped[dict[str, object]] = mapped_column(JSONB)
+    compatible_release_keys_json: Mapped[dict[str, object]] = mapped_column(JSONB)
+
+
+class CarePlan(Base):
+    __tablename__ = "care_plans"
+
+    release_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("governed_care_releases.id", ondelete="CASCADE"), primary_key=True
+    )
+    scenario_release_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("care_scenario_definitions.release_id", ondelete="RESTRICT")
+    )
+    pathway_code: Mapped[str] = mapped_column(String(120))
+    assumptions_json: Mapped[dict[str, object]] = mapped_column(JSONB, default=dict)
+
+
+class CarePlanItem(Base):
+    __tablename__ = "care_plan_items"
+    __table_args__ = (
+        UniqueConstraint("care_plan_release_id", "item_key", name="uq_care_plan_item_key"),
+        CheckConstraint("quantity_low > 0", name="ck_care_plan_item_quantity_low_positive"),
+        CheckConstraint(
+            "quantity_high >= quantity_low",
+            name="ck_care_plan_item_quantity_range",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    care_plan_release_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("care_plans.release_id", ondelete="CASCADE")
+    )
+    item_key: Mapped[str] = mapped_column(String(120))
+    category: Mapped[str] = mapped_column(String(80))
+    code_system: Mapped[str] = mapped_column(String(80))
+    service_code: Mapped[str] = mapped_column(String(120))
+    unit: Mapped[str] = mapped_column(String(80))
+    quantity_low: Mapped[int] = mapped_column(Integer)
+    quantity_high: Mapped[int] = mapped_column(Integer)
+    required: Mapped[bool] = mapped_column(Boolean, default=True)
+    comparison_semantics: Mapped[str] = mapped_column(String(60), default="range")
+
+
+class PricingReferenceSet(Base):
+    __tablename__ = "pricing_reference_sets"
+
+    release_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("governed_care_releases.id", ondelete="CASCADE"), primary_key=True
+    )
+    price_type: Mapped[str] = mapped_column(String(60))
+    amount_semantics: Mapped[str] = mapped_column(String(80))
+    comparability: Mapped[str] = mapped_column(String(40))
+
+
+class PricingReferenceItem(Base):
+    __tablename__ = "pricing_reference_items"
+    __table_args__ = (
+        UniqueConstraint(
+            "pricing_reference_release_id",
+            "code_system",
+            "service_code",
+            "unit",
+            "facility_scope_key",
+            name="uq_pricing_reference_item_scope",
+        ),
+        CheckConstraint("amount_low_minor >= 0", name="ck_pricing_item_low_nonnegative"),
+        CheckConstraint(
+            "amount_high_minor >= amount_low_minor",
+            name="ck_pricing_item_amount_range",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    pricing_reference_release_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("pricing_reference_sets.release_id", ondelete="CASCADE")
+    )
+    code_system: Mapped[str] = mapped_column(String(80))
+    service_code: Mapped[str] = mapped_column(String(120))
+    unit: Mapped[str] = mapped_column(String(80))
+    facility_scope_key: Mapped[str] = mapped_column(String(160), default="*")
+    currency: Mapped[str] = mapped_column(String(3))
+    amount_low_minor: Mapped[int] = mapped_column(Integer)
+    amount_high_minor: Mapped[int] = mapped_column(Integer)
+    economic_meaning: Mapped[str] = mapped_column(String(120))
+    confidential: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class UtilizationRuleSet(Base):
+    __tablename__ = "utilization_rule_sets"
+
+    release_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("governed_care_releases.id", ondelete="CASCADE"), primary_key=True
+    )
+    scenario_release_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("care_scenario_definitions.release_id", ondelete="RESTRICT")
+    )
+    rule_contract_version: Mapped[str] = mapped_column(String(80))
+
+
+class UtilizationRule(Base):
+    __tablename__ = "utilization_rules"
+    __table_args__ = (
+        UniqueConstraint(
+            "utilization_rule_release_id",
+            "rule_code",
+            name="uq_utilization_rule_code",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    utilization_rule_release_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("utilization_rule_sets.release_id", ondelete="CASCADE")
+    )
+    rule_code: Mapped[str] = mapped_column(String(120))
+    rule_type: Mapped[str] = mapped_column(String(60))
+    parameters_json: Mapped[dict[str, object]] = mapped_column(JSONB)
+    rationale: Mapped[str] = mapped_column(Text)
+
+
+class CareReferenceEvaluation(Base):
+    """Append-only deterministic evaluation; re-runs always create another row."""
+
+    __tablename__ = "care_reference_evaluations"
+    __table_args__ = (
+        Index("ix_care_reference_evaluation_event_created", "clinical_event_id", "created_at"),
+        CheckConstraint(
+            "total_low_minor IS NULL OR total_high_minor IS NULL "
+            "OR total_high_minor >= total_low_minor",
+            name="ck_care_reference_evaluation_total_range",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    prior_evaluation_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("care_reference_evaluations.id", ondelete="RESTRICT")
+    )
+    clinical_event_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("clinical_events.id", ondelete="RESTRICT")
+    )
+    payer_request_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("payer_requests.id", ondelete="RESTRICT")
+    )
+    scenario_release_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("care_scenario_definitions.release_id", ondelete="RESTRICT")
+    )
+    care_plan_release_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("care_plans.release_id", ondelete="RESTRICT")
+    )
+    pricing_reference_release_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("pricing_reference_sets.release_id", ondelete="RESTRICT")
+    )
+    utilization_rule_release_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("utilization_rule_sets.release_id", ondelete="RESTRICT")
+    )
+    engine_contract_version: Mapped[str] = mapped_column(String(80))
+    input_checksum_sha256: Mapped[str] = mapped_column(String(64))
+    result_checksum_sha256: Mapped[str] = mapped_column(String(64))
+    status: Mapped[str] = mapped_column(String(60))
+    currency: Mapped[str | None] = mapped_column(String(3))
+    total_low_minor: Mapped[int | None] = mapped_column(Integer)
+    total_high_minor: Mapped[int | None] = mapped_column(Integer)
+    observed_total_minor: Mapped[int | None] = mapped_column(Integer)
+    reason_codes_json: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    missing_information_json: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    exception_json: Mapped[dict[str, object] | None] = mapped_column(JSONB)
+    suppression_reasons_json: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    input_facts_json: Mapped[dict[str, object]] = mapped_column(JSONB)
+    result_json: Mapped[dict[str, object]] = mapped_column(JSONB)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class ExpectedCareCandidateRequest(Base):
+    """Idempotent request identity for one immutable expected-care candidate run."""
+
+    __tablename__ = "expected_care_candidate_requests"
+    __table_args__ = (
+        UniqueConstraint(
+            "actor_user_id",
+            "clinical_event_id",
+            "idempotency_key",
+            name="uq_expected_care_candidate_request_idempotency",
+        ),
+        Index(
+            "ix_expected_care_candidate_request_event_created",
+            "clinical_event_id",
+            "created_at",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    actor_user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"))
+    patient_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("patient_profiles.id", ondelete="RESTRICT")
+    )
+    clinical_event_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("clinical_events.id", ondelete="RESTRICT")
+    )
+    payer_request_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("payer_requests.id", ondelete="RESTRICT")
+    )
+    predecessor_request_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("expected_care_candidate_requests.id", ondelete="RESTRICT")
+    )
+    idempotency_key: Mapped[str] = mapped_column(String(120))
+    request_checksum_sha256: Mapped[str] = mapped_column(String(64))
+    lifecycle_state: Mapped[str] = mapped_column(String(60))
+    purpose_code: Mapped[str] = mapped_column(String(80))
+    purpose_contract_version: Mapped[str] = mapped_column(String(80))
+    schema_version: Mapped[str] = mapped_column(String(80))
+    prompt_version: Mapped[str] = mapped_column(String(80))
+    model_configuration_version: Mapped[str] = mapped_column(String(80))
+    provider: Mapped[str] = mapped_column(String(80))
+    model: Mapped[str] = mapped_column(String(160))
+    scenario_release_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("care_scenario_definitions.release_id", ondelete="RESTRICT")
+    )
+    care_plan_release_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("care_plans.release_id", ondelete="RESTRICT")
+    )
+    pricing_reference_release_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("pricing_reference_sets.release_id", ondelete="RESTRICT")
+    )
+    utilization_rule_release_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("utilization_rule_sets.release_id", ondelete="RESTRICT")
+    )
+    release_lineage_json: Mapped[list[dict[str, object]]] = mapped_column(JSONB)
+    minimum_input_checksum_sha256: Mapped[str] = mapped_column(String(64))
+    minimum_input_json: Mapped[dict[str, object]] = mapped_column(JSONB)
+    validation_outcome: Mapped[str] = mapped_column(String(60))
+    validation_reason_codes_json: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    output_checksum_sha256: Mapped[str | None] = mapped_column(String(64))
+    provider_attempt_count: Mapped[int] = mapped_column(Integer, default=0)
+    provider_input_tokens: Mapped[int | None] = mapped_column(Integer)
+    provider_output_tokens: Mapped[int | None] = mapped_column(Integer)
+    provider_cost_microunits: Mapped[int | None] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class ExpectedCareCandidateAttempt(Base):
+    """Content-free immutable provider-attempt telemetry."""
+
+    __tablename__ = "expected_care_candidate_attempts"
+    __table_args__ = (
+        UniqueConstraint(
+            "candidate_request_id",
+            "attempt_number",
+            name="uq_expected_care_candidate_attempt_number",
+        ),
+        Index(
+            "ix_expected_care_candidate_attempt_request",
+            "candidate_request_id",
+            "attempt_number",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    candidate_request_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("expected_care_candidate_requests.id", ondelete="RESTRICT")
+    )
+    attempt_number: Mapped[int] = mapped_column(Integer)
+    provider: Mapped[str] = mapped_column(String(80))
+    model: Mapped[str] = mapped_column(String(160))
+    outcome: Mapped[str] = mapped_column(String(60))
+    diagnostic_code: Mapped[str | None] = mapped_column(String(120))
+    latency_ms: Mapped[int] = mapped_column(Integer)
+    input_tokens: Mapped[int | None] = mapped_column(Integer)
+    output_tokens: Mapped[int | None] = mapped_column(Integer)
+    cost_microunits: Mapped[int | None] = mapped_column(Integer)
+    output_checksum_sha256: Mapped[str | None] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class ExpectedCareCandidateResult(Base):
+    """Immutable governed candidate artifact; never a doctor-reviewed envelope."""
+
+    __tablename__ = "expected_care_candidate_results"
+    __table_args__ = (
+        UniqueConstraint(
+            "candidate_request_id",
+            name="uq_expected_care_candidate_result_request",
+        ),
+        CheckConstraint(
+            "total_low_minor IS NULL OR total_high_minor IS NULL "
+            "OR total_high_minor >= total_low_minor",
+            name="ck_expected_care_candidate_total_range",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    candidate_request_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("expected_care_candidate_requests.id", ondelete="RESTRICT")
+    )
+    lifecycle_state: Mapped[str] = mapped_column(String(60))
+    output_checksum_sha256: Mapped[str] = mapped_column(String(64))
+    deterministic_result_checksum_sha256: Mapped[str] = mapped_column(String(64))
+    deterministic_engine_contract_version: Mapped[str] = mapped_column(String(80))
+    currency: Mapped[str | None] = mapped_column(String(3))
+    total_low_minor: Mapped[int | None] = mapped_column(Integer)
+    total_high_minor: Mapped[int | None] = mapped_column(Integer)
+    candidate_json: Mapped[dict[str, object]] = mapped_column(JSONB)
+    validation_json: Mapped[dict[str, object]] = mapped_column(JSONB)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class ExpectedCareResponseHead(Base):
+    """Mutable compare-and-swap guard for append-only clinician responses."""
+
+    __tablename__ = "expected_care_review_heads"
+    __table_args__ = (CheckConstraint("version >= 0", name="ck_expected_care_review_head_version"),)
+
+    candidate_result_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("expected_care_candidate_results.id", ondelete="RESTRICT"),
+        primary_key=True,
+    )
+    published_baseline_id: Mapped[uuid.UUID | None] = mapped_column(
+        "current_envelope_id",
+        ForeignKey("expected_care_reviewed_envelopes.id", ondelete="RESTRICT"),
+    )
+    version: Mapped[int] = mapped_column(Integer, default=0)
+    lifecycle_state: Mapped[str] = mapped_column(String(60), default="generated_pending_validation")
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class ExpectedCareClinicianResponse(Base):
+    """Immutable clinician position; it cannot alter or hide the baseline."""
+
+    __tablename__ = "expected_care_doctor_reviews"
+    __table_args__ = (
+        UniqueConstraint(
+            "actor_user_id",
+            "clinical_event_id",
+            "idempotency_key",
+            name="uq_expected_care_doctor_review_idempotency",
+        ),
+        Index(
+            "ix_expected_care_doctor_review_candidate_created",
+            "candidate_result_id",
+            "created_at",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    candidate_result_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("expected_care_candidate_results.id", ondelete="RESTRICT")
+    )
+    actor_user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"))
+    doctor_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("doctor_profiles.id", ondelete="RESTRICT")
+    )
+    patient_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("patient_profiles.id", ondelete="RESTRICT")
+    )
+    clinical_event_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("clinical_events.id", ondelete="RESTRICT")
+    )
+    payer_request_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("payer_requests.id", ondelete="RESTRICT")
+    )
+    baseline_id: Mapped[uuid.UUID | None] = mapped_column(
+        "predecessor_envelope_id",
+        UUID(as_uuid=True),
+    )
+    action: Mapped[str] = mapped_column(String(40))
+    idempotency_key: Mapped[str] = mapped_column(String(120))
+    request_checksum_sha256: Mapped[str] = mapped_column(String(64))
+    accepted_head_version: Mapped[int] = mapped_column(Integer)
+    resulting_head_version: Mapped[int] = mapped_column(Integer)
+    deterministic_engine_contract_version: Mapped[str] = mapped_column(String(80))
+    deterministic_input_checksum_sha256: Mapped[str] = mapped_column(String(64))
+    deterministic_result_checksum_sha256: Mapped[str] = mapped_column(String(64))
+    deterministic_validation_json: Mapped[dict[str, object]] = mapped_column(JSONB)
+    release_lineage_json: Mapped[list[dict[str, object]]] = mapped_column(JSONB)
+    reviewer_only_note: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class ExpectedCarePublishedBaseline(Base):
+    """Immutable, validated system baseline; never a clinician or payer decision."""
+
+    __tablename__ = "expected_care_reviewed_envelopes"
+    __table_args__ = (
+        UniqueConstraint("doctor_review_id", name="uq_expected_care_envelope_review"),
+        UniqueConstraint(
+            "candidate_result_id",
+            "version",
+            name="uq_expected_care_envelope_candidate_version",
+        ),
+        CheckConstraint(
+            "total_low_minor >= 0 AND total_high_minor >= total_low_minor",
+            name="ck_expected_care_envelope_total_range",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    candidate_result_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("expected_care_candidate_results.id", ondelete="RESTRICT")
+    )
+    legacy_doctor_review_id: Mapped[uuid.UUID | None] = mapped_column(
+        "doctor_review_id", ForeignKey("expected_care_doctor_reviews.id", ondelete="RESTRICT")
+    )
+    predecessor_envelope_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("expected_care_reviewed_envelopes.id", ondelete="RESTRICT")
+    )
+    patient_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("patient_profiles.id", ondelete="RESTRICT")
+    )
+    clinical_event_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("clinical_events.id", ondelete="RESTRICT")
+    )
+    payer_request_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("payer_requests.id", ondelete="RESTRICT")
+    )
+    version: Mapped[int] = mapped_column(Integer)
+    lifecycle_state: Mapped[str] = mapped_column(String(60))
+    candidate_output_checksum_sha256: Mapped[str] = mapped_column(String(64))
+    purpose_code: Mapped[str] = mapped_column(String(80))
+    purpose_contract_version: Mapped[str] = mapped_column(String(80))
+    schema_version: Mapped[str] = mapped_column(String(80))
+    prompt_version: Mapped[str] = mapped_column(String(80))
+    model_configuration_version: Mapped[str] = mapped_column(String(80))
+    scenario_release_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("care_scenario_definitions.release_id", ondelete="RESTRICT")
+    )
+    care_plan_release_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("care_plans.release_id", ondelete="RESTRICT")
+    )
+    pricing_reference_release_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("pricing_reference_sets.release_id", ondelete="RESTRICT")
+    )
+    utilization_rule_release_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("utilization_rule_sets.release_id", ondelete="RESTRICT")
+    )
+    release_lineage_json: Mapped[list[dict[str, object]]] = mapped_column(JSONB)
+    currency: Mapped[str] = mapped_column(String(3))
+    amount_type: Mapped[str] = mapped_column(String(60), default="reference_range")
+    total_low_minor: Mapped[int] = mapped_column(Integer)
+    total_high_minor: Mapped[int] = mapped_column(Integer)
+    assumptions_json: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    missing_information_json: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    limitations_json: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    structured_difference_json: Mapped[dict[str, object]] = mapped_column(JSONB)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class ExpectedCareBaselineItem(Base):
+    __tablename__ = "expected_care_envelope_items"
+    __table_args__ = (
+        UniqueConstraint("envelope_id", "item_key", name="uq_expected_care_envelope_item"),
+        CheckConstraint(
+            "quantity_low >= 1 AND quantity_high >= quantity_low",
+            name="ck_expected_care_envelope_item_quantity",
+        ),
+        CheckConstraint(
+            "amount_low_minor >= 0 AND amount_high_minor >= amount_low_minor",
+            name="ck_expected_care_envelope_item_amount",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    baseline_id: Mapped[uuid.UUID] = mapped_column(
+        "envelope_id", ForeignKey("expected_care_reviewed_envelopes.id", ondelete="RESTRICT")
+    )
+    item_key: Mapped[str] = mapped_column(String(240))
+    category: Mapped[str] = mapped_column(String(240))
+    code_system: Mapped[str] = mapped_column(String(120))
+    service_code: Mapped[str] = mapped_column(String(160))
+    unit: Mapped[str] = mapped_column(String(120))
+    quantity_low: Mapped[int] = mapped_column(Integer)
+    quantity_high: Mapped[int] = mapped_column(Integer)
+    amount_low_minor: Mapped[int] = mapped_column(Integer)
+    amount_high_minor: Mapped[int] = mapped_column(Integer)
+    pricing_reference_item_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("pricing_reference_items.id", ondelete="RESTRICT")
+    )
+    utilization_rule_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("utilization_rules.id", ondelete="RESTRICT")
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class ExpectedCareClinicianRationale(Base):
+    __tablename__ = "expected_care_clinical_rationales"
+    __table_args__ = (Index("ix_expected_care_rationale_review", "doctor_review_id", "created_at"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    clinician_response_id: Mapped[uuid.UUID] = mapped_column(
+        "doctor_review_id", ForeignKey("expected_care_doctor_reviews.id", ondelete="RESTRICT")
+    )
+    baseline_id: Mapped[uuid.UUID | None] = mapped_column(
+        "envelope_id", ForeignKey("expected_care_reviewed_envelopes.id", ondelete="RESTRICT")
+    )
+    exception_code: Mapped[str] = mapped_column(String(120))
+    rationale: Mapped[str] = mapped_column(Text)
+    patient_safe_summary: Mapped[str | None] = mapped_column(Text)
+    applies_to_item_keys_json: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class ExpectedCareLifecycleEvent(Base):
+    __tablename__ = "expected_care_lifecycle_events"
+    __table_args__ = (
+        Index(
+            "ix_expected_care_lifecycle_candidate_created",
+            "candidate_result_id",
+            "created_at",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    candidate_result_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("expected_care_candidate_results.id", ondelete="RESTRICT")
+    )
+    doctor_review_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("expected_care_doctor_reviews.id", ondelete="RESTRICT")
+    )
+    envelope_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("expected_care_reviewed_envelopes.id", ondelete="RESTRICT")
+    )
+    actor_user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"))
+    lifecycle_state: Mapped[str] = mapped_column(String(60))
+    metadata_json: Mapped[dict[str, object]] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+# Compatibility aliases keep older internal imports readable while the physical
+# Slice E table names remain stable for forward-only migration safety.
+ExpectedCareReviewHead = ExpectedCareResponseHead
+ExpectedCareDoctorReview = ExpectedCareClinicianResponse
+ExpectedCareReviewedEnvelope = ExpectedCarePublishedBaseline
+ExpectedCareEnvelopeItem = ExpectedCareBaselineItem
+ExpectedCareClinicalRationale = ExpectedCareClinicianRationale
+
+
+class ExpectedCareComparison(Base):
+    """Immutable server-calculated comparison; never a clinical or payer decision."""
+
+    __tablename__ = "expected_care_comparisons"
+    __table_args__ = (
+        UniqueConstraint(
+            "baseline_id",
+            "payer_request_id",
+            "version",
+            name="uq_expected_care_comparison_scope_version",
+        ),
+        UniqueConstraint(
+            "actor_user_id",
+            "clinical_event_id",
+            "idempotency_key",
+            name="uq_expected_care_comparison_idempotency",
+        ),
+        Index(
+            "ix_expected_care_comparison_scope_created",
+            "clinical_event_id",
+            "created_at",
+        ),
+        Index(
+            "uq_expected_care_comparison_delivered_scope_version",
+            "baseline_id",
+            "version",
+            unique=True,
+            postgresql_where=text("payer_request_id IS NULL"),
+        ),
+        CheckConstraint(
+            "baseline_total_low_minor >= 0 "
+            "AND baseline_total_high_minor >= baseline_total_low_minor",
+            name="ck_expected_care_comparison_baseline_range",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    predecessor_comparison_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("expected_care_comparisons.id", ondelete="RESTRICT")
+    )
+    baseline_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("expected_care_reviewed_envelopes.id", ondelete="RESTRICT")
+    )
+    actor_user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"))
+    patient_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("patient_profiles.id", ondelete="RESTRICT")
+    )
+    clinical_event_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("clinical_events.id", ondelete="RESTRICT")
+    )
+    payer_request_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("payer_requests.id", ondelete="RESTRICT")
+    )
+    version: Mapped[int] = mapped_column(Integer)
+    idempotency_key: Mapped[str] = mapped_column(String(120))
+    request_checksum_sha256: Mapped[str] = mapped_column(String(64))
+    input_snapshot_checksum_sha256: Mapped[str] = mapped_column(String(64))
+    result_checksum_sha256: Mapped[str] = mapped_column(String(64))
+    baseline_checksum_sha256: Mapped[str] = mapped_column(String(64))
+    delivered_snapshot_checksum_sha256: Mapped[str] = mapped_column(String(64))
+    submitted_snapshot_checksum_sha256: Mapped[str | None] = mapped_column(String(64))
+    reference_release_checksums_json: Mapped[list[dict[str, object]]] = mapped_column(JSONB)
+    comparison_contract_version: Mapped[str] = mapped_column(String(80))
+    lifecycle_state: Mapped[str] = mapped_column(String(60))
+    currency: Mapped[str] = mapped_column(String(3))
+    baseline_total_low_minor: Mapped[int] = mapped_column(Integer)
+    baseline_total_high_minor: Mapped[int] = mapped_column(Integer)
+    delivered_total_minor: Mapped[int | None] = mapped_column(Integer)
+    submitted_total_minor: Mapped[int | None] = mapped_column(Integer)
+    delivered_total_label: Mapped[str] = mapped_column(String(60))
+    submitted_total_label: Mapped[str | None] = mapped_column(String(60))
+    input_snapshot_json: Mapped[dict[str, object]] = mapped_column(JSONB)
+    result_json: Mapped[dict[str, object]] = mapped_column(JSONB)
+    structured_difference_json: Mapped[dict[str, object]] = mapped_column(JSONB)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class ExpectedCareComparisonItem(Base):
+    __tablename__ = "expected_care_comparison_items"
+    __table_args__ = (
+        UniqueConstraint(
+            "comparison_id",
+            "baseline_item_id",
+            name="uq_expected_care_comparison_item",
+        ),
+        Index("ix_expected_care_comparison_item_comparison", "comparison_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    comparison_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("expected_care_comparisons.id", ondelete="RESTRICT")
+    )
+    baseline_item_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("expected_care_envelope_items.id", ondelete="RESTRICT")
+    )
+    clinical_service_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("clinical_services.id", ondelete="RESTRICT")
+    )
+    care_cost_item_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("care_cost_items.id", ondelete="RESTRICT")
+    )
+    payer_request_line_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("payer_request_lines.id", ondelete="RESTRICT")
+    )
+    item_key: Mapped[str] = mapped_column(String(240))
+    service_code: Mapped[str] = mapped_column(String(160))
+    unit: Mapped[str] = mapped_column(String(120))
+    baseline_quantity_low: Mapped[int] = mapped_column(Integer)
+    baseline_quantity_high: Mapped[int] = mapped_column(Integer)
+    delivered_quantity: Mapped[int | None] = mapped_column(Integer)
+    baseline_amount_low_minor: Mapped[int] = mapped_column(Integer)
+    baseline_amount_high_minor: Mapped[int] = mapped_column(Integer)
+    delivered_amount_minor: Mapped[int | None] = mapped_column(Integer)
+    submitted_amount_minor: Mapped[int | None] = mapped_column(Integer)
+    delivered_label: Mapped[str] = mapped_column(String(60))
+    submitted_label: Mapped[str | None] = mapped_column(String(60))
+    fact_snapshot_json: Mapped[dict[str, object]] = mapped_column(JSONB)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class ExpectedCareComparisonEvent(Base):
+    __tablename__ = "expected_care_comparison_events"
+    __table_args__ = (
+        Index("ix_expected_care_comparison_event_created", "comparison_id", "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    comparison_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("expected_care_comparisons.id", ondelete="RESTRICT")
+    )
+    actor_user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"))
+    event_type: Mapped[str] = mapped_column(String(60))
+    metadata_json: Mapped[dict[str, object]] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class ExpectedCareExplanationRequest(Base):
+    """Idempotent role-specific explanation request identity."""
+
+    __tablename__ = "expected_care_explanation_requests"
+    __table_args__ = (
+        UniqueConstraint(
+            "actor_user_id",
+            "comparison_id",
+            "role",
+            "locale",
+            "idempotency_key",
+            name="uq_expected_care_explanation_idempotency",
+        ),
+        Index(
+            "ix_expected_care_explanation_scope_created",
+            "comparison_id",
+            "role",
+            "created_at",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    comparison_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("expected_care_comparisons.id", ondelete="RESTRICT")
+    )
+    actor_user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"))
+    patient_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("patient_profiles.id", ondelete="RESTRICT")
+    )
+    clinical_event_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("clinical_events.id", ondelete="RESTRICT")
+    )
+    payer_request_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("payer_requests.id", ondelete="RESTRICT")
+    )
+    role: Mapped[str] = mapped_column(String(20))
+    locale: Mapped[str] = mapped_column(String(20))
+    idempotency_key: Mapped[str] = mapped_column(String(120))
+    request_checksum_sha256: Mapped[str] = mapped_column(String(64))
+    fact_object_checksum_sha256: Mapped[str] = mapped_column(String(64))
+    fact_object_json: Mapped[dict[str, object]] = mapped_column(JSONB)
+    purpose_code: Mapped[str] = mapped_column(String(80))
+    purpose_contract_version: Mapped[str] = mapped_column(String(80))
+    schema_version: Mapped[str] = mapped_column(String(80))
+    prompt_version: Mapped[str] = mapped_column(String(80))
+    model_configuration_version: Mapped[str] = mapped_column(String(80))
+    provider: Mapped[str] = mapped_column(String(80))
+    model: Mapped[str] = mapped_column(String(160))
+    lifecycle_state: Mapped[str] = mapped_column(String(60))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class ExpectedCareExplanationAttempt(Base):
+    """Immutable content-free provider telemetry."""
+
+    __tablename__ = "expected_care_explanation_attempts"
+    __table_args__ = (
+        UniqueConstraint(
+            "explanation_request_id",
+            "attempt_number",
+            name="uq_expected_care_explanation_attempt",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    explanation_request_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("expected_care_explanation_requests.id", ondelete="RESTRICT")
+    )
+    attempt_number: Mapped[int] = mapped_column(Integer)
+    outcome: Mapped[str] = mapped_column(String(60))
+    diagnostic_code: Mapped[str | None] = mapped_column(String(120))
+    latency_ms: Mapped[int] = mapped_column(Integer)
+    input_tokens: Mapped[int | None] = mapped_column(Integer)
+    output_tokens: Mapped[int | None] = mapped_column(Integer)
+    cost_microunits: Mapped[int | None] = mapped_column(Integer)
+    artifact_checksum_sha256: Mapped[str | None] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class ExpectedCareExplanationArtifact(Base):
+    """Immutable validated artifact or fixed structured fallback."""
+
+    __tablename__ = "expected_care_explanation_artifacts"
+    __table_args__ = (
+        UniqueConstraint(
+            "explanation_request_id",
+            name="uq_expected_care_explanation_artifact_request",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    explanation_request_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("expected_care_explanation_requests.id", ondelete="RESTRICT")
+    )
+    lifecycle_state: Mapped[str] = mapped_column(String(60))
+    display_mode: Mapped[str] = mapped_column(String(40))
+    generated_artifact_checksum_sha256: Mapped[str | None] = mapped_column(String(64))
+    validation_checksum_sha256: Mapped[str] = mapped_column(String(64))
+    configuration_lineage_checksum_sha256: Mapped[str] = mapped_column(String(64))
+    validation_json: Mapped[dict[str, object]] = mapped_column(JSONB)
+    display_artifact_json: Mapped[dict[str, object]] = mapped_column(JSONB)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class ExpectedCareExplanationRelease(Base):
+    """Governed append-only release artifact; activation is represented by events."""
+
+    __tablename__ = "expected_care_explanation_releases"
+    __table_args__ = (
+        UniqueConstraint("release_key", "version", name="uq_expected_care_explanation_release"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    predecessor_release_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("expected_care_explanation_releases.id", ondelete="RESTRICT")
+    )
+    rollback_target_release_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("expected_care_explanation_releases.id", ondelete="RESTRICT")
+    )
+    release_key: Mapped[str] = mapped_column(String(120))
+    version: Mapped[str] = mapped_column(String(80))
+    purpose_code: Mapped[str] = mapped_column(String(80))
+    purpose_contract_version: Mapped[str] = mapped_column(String(80))
+    schema_version: Mapped[str] = mapped_column(String(80))
+    prompt_version: Mapped[str] = mapped_column(String(80))
+    model_configuration_version: Mapped[str] = mapped_column(String(80))
+    provider: Mapped[str] = mapped_column(String(80))
+    model: Mapped[str] = mapped_column(String(160))
+    source_checksums_json: Mapped[dict[str, object]] = mapped_column(JSONB)
+    evaluation_manifest_checksum_sha256: Mapped[str] = mapped_column(String(64))
+    evaluation_result_checksum_sha256: Mapped[str] = mapped_column(String(64))
+    review_requirements_json: Mapped[list[dict[str, object]]] = mapped_column(JSONB)
+    machine_gates_json: Mapped[dict[str, object]] = mapped_column(JSONB)
+    activation_state: Mapped[str] = mapped_column(String(60))
+    kill_switch_state: Mapped[str] = mapped_column(String(40))
+    created_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT")
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class ExpectedCareExplanationReleaseEvent(Base):
+    __tablename__ = "expected_care_explanation_release_events"
+    __table_args__ = (
+        Index(
+            "ix_expected_care_explanation_release_event",
+            "release_id",
+            "created_at",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    sequence: Mapped[int] = mapped_column(BigInteger, Identity(), unique=True)
+    release_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("expected_care_explanation_releases.id", ondelete="RESTRICT")
+    )
+    actor_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT")
+    )
+    event_type: Mapped[str] = mapped_column(String(60))
+    evidence_json: Mapped[dict[str, object]] = mapped_column(JSONB)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class ClinicalEventUpdate(Base):
@@ -906,6 +1974,38 @@ class MedicalImagingAsset(Base):
     reviewed_by: Mapped[User | None] = relationship(foreign_keys=[reviewed_by_user_id])
     clinical_event: Mapped[ClinicalEvent | None] = relationship(back_populates="imaging_assets")
     clinical_service: Mapped[ClinicalService | None] = relationship(back_populates="imaging_assets")
+    versions: Mapped[list["MedicalImagingAssetVersion"]] = relationship(
+        back_populates="asset", cascade="all, delete-orphan"
+    )
+
+
+class MedicalImagingAssetVersion(Base):
+    """Immutable verified byte provenance for one imaging asset upload."""
+
+    __tablename__ = "medical_imaging_asset_versions"
+    __table_args__ = (
+        UniqueConstraint("asset_id", "version", name="uq_imaging_asset_version"),
+        UniqueConstraint("asset_id", "checksum_sha256", name="uq_imaging_asset_checksum"),
+        Index("ix_imaging_asset_versions_asset_created", "asset_id", "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    asset_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("medical_imaging_assets.id", ondelete="CASCADE")
+    )
+    uploaded_by_user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT")
+    )
+    version: Mapped[int] = mapped_column(Integer)
+    storage_provider: Mapped[str] = mapped_column(String(40))
+    object_key: Mapped[str] = mapped_column(String(260), unique=True)
+    content_type: Mapped[str] = mapped_column(String(80))
+    size_bytes: Mapped[int]
+    checksum_sha256: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    asset: Mapped[MedicalImagingAsset] = relationship(back_populates="versions")
+    uploaded_by: Mapped[User] = relationship()
 
 
 class SimulatedAssessment(Base):
@@ -1065,6 +2165,8 @@ class ChatThread(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     last_message_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     retention_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
 
     patient: Mapped[PatientProfile] = relationship(back_populates="chat_threads")
     created_by: Mapped[User] = relationship()
@@ -2168,6 +3270,90 @@ class ChatbotEvent(Base):
     rescue_cost_microunits: Mapped[int | None] = mapped_column(Integer)
     rescue_retrieval_delta: Mapped[float | None] = mapped_column(Float)
     rescue_retry_request_id: Mapped[str | None] = mapped_column(String(120))
+    occurred_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
+class ChatbotGenerationRelease(Base):
+    """Immutable, checksum-bound generated-answer release content."""
+
+    __tablename__ = "chatbot_generation_releases"
+    __table_args__ = (
+        UniqueConstraint(
+            "release_key",
+            "version",
+            name="uq_chatbot_generation_release_version",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    predecessor_release_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("chatbot_generation_releases.id", ondelete="RESTRICT")
+    )
+    release_key: Mapped[str] = mapped_column(String(120))
+    version: Mapped[str] = mapped_column(String(120))
+    purpose_code: Mapped[str] = mapped_column(String(80), index=True)
+    purpose_contract_version: Mapped[str] = mapped_column(String(120))
+    grounded_schema_version: Mapped[str] = mapped_column(String(120))
+    general_schema_version: Mapped[str] = mapped_column(String(120))
+    prompt_version: Mapped[str] = mapped_column(String(120))
+    provider: Mapped[str] = mapped_column(String(40))
+    model: Mapped[str] = mapped_column(String(160))
+    contract_checksum_sha256: Mapped[str] = mapped_column(String(64))
+    evaluation_manifest_checksum_sha256: Mapped[str] = mapped_column(String(64))
+    evaluation_result_checksum_sha256: Mapped[str] = mapped_column(String(64))
+    machine_gates_json: Mapped[dict[str, object]] = mapped_column(JSONB)
+    content_checksum_sha256: Mapped[str] = mapped_column(String(64), unique=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class ChatbotGenerationActiveRelease(Base):
+    """Mutable pointer; release content and transition history stay append-only."""
+
+    __tablename__ = "chatbot_generation_active_releases"
+
+    purpose_code: Mapped[str] = mapped_column(String(80), primary_key=True)
+    release_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("chatbot_generation_releases.id", ondelete="RESTRICT"),
+        unique=True,
+    )
+    activated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class ChatbotGenerationReleaseEvent(Base):
+    """Append-only, content-free activation, kill-switch, and rollback evidence."""
+
+    __tablename__ = "chatbot_generation_release_events"
+    __table_args__ = (
+        UniqueConstraint(
+            "purpose_code",
+            "event_type",
+            "idempotency_key",
+            name="uq_chatbot_generation_release_event_idempotency",
+        ),
+        Index(
+            "ix_chatbot_generation_release_event_occurred",
+            "purpose_code",
+            "occurred_at",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    purpose_code: Mapped[str] = mapped_column(String(80))
+    release_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("chatbot_generation_releases.id", ondelete="RESTRICT")
+    )
+    target_release_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("chatbot_generation_releases.id", ondelete="RESTRICT")
+    )
+    actor_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT")
+    )
+    event_type: Mapped[str] = mapped_column(String(80))
+    idempotency_key: Mapped[str] = mapped_column(String(160))
+    evidence_json: Mapped[dict[str, object]] = mapped_column(JSONB)
+    content_checksum_sha256: Mapped[str] = mapped_column(String(64))
     occurred_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

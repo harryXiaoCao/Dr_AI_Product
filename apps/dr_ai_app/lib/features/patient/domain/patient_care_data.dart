@@ -879,6 +879,7 @@ class MedicalImagingAsset {
     required this.uploadedAt,
     required this.reviewedAt,
     required this.safetyLabel,
+    this.provenanceVersions = const <MedicalImagingProvenance>[],
   });
 
   factory MedicalImagingAsset.fromJson(Map<String, dynamic> json) {
@@ -909,6 +910,14 @@ class MedicalImagingAsset {
       uploadedAt: optionalDate('uploaded_at'),
       reviewedAt: optionalDate('reviewed_at'),
       safetyLabel: json['safety_label'] as String,
+      provenanceVersions:
+          (json['provenance_versions'] as List<dynamic>? ?? const <dynamic>[])
+              .map(
+                (item) => MedicalImagingProvenance.fromJson(
+                  item as Map<String, dynamic>,
+                ),
+              )
+              .toList(),
     );
   }
 
@@ -933,6 +942,36 @@ class MedicalImagingAsset {
   final DateTime? uploadedAt;
   final DateTime? reviewedAt;
   final String safetyLabel;
+  final List<MedicalImagingProvenance> provenanceVersions;
+}
+
+class MedicalImagingProvenance {
+  const MedicalImagingProvenance({
+    required this.version,
+    required this.storageProvider,
+    required this.contentType,
+    required this.sizeBytes,
+    required this.checksumSha256,
+    required this.createdAt,
+  });
+
+  factory MedicalImagingProvenance.fromJson(Map<String, dynamic> json) {
+    return MedicalImagingProvenance(
+      version: json['version'] as int,
+      storageProvider: json['storage_provider'] as String,
+      contentType: json['content_type'] as String,
+      sizeBytes: json['size_bytes'] as int,
+      checksumSha256: json['checksum_sha256'] as String,
+      createdAt: DateTime.parse(json['created_at'] as String),
+    );
+  }
+
+  final int version;
+  final String storageProvider;
+  final String contentType;
+  final int sizeBytes;
+  final String checksumSha256;
+  final DateTime createdAt;
 }
 
 class MedicalImagingPresign {
@@ -1427,26 +1466,41 @@ class PatientChatThreadSummary {
   const PatientChatThreadSummary({
     required this.threadId,
     required this.title,
+    required this.status,
     required this.createdAt,
     required this.lastMessageAt,
     required this.retentionUntil,
+    this.archivedAt,
+    this.deletedAt,
   });
 
   factory PatientChatThreadSummary.fromJson(Map<String, dynamic> json) {
     return PatientChatThreadSummary(
       threadId: json['thread_id'] as String,
       title: json['title'] as String,
+      status: json['status'] as String? ?? 'active',
       createdAt: DateTime.parse(json['created_at'] as String),
       lastMessageAt: DateTime.parse(json['last_message_at'] as String),
       retentionUntil: DateTime.parse(json['retention_until'] as String),
+      archivedAt: json['archived_at'] == null
+          ? null
+          : DateTime.parse(json['archived_at'] as String),
+      deletedAt: json['deleted_at'] == null
+          ? null
+          : DateTime.parse(json['deleted_at'] as String),
     );
   }
 
   final String threadId;
   final String title;
+  final String status;
   final DateTime createdAt;
   final DateTime lastMessageAt;
   final DateTime retentionUntil;
+  final DateTime? archivedAt;
+  final DateTime? deletedAt;
+
+  bool get isArchived => status == 'archived';
 }
 
 class PatientChatHistoryMessage {

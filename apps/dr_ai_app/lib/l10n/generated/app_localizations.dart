@@ -1223,7 +1223,7 @@ abstract class AppLocalizations {
   /// No description provided for @privacyNoticeBody.
   ///
   /// In en, this message translates to:
-  /// **'Dr. AI is preparing its production account, consent, and support policies. This placeholder keeps the current staging surface clear while those policies are finalized.'**
+  /// **'This synthetic-development environment is governed by the account, consent, privacy, and support boundaries shown here. It is not authorized for real patient data or live clinical use.'**
   String get privacyNoticeBody;
 
   /// No description provided for @privacyNoData.
@@ -1391,19 +1391,19 @@ abstract class AppLocalizations {
   /// No description provided for @accountPolicyStaging.
   ///
   /// In en, this message translates to:
-  /// **'Account policy placeholders for Dr. AI staging.'**
+  /// **'Synthetic-development account and privacy boundaries for Dr. AI.'**
   String get accountPolicyStaging;
 
   /// No description provided for @accountPolicyUser.
   ///
   /// In en, this message translates to:
-  /// **'Account policy placeholders for {name}.'**
+  /// **'Synthetic-development account and privacy boundaries for {name}.'**
   String accountPolicyUser(String name);
 
   /// No description provided for @stagingPolicyPlaceholder.
   ///
   /// In en, this message translates to:
-  /// **'Staging policy placeholder'**
+  /// **'Synthetic-development policy'**
   String get stagingPolicyPlaceholder;
 
   /// No description provided for @passwordUpdated.
@@ -4641,7 +4641,7 @@ abstract class AppLocalizations {
   /// No description provided for @aiPlaceholderNotice.
   ///
   /// In en, this message translates to:
-  /// **'This placeholder keeps AI access consistent for doctors and patients while safety work is completed.'**
+  /// **'Generative replies stay unavailable until an evaluated DeepSeek release is activated. Deterministic safety and structured fallback remain active.'**
   String get aiPlaceholderNotice;
 
   /// No description provided for @aiChatSubtitle.
@@ -4703,6 +4703,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Each conversation is kept for at least 60 days and is visible only in your account.'**
   String get aiHistoryRetentionNotice;
+
+  /// No description provided for @aiArchiveChat.
+  ///
+  /// In en, this message translates to:
+  /// **'Archive conversation'**
+  String get aiArchiveChat;
+
+  /// No description provided for @aiReopenChat.
+  ///
+  /// In en, this message translates to:
+  /// **'Reopen conversation'**
+  String get aiReopenChat;
+
+  /// No description provided for @aiDeleteChat.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete from my history'**
+  String get aiDeleteChat;
+
+  /// No description provided for @aiArchivedChat.
+  ///
+  /// In en, this message translates to:
+  /// **'Archived'**
+  String get aiArchivedChat;
+
+  /// No description provided for @aiChatLifecycleFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The conversation could not be updated. Try again.'**
+  String get aiChatLifecycleFailed;
+
+  /// No description provided for @retry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get retry;
 
   /// No description provided for @aiFollowUpQuestion.
   ///

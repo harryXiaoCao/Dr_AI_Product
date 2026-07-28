@@ -10,6 +10,7 @@ import 'package:dr_ai_app/shared/widgets/dashboard_states.dart';
 import 'package:dr_ai_app/shared/widgets/responsive_app_shell.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 enum _WorkspaceView { create, history }
@@ -1565,12 +1566,12 @@ class _RequestHistoryState extends State<_RequestHistory> {
   }
 }
 
-class _HistoryCard extends StatelessWidget {
+class _HistoryCard extends ConsumerWidget {
   const _HistoryCard({required this.request});
   final PayerRequestData request;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final patientResponsibility = request.lines.fold<int>(
       0,
       (total, line) => total + line.patientResponsibilityMinor,
@@ -1658,10 +1659,172 @@ class _HistoryCard extends StatelessWidget {
               ),
             ],
           ),
+          const SizedBox(height: DrAiSpacing.md),
+          Align(
+            alignment: Alignment.centerRight,
+            child: OutlinedButton.icon(
+              key: Key('doctor-expected-care-${request.id}'),
+              onPressed: () => context.go(
+                '/doctor/expected-care?patient=${request.patientId}&event=${request.clinicalEventId}',
+              ),
+              icon: const Icon(Icons.fact_check_outlined),
+              label: Text(
+                _copy(context, 'Review expected-care candidates', '审核预期诊疗候选范围'),
+              ),
+            ),
+          ),
+          const SizedBox(height: DrAiSpacing.sm),
+          Align(
+            alignment: Alignment.centerRight,
+            child: FilledButton.tonalIcon(
+              key: Key('doctor-payer-response-${request.id}'),
+              onPressed:
+                  request.status == 'accepted' ||
+                      request.status == 'rejected' ||
+                      request.status == 'closed'
+                  ? null
+                  : () => _showDoctorResponseDialog(context, ref, request),
+              icon: const Icon(Icons.add_comment_outlined),
+              label: Text(
+                _copy(context, 'Add justification or response', '添加理由或补充说明'),
+              ),
+            ),
+          ),
+          if (request.doctorResponses.isNotEmpty) ...<Widget>[
+            const Divider(height: DrAiSpacing.lg),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                _copy(context, 'Doctor response history', '医生补充说明记录'),
+                style: const TextStyle(fontWeight: FontWeight.w900),
+              ),
+            ),
+            for (final response in request.doctorResponses)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.history_edu_outlined),
+                title: Text(response.responseType.replaceAll('_', ' ')),
+                subtitle: Text(response.summary),
+                trailing: Text('v${response.version}'),
+              ),
+          ],
+          if (request.reviews.isNotEmpty) ...<Widget>[
+            const Divider(height: DrAiSpacing.lg),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                _copy(context, 'Payer transition history', '支付方状态变更记录'),
+                style: const TextStyle(fontWeight: FontWeight.w900),
+              ),
+            ),
+            for (final review in request.reviews)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.fact_check_outlined),
+                title: Text(
+                  '${review.fromStatus.replaceAll('_', ' ')} → '
+                  '${review.toStatus.replaceAll('_', ' ')}',
+                ),
+                subtitle: Text(
+                  '${review.reviewerDisplayName} · '
+                  '${review.reasonCode}',
+                ),
+                trailing: Text('v${review.version}'),
+              ),
+          ],
         ],
       ),
     );
   }
+}
+
+Future<void> _showDoctorResponseDialog(
+  BuildContext context,
+  WidgetRef ref,
+  PayerRequestData request,
+) async {
+  final controller = TextEditingController();
+  var responseType = request.status == 'clarification_requested'
+      ? 'clarification_response'
+      : 'justification';
+  String? error;
+  await showDialog<void>(
+    context: context,
+    builder: (dialogContext) => StatefulBuilder(
+      builder: (context, setState) => AlertDialog(
+        title: Text(_copy(context, 'Add doctor response', '添加医生补充说明')),
+        content: SizedBox(
+          width: 520,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              DropdownButtonFormField<String>(
+                initialValue: responseType,
+                items:
+                    const <String>[
+                          'justification',
+                          'clarification_response',
+                          'additional_information',
+                        ]
+                        .map(
+                          (value) => DropdownMenuItem(
+                            value: value,
+                            child: Text(value.replaceAll('_', ' ')),
+                          ),
+                        )
+                        .toList(),
+                onChanged: (value) => responseType = value ?? responseType,
+              ),
+              const SizedBox(height: DrAiSpacing.sm),
+              TextField(
+                key: const Key('doctor-payer-response-summary'),
+                controller: controller,
+                minLines: 4,
+                maxLines: 8,
+                decoration: InputDecoration(
+                  labelText: _copy(
+                    context,
+                    'Clinical context and justification',
+                    '临床背景与理由',
+                  ),
+                ),
+              ),
+              if (error != null)
+                Text(error!, style: const TextStyle(color: DrAiColors.danger)),
+            ],
+          ),
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(_copy(context, 'Cancel', '取消')),
+          ),
+          FilledButton(
+            onPressed: () async {
+              try {
+                await ref
+                    .read(repositoryProvider)
+                    .appendDoctorPayerResponse(
+                      requestId: request.id,
+                      expectedVersion: request.version,
+                      responseType: responseType,
+                      summary: controller.text.trim(),
+                      idempotencyKey:
+                          'doctor-response-${request.id}-${DateTime.now().microsecondsSinceEpoch}',
+                    );
+                ref.invalidate(doctorPayerRequestsProvider);
+                if (dialogContext.mounted) Navigator.pop(dialogContext);
+              } on ApiError catch (apiError) {
+                setState(() => error = apiError.message);
+              }
+            },
+            child: Text(_copy(context, 'Save response', '保存补充说明')),
+          ),
+        ],
+      ),
+    ),
+  );
+  controller.dispose();
 }
 
 class _ReviewOutcomeBanner extends StatelessWidget {

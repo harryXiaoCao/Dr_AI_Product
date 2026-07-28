@@ -13,6 +13,7 @@ from app.care_cost import sync_clinical_financial
 from app.chatbot_contracts import PatientChatRequest
 from app.dependencies import AppSettings, CurrentUser, DbSession
 from app.errors import ApiError
+from app.imaging_storage import imaging_storage
 from app.models import (
     Appointment,
     AuditEvent,
@@ -32,6 +33,7 @@ from app.models import (
     DoctorProfile,
     MedicalHistoryReview,
     MedicalImagingAsset,
+    MedicalImagingAssetVersion,
     MedicalRecord,
     Medication,
     MedicationReminder,
@@ -92,6 +94,7 @@ from app.schemas import (
     MedicalImagingCompleteRequest,
     MedicalImagingPresignRequest,
     MedicalImagingPresignResponse,
+    MedicalImagingProvenanceResponse,
     MedicalImagingReviewRequest,
     MedicalRecordListResponse,
     MedicalRecordRequest,
@@ -146,7 +149,6 @@ EDUCATIONAL_LABEL = "Educational information only - not medical advice."
 EMERGENCY_LABEL = "If this may be an emergency, contact local emergency services now."
 DEMO_UPLOAD_MAX_SIZE_BYTES = 10_485_760
 DEMO_UPLOAD_TTL_MINUTES = 15
-IMAGING_STORAGE_PROVIDER = "tencent_cos"
 FIXTURE_SIMULATOR_VERSION = "fixture-simulator-1.0.0"
 DEMO_UPLOAD_ALLOWED_EXTENSIONS: dict[str, set[str]] = {
     "image/jpeg": {"jpg", "jpeg"},
@@ -665,6 +667,18 @@ def _imaging_asset_response(asset: MedicalImagingAsset) -> MedicalImagingAssetRe
         expires_at=asset.expires_at,
         uploaded_at=asset.uploaded_at,
         reviewed_at=asset.reviewed_at,
+        provenance_versions=[
+            MedicalImagingProvenanceResponse(
+                id=version.id,
+                version=version.version,
+                storage_provider=version.storage_provider,  # type: ignore[arg-type]
+                content_type=version.content_type,
+                size_bytes=version.size_bytes,
+                checksum_sha256=version.checksum_sha256,
+                created_at=version.created_at,
+            )
+            for version in sorted(asset.versions, key=lambda item: item.version)
+        ],
         safety_label=SYNTHETIC_DATA_LABEL,
     )
 
@@ -1239,13 +1253,22 @@ def _authorized_imaging_asset(
     asset_id: uuid.UUID,
     user: CurrentUser,
     db: DbSession,
+    *,
+    lock: bool = False,
 ) -> tuple[PatientProfile, MedicalImagingAsset]:
     profile = _authorized_patient(patient_id, user, db)
-    asset = db.scalar(
-        select(MedicalImagingAsset).where(
+    statement = (
+        select(MedicalImagingAsset)
+        .options(selectinload(MedicalImagingAsset.versions))
+        .where(
             MedicalImagingAsset.id == asset_id,
             MedicalImagingAsset.patient_id == profile.id,
         )
+    )
+    if lock:
+        statement = statement.with_for_update()
+    asset = db.scalar(
+        statement
     )
     if asset is None:
         raise _neutral_not_found()
@@ -3871,8 +3894,12 @@ def update_patient_clinical_service(
 ) -> ClinicalServiceResponse:
     _require_doctor_user(user)
     profile, service = _authorized_clinical_service(patient_id, service_id, user, db)
-    if service.category != "imaging":
-        raise _neutral_not_found()
+    if service.category != request.category:
+        raise ApiError(
+            409,
+            "conflict",
+            "A clinical service category cannot change after creation.",
+        )
     event = _apply_clinical_service_request(
         service,
         request,
@@ -3918,6 +3945,7 @@ def presign_medical_imaging_upload(
     request: MedicalImagingPresignRequest,
     user: CurrentUser,
     db: DbSession,
+    settings: AppSettings,
 ) -> MedicalImagingPresignResponse:
     profile = _authorized_patient(patient_id, user, db)
     event = _optional_clinical_event(
@@ -3936,6 +3964,13 @@ def presign_medical_imaging_upload(
         if event is None:
             event = service.clinical_event
     content_type, extension = _validate_imaging_presign_request(request)
+    storage = imaging_storage(settings)
+    if storage.provider == "tencent_cos":
+        raise ApiError(
+            503,
+            "service_unavailable",
+            "Tencent COS signing is not approved; use the synthetic local adapter.",
+        )
     expires_at = datetime.now(UTC) + timedelta(minutes=DEMO_UPLOAD_TTL_MINUTES)
     asset_id = uuid.uuid4()
     object_key = f"medical-imaging-assets/{profile.id}/{asset_id}.{extension}"
@@ -3945,7 +3980,7 @@ def presign_medical_imaging_upload(
         clinical_event_id=event.id if event else None,
         clinical_service_id=service.id if service else None,
         uploaded_by_user_id=user.id,
-        storage_provider=IMAGING_STORAGE_PROVIDER,
+        storage_provider=storage.provider,
         content_type=content_type,
         file_extension=extension,
         size_bytes=request.size_bytes,
@@ -3967,7 +4002,7 @@ def presign_medical_imaging_upload(
             "actor_role": user.role.value,
             "content_type": content_type,
             "size_bytes": request.size_bytes,
-            "storage_provider": IMAGING_STORAGE_PROVIDER,
+            "storage_provider": storage.provider,
             "upload_status": "pending_upload",
             "review_status": "not_ready",
             "clinical_event_id": str(event.id) if event else None,
@@ -3980,18 +4015,98 @@ def presign_medical_imaging_upload(
         patient_id=profile.id,
         clinical_event_id=asset.clinical_event_id,
         clinical_service_id=asset.clinical_service_id,
-        upload_url=f"https://tencent-cos-upload.invalid/{object_key}",
+        upload_url=f"/api/v1/patients/{profile.id}/imaging/{asset.id}/content",
         headers={
             "Content-Type": content_type,
-            "x-dr-ai-upload-purpose": "phase2-imaging-metadata-only",
+            "x-dr-ai-upload-purpose": "synthetic-imaging-evidence",
         },
         expires_at=expires_at,
         max_size_bytes=DEMO_UPLOAD_MAX_SIZE_BYTES,
         upload_status="pending_upload",
         review_status="not_ready",
-        storage_provider=IMAGING_STORAGE_PROVIDER,
+        storage_provider=storage.provider,  # type: ignore[arg-type]
         safety_label=SYNTHETIC_DATA_LABEL,
     )
+
+
+@router.put(
+    "/patients/{patient_id}/imaging/{asset_id}/content",
+    response_model=MedicalImagingAssetResponse,
+)
+async def upload_medical_imaging_content(
+    patient_id: uuid.UUID,
+    asset_id: uuid.UUID,
+    request: Request,
+    user: CurrentUser,
+    db: DbSession,
+    settings: AppSettings,
+) -> MedicalImagingAssetResponse:
+    profile, asset = _authorized_imaging_asset(
+        patient_id, asset_id, user, db, lock=True
+    )
+    if asset.expires_at < datetime.now(UTC) and asset.upload_status != "uploaded":
+        asset.upload_status = "expired"
+        db.commit()
+        raise ApiError(409, "conflict", "The prepared upload has expired.")
+    content_type = request.headers.get("content-type", "").split(";", 1)[0].lower()
+    if content_type != asset.content_type:
+        raise ApiError(415, "unsupported_media_type", "The uploaded content type changed.")
+    content = await request.body()
+    if len(content) != asset.size_bytes:
+        raise ApiError(422, "validation_failed", "Uploaded byte size does not match preparation.")
+    checksum = hashlib.sha256(content).hexdigest()
+    existing = next(
+        (version for version in asset.versions if version.checksum_sha256 == checksum),
+        None,
+    )
+    if asset.upload_status == "uploaded":
+        if existing is None:
+            raise ApiError(
+                409,
+                "conflict",
+                "This immutable imaging asset already contains different bytes.",
+            )
+        return _imaging_asset_response(asset)
+    storage = imaging_storage(settings)
+    if storage.provider != asset.storage_provider:
+        raise ApiError(503, "service_unavailable", "The configured imaging storage changed.")
+    storage.put(asset.object_key, content)
+    version = MedicalImagingAssetVersion(
+        asset_id=asset.id,
+        uploaded_by_user_id=user.id,
+        version=1,
+        storage_provider=storage.provider,
+        object_key=asset.object_key,
+        content_type=asset.content_type,
+        size_bytes=len(content),
+        checksum_sha256=checksum,
+    )
+    asset.versions.append(version)
+    asset.uploaded_size_bytes = len(content)
+    asset.checksum_sha256 = checksum
+    asset.etag = checksum
+    asset.upload_status = "uploaded"
+    asset.review_status = "pending_review"
+    asset.uploaded_at = datetime.now(UTC)
+    _record_audit_event(
+        db,
+        actor_user_id=user.id,
+        patient_id=profile.id,
+        event_type="medical_imaging_bytes_verified",
+        resource_type="medical_imaging_asset",
+        resource_id=asset.id,
+        metadata={
+            "actor_role": user.role.value,
+            "content_type": asset.content_type,
+            "size_bytes": len(content),
+            "storage_provider": storage.provider,
+            "checksum_verified": True,
+            "provenance_version": 1,
+        },
+    )
+    db.commit()
+    db.refresh(asset)
+    return _imaging_asset_response(asset)
 
 
 @router.post(
@@ -4004,16 +4119,27 @@ def complete_medical_imaging_upload(
     request: MedicalImagingCompleteRequest,
     user: CurrentUser,
     db: DbSession,
+    settings: AppSettings,
 ) -> MedicalImagingAssetResponse:
-    profile, asset = _authorized_imaging_asset(patient_id, asset_id, user, db)
+    profile, asset = _authorized_imaging_asset(
+        patient_id, asset_id, user, db, lock=True
+    )
     _validate_imaging_completion(asset, request)
-    if asset.upload_status != "uploaded":
-        asset.upload_status = "uploaded"
-        asset.review_status = "pending_review"
-        asset.uploaded_at = datetime.now(UTC)
-    asset.uploaded_size_bytes = request.uploaded_size_bytes
-    asset.etag = request.etag
-    asset.checksum_sha256 = request.checksum_sha256.lower() if request.checksum_sha256 else None
+    if asset.upload_status != "uploaded" or not asset.versions:
+        raise ApiError(
+            409,
+            "conflict",
+            "Upload and verify the imaging bytes before finalization.",
+        )
+    stored = imaging_storage(settings).read(asset.object_key)
+    checksum = hashlib.sha256(stored).hexdigest()
+    latest = max(asset.versions, key=lambda item: item.version)
+    if len(stored) != asset.size_bytes or checksum != latest.checksum_sha256:
+        raise ApiError(409, "conflict", "Stored imaging provenance verification failed.")
+    if request.checksum_sha256 and request.checksum_sha256.lower() != checksum:
+        raise ApiError(422, "validation_failed", "The supplied checksum does not match.")
+    if request.etag and request.etag.strip('"') not in {checksum, asset.etag}:
+        raise ApiError(422, "validation_failed", "The supplied ETag does not match.")
     _record_audit_event(
         db,
         actor_user_id=user.id,
@@ -4036,6 +4162,51 @@ def complete_medical_imaging_upload(
     db.commit()
     db.refresh(asset)
     return _imaging_asset_response(asset)
+
+
+@router.get("/patients/{patient_id}/imaging/{asset_id}/download")
+def download_medical_imaging_content(
+    patient_id: uuid.UUID,
+    asset_id: uuid.UUID,
+    user: CurrentUser,
+    db: DbSession,
+    settings: AppSettings,
+) -> Response:
+    profile, asset = _authorized_imaging_asset(patient_id, asset_id, user, db)
+    if asset.upload_status != "uploaded" or not asset.versions:
+        raise _neutral_not_found()
+    content = imaging_storage(settings).read(asset.object_key)
+    checksum = hashlib.sha256(content).hexdigest()
+    latest = max(asset.versions, key=lambda item: item.version)
+    if checksum != latest.checksum_sha256 or len(content) != latest.size_bytes:
+        raise ApiError(503, "service_unavailable", "Imaging provenance verification failed.")
+    _record_audit_event(
+        db,
+        actor_user_id=user.id,
+        patient_id=profile.id,
+        event_type="medical_imaging_bytes_downloaded",
+        resource_type="medical_imaging_asset",
+        resource_id=asset.id,
+        metadata={
+            "actor_role": user.role.value,
+            "content_type": asset.content_type,
+            "size_bytes": latest.size_bytes,
+            "storage_provider": latest.storage_provider,
+            "provenance_version": latest.version,
+        },
+    )
+    db.commit()
+    return Response(
+        content=content,
+        media_type=asset.content_type,
+        headers={
+            "Cache-Control": "private, no-store",
+            "Content-Disposition": (
+                f'attachment; filename="imaging-evidence.{asset.file_extension}"'
+            ),
+            "Digest": f"sha-256={checksum}",
+        },
+    )
 
 
 @router.get("/patients/{patient_id}/imaging", response_model=MedicalImagingAssetListResponse)

@@ -1,10 +1,11 @@
 # Dr. AI v1.0 Database ERD
 
 Status: implemented-schema map plus planned production-ready care-and-cost target
-Last updated: 2026-07-23
+Last updated: 2026-07-26
 Implemented source: `services/api/app/models.py` and current Alembic migrations
 Planned source: `Dr_AI_Product_Requirements_Document_v1.0.md` and
 `docs/Dr_AI_v1.0_Implementation_Plan.md`
+AI architecture source: `docs/Dr_AI_v1.0_AI_Platform_Architecture.md`
 
 This file has three deliberately separate layers:
 
@@ -12,10 +13,21 @@ This file has three deliberately separate layers:
    messaging, knowledge, billing-foundation, and administration tables. The
    full field-level diagram below must not be read as proof that every table has
    a finished product surface.
-2. **Implemented first care-and-cost slice:** payer organizations and
-   memberships, Clinical Event-linked cost items, submitted request snapshots,
-   and membership-attributed human reviews added by migrations
-   `20260723_0035` and `20260723_0036`.
+2. **Implemented care-and-cost and reference foundation:** payer organizations and
+   memberships; Clinical Event-linked Clinical Services; source-linked
+   financial companions for supported medications, consultations, and imaging
+   procedures; submitted immutable request snapshots; and
+   membership-attributed human reviews added through migration
+   `20260724_0038`. Migration `20260725_0040` adds governed release metadata,
+   scenario definitions, care plans/items, pricing-reference sets/items,
+   utilization-rule sets/rules, review/activation/rollback history, active
+   pointers, and append-only deterministic evaluations. Migration
+   `20260725_0041` adds immutable expected-care candidate requests,
+   content-free provider attempts, and candidate results. Migration
+   `20260726_0042` adds the doctor-review transition guard, immutable doctor
+   clinician responses, immutable baselines/items, clinical rationales, and lifecycle
+   events. Coverage, claims, reviewed-envelope comparison, and generated
+   explanations remain planned.
 3. **Planned production-ready v1.0 target:** the additive, multi-scenario payer,
    encounter, claim, expected-care-envelope, variance-review,
    clinician-rationale, and human-review domain specified later in this
@@ -931,8 +943,10 @@ submission-ineligible.
 
 Medication/product and Clinical Service records are currently price-bearing.
 Specialist consultations use a one-to-one `category = consultation` service;
-imaging procedures use `category = imaging`. Prescription documents reference
-the medication and do not create a second charge. Uploaded imaging
+imaging procedures use `category = imaging`; the same authorized lifecycle now
+supports `laboratory`, `treatment`, `rehabilitation`, and `other_service`.
+Prescription documents reference the medication and do not create a second
+charge. Uploaded imaging
 assets/reports, diagnoses, history, notes, recovery artifacts, reminders, and
 patient updates are evidence or documentation rather than charge sources.
 Future tests and treatment sessions must be persisted as governed Clinical
@@ -953,15 +967,93 @@ snapshotted label, date, type, and amounts remain immutable historical
 evidence.
 
 `payer_requests` are review packages, not formal claims. The current slice has
-no coverage decision, allowed/paid amount, reference price, expected-care
-envelope, deterministic variance alert, appeal, or autonomous AI action.
+no coverage decision, allowed/paid amount, expected-care envelope, public
+deterministic-comparison route, appeal, or autonomous AI action.
+
+## Implemented 2026-07-25 Governed Reference And Deterministic Foundation
+
+Migration `20260725_0040` adds these provider-neutral internal entities. No
+public route, UI, live/real source content, or model call is part of this
+schema slice.
+
+| Entity | Implemented fields and constraints |
+|---|---|
+| `governed_care_releases` | UUID PK; unique `(release_type, release_key, version)`; schema/lifecycle status; jurisdiction, region, facility JSON, currency; effective interval; authority, locator, retrieval timestamp, source/payload SHA-256, provenance JSON; persisted nonempty required-review types; independent rights flags; verification/review dates; self-FK supersession; creator/time. Effective and freshness intervals are checked. |
+| `governed_care_release_reviews` | UUID PK; release FK; review type/decision; optional user FK plus named reviewer; reviewed payload SHA-256; rationale/time. Rows are append-only. |
+| `governed_care_release_activations` | UUID PK; release FK; denormalized release type/key and scope key; `activate`, `supersede`, or `rollback`; prior-release FK; actor/reason/time. Rows are append-only. |
+| `governed_active_care_releases` | UUID PK; unique release type/key/scope pointer; release and activation-event FKs; update time. Pointer changes require activation history. |
+| `care_scenario_definitions` | Release PK/FK; scenario family and encounter type; applicability, required-input, and compatible-release-key JSON contracts. |
+| `care_plans` | Release PK/FK; scenario-definition FK; pathway code and assumptions JSON. |
+| `care_plan_items` | UUID PK; care-plan release FK; unique item key; category; code system/code; unit; positive low/high integer quantity; required flag; comparison semantics. |
+| `pricing_reference_sets` | Release PK/FK; price type, amount semantics, and explicit comparability such as `range` or `ceiling_only`. |
+| `pricing_reference_items` | UUID PK; pricing release FK; unique code system/code/unit/facility scope; currency; nonnegative ordered integer-minor-unit range; economic meaning; confidential flag. |
+| `utilization_rule_sets` | Release PK/FK; scenario-definition FK and rule-contract version. |
+| `utilization_rules` | UUID PK; rule-set FK; unique rule code; rule type, structured parameters, and rationale. |
+| `care_reference_evaluations` | UUID PK; optional predecessor, Clinical Event, and immutable payer-request FKs; exact scenario/plan/pricing/rule release FKs; engine version; input/result SHA-256; status/currency; integer low/high/observed totals; reason, missing-information, exception, suppression, input-fact, and result JSON; creation time. Rows are append-only. |
+
+Activated or superseded release metadata may change only lifecycle state.
+Database triggers reject content update/delete on those releases and their
+scenario, plan, price, and rule children. Reviews, activation history, and
+evaluations reject every update/delete. A rollback moves the active pointer to
+an earlier still-valid release and appends a new event; it never edits history.
+
+```mermaid
+erDiagram
+  GOVERNED_CARE_RELEASES ||--o{ GOVERNED_CARE_RELEASE_REVIEWS : reviewed_by
+  GOVERNED_CARE_RELEASES ||--o{ GOVERNED_CARE_RELEASE_ACTIVATIONS : activated_as
+  GOVERNED_CARE_RELEASES ||--o{ GOVERNED_ACTIVE_CARE_RELEASES : selected_by
+  GOVERNED_CARE_RELEASES o|--o{ GOVERNED_CARE_RELEASES : supersedes
+  GOVERNED_CARE_RELEASES ||--o| CARE_SCENARIO_DEFINITIONS : specializes
+  GOVERNED_CARE_RELEASES ||--o| CARE_PLANS : specializes
+  GOVERNED_CARE_RELEASES ||--o| PRICING_REFERENCE_SETS : specializes
+  GOVERNED_CARE_RELEASES ||--o| UTILIZATION_RULE_SETS : specializes
+  CARE_SCENARIO_DEFINITIONS ||--o{ CARE_PLANS : configures
+  CARE_SCENARIO_DEFINITIONS ||--o{ UTILIZATION_RULE_SETS : constrains
+  CARE_PLANS ||--|{ CARE_PLAN_ITEMS : contains
+  PRICING_REFERENCE_SETS ||--|{ PRICING_REFERENCE_ITEMS : contains
+  UTILIZATION_RULE_SETS ||--|{ UTILIZATION_RULES : contains
+  CARE_SCENARIO_DEFINITIONS ||--o{ CARE_REFERENCE_EVALUATIONS : evaluated_with
+  CARE_PLANS ||--o{ CARE_REFERENCE_EVALUATIONS : evaluated_with
+  PRICING_REFERENCE_SETS ||--o{ CARE_REFERENCE_EVALUATIONS : evaluated_with
+  UTILIZATION_RULE_SETS ||--o{ CARE_REFERENCE_EVALUATIONS : evaluated_with
+  CARE_REFERENCE_EVALUATIONS o|--o{ CARE_REFERENCE_EVALUATIONS : reevaluated_as
+  CLINICAL_EVENTS o|--o{ CARE_REFERENCE_EVALUATIONS : contextualizes
+PAYER_REQUESTS o|--o{ CARE_REFERENCE_EVALUATIONS : snapshots_input
+```
+
+## Implemented 2026-07-25 Expected-Care Candidate Persistence
+
+Migration `20260725_0041` adds Slice D's internal candidate records. These
+records are separate from both deterministic B/C evaluations and future
+immutable expected-care baselines and separate clinician responses.
+
+| Entity | Implemented fields and constraints |
+|---|---|
+| `expected_care_candidate_requests` | UUID PK; actor, patient, exact Clinical Event, optional immutable payer request, and optional predecessor FKs; unique actor/event/idempotency key; request checksum; lifecycle and validation state; independent purpose/contract/schema/prompt/model-configuration versions; configurable provider/model; exact four release FKs and release checksum lineage; minimum-necessary provider input plus checksum; output checksum; bounded attempt count and provider-reported usage/cost; creation time. Rows are append-only. |
+| `expected_care_candidate_attempts` | UUID PK; request FK; unique bounded attempt number; provider/model; content-free outcome/diagnostic, latency, token/cost usage, and output checksum; creation time. No prompt, raw response, patient text, payer note, or attachment content is stored. Rows are append-only. |
+| `expected_care_candidate_results` | UUID PK and unique request FK; lifecycle state; output and deterministic-result checksums; deterministic engine version; valid candidate currency and integer low/high totals when generated; governed candidate JSON and validation JSON; creation time. Rows are append-only and never represent doctor approval. |
+
+```mermaid
+erDiagram
+  USERS ||--o{ EXPECTED_CARE_CANDIDATE_REQUESTS : generates
+  PATIENT_PROFILES ||--o{ EXPECTED_CARE_CANDIDATE_REQUESTS : scopes
+  CLINICAL_EVENTS ||--o{ EXPECTED_CARE_CANDIDATE_REQUESTS : authorizes
+  PAYER_REQUESTS o|--o{ EXPECTED_CARE_CANDIDATE_REQUESTS : optionally_scopes
+  EXPECTED_CARE_CANDIDATE_REQUESTS o|--o{ EXPECTED_CARE_CANDIDATE_REQUESTS : regenerates
+  EXPECTED_CARE_CANDIDATE_REQUESTS ||--o{ EXPECTED_CARE_CANDIDATE_ATTEMPTS : records
+  EXPECTED_CARE_CANDIDATE_REQUESTS ||--|| EXPECTED_CARE_CANDIDATE_RESULTS : produces
+  CARE_SCENARIO_DEFINITIONS ||--o{ EXPECTED_CARE_CANDIDATE_REQUESTS : binds
+  CARE_PLANS ||--o{ EXPECTED_CARE_CANDIDATE_REQUESTS : binds
+  PRICING_REFERENCE_SETS ||--o{ EXPECTED_CARE_CANDIDATE_REQUESTS : binds
+  UTILIZATION_RULE_SETS ||--o{ EXPECTED_CARE_CANDIDATE_REQUESTS : binds
+```
 
 ## Planned Production-Ready v1.0 Care-And-Cost Review Target
 
 The following broader schema is the approved multi-scenario production target.
-Some foundation names now exist in the thin slice above, but the expanded
-fields, coverage/claim semantics, references, envelopes, alerts, rationales,
-transitions, and appeals remain **planned, not implemented**.
+The reference and AI-candidate entities now exist in the implemented slices
+above, while coverage/claim semantics, immutable baselines, clinician responses, alerts,
+rationales, transitions, and appeals remain **planned, not implemented**.
 Synthetic/de-identified data should exercise the same contracts until live-data
 gates close. Exact column lengths and
 indexes should be finalized with the API contract and migration, but the entity
@@ -1367,9 +1459,9 @@ erDiagram
 - `medications`, `prescriptions`, `prescription_medications`, and
   `medication_reminders`: medication-management and reminder state.
 - `clinical_services`: canonical ordered/scheduled/delivered service lifecycle.
-  The implemented writable category is imaging; consultation requests also
-  resolve through one service. Future laboratory/treatment categories reuse
-  this table only after their real workflows are implemented.
+  Writable categories are imaging, laboratory, consultation, treatment,
+  rehabilitation, and other service. Consultation requests also resolve
+  through one service; category is immutable after creation.
 - `medical_imaging_assets`: imaging metadata, evidence, and review workflow
   linked optionally to the imaging service; an asset is never itself a charge.
 - `demo_medical_assets`: historical/demo upload-presign foundation; should not
@@ -1416,22 +1508,69 @@ erDiagram
   `payer_reviews` are implemented as the first transparent submission/review
   workflow; they are not substitutes for the planned claim, reference,
   expected-envelope, alert, or appeal entities below.
-- `care_scenario_definitions`: versioned scenario-family, encounter,
+- `governed_care_releases`, `governed_care_release_reviews`,
+  `governed_care_release_activations`, and
+  `governed_active_care_releases` are implemented. They provide one
+  provider-neutral release contract for version/schema, jurisdiction, region,
+  facility and currency scope, effective interval, source and payload
+  checksums, provenance, rights flags, freshness, named checksum-bound review,
+  append-only activation/supersession/rollback evidence, and the current active
+  pointer.
+- `care_scenario_definitions`: implemented versioned scenario-family, encounter,
   applicability, and required-input configuration. This prevents the product
   from hardcoding one disease or showcase fixture.
-- `care_encounters`, `care_plan_items`, and `care_cost_review_cases`: the bridge
+- `care_plans` and `care_plan_items` are implemented as versioned
+  scenario-bound pathway definitions. `care_encounters` and
+  `care_cost_review_cases` remain the bridge
   from the existing Clinical Event and active scenario definition to a scoped
   financial/utilization review.
 - `claims` and `claim_lines`: immutable, versioned submitted line items and
   distinct billed/allowed/paid/patient-responsibility amounts.
-- `pricing_reference_sets/items` and `utilization_rule_sets/rules`: admitted,
-  jurisdiction-specific, effective-dated comparison inputs.
-- `expected_care_envelopes/items`: sourced low/high suggestions with explicit
-  assumptions, missing information, confidence, and doctor-review state.
+- `pricing_reference_sets/items` and `utilization_rule_sets/rules` are
+  implemented, jurisdiction-specific, effective-dated comparison inputs.
+  No unresolved Shanghai source content or real/confidential data is present.
+- `care_reference_evaluations` is implemented as an append-only deterministic
+  record containing exact release foreign keys, engine contract version,
+  structured input facts and checksum, result checksum, integer-minor-unit
+  totals, reason codes, missing information, justified exception,
+  suppression reasons, and an optional predecessor evaluation. It may link to
+  an existing Clinical Event and immutable payer request without rewriting
+  either.
+- `expected_care_candidate_requests/attempts/results` are implemented as a
+  separate append-only AI-purpose boundary. They retain exact release IDs and
+  checksums, minimum-necessary input and output checksums, provider/model and
+  purpose/config versions, content-free attempt telemetry, deterministic
+  validation outcome, idempotency, predecessor lineage, and lifecycle state.
+  The internal legacy-named `generated_pending_review` candidate state is not
+  a clinician decision; deterministic validation publishes a separate
+  immutable baseline.
+- `expected_care_review_heads` is retained physically as the narrow mutable,
+  transaction-locked compare-and-swap guard for clinician responses. In the
+  application domain it points to the immutable published baseline and carries
+  only response version, baseline ID, and publication state.
+- Migration `20260726_0043` reinterprets the append-only Slice E tables without
+  rewriting their audit history. `expected_care_reviewed_envelopes` stores the
+  exact system-published baseline (`doctor_review_id=NULL`);
+  `expected_care_envelope_items` stores its immutable item copy;
+  `expected_care_doctor_reviews` stores append-only clinician positions
+  (`acknowledge`, `concur`, `disagree`, `exception`); rationales and lifecycle
+  events remain attributable and append-only. Legacy approve/edit/reject
+  artifacts remain classified as legacy history and are never used as the
+  active baseline.
+- A published baseline preserves candidate checksum, purpose/schema/prompt/config
+  versions, exact release lineage, and deterministic item ranges/totals with
+  `candidate_modified=false`. No clinician response can replace, supersede,
+  reject, or conceal it.
+- The internal active-bundle resolver follows one exact active pointer for each
+  of the scenario, care-plan, pricing, and utilization keys within a structured
+  scope. Authorized orchestration verifies the doctor-patient relationship and
+  Clinical Event ownership; payer-linked evaluation additionally requires the
+  submitting doctor and exact immutable payer-line IDs, currencies, and actual
+  amounts. Supersession or rollback affects future resolution only.
 - `variance_alerts`: deterministic, reproducible `review_recommended` results.
-- `clinician_rationales` and `review_state_transitions` remain planned. The
-  implemented `payer_reviews` table records append-only human actions but does
-  not yet implement the full production state-transition model.
+- The implemented `payer_reviews` table remains a separate append-only
+  payer-owned human action ledger; it does not confer clinical approval or
+  mutate expected-care review state.
 
 ### Governed Medical Knowledge And Retrieval
 
@@ -1533,14 +1672,36 @@ erDiagram
   `payer_reviews` records a human membership; the expanded target must also
   persist `decision_origin = human` explicitly.
 
+## Slice F/G immutable domains
+
+| Table | Implemented contract |
+|---|---|
+| `expected_care_comparisons` | Immutable version bound to predecessor, baseline, patient, Clinical Event, optional exact payer request, actor/idempotency identity, input/result/baseline/delivered/submitted checksums, reference-release checksums, currency, integer totals, neutral labels, full admitted snapshot, result, and structured difference. |
+| `expected_care_comparison_items` | Immutable line snapshot linking the exact baseline item and, only when unambiguous, admitted Clinical Service, CareCostItem, and payer-request line; preserves quantities, minor-unit amounts, neutral delivered/submitted labels, and source-ID snapshot. |
+| `expected_care_comparison_events` | Append-only lifecycle evidence; never changes clinical or payer state. |
+| `expected_care_explanation_requests` | Immutable role/locale request, idempotency checksum, role-filtered fact-object checksum/content, exact purpose/schema/prompt/model configuration, DeepSeek identity, and scope. |
+| `expected_care_explanation_attempts` | Content-free immutable outcome/diagnostic, latency, provider-reported tokens, configured cost, and output checksum. Raw provider content is excluded. |
+| `expected_care_explanation_artifacts` | Immutable validated display artifact or fixed structured fallback plus generated/validation/configuration checksums. |
+| `expected_care_explanation_releases` | Immutable checksum-bound purpose release with evaluation lineage, real review statuses, machine gates, activation state, predecessor/rollback targets, and kill-switch state. |
+| `expected_care_explanation_release_events` | Append-only registration, activation, supersession, rollback, and kill-switch evidence. |
+
+Migrations `20260726_0045` through `0047` install database triggers rejecting
+update/delete on the tables above, governed care release content, and submitted
+`payer_request_lines`. Release events receive a unique monotonic sequence for
+deterministic operational replay. New admitted facts or a new baseline create
+a new comparison version; they never rewrite history.
+Explanation artifacts are derived records only and cannot mutate candidates,
+baselines, clinician responses, services, costs, payer requests, comparisons,
+or payer decisions.
+
 ## Current Caveats
 
 - Some future/commercial tables already exist in the data foundation but do not
   yet have complete product surfaces.
-- The 2026-07-23 thin slice implements the exact entities shown in
-  `Implemented 2026-07-23 Care-And-Cost Vertical Slice`. Expanded versions and
-  every additional entity shown only in the planned target remain migration
-  targets, not current database state.
+- The 2026-07-23 through 2026-07-26 slices now implement the identified
+  care/cost, governed reference, candidate, immutable baseline, clinician
+  response, comparison, explanation, and pending-release entities. Broader
+  coverage/claim adjudication remains a separate target.
 - The current `users.role` enum includes `payer`, but that role does not itself
   establish authorization. Payer routes also require an active
   `payer_membership` in the request's organization.

@@ -71,13 +71,6 @@ class _DoctorContactList extends StatelessWidget {
           subtitle: context.l10n.systemReadOnlyDescription,
           onTap: () => context.push('/doctor/contact/system'),
         ),
-        const SizedBox(height: DrAiSpacing.sm),
-        _ContactRow(
-          icon: Icons.auto_awesome_outlined,
-          title: context.l10n.appName,
-          subtitle: context.l10n.aiCareCompanion,
-          onTap: () => context.push('/doctor/contact/ai'),
-        ),
         const SizedBox(height: DrAiSpacing.lg),
         Row(
           children: <Widget>[
@@ -99,10 +92,6 @@ class _DoctorContactList extends StatelessWidget {
             _PatientRow(patient: patient),
             const SizedBox(height: DrAiSpacing.sm),
           ],
-        const SizedBox(height: DrAiSpacing.md),
-        _Label(context.l10n.groups),
-        const SizedBox(height: DrAiSpacing.sm),
-        const _EmptyGroups(),
         const SizedBox(height: DrAiSpacing.lg),
       ],
     );
@@ -242,16 +231,6 @@ class _EmptyPatients extends StatelessWidget {
     icon: Icons.person_add_alt_1_outlined,
     title: context.l10n.noConnectedPatients,
     detail: context.l10n.connectPatientToChat,
-  );
-}
-
-class _EmptyGroups extends StatelessWidget {
-  const _EmptyGroups();
-  @override
-  Widget build(BuildContext context) => _EmptyPanel(
-    icon: Icons.groups_2_outlined,
-    title: context.l10n.noGroupChats,
-    detail: context.l10n.groupChatsUnavailable,
   );
 }
 

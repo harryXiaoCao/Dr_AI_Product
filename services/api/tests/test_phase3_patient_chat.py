@@ -1472,6 +1472,117 @@ def test_new_page_creates_retained_thread_and_follow_up_reuses_it(
         assert all(message.actor_user_id is None for message in assistant_messages)
 
 
+def test_patient_chat_thread_lifecycle_is_scoped_idempotent_and_retention_preserving(
+    client: TestClient,
+    settings,
+) -> None:
+    with Session(engine) as db:
+        seed_database(db, settings)
+        db.commit()
+    headers = _patient_headers(client, settings)
+
+    created = client.post(
+        "/api/v1/patient/chat/threads",
+        headers=headers,
+        json={"title": "Blood pressure questions"},
+    )
+    assert created.status_code == 201
+    thread_id = created.json()["thread_id"]
+    assert created.json()["status"] == "active"
+    original_retention = created.json()["retention_until"]
+
+    active = client.get("/api/v1/patient/chat/threads", headers=headers)
+    assert active.status_code == 200
+    assert [item["thread_id"] for item in active.json()["items"]] == [thread_id]
+
+    archived = client.post(
+        f"/api/v1/patient/chat/threads/{thread_id}/archive",
+        headers=headers,
+    )
+    assert archived.status_code == 200
+    assert archived.json()["status"] == "archived"
+    assert archived.json()["archived_at"] is not None
+    archived_again = client.post(
+        f"/api/v1/patient/chat/threads/{thread_id}/archive",
+        headers=headers,
+    )
+    assert archived_again.status_code == 200
+    assert archived_again.json()["archived_at"] == archived.json()["archived_at"]
+    assert client.get("/api/v1/patient/chat/threads", headers=headers).json()["items"] == []
+    archived_list = client.get(
+        "/api/v1/patient/chat/threads?status=archived",
+        headers=headers,
+    )
+    assert [item["thread_id"] for item in archived_list.json()["items"]] == [thread_id]
+    history = client.get(f"/api/v1/patient/chat/threads/{thread_id}", headers=headers)
+    assert history.status_code == 200
+    assert history.json()["messages"] == []
+
+    send_to_archived = client.post(
+        "/api/v1/patient/chat/messages",
+        headers=headers,
+        json={
+            "message": "Can I continue this archived conversation?",
+            "language": "en",
+            "session_id": thread_id,
+        },
+    )
+    assert send_to_archived.status_code == 409
+    assert send_to_archived.json()["error"]["code"] == "conversation_archived"
+
+    unrelated = login(
+        client,
+        "unrelated.patient@example.com",
+        settings.seed_unrelated_patient_password.get_secret_value(),
+    )
+    unrelated_headers = auth_header(unrelated["access_token"])
+    for method, path in (
+        ("post", f"/api/v1/patient/chat/threads/{thread_id}/archive"),
+        ("post", f"/api/v1/patient/chat/threads/{thread_id}/reopen"),
+        ("delete", f"/api/v1/patient/chat/threads/{thread_id}"),
+    ):
+        denied = getattr(client, method)(path, headers=unrelated_headers)
+        assert denied.status_code == 404
+        assert denied.json()["error"]["code"] == "not_found"
+
+    reopened = client.post(
+        f"/api/v1/patient/chat/threads/{thread_id}/reopen",
+        headers=headers,
+    )
+    assert reopened.status_code == 200
+    assert reopened.json()["status"] == "active"
+    assert reopened.json()["archived_at"] is None
+    reopened_again = client.post(
+        f"/api/v1/patient/chat/threads/{thread_id}/reopen",
+        headers=headers,
+    )
+    assert reopened_again.status_code == 200
+    assert reopened_again.json()["status"] == "active"
+
+    deleted = client.delete(
+        f"/api/v1/patient/chat/threads/{thread_id}",
+        headers=headers,
+    )
+    assert deleted.status_code == 200
+    assert deleted.json()["status"] == "deleted"
+    assert deleted.json()["deleted_at"] is not None
+    assert deleted.json()["retention_until"] >= original_retention
+    assert (
+        client.get(
+            "/api/v1/patient/chat/threads?status=all",
+            headers=headers,
+        ).json()["items"]
+        == []
+    )
+    hidden = client.get(f"/api/v1/patient/chat/threads/{thread_id}", headers=headers)
+    assert hidden.status_code == 404
+    with Session(engine) as db:
+        retained = db.get(ChatThread, thread_id)
+        assert retained is not None
+        assert retained.deleted_at is not None
+        assert retained.retention_until is not None
+
+
 def test_relevant_patient_measurement_is_bounded_attributed_and_visible(
     client: TestClient, settings, monkeypatch, tmp_path
 ) -> None:

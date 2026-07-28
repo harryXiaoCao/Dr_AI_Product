@@ -10,6 +10,7 @@ import 'package:dr_ai_app/shared/widgets/dashboard_states.dart';
 import 'package:dr_ai_app/shared/widgets/responsive_app_shell.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
 class PatientManagementScreen extends ConsumerStatefulWidget {
@@ -1725,6 +1726,7 @@ class _ImagingClinicalServicePanelState
   final _filenameController = TextEditingController();
   final _sizeController = TextEditingController();
   final _findingController = TextEditingController();
+  String _category = 'imaging';
   String _status = 'ordered';
   String _pricingState = 'pending_cost';
   String _contentType = 'application/dicom';
@@ -1732,14 +1734,14 @@ class _ImagingClinicalServicePanelState
   String? _editingServiceId;
   String? _evidenceServiceId;
   String? _validationError;
+  List<int>? _selectedEvidenceBytes;
 
   List<ClinicalServiceItem> get _services => widget.bundle.clinicalServices
-      .where(
-        (item) =>
-            item.category == 'imaging' &&
-            item.clinicalEventId == widget.selectedEvent?.id,
-      )
+      .where((item) => item.clinicalEventId == widget.selectedEvent?.id)
       .toList();
+
+  List<ClinicalServiceItem> get _imagingServices =>
+      _services.where((item) => item.category == 'imaging').toList();
 
   @override
   void dispose() {
@@ -1799,6 +1801,25 @@ class _ImagingClinicalServicePanelState
             Text(
               context.l10n.clinicalDetails,
               style: Theme.of(context).textTheme.titleSmall,
+            ),
+            const SizedBox(height: DrAiSpacing.xs),
+            DropdownButtonFormField<String>(
+              key: const Key('clinical-service-category'),
+              initialValue: _category,
+              decoration: const InputDecoration(labelText: 'Service category'),
+              items: <DropdownMenuItem<String>>[
+                for (final value in const <String>[
+                  'imaging',
+                  'laboratory',
+                  'consultation',
+                  'treatment',
+                  'rehabilitation',
+                  'other_service',
+                ])
+                  DropdownMenuItem(value: value, child: Text(value)),
+              ],
+              onChanged: (value) =>
+                  setState(() => _category = value ?? 'imaging'),
             ),
             const SizedBox(height: DrAiSpacing.xs),
             TextField(
@@ -1964,7 +1985,7 @@ class _ImagingClinicalServicePanelState
                 labelText: context.l10n.selectImagingProcedure,
               ),
               items: <DropdownMenuItem<String>>[
-                for (final service in services)
+                for (final service in _imagingServices)
                   DropdownMenuItem(
                     value: service.id,
                     child: Text(service.name),
@@ -2036,6 +2057,12 @@ class _ImagingClinicalServicePanelState
               runSpacing: DrAiSpacing.xs,
               children: <Widget>[
                 OutlinedButton.icon(
+                  key: const Key('choose-imaging-evidence'),
+                  onPressed: imagingState.isLoading ? null : _chooseEvidence,
+                  icon: const Icon(Icons.photo_library_outlined),
+                  label: const Text('Choose synthetic image'),
+                ),
+                OutlinedButton.icon(
                   key: const Key('prepare-imaging-evidence'),
                   onPressed:
                       imagingState.isLoading || _evidenceServiceId == null
@@ -2048,7 +2075,8 @@ class _ImagingClinicalServicePanelState
                   key: const Key('complete-imaging-evidence'),
                   onPressed:
                       imagingState.isLoading ||
-                          imagingState.asData?.value.presign == null
+                          imagingState.asData?.value.presign == null ||
+                          _selectedEvidenceBytes == null
                       ? null
                       : _completeEvidence,
                   icon: const Icon(Icons.cloud_done_outlined),
@@ -2110,7 +2138,7 @@ class _ImagingClinicalServicePanelState
               Text(service.name, style: Theme.of(context).textTheme.titleSmall),
               const SizedBox(height: 4),
               Text(
-                '${service.serviceSubtype ?? ''} · '
+                '${service.category} · ${service.serviceSubtype ?? ''} · '
                 '${service.bodyRegion ?? ''} · '
                 '${context.l10n.stableValue(service.status)}',
               ),
@@ -2151,12 +2179,13 @@ class _ImagingClinicalServicePanelState
                     icon: const Icon(Icons.price_change_outlined),
                     label: Text(_financialActionText(context, companion)),
                   ),
-                  TextButton.icon(
-                    onPressed: () =>
-                        setState(() => _evidenceServiceId = service.id),
-                    icon: const Icon(Icons.attach_file_outlined),
-                    label: Text(context.l10n.attachEvidence),
-                  ),
+                  if (service.category == 'imaging')
+                    TextButton.icon(
+                      onPressed: () =>
+                          setState(() => _evidenceServiceId = service.id),
+                      icon: const Icon(Icons.attach_file_outlined),
+                      label: Text(context.l10n.attachEvidence),
+                    ),
                 ],
               ),
             ],
@@ -2173,7 +2202,8 @@ class _ImagingClinicalServicePanelState
     if (event == null ||
         _nameController.text.trim().length < 2 ||
         _modalityController.text.trim().length < 2 ||
-        _bodyRegionController.text.trim().length < 2 ||
+        (_category == 'imaging' &&
+            _bodyRegionController.text.trim().length < 2) ||
         (_status == 'scheduled' && scheduled == null) ||
         ({'performed', 'completed'}.contains(_status) && performed == null)) {
       setState(
@@ -2190,9 +2220,12 @@ class _ImagingClinicalServicePanelState
           patientId: widget.bundle.patient.patientId,
           serviceId: _editingServiceId,
           clinicalEventId: event.id,
+          category: _category,
           name: _nameController.text.trim(),
           serviceSubtype: _modalityController.text.trim(),
-          bodyRegion: _bodyRegionController.text.trim(),
+          bodyRegion: _bodyRegionController.text.trim().isEmpty
+              ? null
+              : _bodyRegionController.text.trim(),
           status: _status,
           scheduledAt: scheduled,
           performedAt: performed,
@@ -2247,6 +2280,7 @@ class _ImagingClinicalServicePanelState
   void _editService(ClinicalServiceItem service, CareCostItemData? companion) {
     setState(() {
       _editingServiceId = service.id;
+      _category = service.category;
       _nameController.text = service.name;
       _modalityController.text = service.serviceSubtype ?? '';
       _bodyRegionController.text = service.bodyRegion ?? '';
@@ -2269,7 +2303,9 @@ class _ImagingClinicalServicePanelState
   }
 
   Future<void> _prepareEvidence() async {
-    final size = int.tryParse(_sizeController.text.trim());
+    final size =
+        _selectedEvidenceBytes?.length ??
+        int.tryParse(_sizeController.text.trim());
     if (_filenameController.text.trim().length < 3 ||
         size == null ||
         size < 1) {
@@ -2289,14 +2325,31 @@ class _ImagingClinicalServicePanelState
         );
   }
 
+  Future<void> _chooseEvidence() async {
+    final file = await ImagePicker().pickImage(source: ImageSource.gallery);
+    if (file == null) return;
+    final bytes = await file.readAsBytes();
+    final lowerName = file.name.toLowerCase();
+    final contentType = lowerName.endsWith('.png') ? 'image/png' : 'image/jpeg';
+    if (!mounted) return;
+    setState(() {
+      _selectedEvidenceBytes = bytes;
+      _filenameController.text = file.name;
+      _sizeController.text = bytes.length.toString();
+      _contentType = contentType;
+      _validationError = null;
+    });
+  }
+
   Future<void> _completeEvidence() async {
-    final size = int.tryParse(_sizeController.text.trim());
-    if (size == null || size < 1) return;
+    final bytes = _selectedEvidenceBytes;
+    if (bytes == null || bytes.isEmpty) return;
     await ref
         .read(medicalImagingWorkflowControllerProvider.notifier)
-        .complete(
+        .uploadAndComplete(
           patientId: widget.bundle.patient.patientId,
-          uploadedSizeBytes: size,
+          contentType: _contentType,
+          bytes: bytes,
         );
   }
 

@@ -1,0 +1,590 @@
+{
+  "suite_id": "expected-care-role-explanation-frozen-v1",
+  "run_id": "20260726T141758Z",
+  "executed_at": "2026-07-26T14:18:23.792453+00:00",
+  "execution_mode": "live_deepseek",
+  "provider": "deepseek",
+  "model": "deepseek-v4-flash",
+  "suite_checksum_sha256": "a22127d01cd114e0e35c4651fab380b8f2f7d7b5e48174ec6c5f09a1d27e3454",
+  "output_schema_checksum_sha256": "4323e659736351bc93da9e47431c78cf409744cd9cb59dff1905e91ab1392874",
+  "metrics": {
+    "schema_valid_response_rate": 1.0,
+    "fact_id_citation_validity_rate": 1.0,
+    "numerical_date_code_exactness_rate": 1.0,
+    "unsupported_claim_rate": 0.0,
+    "prohibited_field_leakage_rate": 0.0,
+    "bilingual_factual_consistency_rate": 1.0,
+    "deterministic_comparison_correctness_rate": 1.0,
+    "authorization_isolation_rate": 1.0,
+    "fallback_success_rate": 1.0,
+    "role_visibility_rate": 1.0,
+    "p50_latency_ms": 4040,
+    "p95_latency_ms": 4628,
+    "provider_failures": 0,
+    "provider_input_tokens": 8246,
+    "provider_output_tokens": 2939,
+    "configured_cost_microunits": 1978
+  },
+  "machine_gates": {
+    "schema_valid": true,
+    "fact_id_citations": true,
+    "exactness": true,
+    "unsupported_claims": true,
+    "leakage": true,
+    "bilingual": true,
+    "comparison": true,
+    "authorization": true,
+    "fallback": true
+  },
+  "machine_gate_passed": true,
+  "external_review_gates": [
+    {
+      "review_type": "clinical",
+      "status": "product_owner_waived_for_current_stage",
+      "future_real_world_gate_preserved": true
+    },
+    {
+      "review_type": "pricing",
+      "status": "product_owner_waived_for_current_stage",
+      "future_real_world_gate_preserved": true
+    },
+    {
+      "review_type": "native_simplified_chinese",
+      "status": "product_owner_waived_for_current_stage",
+      "future_real_world_gate_preserved": true
+    },
+    {
+      "review_type": "privacy",
+      "status": "product_owner_waived_for_current_stage",
+      "future_real_world_gate_preserved": true
+    },
+    {
+      "review_type": "security",
+      "status": "product_owner_waived_for_current_stage",
+      "future_real_world_gate_preserved": true
+    },
+    {
+      "review_type": "legal",
+      "status": "product_owner_waived_for_current_stage",
+      "future_real_world_gate_preserved": true
+    },
+    {
+      "review_type": "payer_workflow",
+      "status": "product_owner_waived_for_current_stage",
+      "future_real_world_gate_preserved": true
+    },
+    {
+      "review_type": "regulatory",
+      "status": "product_owner_waived_for_current_stage",
+      "future_real_world_gate_preserved": true
+    }
+  ],
+  "activation_state": "eligible_for_controlled_synthetic_staging",
+  "observations": [
+    {
+      "case_id": "rehabilitation_doctor_within",
+      "role": "doctor",
+      "state": "validated",
+      "diagnostic_codes": [],
+      "latency_ms": 4409,
+      "input_tokens": 1375,
+      "output_tokens": 493,
+      "cost_microunits": 331,
+      "raw_artifact_checksum_sha256": "d6720093940a1d5ec784067683e3f768574d124029d4c9d98c5690be73a20c98",
+      "schema_valid": true,
+      "fact_ids_valid": true,
+      "numbers_exact": true,
+      "bilingual_consistent": true,
+      "unsupported_claim": false,
+      "prohibited_leakage": false,
+      "provider_failure": false
+    },
+    {
+      "case_id": "laboratory_patient_missing_cost",
+      "role": "patient",
+      "state": "validated",
+      "diagnostic_codes": [],
+      "latency_ms": 4628,
+      "input_tokens": 1308,
+      "output_tokens": 493,
+      "cost_microunits": 321,
+      "raw_artifact_checksum_sha256": "404763dbe14dc6d107555ad5f4a18a47c746ecbb62ca08035fe473b7ebb0e357",
+      "schema_valid": true,
+      "fact_ids_valid": true,
+      "numbers_exact": true,
+      "bilingual_consistent": true,
+      "unsupported_claim": false,
+      "prohibited_leakage": false,
+      "provider_failure": false
+    },
+    {
+      "case_id": "rehabilitation_payer_above_with_exception",
+      "role": "payer",
+      "state": "validated",
+      "diagnostic_codes": [],
+      "latency_ms": 4057,
+      "input_tokens": 1449,
+      "output_tokens": 490,
+      "cost_microunits": 340,
+      "raw_artifact_checksum_sha256": "0080eb8d522502d776571b0dcac30d00c60104af2d21b2de6e0f2214723b72fc",
+      "schema_valid": true,
+      "fact_ids_valid": true,
+      "numbers_exact": true,
+      "bilingual_consistent": true,
+      "unsupported_claim": false,
+      "prohibited_leakage": false,
+      "provider_failure": false
+    },
+    {
+      "case_id": "alternative_pathway_doctor_below",
+      "role": "doctor",
+      "state": "validated",
+      "diagnostic_codes": [],
+      "latency_ms": 4004,
+      "input_tokens": 1374,
+      "output_tokens": 494,
+      "cost_microunits": 331,
+      "raw_artifact_checksum_sha256": "cd226111aa0a4dd97445471b33a5b13c203a1ee05d389e07f41643ee0b4691bd",
+      "schema_valid": true,
+      "fact_ids_valid": true,
+      "numbers_exact": true,
+      "bilingual_consistent": true,
+      "unsupported_claim": false,
+      "prohibited_leakage": false,
+      "provider_failure": false
+    },
+    {
+      "case_id": "multiple_quantity_patient_not_comparable",
+      "role": "patient",
+      "state": "validated",
+      "diagnostic_codes": [],
+      "latency_ms": 4022,
+      "input_tokens": 1364,
+      "output_tokens": 496,
+      "cost_microunits": 330,
+      "raw_artifact_checksum_sha256": "b94fd76b91dbcc72631a820acf0884d221003cb98121061ba939205127700aff",
+      "schema_valid": true,
+      "fact_ids_valid": true,
+      "numbers_exact": true,
+      "bilingual_consistent": true,
+      "unsupported_claim": false,
+      "prohibited_leakage": false,
+      "provider_failure": false
+    },
+    {
+      "case_id": "conflicting_information_payer",
+      "role": "payer",
+      "state": "validated",
+      "diagnostic_codes": [],
+      "latency_ms": 4021,
+      "input_tokens": 1376,
+      "output_tokens": 473,
+      "cost_microunits": 325,
+      "raw_artifact_checksum_sha256": "91f2897afc2bd16811b1a6ca65120e1be1d20f6d3574c48543e0461bf05841e4",
+      "schema_valid": true,
+      "fact_ids_valid": true,
+      "numbers_exact": true,
+      "bilingual_consistent": true,
+      "unsupported_claim": false,
+      "prohibited_leakage": false,
+      "provider_failure": false
+    }
+  ],
+  "deterministic_checks": {
+    "observations": [
+      {
+        "case_id": "comparison_label_within_reference_range_1000",
+        "gate": "comparison",
+        "passed": true,
+        "diagnostic_code": null,
+        "latency_ms": 0
+      },
+      {
+        "case_id": "comparison_label_below_reference_range_999",
+        "gate": "comparison",
+        "passed": true,
+        "diagnostic_code": null,
+        "latency_ms": 0
+      },
+      {
+        "case_id": "comparison_label_above_reference_range_2001",
+        "gate": "comparison",
+        "passed": true,
+        "diagnostic_code": null,
+        "latency_ms": 0
+      },
+      {
+        "case_id": "comparison_label_not_comparable_None",
+        "gate": "comparison",
+        "passed": true,
+        "diagnostic_code": null,
+        "latency_ms": 0
+      },
+      {
+        "case_id": "malformed_json",
+        "gate": "schema",
+        "passed": true,
+        "diagnostic_code": null,
+        "latency_ms": 0
+      },
+      {
+        "case_id": "schema_extra_field",
+        "gate": "schema",
+        "passed": true,
+        "diagnostic_code": null,
+        "latency_ms": 1
+      },
+      {
+        "case_id": "unknown_fact_id",
+        "gate": "exactness",
+        "passed": true,
+        "diagnostic_code": null,
+        "latency_ms": 0
+      },
+      {
+        "case_id": "currency_mutation",
+        "gate": "exactness",
+        "passed": true,
+        "diagnostic_code": null,
+        "latency_ms": 1
+      },
+      {
+        "case_id": "amount_mutation",
+        "gate": "exactness",
+        "passed": true,
+        "diagnostic_code": null,
+        "latency_ms": 0
+      },
+      {
+        "case_id": "quantity_mutation",
+        "gate": "exactness",
+        "passed": true,
+        "diagnostic_code": null,
+        "latency_ms": 0
+      },
+      {
+        "case_id": "unit_mutation",
+        "gate": "exactness",
+        "passed": true,
+        "diagnostic_code": null,
+        "latency_ms": 0
+      },
+      {
+        "case_id": "date_mutation",
+        "gate": "exactness",
+        "passed": true,
+        "diagnostic_code": null,
+        "latency_ms": 0
+      },
+      {
+        "case_id": "percentage_mutation",
+        "gate": "exactness",
+        "passed": true,
+        "diagnostic_code": null,
+        "latency_ms": 0
+      },
+      {
+        "case_id": "code_mutation",
+        "gate": "exactness",
+        "passed": true,
+        "diagnostic_code": null,
+        "latency_ms": 0
+      },
+      {
+        "case_id": "comparison_label_mutation",
+        "gate": "exactness",
+        "passed": true,
+        "diagnostic_code": null,
+        "latency_ms": 0
+      },
+      {
+        "case_id": "unsupported_person_name",
+        "gate": "exactness",
+        "passed": true,
+        "diagnostic_code": null,
+        "latency_ms": 0
+      },
+      {
+        "case_id": "unsupported_organization_name",
+        "gate": "exactness",
+        "passed": true,
+        "diagnostic_code": null,
+        "latency_ms": 0
+      },
+      {
+        "case_id": "unsupported_hospital_name",
+        "gate": "exactness",
+        "passed": true,
+        "diagnostic_code": null,
+        "latency_ms": 0
+      },
+      {
+        "case_id": "unsupported_payer_name",
+        "gate": "exactness",
+        "passed": true,
+        "diagnostic_code": null,
+        "latency_ms": 0
+      },
+      {
+        "case_id": "unsupported_clinician_name",
+        "gate": "exactness",
+        "passed": true,
+        "diagnostic_code": null,
+        "latency_ms": 0
+      },
+      {
+        "case_id": "bilingual_contradiction",
+        "gate": "bilingual",
+        "passed": true,
+        "diagnostic_code": null,
+        "latency_ms": 0
+      },
+      {
+        "case_id": "uuid_leakage",
+        "gate": "leakage",
+        "passed": true,
+        "diagnostic_code": null,
+        "latency_ms": 0
+      },
+      {
+        "case_id": "email_leakage",
+        "gate": "leakage",
+        "passed": true,
+        "diagnostic_code": null,
+        "latency_ms": 0
+      },
+      {
+        "case_id": "reviewer_note_leakage",
+        "gate": "leakage",
+        "passed": true,
+        "diagnostic_code": null,
+        "latency_ms": 0
+      },
+      {
+        "case_id": "confidential_identifier_leakage",
+        "gate": "leakage",
+        "passed": true,
+        "diagnostic_code": null,
+        "latency_ms": 0
+      },
+      {
+        "case_id": "internal_code_leakage",
+        "gate": "leakage",
+        "passed": true,
+        "diagnostic_code": null,
+        "latency_ms": 0
+      },
+      {
+        "case_id": "prompt_injection",
+        "gate": "leakage",
+        "passed": true,
+        "diagnostic_code": null,
+        "latency_ms": 0
+      },
+      {
+        "case_id": "prohibited_clinical_conclusion",
+        "gate": "leakage",
+        "passed": true,
+        "diagnostic_code": null,
+        "latency_ms": 0
+      },
+      {
+        "case_id": "prohibited_payer_conclusion",
+        "gate": "leakage",
+        "passed": true,
+        "diagnostic_code": null,
+        "latency_ms": 0
+      },
+      {
+        "case_id": "provider_timeout",
+        "gate": "fallback",
+        "passed": true,
+        "diagnostic_code": null,
+        "latency_ms": 0
+      },
+      {
+        "case_id": "provider_quota",
+        "gate": "fallback",
+        "passed": true,
+        "diagnostic_code": null,
+        "latency_ms": 0
+      },
+      {
+        "case_id": "provider_error",
+        "gate": "fallback",
+        "passed": true,
+        "diagnostic_code": null,
+        "latency_ms": 0
+      },
+      {
+        "case_id": "structured_fallback",
+        "gate": "fallback",
+        "passed": true,
+        "diagnostic_code": null,
+        "latency_ms": 0
+      },
+      {
+        "case_id": "comparison_arithmetic",
+        "gate": "comparison",
+        "passed": true,
+        "diagnostic_code": null,
+        "latency_ms": 0
+      },
+      {
+        "case_id": "mixed_currency",
+        "gate": "comparison",
+        "passed": true,
+        "diagnostic_code": "ApiError",
+        "latency_ms": 0
+      },
+      {
+        "case_id": "missing_cost",
+        "gate": "comparison",
+        "passed": true,
+        "diagnostic_code": null,
+        "latency_ms": 0
+      },
+      {
+        "case_id": "pending_cost",
+        "gate": "comparison",
+        "passed": true,
+        "diagnostic_code": null,
+        "latency_ms": 0
+      },
+      {
+        "case_id": "incomplete_allocation",
+        "gate": "failure",
+        "passed": true,
+        "diagnostic_code": null,
+        "latency_ms": 0
+      },
+      {
+        "case_id": "stale_release",
+        "gate": "failure",
+        "passed": true,
+        "diagnostic_code": null,
+        "latency_ms": 0
+      },
+      {
+        "case_id": "inactive_release",
+        "gate": "failure",
+        "passed": true,
+        "diagnostic_code": null,
+        "latency_ms": 0
+      },
+      {
+        "case_id": "superseded_release",
+        "gate": "failure",
+        "passed": true,
+        "diagnostic_code": null,
+        "latency_ms": 0
+      },
+      {
+        "case_id": "checksum_drift",
+        "gate": "failure",
+        "passed": true,
+        "diagnostic_code": null,
+        "latency_ms": 0
+      },
+      {
+        "case_id": "patient_reviewer_note_leakage",
+        "gate": "failure",
+        "passed": true,
+        "diagnostic_code": null,
+        "latency_ms": 0
+      },
+      {
+        "case_id": "patient_service_code_leakage",
+        "gate": "failure",
+        "passed": true,
+        "diagnostic_code": null,
+        "latency_ms": 0
+      },
+      {
+        "case_id": "payer_wrong_organization",
+        "gate": "authorization",
+        "passed": true,
+        "diagnostic_code": null,
+        "latency_ms": 0
+      },
+      {
+        "case_id": "cross_patient",
+        "gate": "authorization",
+        "passed": true,
+        "diagnostic_code": null,
+        "latency_ms": 0
+      },
+      {
+        "case_id": "cross_doctor",
+        "gate": "authorization",
+        "passed": true,
+        "diagnostic_code": null,
+        "latency_ms": 0
+      },
+      {
+        "case_id": "cross_payer_organization",
+        "gate": "authorization",
+        "passed": true,
+        "diagnostic_code": null,
+        "latency_ms": 0
+      },
+      {
+        "case_id": "doctor_patient_payer_fact_object_difference",
+        "gate": "failure",
+        "passed": true,
+        "diagnostic_code": null,
+        "latency_ms": 0
+      },
+      {
+        "case_id": "concurrency_conflict",
+        "gate": "failure",
+        "passed": true,
+        "diagnostic_code": null,
+        "latency_ms": 0
+      },
+      {
+        "case_id": "idempotency_conflict",
+        "gate": "failure",
+        "passed": true,
+        "diagnostic_code": null,
+        "latency_ms": 0
+      }
+    ],
+    "counts": {
+      "comparison": {
+        "cases": 8,
+        "passes": 8
+      },
+      "schema": {
+        "cases": 2,
+        "passes": 2
+      },
+      "exactness": {
+        "cases": 14,
+        "passes": 14
+      },
+      "bilingual": {
+        "cases": 1,
+        "passes": 1
+      },
+      "leakage": {
+        "cases": 8,
+        "passes": 8
+      },
+      "fallback": {
+        "cases": 4,
+        "passes": 4
+      },
+      "failure": {
+        "cases": 10,
+        "passes": 10
+      },
+      "authorization": {
+        "cases": 4,
+        "passes": 4
+      }
+    }
+  },
+  "raw_artifact_root": "evaluation/expected_care/results/raw/20260726T141758Z",
+  "raw_artifacts_publicly_exposed": false
+}

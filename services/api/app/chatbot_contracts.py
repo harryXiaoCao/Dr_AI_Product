@@ -481,9 +481,18 @@ class PatientChatThreadSummary(BaseModel):
 
     thread_id: UUID
     title: str
+    status: Literal["active", "archived", "deleted"]
     created_at: datetime
     last_message_at: datetime
     retention_until: datetime
+    archived_at: datetime | None = None
+    deleted_at: datetime | None = None
+
+
+class PatientChatThreadCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    title: str = Field(default="New conversation", min_length=1, max_length=160)
 
 
 class PatientChatThreadList(BaseModel):

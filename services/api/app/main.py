@@ -9,9 +9,10 @@ from starlette.middleware.cors import CORSMiddleware
 
 from app.auth import router as auth_router
 from app.care_cost import router as care_cost_router
+from app.chatbot_release_governance import chatbot_generation_readiness
 from app.config import get_settings
 from app.dashboard import router as dashboard_router
-from app.database import engine
+from app.database import SessionLocal, engine
 from app.errors import (
     ApiError,
     api_error_handler,
@@ -19,6 +20,14 @@ from app.errors import (
     safe_internal_error,
     validation_error_handler,
 )
+from app.expected_care_comparison import router as expected_care_comparison_router
+from app.expected_care_explanations import (
+    explanation_release_ready,
+)
+from app.expected_care_explanations import (
+    router as expected_care_explanations_router,
+)
+from app.expected_care_review import router as expected_care_review_router
 from app.knowledge_catalog import router as knowledge_catalog_router
 from app.knowledge_retrieval import router as knowledge_retrieval_router
 from app.patient_chat import router as patient_chat_router
@@ -50,7 +59,12 @@ def create_app() -> FastAPI:
             allow_origins=settings.cors_allowed_origins,
             allow_credentials=False,
             allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
-            allow_headers=["Authorization", "Content-Type", "Accept"],
+            allow_headers=[
+                "Authorization",
+                "Content-Type",
+                "Accept",
+                "Idempotency-Key",
+            ],
             expose_headers=["X-Request-ID"],
         )
 
@@ -64,20 +78,36 @@ def create_app() -> FastAPI:
         try:
             with engine.connect() as connection:
                 connection.execute(text("SELECT 1"))
+            with SessionLocal() as db:
+                compatible_release = explanation_release_ready(db, settings)
+                chatbot_readiness = chatbot_generation_readiness(db, settings)
         except SQLAlchemyError as exc:
             raise ApiError(
                 503, "service_unavailable", "The service is temporarily unavailable."
             ) from exc
+        explanation_readiness = "disabled"
+        if settings.expected_care_explanation_enabled:
+            if settings.expected_care_explanation_kill_switch:
+                explanation_readiness = "kill_switched"
+            elif compatible_release:
+                explanation_readiness = "ready"
+            else:
+                explanation_readiness = "blocked_no_compatible_release"
         return {
             "status": "ok",
             "service": "dr-ai-api",
             "environment": settings.environment,
             "database": "ok",
+            "patient_chat_generation": chatbot_readiness.code,
+            "expected_care_explanation": explanation_readiness,
         }
 
     app.include_router(auth_router)
     app.include_router(care_cost_router)
     app.include_router(dashboard_router)
+    app.include_router(expected_care_review_router)
+    app.include_router(expected_care_comparison_router)
+    app.include_router(expected_care_explanations_router)
     app.include_router(knowledge_catalog_router)
     app.include_router(knowledge_retrieval_router)
     app.include_router(patient_chat_router)

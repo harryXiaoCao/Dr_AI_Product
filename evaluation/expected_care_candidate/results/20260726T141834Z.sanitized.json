@@ -1,0 +1,194 @@
+{
+  "suite_id": "expected-care-candidate.synthetic-stage.v1",
+  "run_id": "20260726T141834Z",
+  "executed_at": "2026-07-26T14:18:58.444666+00:00",
+  "execution_mode": "live_deepseek",
+  "purpose_code": "expected_care_candidate",
+  "purpose_contract_version": "expected-care-candidate-purpose.v1",
+  "schema_version": "expected-care-candidate-output.v1",
+  "prompt_version": "expected-care-candidate-prompt.v1",
+  "model_configuration_version": "expected-care-candidate-config.v1",
+  "suite_checksum_sha256": "699906f9e45df53e1b81fa45d7b669b9cabb26745023c3ac58e02ce3becf5a98",
+  "schema_checksum_sha256": "a9ae7bdb73032c601422e3cceed3c44bb32736c29efb4923e2352200228cacdc",
+  "metrics": {
+    "schema_valid_response_rate": 0.0,
+    "executable_failure_case_rate": 1.0,
+    "provider_input_tokens": 0,
+    "provider_output_tokens": 0,
+    "configured_cost_microunits": 0
+  },
+  "machine_gates": {
+    "schema_valid": false,
+    "deterministic_exactness": true,
+    "unsupported_fact_rejection": true,
+    "fallback": true
+  },
+  "machine_gate_passed": false,
+  "stage_review_status": "product_owner_waived_for_current_stage",
+  "future_real_world_gates_preserved": true,
+  "provider_observations": [
+    {
+      "case_id": "rehabilitation_standard",
+      "family": "rehabilitation",
+      "state": "provider_error",
+      "reason_codes": [
+        "malformed_output"
+      ],
+      "latency_ms": 6041,
+      "input_tokens": null,
+      "output_tokens": null,
+      "cost_microunits": null,
+      "raw_artifact_checksum_sha256": "cee9a9c34d66fb420d68838a3f39829f860b3b07f5199c68f4f5f6c56c803f92"
+    },
+    {
+      "case_id": "laboratory_missing_information",
+      "family": "laboratory",
+      "state": "provider_error",
+      "reason_codes": [
+        "timeout"
+      ],
+      "latency_ms": 5970,
+      "input_tokens": null,
+      "output_tokens": null,
+      "cost_microunits": null,
+      "raw_artifact_checksum_sha256": "a1d14c30b4e1f7cbd26405467d4b3fcf63750ad923422102eacb75df252303bc"
+    },
+    {
+      "case_id": "imaging_alternative_pathway",
+      "family": "imaging",
+      "state": "provider_error",
+      "reason_codes": [
+        "timeout"
+      ],
+      "latency_ms": 5917,
+      "input_tokens": null,
+      "output_tokens": null,
+      "cost_microunits": null,
+      "raw_artifact_checksum_sha256": "63aca13422e5310f7b7890bd3386c12d6f874979955c50177cf6c76c27933ebd"
+    },
+    {
+      "case_id": "consultation_conflicting_information",
+      "family": "consultation",
+      "state": "provider_error",
+      "reason_codes": [
+        "timeout"
+      ],
+      "latency_ms": 5999,
+      "input_tokens": null,
+      "output_tokens": null,
+      "cost_microunits": null,
+      "raw_artifact_checksum_sha256": "0554fcef680dfef8f78b2224a585a19e552998e51eb0baabfc06a34192f2de71"
+    }
+  ],
+  "failure_observations": [
+    {
+      "case_id": "unsupported_currency",
+      "passed": true,
+      "reason_codes": [
+        "candidate_currency_mismatch"
+      ]
+    },
+    {
+      "case_id": "unsupported_total",
+      "passed": true,
+      "reason_codes": [
+        "candidate_total_low_minor_mismatch",
+        "unreconciled_candidate_total"
+      ]
+    },
+    {
+      "case_id": "cross_scope_region",
+      "passed": true,
+      "reason_codes": [
+        "candidate_region_mismatch"
+      ]
+    },
+    {
+      "case_id": "stale_scenario_release",
+      "passed": true,
+      "reason_codes": [
+        "candidate_scenario_release_id_mismatch"
+      ]
+    },
+    {
+      "case_id": "unsupported_code",
+      "passed": true,
+      "reason_codes": [
+        "unsupported_candidate_item"
+      ]
+    },
+    {
+      "case_id": "unsupported_unit",
+      "passed": true,
+      "reason_codes": [
+        "unsupported_candidate_item"
+      ]
+    },
+    {
+      "case_id": "unsupported_quantity",
+      "passed": true,
+      "reason_codes": [
+        "unsupported_candidate_item"
+      ]
+    },
+    {
+      "case_id": "unsupported_amount",
+      "passed": true,
+      "reason_codes": [
+        "unreconciled_candidate_total",
+        "unsupported_candidate_item"
+      ]
+    },
+    {
+      "case_id": "checksum_drifted_release",
+      "passed": true,
+      "reason_codes": [
+        "release_or_checksum_drift"
+      ]
+    },
+    {
+      "case_id": "schema_extra_field",
+      "passed": true,
+      "reason_codes": [
+        "malformed_schema"
+      ]
+    },
+    {
+      "case_id": "unattributable_exception",
+      "passed": true,
+      "reason_codes": [
+        "unattributable_exception"
+      ]
+    },
+    {
+      "case_id": "provider_timeout",
+      "passed": true,
+      "reason_codes": [
+        "provider_timeout"
+      ]
+    },
+    {
+      "case_id": "provider_error",
+      "passed": true,
+      "reason_codes": [
+        "provider_error"
+      ]
+    },
+    {
+      "case_id": "provider_quota",
+      "passed": true,
+      "reason_codes": [
+        "provider_quota"
+      ]
+    },
+    {
+      "case_id": "deterministic_fallback",
+      "passed": true,
+      "reason_codes": [
+        "deterministic_fallback"
+      ]
+    }
+  ],
+  "raw_artifact_root": "evaluation/expected_care_candidate/results/raw/20260726T141834Z",
+  "raw_artifacts_publicly_exposed": false
+}

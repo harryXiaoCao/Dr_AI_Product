@@ -392,6 +392,40 @@ class MedicalImagingWorkflowController
     }
   }
 
+  Future<void> uploadAndComplete({
+    required String patientId,
+    required String contentType,
+    required List<int> bytes,
+  }) async {
+    final current = state.asData?.value;
+    final presign = current?.presign;
+    if (presign == null) return;
+    state = const AsyncLoading<MedicalImagingWorkflowState>();
+    try {
+      await _repository.uploadMedicalImagingBytes(
+        patientId: patientId,
+        assetId: presign.assetId,
+        contentType: contentType,
+        bytes: bytes,
+      );
+      final asset = await _repository.completeMedicalImagingUpload(
+        patientId: patientId,
+        assetId: presign.assetId,
+        uploadedSizeBytes: bytes.length,
+      );
+      _ref.invalidate(patientCareBundleProvider(patientId));
+      state = AsyncData(
+        MedicalImagingWorkflowState(
+          presign: presign,
+          asset: asset,
+          message: 'Imaging bytes verified and upload finalized.',
+        ),
+      );
+    } catch (error, stackTrace) {
+      state = AsyncError<MedicalImagingWorkflowState>(error, stackTrace);
+    }
+  }
+
   Future<void> review({
     required String patientId,
     required String reviewStatus,
@@ -449,9 +483,10 @@ class ClinicalServiceWorkflowController
     required String patientId,
     required String? serviceId,
     required String clinicalEventId,
+    required String category,
     required String name,
     required String serviceSubtype,
-    required String bodyRegion,
+    required String? bodyRegion,
     required String status,
     required DateTime? scheduledAt,
     required DateTime? performedAt,
@@ -464,6 +499,7 @@ class ClinicalServiceWorkflowController
         patientId: patientId,
         serviceId: serviceId,
         clinicalEventId: clinicalEventId,
+        category: category,
         name: name,
         serviceSubtype: serviceSubtype,
         bodyRegion: bodyRegion,

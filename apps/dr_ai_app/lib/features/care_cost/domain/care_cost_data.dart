@@ -273,6 +273,12 @@ class PayerReviewData {
     required this.action,
     required this.reasonCode,
     required this.createdAt,
+    this.reviewerMembershipId = '',
+    this.reviewerDisplayName = '',
+    this.reviewerTitle = '',
+    this.fromStatus = '',
+    this.toStatus = '',
+    this.version = 1,
     this.note,
   });
 
@@ -282,6 +288,12 @@ class PayerReviewData {
       action: json['action'] as String,
       reasonCode: json['reason_code'] as String,
       note: json['note'] as String?,
+      reviewerMembershipId: json['reviewer_membership_id'] as String? ?? '',
+      reviewerDisplayName: json['reviewer_display_name'] as String? ?? '',
+      reviewerTitle: json['reviewer_title'] as String? ?? '',
+      fromStatus: json['from_status'] as String? ?? '',
+      toStatus: json['to_status'] as String? ?? '',
+      version: json['version'] as int? ?? 1,
       createdAt: DateTime.parse(json['created_at'] as String),
     );
   }
@@ -290,6 +302,50 @@ class PayerReviewData {
   final String action;
   final String reasonCode;
   final String? note;
+  final String reviewerMembershipId;
+  final String reviewerDisplayName;
+  final String reviewerTitle;
+  final String fromStatus;
+  final String toStatus;
+  final int version;
+  final DateTime createdAt;
+}
+
+class PayerDoctorResponseData {
+  const PayerDoctorResponseData({
+    required this.id,
+    required this.responseType,
+    required this.summary,
+    required this.doctorId,
+    required this.doctorDisplayName,
+    required this.version,
+    required this.createdAt,
+    this.baselineId,
+    this.comparisonId,
+  });
+
+  factory PayerDoctorResponseData.fromJson(Map<String, dynamic> json) {
+    return PayerDoctorResponseData(
+      id: json['id'] as String,
+      responseType: json['response_type'] as String,
+      summary: json['summary'] as String,
+      doctorId: json['doctor_id'] as String,
+      doctorDisplayName: json['doctor_display_name'] as String,
+      baselineId: json['baseline_id'] as String?,
+      comparisonId: json['comparison_id'] as String?,
+      version: json['version'] as int,
+      createdAt: DateTime.parse(json['created_at'] as String),
+    );
+  }
+
+  final String id;
+  final String responseType;
+  final String summary;
+  final String doctorId;
+  final String doctorDisplayName;
+  final String? baselineId;
+  final String? comparisonId;
+  final int version;
   final DateTime createdAt;
 }
 
@@ -310,6 +366,8 @@ class PayerRequestData {
     required this.createdAt,
     required this.lines,
     required this.reviews,
+    this.version = 1,
+    this.doctorResponses = const <PayerDoctorResponseData>[],
     this.aiReviewScore,
     this.aiReviewSummary,
     this.reviewedAt,
@@ -327,6 +385,7 @@ class PayerRequestData {
         Map<String, dynamic>.from(json['payer_organization'] as Map),
       ),
       status: json['status'] as String,
+      version: json['version'] as int? ?? 1,
       currency: json['currency'] as String,
       requestedTotalMinor: json['requested_total_minor'] as int,
       doctorSummary: json['doctor_summary'] as String,
@@ -351,6 +410,13 @@ class PayerRequestData {
             ),
           )
           .toList(),
+      doctorResponses: (json['doctor_responses'] as List<dynamic>? ?? const [])
+          .map(
+            (item) => PayerDoctorResponseData.fromJson(
+              Map<String, dynamic>.from(item as Map),
+            ),
+          )
+          .toList(),
     );
   }
 
@@ -362,6 +428,7 @@ class PayerRequestData {
   final String doctorDisplayName;
   final PayerOrganizationData payerOrganization;
   final String status;
+  final int version;
   final String currency;
   final int requestedTotalMinor;
   final String doctorSummary;
@@ -372,6 +439,7 @@ class PayerRequestData {
   final DateTime? reviewedAt;
   final List<PayerRequestLineData> lines;
   final List<PayerReviewData> reviews;
+  final List<PayerDoctorResponseData> doctorResponses;
 }
 
 class PayerProfileData {

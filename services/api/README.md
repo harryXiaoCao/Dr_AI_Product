@@ -1,5 +1,38 @@
 # Dr. AI API
 
+## Expected-care comparison and explanation
+
+Migration head `20260726_0047` adds append-only deterministic comparisons,
+role-specific explanation requests/attempts/artifacts, monotonic governed
+release events, and database-level immutable governed care releases.
+`DR_AI_EXPECTED_CARE_EXPLANATION_ENABLED=false` and
+`DR_AI_EXPECTED_CARE_EXPLANATION_KILL_SWITCH=true` are the safe defaults.
+DeepSeek is the only accepted explanation provider. The corrected claim-graph
+contract lets the provider select admitted claims while the server renders all
+protected values in both languages. Public generation requires a
+checksum-compatible active release and current-stage/future-stage review
+requirements appropriate to the deployment. Pending v3 remains kill-switched
+and therefore fails closed to structured facts.
+
+Run the frozen suite from this directory:
+
+```bash
+uv run python -m scripts.evaluate_expected_care_explanations
+uv run python -m scripts.evaluate_expected_care_explanations --live
+uv run python -m scripts.evaluate_expected_care_candidates --live
+```
+
+The live command is wholly synthetic and requires `DR_AI_DEEPSEEK_API_KEY`.
+Raw responses remain under ignored
+`evaluation/expected_care/results/raw/`; sanitized metrics are retained beside
+the frozen suite. Register the checksum-bound pending artifact only after
+running migrations:
+
+```bash
+uv run alembic upgrade head
+uv run python -m scripts.register_early_stage_ai_releases
+```
+
 FastAPI and PostgreSQL service for the Dr. AI beta foundation and production
 v1.0 planning baseline. The historical beta API exposes authentication,
 current-user identity, assigned-patient summaries, role-specific synthetic
@@ -119,6 +152,20 @@ dashboards, records, medications, notes, recovery plans, and recovery tasks.
 Demo assets, assessments, task completions, chat threads/messages, rate-limit
 rows, consultation requests, and audit events are created by workflow tests or
 endpoint calls, not by seeding.
+
+After the three synthetic role accounts exist, install the complete local
+Slice E demonstration with:
+
+```bash
+uv run python -m scripts.bootstrap_synthetic_expected_care_demo
+```
+
+The command is idempotent and restricted to local/test environments. It creates
+one wholly synthetic event, delivered service/cost/request scope, one
+immutable payer-linked baseline with clinician concurrence, and one separate
+published baseline without a clinician response. Doctors cannot edit, reject,
+or hide either baseline. The candidate fixture is deterministic and in-process;
+it does not call DeepSeek or any external provider.
 Seed account emails are:
 
 - `doctor.demo@example.com`
