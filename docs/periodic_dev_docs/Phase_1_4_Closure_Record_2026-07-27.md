@@ -2,8 +2,10 @@
 
 Date: 2026-07-27
 
-Status: local synthetic product foundation complete; external conditions
-truthfully retained
+Deployment update: 2026-07-28
+
+Status: synthetic product foundation complete and deployed to controlled
+Tencent staging; external conditions truthfully retained
 
 ## Outcome
 
@@ -86,8 +88,9 @@ synthetic.
   412x917 confirmed responsive Simplified-Chinese rendering, expected fonts,
   and no console warning/error. English role rendering was additionally
   inspected through the passing exact goldens.
-- The public Tencent staging health endpoint and root/security headers remain
-  healthy on the existing `0047` deployment.
+- The final committed source was deployed to controlled Tencent staging at
+  migration `0051`; public health, root, privacy, authentication boundary, and
+  the redaction-safe authenticated smoke passed.
 
 One historical doctor-resources golden, outside the modified Phase 1-4
 surfaces, differs by 1.39% on desktop and 1.86% on Simplified-Chinese mobile
@@ -126,11 +129,39 @@ remain available meanwhile.
 
 ### Controlled Tencent staging
 
-The current process had no staging account passwords, host/deployment
-credentials, or registry authority. Therefore the final source could not be
-backed up, deployed, migrated from `0047` to `0051`, or exercised through an
-authenticated controlled-stage three-role smoke. The existing public staging
-state was checked read-only and was not represented as final-source evidence.
+Commit `825abe5` was pushed to `origin/main` and deployed to the existing
+synthetic-only Tencent staging environment.
+
+- The checksum-verified host-only backup is
+  `/home/ubuntu/dr-ai/staging/backups/20260728T065618Z-main-825abe5`
+  (`75 MB`). It contains the prior `.env`, Compose/Caddy configuration, web
+  bundle, release artifacts, and a custom-format TencentDB dump.
+- The API was built on the Tencent `linux/amd64` host and deployed by immutable
+  digest
+  `hkccr.ccs.tencentyun.com/dr-ai/dr-ai-backend@sha256:8225c8582c30c45c7cab7080543c54e88efe014e84f828956269b10b23e58713`.
+- Migrations `0048`-`0051` applied and `alembic check` reported no new
+  operations. The known knowledge-rights/source cycle warning remains.
+- Both synthetic seed passes created zero new users, relationships,
+  dashboards, records, medications, notes, recovery plans, or recovery tasks.
+- The Flutter web build used the same-origin staging API and local renderer
+  resources. Local and deployed SHA-256 hashes match for `index.html`,
+  `main.dart.js`, and `flutter_service_worker.js`.
+- Public `/health`, `/`, and `/privacy` returned `200`; unauthenticated
+  `/api/v1/me` retained the standardized `401` envelope.
+- The credentialed redaction-safe smoke passed health, doctor/patient login,
+  persisted profile conflict handling, approved resource search, token
+  rotation/logout, patient isolation, upload metadata, simulated assessment,
+  recovery/Today, educational chat, consultation, private messaging, and the
+  privacy deep link.
+- Patient-chat generation and both expected-care generation purposes remain
+  disabled. Their kill switches remain engaged, imaging storage remains the
+  synthetic local adapter, the immutable retrieval image was unchanged, and
+  API/Caddy/retrieval restart counts were zero.
+- Recent API/Caddy logs contained zero sensitive-or-critical pattern matches.
+
+This controlled staging refresh does not authorize real-patient transmission,
+real-provider use, live payer integration, public production, commercial use,
+or activation of any pending AI release.
 
 ### Android build
 
