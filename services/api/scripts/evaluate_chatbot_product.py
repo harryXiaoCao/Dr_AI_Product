@@ -10,7 +10,12 @@ import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
+API_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = (
+    API_ROOT.parents[1]
+    if API_ROOT.name == "api" and API_ROOT.parent.name == "services"
+    else API_ROOT
+)
 API_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_SUITE = REPO_ROOT / "evaluation/chatbot/frozen_suite.v1.json"
 DEFAULT_RESULTS = REPO_ROOT / "evaluation/chatbot/results"

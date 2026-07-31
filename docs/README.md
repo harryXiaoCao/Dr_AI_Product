@@ -1,7 +1,10 @@
 # Dr. AI Documentation Index
 
-Current stage: Phases 1-4 are locally complete as one synthetic
-patient/doctor/payer product foundation through migration `0051`. Clinical
+Current stage: Phases 1-5 are complete as one synthetic
+patient/doctor/payer product foundation through migration `0052`. The Phase 5
+worktree passed local gates, actual built-app three-role inspection, a
+backup-first controlled Tencent staging refresh, and authenticated
+redaction-safe smoke. Clinical
 Event, Clinical Service, persisted role destinations, imaging-byte
 provenance, manual payer transitions, source-linked care cost,
 governed-knowledge, and bounded-chatbot workflows are implemented.
@@ -35,9 +38,9 @@ commercial release is active.
   applicability/reference/fixture boundary, and explicit blocked activation
   gates for rights, named review, and usable price/range evidence.
 - `Dr_AI_v1.0_ERD.md` - implemented and explicitly planned data boundary.
-- `Dr_AI_v1.0_API_Contract.md` - implemented API boundary; planned AI and
-  payer/cost routes stay out until their state and authorization contracts are
-  fixed.
+- `Dr_AI_v1.0_API_Contract.md` - implemented API boundary, including current
+  three-role care/cost routes; Phase 5 lifecycle and analytics additions must
+  update this contract with their authorization and persistence changes.
 - `Dr_AI_v1.0_Product_Quality_Gate.md` - completed pre-Phase-3 product-quality
   gate and continuing regression standard for real-app UX, aesthetics,
   onboarding, profile, and production copy.
@@ -67,6 +70,28 @@ commercial release is active.
 - `periodic_dev_docs/Phase_1_4_Closure_Record_2026-07-27.md` - integrated
   implementation, verification, immutable-evidence compatibility, and
   concrete external-condition record for Phase 1-4 closure.
+- `periodic_dev_docs/Phase_5_Live_Gap_Matrix_2026-07-28.md` - closed Phase 5
+  route/control, lifecycle, analytics, rendered-product, documentation, and
+  staging matrix with preserved external boundaries.
+- `periodic_dev_docs/Phase_5_Closure_Record_2026-07-28.md` - exact Phase 5
+  implementation, local/rendered verification, controlled-staging hashes,
+  migration, backup, smoke, redaction, and residual-boundary evidence.
+- `periodic_dev_docs/Phase_6_Closure_Record_2026-07-30.md` - canonical
+  notification lifecycle, three-role inbox, local/rendered verification, and
+  truthful external-delivery boundary.
+- `periodic_dev_docs/Phase_6_Live_Gap_Matrix_2026-07-30.md` - exact APNs, EMAS,
+  Web Push, target, staging, and restore blockers.
+- `runbooks/Phase_6_Notification_Delivery_Readiness.md` - provider selection,
+  credential hygiene, readiness, evidence semantics, and backup-first
+  activation procedure.
+- `periodic_dev_docs/Phase_7_Closure_Record_2026-07-30.md` - immutable
+  controlled-staging deployment, independent governed-purpose exercises,
+  three-role smoke, rendered inspection, backup restoration, and exact
+  predecessor rollback.
+- `periodic_dev_docs/Phase_7_Live_Gap_Matrix_2026-07-30.md` - verified Phase 7
+  evidence and remaining external notification, imaging, and real-world gates.
+- `runbooks/Phase_7_Controlled_Staging_Rehearsal.md` - exact-target,
+  backup-first activation, rollback, recovery, and redaction procedure.
 - `periodic_dev_docs/Phase_2_Patient_Doctor_Core_Progress_Record.md` - Phase 2 patient/doctor
   core workflow closure, RBAC/audit boundary, and deferred gates.
 - `periodic_dev_docs/Phase_4_Slices_B_C_Care_Reference_Foundation_Record.md` -
@@ -111,7 +136,11 @@ source of truth in the implementation plan and product-quality gate.
 The current direction is the China-first, multi-scenario, three-party
 care-and-cost platform recorded in the PRD and implementation plan. The
 patient chatbot and governed medical knowledge retain independent production
-evidence gates. The coherent AI sequence and current state are:
+evidence gates. Phase 6 completes the persisted local/in-product notification
+lifecycle through migration `0053`. Phase 7 deployed migration `0054`,
+exercised the independent governed AI purposes, and proved rollback/recovery.
+External notification providers/targets and image-capable DeepSeek remain
+disabled gates. The coherent AI sequence and current state are:
 
 1. freeze the first scenario and usable reference boundary - complete, with
    the selected CT reference still blocked;
@@ -133,6 +162,6 @@ evidence gates. The coherent AI sequence and current state are:
    kill-switched and all future real-world gates remain separate.
 
 The detailed boundary is frozen in
-`Dr_AI_v1.0_AI_Platform_Architecture.md`. External notification delivery,
+`Dr_AI_v1.0_AI_Platform_Architecture.md`. External provider activation,
 specialist/admin/clinic operations, live claims/coverage/payment, real-patient
 use, and public production activation remain separately gated.

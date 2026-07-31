@@ -9,6 +9,7 @@ import 'package:dr_ai_app/features/patient/domain/patient_care_data.dart';
 import 'package:dr_ai_app/l10n/l10n.dart';
 import 'package:dr_ai_app/l10n/locale_controller.dart';
 import 'package:dr_ai_app/shared/avatar/avatar_upload.dart';
+import 'package:dr_ai_app/shared/widgets/account_request_center.dart';
 import 'package:dr_ai_app/shared/widgets/account_security.dart';
 import 'package:dr_ai_app/shared/widgets/dashboard_states.dart';
 import 'package:dr_ai_app/shared/widgets/responsive_app_shell.dart';
@@ -53,11 +54,30 @@ class PatientAccountScreen extends ConsumerWidget {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 640),
             child: care.when(
-              loading: () =>
-                  DashboardLoadingView(label: context.l10n.loadingAccount),
-              error: (error, stackTrace) => DashboardErrorView(
-                message: context.l10n.loadAccountFailed,
-                onRetry: () => ref.invalidate(ownPatientCareProvider),
+              loading: () => ListView(
+                padding: const EdgeInsets.all(DrAiSpacing.md),
+                children: <Widget>[
+                  SizedBox(
+                    height: 180,
+                    child: DashboardLoadingView(
+                      label: context.l10n.loadingAccount,
+                    ),
+                  ),
+                  const AccountRequestCenter(role: AppRole.patient),
+                ],
+              ),
+              error: (error, stackTrace) => ListView(
+                padding: const EdgeInsets.all(DrAiSpacing.md),
+                children: <Widget>[
+                  SizedBox(
+                    height: 220,
+                    child: DashboardErrorView(
+                      message: context.l10n.loadAccountFailed,
+                      onRetry: () => ref.invalidate(ownPatientCareProvider),
+                    ),
+                  ),
+                  const AccountRequestCenter(role: AppRole.patient),
+                ],
               ),
               data: (bundle) => _PatientAccountView(bundle: bundle),
             ),
@@ -391,7 +411,6 @@ class _PatientDashboard extends ConsumerWidget {
     final hasRecords = (dashboardData['medical_records'] as List).isNotEmpty;
     final hasImages = (dashboardData['imaging_results'] as List).isNotEmpty;
     final today = ref.watch(patientTodayProvider);
-    final notifications = ref.watch(medicationNotificationShellProvider);
     final textScale = MediaQuery.textScalerOf(context).scale(1);
     final cardScale = textScale.clamp(1.0, 1.6).toDouble();
 
@@ -405,16 +424,14 @@ class _PatientDashboard extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
             children: <Widget>[
               SizedBox(
-                height: 420 * cardScale,
+                height: 480 * cardScale,
                 child: _PatientSection(
                   title: context.l10n.today,
                   child: _PatientTodayCard(
                     today: today,
                     care: care,
-                    notifications: notifications,
                     onRetry: () {
                       ref.invalidate(patientTodayProvider);
-                      ref.invalidate(medicationNotificationShellProvider);
                       ref.invalidate(ownPatientCareProvider);
                     },
                   ),
@@ -705,6 +722,8 @@ class _PatientAccountView extends ConsumerWidget {
             key: const Key('patient-account-history-summary'),
           ),
         ),
+        const SizedBox(height: DrAiSpacing.md),
+        const AccountRequestCenter(role: AppRole.patient),
       ],
     );
   }
@@ -2589,13 +2608,11 @@ class _PatientTodayCard extends ConsumerWidget {
   const _PatientTodayCard({
     required this.today,
     required this.care,
-    required this.notifications,
     required this.onRetry,
   });
 
   final AsyncValue<PatientTodayData> today;
   final AsyncValue<PatientCareBundle> care;
-  final AsyncValue<MedicationNotificationScheduleResult> notifications;
   final VoidCallback onRetry;
 
   @override
@@ -2614,6 +2631,7 @@ class _PatientTodayCard extends ConsumerWidget {
       data: (data) {
         return ListView(
           key: const Key('patient-today-task-list'),
+          primary: false,
           children: <Widget>[
             if (data.activePlan != null) ...<Widget>[
               Text(
@@ -2644,23 +2662,13 @@ class _PatientTodayCard extends ConsumerWidget {
               ),
               const SizedBox(height: DrAiSpacing.xs),
             ],
-            notifications.when(
-              loading: () => Text(
-                context.l10n.preparingNotifications,
-                style: TextStyle(fontSize: 12, color: DrAiColors.mutedInk),
-              ),
-              error: (error, stackTrace) => Text(
-                context.l10n.notificationsUnavailable,
-                style: TextStyle(fontSize: 12, color: DrAiColors.mutedInk),
-              ),
-              data: (result) => Text(
-                result.label,
-                key: const Key('patient-medication-notification-shell'),
-                style: const TextStyle(
-                  color: DrAiColors.brand,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                ),
+            Text(
+              context.l10n.phase5MedicationNotificationsReadOnly,
+              key: const Key('patient-medication-notification-read-only'),
+              style: const TextStyle(
+                color: DrAiColors.mutedInk,
+                fontSize: 12,
+                height: 1.35,
               ),
             ),
             const SizedBox(height: DrAiSpacing.xs),

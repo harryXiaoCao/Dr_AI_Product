@@ -20,6 +20,10 @@ from app.errors import (
     safe_internal_error,
     validation_error_handler,
 )
+from app.expected_care_candidate_governance import (
+    CandidateReleaseTransitionError,
+    active_candidate_release,
+)
 from app.expected_care_comparison import router as expected_care_comparison_router
 from app.expected_care_explanations import (
     explanation_release_ready,
@@ -30,7 +34,10 @@ from app.expected_care_explanations import (
 from app.expected_care_review import router as expected_care_review_router
 from app.knowledge_catalog import router as knowledge_catalog_router
 from app.knowledge_retrieval import router as knowledge_retrieval_router
+from app.notification_delivery import readiness as notification_delivery_readiness
+from app.notifications import router as notifications_router
 from app.patient_chat import router as patient_chat_router
+from app.product_analytics import router as product_analytics_router
 from app.support import router as support_router
 
 
@@ -74,13 +81,23 @@ def create_app() -> FastAPI:
     app.add_exception_handler(Exception, safe_internal_error)
 
     @app.get("/health", tags=["system"])
-    def health() -> dict[str, str]:
+    def health() -> dict[str, object]:
         try:
             with engine.connect() as connection:
                 connection.execute(text("SELECT 1"))
+                schema_revision = connection.execute(
+                    text("SELECT version_num FROM alembic_version")
+                ).scalar_one()
             with SessionLocal() as db:
                 compatible_release = explanation_release_ready(db, settings)
                 chatbot_readiness = chatbot_generation_readiness(db, settings)
+                try:
+                    candidate_release = active_candidate_release(db, settings)
+                except CandidateReleaseTransitionError as exc:
+                    candidate_release = None
+                    candidate_release_code = str(exc)
+                else:
+                    candidate_release_code = "ready"
         except SQLAlchemyError as exc:
             raise ApiError(
                 503, "service_unavailable", "The service is temporarily unavailable."
@@ -93,13 +110,35 @@ def create_app() -> FastAPI:
                 explanation_readiness = "ready"
             else:
                 explanation_readiness = "blocked_no_compatible_release"
+        candidate_readiness = "disabled"
+        if settings.expected_care_candidate_enabled:
+            candidate_readiness = candidate_release_code
+        notification_readiness = {
+            channel: notification_delivery_readiness(settings, channel).code
+            for channel in ("apns", "android_emas", "web_push")
+        }
         return {
             "status": "ok",
             "service": "dr-ai-api",
             "environment": settings.environment,
             "database": "ok",
+            "schema_revision": schema_revision,
+            "deployment": {
+                "source_revision": settings.deployment_source_revision,
+                "image_digest": settings.deployment_image_digest,
+                "web_sha256": settings.deployment_web_sha256,
+            },
             "patient_chat_generation": chatbot_readiness.code,
+            "expected_care_candidate": candidate_readiness,
+            "expected_care_candidate_release_version": (
+                candidate_release.version if candidate_release else None
+            ),
             "expected_care_explanation": explanation_readiness,
+            "imaging_observation_draft": "blocked_provider_text_only",
+            "notification_worker": (
+                "enabled" if settings.notification_worker_enabled else "disabled"
+            ),
+            "notification_delivery": notification_readiness,
         }
 
     app.include_router(auth_router)
@@ -110,7 +149,9 @@ def create_app() -> FastAPI:
     app.include_router(expected_care_explanations_router)
     app.include_router(knowledge_catalog_router)
     app.include_router(knowledge_retrieval_router)
+    app.include_router(notifications_router)
     app.include_router(patient_chat_router)
+    app.include_router(product_analytics_router)
     app.include_router(support_router)
     return app
 

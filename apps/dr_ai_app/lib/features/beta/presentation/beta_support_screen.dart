@@ -6,31 +6,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-class BetaSupportScreen extends ConsumerStatefulWidget {
+class BetaSupportScreen extends ConsumerWidget {
   const BetaSupportScreen({super.key});
 
   @override
-  ConsumerState<BetaSupportScreen> createState() => _BetaSupportScreenState();
-}
-
-class _BetaSupportScreenState extends ConsumerState<BetaSupportScreen> {
-  final _feedbackController = TextEditingController();
-  final _deletionController = TextEditingController();
-  bool _understandsDataBoundary = false;
-  bool _understandsNoEmergencyUse = false;
-  bool _understandsNoRealData = false;
-  bool _deletionPrepared = false;
-  bool _feedbackPrepared = false;
-
-  @override
-  void dispose() {
-    _feedbackController.dispose();
-    _deletionController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authControllerProvider).value?.user;
     final content = ColoredBox(
       color: DrAiColors.pageBackground,
@@ -60,103 +40,14 @@ class _BetaSupportScreenState extends ConsumerState<BetaSupportScreen> {
                 icon: Icons.fact_check_outlined,
                 title: context.l10n.consentChecklist,
                 children: <Widget>[
-                  _ConsentCheckbox(
-                    key: const Key('consent-synthetic-only-checkbox'),
-                    value: _understandsDataBoundary,
-                    onChanged: (value) => setState(
-                      () => _understandsDataBoundary = value ?? false,
-                    ),
-                    label: context.l10n.consentStagingData,
+                  _BetaBullet(context.l10n.consentStagingData),
+                  _BetaBullet(context.l10n.consentNoEmergency),
+                  _BetaBullet(context.l10n.consentNoRealData),
+                  _BetaText(
+                    user == null
+                        ? context.l10n.signInForAccountRequests
+                        : context.l10n.openAccountForRequests,
                   ),
-                  _ConsentCheckbox(
-                    key: const Key('consent-no-emergency-checkbox'),
-                    value: _understandsNoEmergencyUse,
-                    onChanged: (value) => setState(
-                      () => _understandsNoEmergencyUse = value ?? false,
-                    ),
-                    label: context.l10n.consentNoEmergency,
-                  ),
-                  _ConsentCheckbox(
-                    key: const Key('consent-no-real-data-checkbox'),
-                    value: _understandsNoRealData,
-                    onChanged: (value) =>
-                        setState(() => _understandsNoRealData = value ?? false),
-                    label: context.l10n.consentNoRealData,
-                  ),
-                  _PreparedStatus(
-                    label: _consentReady
-                        ? context.l10n.consentReady
-                        : context.l10n.consentIncomplete,
-                    isReady: _consentReady,
-                  ),
-                ],
-              ),
-              const SizedBox(height: DrAiSpacing.sm),
-              _BetaSection(
-                key: const Key('beta-deletion-section'),
-                icon: Icons.manage_accounts_outlined,
-                title: context.l10n.accountDeletionRequest,
-                children: <Widget>[
-                  _BetaText(context.l10n.deletionLocalOnly),
-                  TextField(
-                    key: const Key('account-deletion-confirm-field'),
-                    controller: _deletionController,
-                    decoration: InputDecoration(
-                      labelText: context.l10n.deletionPrompt,
-                      border: const OutlineInputBorder(),
-                    ),
-                    onChanged: (_) => setState(() {}),
-                  ),
-                  const SizedBox(height: DrAiSpacing.sm),
-                  FilledButton.icon(
-                    key: const Key('account-deletion-prepare-button'),
-                    onPressed: _deletionReady ? _showDeletionPrepared : null,
-                    icon: const Icon(Icons.description_outlined),
-                    label: Text(context.l10n.prepareRequest),
-                  ),
-                  if (_deletionPrepared) ...<Widget>[
-                    const SizedBox(height: DrAiSpacing.xs),
-                    _PreparedStatus(
-                      label: context.l10n.deletionPrepared,
-                      isReady: true,
-                      statusKey: Key('account-deletion-prepared-status'),
-                    ),
-                  ],
-                ],
-              ),
-              const SizedBox(height: DrAiSpacing.sm),
-              _BetaSection(
-                key: const Key('beta-feedback-section'),
-                icon: Icons.feedback_outlined,
-                title: context.l10n.feedbackForm,
-                children: <Widget>[
-                  _BetaText(context.l10n.feedbackPrivacy),
-                  TextField(
-                    key: const Key('beta-feedback-field'),
-                    controller: _feedbackController,
-                    minLines: 3,
-                    maxLines: 5,
-                    decoration: InputDecoration(
-                      labelText: context.l10n.feedbackDraft,
-                      hintText: context.l10n.feedbackHint,
-                      border: const OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: DrAiSpacing.sm),
-                  FilledButton.icon(
-                    key: const Key('beta-feedback-prepare-button'),
-                    onPressed: _showFeedbackPrepared,
-                    icon: const Icon(Icons.assignment_turned_in_outlined),
-                    label: Text(context.l10n.prepareFeedback),
-                  ),
-                  if (_feedbackPrepared) ...<Widget>[
-                    const SizedBox(height: DrAiSpacing.xs),
-                    _PreparedStatus(
-                      label: context.l10n.feedbackPrepared,
-                      isReady: true,
-                      statusKey: Key('beta-feedback-prepared-status'),
-                    ),
-                  ],
                 ],
               ),
               const SizedBox(height: DrAiSpacing.sm),
@@ -191,54 +82,6 @@ class _BetaSupportScreenState extends ConsumerState<BetaSupportScreen> {
       );
     }
     return ResponsiveAppShell(role: user.role, child: content);
-  }
-
-  bool get _consentReady =>
-      _understandsDataBoundary &&
-      _understandsNoEmergencyUse &&
-      _understandsNoRealData;
-
-  bool get _deletionReady =>
-      _deletionController.text.trim() == 'REQUEST ACCOUNT DELETION';
-
-  void _showDeletionPrepared() {
-    setState(() => _deletionPrepared = true);
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(context.l10n.deletionPrepared)));
-  }
-
-  void _showFeedbackPrepared() {
-    setState(() => _feedbackPrepared = true);
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(context.l10n.feedbackPrepared)));
-  }
-}
-
-class _ConsentCheckbox extends StatelessWidget {
-  const _ConsentCheckbox({
-    required this.value,
-    required this.onChanged,
-    required this.label,
-    super.key,
-  });
-
-  final bool value;
-  final ValueChanged<bool?> onChanged;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: DrAiSpacing.xs),
-      child: Row(
-        children: <Widget>[
-          Checkbox(value: value, onChanged: onChanged),
-          Expanded(child: Text(label)),
-        ],
-      ),
-    );
   }
 }
 
@@ -392,33 +235,6 @@ class _BetaChip extends StatelessWidget {
             color: DrAiColors.ink,
             fontWeight: FontWeight.w800,
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _PreparedStatus extends StatelessWidget {
-  const _PreparedStatus({
-    required this.label,
-    required this.isReady,
-    this.statusKey = const Key('beta-consent-readiness'),
-  });
-
-  final String label;
-  final bool isReady;
-  final Key statusKey;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      liveRegion: true,
-      child: Text(
-        label,
-        key: statusKey,
-        style: TextStyle(
-          color: isReady ? DrAiColors.brandDark : DrAiColors.mutedInk,
-          fontWeight: FontWeight.w700,
         ),
       ),
     );

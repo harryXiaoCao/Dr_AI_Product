@@ -1078,12 +1078,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'Unable to load today recovery tasks. Try again.';
 
   @override
-  String get preparingNotifications =>
-      'Preparing local medication notification shell...';
-
-  @override
-  String get notificationsUnavailable =>
-      'Local medication notification shell is unavailable.';
+  String get phase5MedicationNotificationsReadOnly =>
+      'System medication notifications are not scheduled in Phase 5. Phase 6 requires device registration and a governed delivery service; use the persisted in-product task list for now.';
 
   @override
   String get noTodayTasks => 'No active recovery tasks for today.';
@@ -3462,4 +3458,228 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get imagingProcedureValidation =>
       'Enter a procedure name, modality, and body region. Scheduled services need a scheduled time; performed or completed services need a performed time.';
+
+  @override
+  String get accountRequestsTitle => 'Support, feedback & account requests';
+
+  @override
+  String get accountRequestsDescription =>
+      'Submit and track a persisted request. Each receipt, status change, retry, and withdrawal remains attributable and visible here.';
+
+  @override
+  String get requestTypeLabel => 'Request type';
+
+  @override
+  String get supportRequestType => 'Support';
+
+  @override
+  String get feedbackRequestType => 'Product feedback';
+
+  @override
+  String get deletionRequestType => 'Account deletion review';
+
+  @override
+  String get requestSubjectLabel => 'Subject';
+
+  @override
+  String get requestSubjectValidation => 'Enter at least 3 characters.';
+
+  @override
+  String get requestMessageLabel => 'What do you need help with?';
+
+  @override
+  String get requestMessageValidation => 'Enter at least 8 characters.';
+
+  @override
+  String get requestPrivacyHelper =>
+      'Do not include patient identities, contact details, clinical text, images, or confidential reviewer notes.';
+
+  @override
+  String get deletionRetentionBoundary =>
+      'This submits a deletion review request; it does not immediately delete the account or regulated, security, financial, clinical, or audit-retained records. Authorized retention and identity checks still apply.';
+
+  @override
+  String get standardSupportRetentionBoundary =>
+      'This support or feedback request is retained under the standard support record policy.';
+
+  @override
+  String get unknownRetentionBoundary =>
+      'The applicable retention boundary is unavailable. Contact authorized support before relying on deletion or retention assumptions.';
+
+  @override
+  String get deletionRequestOnlyEffect =>
+      'This is a deletion review request only; it does not immediately delete the account or retained records.';
+
+  @override
+  String get notDeletionRequestEffect =>
+      'This request does not ask for account or record deletion.';
+
+  @override
+  String get unknownDeletionEffect =>
+      'The deletion effect is unavailable. No immediate deletion should be assumed.';
+
+  @override
+  String get deletionBoundaryConfirmation =>
+      'I understand that this is a review request and that applicable records may need to be retained.';
+
+  @override
+  String get submitRequest => 'Submit request';
+
+  @override
+  String get submittingRequest => 'Submitting';
+
+  @override
+  String get retryRequest => 'Retry safely';
+
+  @override
+  String requestSubmitted(String reference) {
+    return 'Request $reference was submitted and persisted.';
+  }
+
+  @override
+  String requestReplayConfirmed(String reference) {
+    return 'Request $reference was already received. No duplicate request was created.';
+  }
+
+  @override
+  String get requestConflict =>
+      'This retry conflicts with a different saved request. Your text is preserved; review the updated history before retrying.';
+
+  @override
+  String get requestNetworkFailure =>
+      'The request could not reach Dr. AI. Your text is preserved; retrying will not create a duplicate.';
+
+  @override
+  String get requestSafeContentFailure =>
+      'Remove contact details, patient information, clinical text, or confidential notes, then retry.';
+
+  @override
+  String get requestAuthorizationFailure =>
+      'This account is not authorized to use that request.';
+
+  @override
+  String get requestGenericFailure =>
+      'The request could not be completed. Your text is preserved for a safe retry.';
+
+  @override
+  String get requestHistoryTitle => 'Request history';
+
+  @override
+  String get loadingAccountRequests => 'Loading account request history';
+
+  @override
+  String get loadAccountRequestsFailed =>
+      'Request history is temporarily unavailable.';
+
+  @override
+  String get noAccountRequests =>
+      'No support, feedback, or deletion requests have been submitted from this account.';
+
+  @override
+  String get startAccountRequest => 'Start a request';
+
+  @override
+  String requestReceipt(String reference) {
+    return 'Receipt: $reference';
+  }
+
+  @override
+  String get requestTimelineTitle => 'Status timeline';
+
+  @override
+  String get requestTimelineUnavailable =>
+      'Detailed transition history is unavailable for this older request.';
+
+  @override
+  String get requestStatusQueued => 'Queued';
+
+  @override
+  String get requestStatusReviewing => 'Under review';
+
+  @override
+  String get requestStatusResolved => 'Resolved';
+
+  @override
+  String get requestStatusFailed => 'Needs attention';
+
+  @override
+  String get requestStatusCancelled => 'Withdrawn';
+
+  @override
+  String get requestStatusUnavailable => 'Status unavailable';
+
+  @override
+  String get requestNextQueued =>
+      'Next: an authorized operator will review this request.';
+
+  @override
+  String get requestNextReviewing =>
+      'Next: wait for the current review to finish. The request remains visible here.';
+
+  @override
+  String get requestNextResolved =>
+      'This request is final. Review its timeline for the recorded outcome.';
+
+  @override
+  String get requestNextFailed =>
+      'The request could not advance. Review the timeline and submit a new request if the next action remains unavailable.';
+
+  @override
+  String get requestNextCancelled =>
+      'This request was withdrawn. Its receipt and audit history remain available.';
+
+  @override
+  String get requestNextUnavailable => 'No next action is currently available.';
+
+  @override
+  String get timelineRequestSubmitted => 'Request submitted';
+
+  @override
+  String get timelineRequestWithdrawn => 'Request withdrawn';
+
+  @override
+  String get timelineReviewStarted => 'Review started';
+
+  @override
+  String get timelineRequestResolved => 'Review completed';
+
+  @override
+  String get timelineActorYou => 'You';
+
+  @override
+  String get timelineActorAuthorizedOperator => 'Authorized operator';
+
+  @override
+  String get timelineActorSystem => 'Governed system';
+
+  @override
+  String get withdrawRequest => 'Withdraw request';
+
+  @override
+  String get withdrawRequestQuestion => 'Withdraw this request?';
+
+  @override
+  String get withdrawRequestDescription =>
+      'Withdrawal stops further work where the contract permits it. The receipt and required audit history are retained.';
+
+  @override
+  String requestWithdrawn(String reference) {
+    return 'Request $reference was withdrawn.';
+  }
+
+  @override
+  String get withdrawalReplayConfirmed =>
+      'This withdrawal was already received. No duplicate transition was created.';
+
+  @override
+  String get withdrawalConflict =>
+      'The request changed before withdrawal. History was refreshed; review its current status.';
+
+  @override
+  String get signInForAccountRequests =>
+      'Sign in and open Account to submit or track support, feedback, and deletion-review requests.';
+
+  @override
+  String get openAccountForRequests =>
+      'Open Account to submit or track support, feedback, and deletion-review requests.';
 }

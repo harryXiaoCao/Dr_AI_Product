@@ -2084,17 +2084,11 @@ abstract class AppLocalizations {
   /// **'Unable to load today recovery tasks. Try again.'**
   String get loadTodayTasksFailed;
 
-  /// No description provided for @preparingNotifications.
+  /// No description provided for @phase5MedicationNotificationsReadOnly.
   ///
   /// In en, this message translates to:
-  /// **'Preparing local medication notification shell...'**
-  String get preparingNotifications;
-
-  /// No description provided for @notificationsUnavailable.
-  ///
-  /// In en, this message translates to:
-  /// **'Local medication notification shell is unavailable.'**
-  String get notificationsUnavailable;
+  /// **'System medication notifications are not scheduled in Phase 5. Phase 6 requires device registration and a governed delivery service; use the persisted in-product task list for now.'**
+  String get phase5MedicationNotificationsReadOnly;
 
   /// No description provided for @noTodayTasks.
   ///
@@ -6214,6 +6208,384 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Enter a procedure name, modality, and body region. Scheduled services need a scheduled time; performed or completed services need a performed time.'**
   String get imagingProcedureValidation;
+
+  /// No description provided for @accountRequestsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Support, feedback & account requests'**
+  String get accountRequestsTitle;
+
+  /// No description provided for @accountRequestsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit and track a persisted request. Each receipt, status change, retry, and withdrawal remains attributable and visible here.'**
+  String get accountRequestsDescription;
+
+  /// No description provided for @requestTypeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Request type'**
+  String get requestTypeLabel;
+
+  /// No description provided for @supportRequestType.
+  ///
+  /// In en, this message translates to:
+  /// **'Support'**
+  String get supportRequestType;
+
+  /// No description provided for @feedbackRequestType.
+  ///
+  /// In en, this message translates to:
+  /// **'Product feedback'**
+  String get feedbackRequestType;
+
+  /// No description provided for @deletionRequestType.
+  ///
+  /// In en, this message translates to:
+  /// **'Account deletion review'**
+  String get deletionRequestType;
+
+  /// No description provided for @requestSubjectLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Subject'**
+  String get requestSubjectLabel;
+
+  /// No description provided for @requestSubjectValidation.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter at least 3 characters.'**
+  String get requestSubjectValidation;
+
+  /// No description provided for @requestMessageLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'What do you need help with?'**
+  String get requestMessageLabel;
+
+  /// No description provided for @requestMessageValidation.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter at least 8 characters.'**
+  String get requestMessageValidation;
+
+  /// No description provided for @requestPrivacyHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Do not include patient identities, contact details, clinical text, images, or confidential reviewer notes.'**
+  String get requestPrivacyHelper;
+
+  /// No description provided for @deletionRetentionBoundary.
+  ///
+  /// In en, this message translates to:
+  /// **'This submits a deletion review request; it does not immediately delete the account or regulated, security, financial, clinical, or audit-retained records. Authorized retention and identity checks still apply.'**
+  String get deletionRetentionBoundary;
+
+  /// No description provided for @standardSupportRetentionBoundary.
+  ///
+  /// In en, this message translates to:
+  /// **'This support or feedback request is retained under the standard support record policy.'**
+  String get standardSupportRetentionBoundary;
+
+  /// No description provided for @unknownRetentionBoundary.
+  ///
+  /// In en, this message translates to:
+  /// **'The applicable retention boundary is unavailable. Contact authorized support before relying on deletion or retention assumptions.'**
+  String get unknownRetentionBoundary;
+
+  /// No description provided for @deletionRequestOnlyEffect.
+  ///
+  /// In en, this message translates to:
+  /// **'This is a deletion review request only; it does not immediately delete the account or retained records.'**
+  String get deletionRequestOnlyEffect;
+
+  /// No description provided for @notDeletionRequestEffect.
+  ///
+  /// In en, this message translates to:
+  /// **'This request does not ask for account or record deletion.'**
+  String get notDeletionRequestEffect;
+
+  /// No description provided for @unknownDeletionEffect.
+  ///
+  /// In en, this message translates to:
+  /// **'The deletion effect is unavailable. No immediate deletion should be assumed.'**
+  String get unknownDeletionEffect;
+
+  /// No description provided for @deletionBoundaryConfirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'I understand that this is a review request and that applicable records may need to be retained.'**
+  String get deletionBoundaryConfirmation;
+
+  /// No description provided for @submitRequest.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit request'**
+  String get submitRequest;
+
+  /// No description provided for @submittingRequest.
+  ///
+  /// In en, this message translates to:
+  /// **'Submitting'**
+  String get submittingRequest;
+
+  /// No description provided for @retryRequest.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry safely'**
+  String get retryRequest;
+
+  /// No description provided for @requestSubmitted.
+  ///
+  /// In en, this message translates to:
+  /// **'Request {reference} was submitted and persisted.'**
+  String requestSubmitted(String reference);
+
+  /// No description provided for @requestReplayConfirmed.
+  ///
+  /// In en, this message translates to:
+  /// **'Request {reference} was already received. No duplicate request was created.'**
+  String requestReplayConfirmed(String reference);
+
+  /// No description provided for @requestConflict.
+  ///
+  /// In en, this message translates to:
+  /// **'This retry conflicts with a different saved request. Your text is preserved; review the updated history before retrying.'**
+  String get requestConflict;
+
+  /// No description provided for @requestNetworkFailure.
+  ///
+  /// In en, this message translates to:
+  /// **'The request could not reach Dr. AI. Your text is preserved; retrying will not create a duplicate.'**
+  String get requestNetworkFailure;
+
+  /// No description provided for @requestSafeContentFailure.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove contact details, patient information, clinical text, or confidential notes, then retry.'**
+  String get requestSafeContentFailure;
+
+  /// No description provided for @requestAuthorizationFailure.
+  ///
+  /// In en, this message translates to:
+  /// **'This account is not authorized to use that request.'**
+  String get requestAuthorizationFailure;
+
+  /// No description provided for @requestGenericFailure.
+  ///
+  /// In en, this message translates to:
+  /// **'The request could not be completed. Your text is preserved for a safe retry.'**
+  String get requestGenericFailure;
+
+  /// No description provided for @requestHistoryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Request history'**
+  String get requestHistoryTitle;
+
+  /// No description provided for @loadingAccountRequests.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading account request history'**
+  String get loadingAccountRequests;
+
+  /// No description provided for @loadAccountRequestsFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Request history is temporarily unavailable.'**
+  String get loadAccountRequestsFailed;
+
+  /// No description provided for @noAccountRequests.
+  ///
+  /// In en, this message translates to:
+  /// **'No support, feedback, or deletion requests have been submitted from this account.'**
+  String get noAccountRequests;
+
+  /// No description provided for @startAccountRequest.
+  ///
+  /// In en, this message translates to:
+  /// **'Start a request'**
+  String get startAccountRequest;
+
+  /// No description provided for @requestReceipt.
+  ///
+  /// In en, this message translates to:
+  /// **'Receipt: {reference}'**
+  String requestReceipt(String reference);
+
+  /// No description provided for @requestTimelineTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Status timeline'**
+  String get requestTimelineTitle;
+
+  /// No description provided for @requestTimelineUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Detailed transition history is unavailable for this older request.'**
+  String get requestTimelineUnavailable;
+
+  /// No description provided for @requestStatusQueued.
+  ///
+  /// In en, this message translates to:
+  /// **'Queued'**
+  String get requestStatusQueued;
+
+  /// No description provided for @requestStatusReviewing.
+  ///
+  /// In en, this message translates to:
+  /// **'Under review'**
+  String get requestStatusReviewing;
+
+  /// No description provided for @requestStatusResolved.
+  ///
+  /// In en, this message translates to:
+  /// **'Resolved'**
+  String get requestStatusResolved;
+
+  /// No description provided for @requestStatusFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs attention'**
+  String get requestStatusFailed;
+
+  /// No description provided for @requestStatusCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Withdrawn'**
+  String get requestStatusCancelled;
+
+  /// No description provided for @requestStatusUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Status unavailable'**
+  String get requestStatusUnavailable;
+
+  /// No description provided for @requestNextQueued.
+  ///
+  /// In en, this message translates to:
+  /// **'Next: an authorized operator will review this request.'**
+  String get requestNextQueued;
+
+  /// No description provided for @requestNextReviewing.
+  ///
+  /// In en, this message translates to:
+  /// **'Next: wait for the current review to finish. The request remains visible here.'**
+  String get requestNextReviewing;
+
+  /// No description provided for @requestNextResolved.
+  ///
+  /// In en, this message translates to:
+  /// **'This request is final. Review its timeline for the recorded outcome.'**
+  String get requestNextResolved;
+
+  /// No description provided for @requestNextFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The request could not advance. Review the timeline and submit a new request if the next action remains unavailable.'**
+  String get requestNextFailed;
+
+  /// No description provided for @requestNextCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'This request was withdrawn. Its receipt and audit history remain available.'**
+  String get requestNextCancelled;
+
+  /// No description provided for @requestNextUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'No next action is currently available.'**
+  String get requestNextUnavailable;
+
+  /// No description provided for @timelineRequestSubmitted.
+  ///
+  /// In en, this message translates to:
+  /// **'Request submitted'**
+  String get timelineRequestSubmitted;
+
+  /// No description provided for @timelineRequestWithdrawn.
+  ///
+  /// In en, this message translates to:
+  /// **'Request withdrawn'**
+  String get timelineRequestWithdrawn;
+
+  /// No description provided for @timelineReviewStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'Review started'**
+  String get timelineReviewStarted;
+
+  /// No description provided for @timelineRequestResolved.
+  ///
+  /// In en, this message translates to:
+  /// **'Review completed'**
+  String get timelineRequestResolved;
+
+  /// No description provided for @timelineActorYou.
+  ///
+  /// In en, this message translates to:
+  /// **'You'**
+  String get timelineActorYou;
+
+  /// No description provided for @timelineActorAuthorizedOperator.
+  ///
+  /// In en, this message translates to:
+  /// **'Authorized operator'**
+  String get timelineActorAuthorizedOperator;
+
+  /// No description provided for @timelineActorSystem.
+  ///
+  /// In en, this message translates to:
+  /// **'Governed system'**
+  String get timelineActorSystem;
+
+  /// No description provided for @withdrawRequest.
+  ///
+  /// In en, this message translates to:
+  /// **'Withdraw request'**
+  String get withdrawRequest;
+
+  /// No description provided for @withdrawRequestQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Withdraw this request?'**
+  String get withdrawRequestQuestion;
+
+  /// No description provided for @withdrawRequestDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Withdrawal stops further work where the contract permits it. The receipt and required audit history are retained.'**
+  String get withdrawRequestDescription;
+
+  /// No description provided for @requestWithdrawn.
+  ///
+  /// In en, this message translates to:
+  /// **'Request {reference} was withdrawn.'**
+  String requestWithdrawn(String reference);
+
+  /// No description provided for @withdrawalReplayConfirmed.
+  ///
+  /// In en, this message translates to:
+  /// **'This withdrawal was already received. No duplicate transition was created.'**
+  String get withdrawalReplayConfirmed;
+
+  /// No description provided for @withdrawalConflict.
+  ///
+  /// In en, this message translates to:
+  /// **'The request changed before withdrawal. History was refreshed; review its current status.'**
+  String get withdrawalConflict;
+
+  /// No description provided for @signInForAccountRequests.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in and open Account to submit or track support, feedback, and deletion-review requests.'**
+  String get signInForAccountRequests;
+
+  /// No description provided for @openAccountForRequests.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Account to submit or track support, feedback, and deletion-review requests.'**
+  String get openAccountForRequests;
 }
 
 class _AppLocalizationsDelegate

@@ -5,6 +5,7 @@ import 'package:dr_ai_app/features/auth/application/auth_controller.dart';
 import 'package:dr_ai_app/features/care_cost/application/care_cost_providers.dart';
 import 'package:dr_ai_app/features/care_cost/domain/care_cost_data.dart';
 import 'package:dr_ai_app/l10n/l10n.dart';
+import 'package:dr_ai_app/shared/widgets/account_request_center.dart';
 import 'package:dr_ai_app/shared/widgets/account_security.dart';
 import 'package:dr_ai_app/shared/widgets/dashboard_states.dart';
 import 'package:dr_ai_app/shared/widgets/responsive_app_shell.dart';
@@ -33,11 +34,30 @@ class _PayerAccountScreenState extends ConsumerState<PayerAccountScreen> {
       child: ColoredBox(
         color: DrAiColors.pageBackground,
         child: profile.when(
-          loading: () =>
-              DashboardLoadingView(label: context.l10n.loadingPayerAccount),
-          error: (error, stackTrace) => DashboardErrorView(
-            message: _payerAccountLoadError(context, error),
-            onRetry: () => ref.invalidate(payerProfileProvider),
+          loading: () => ListView(
+            padding: const EdgeInsets.all(DrAiSpacing.md),
+            children: <Widget>[
+              SizedBox(
+                height: 180,
+                child: DashboardLoadingView(
+                  label: context.l10n.loadingPayerAccount,
+                ),
+              ),
+              const AccountRequestCenter(role: AppRole.payer),
+            ],
+          ),
+          error: (error, stackTrace) => ListView(
+            padding: const EdgeInsets.all(DrAiSpacing.md),
+            children: <Widget>[
+              SizedBox(
+                height: 220,
+                child: DashboardErrorView(
+                  message: _payerAccountLoadError(context, error),
+                  onRetry: () => ref.invalidate(payerProfileProvider),
+                ),
+              ),
+              const AccountRequestCenter(role: AppRole.payer),
+            ],
           ),
           data: (data) => _PayerAccountView(
             profile: data,
@@ -314,6 +334,8 @@ class _PayerAccountViewState extends ConsumerState<_PayerAccountView> {
                     );
                   },
                 ),
+                const SizedBox(height: DrAiSpacing.lg),
+                const AccountRequestCenter(role: AppRole.payer),
               ],
             ),
           ),

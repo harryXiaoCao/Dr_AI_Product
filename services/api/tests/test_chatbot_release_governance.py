@@ -149,6 +149,15 @@ def test_checksum_bound_activation_supersession_kill_switch_and_exact_rollback(
             reason_code="synthetic_rehearsal",
         )
         assert killed.event_type == "purpose_kill_switch_engaged"
+        assert db.get(ChatbotGenerationActiveRelease, PURPOSE_CODE) is None
+        assert chatbot_generation_readiness(db, governed).code == ("blocked_no_compatible_release")
+        replayed_kill = record_kill_switch(
+            db,
+            active_release=v1,
+            idempotency_key="kill-v1",
+            reason_code="synthetic_rehearsal",
+        )
+        assert replayed_kill.id == killed.id
         assert (
             chatbot_generation_readiness(
                 db,

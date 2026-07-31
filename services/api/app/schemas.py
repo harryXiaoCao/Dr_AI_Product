@@ -525,7 +525,17 @@ class NotificationResponse(BaseModel):
     clinical_event_id: UUID | None
     notification_type: str
     channel: Literal["in_app"]
-    status: Literal["queued", "sent", "cancelled"]
+    status: Literal[
+        "queued",
+        "sent",
+        "scheduled",
+        "unread",
+        "read",
+        "dismissed",
+        "cancelled",
+        "expired",
+        "superseded",
+    ]
     scheduled_for: datetime | None
     sent_at: datetime | None
     metadata_json: dict[str, object]
@@ -977,9 +987,7 @@ class MedicalImagingAssetResponse(BaseModel):
     expires_at: datetime
     uploaded_at: datetime | None
     reviewed_at: datetime | None
-    provenance_versions: list["MedicalImagingProvenanceResponse"] = Field(
-        default_factory=list
-    )
+    provenance_versions: list["MedicalImagingProvenanceResponse"] = Field(default_factory=list)
     safety_label: Literal["Synthetic demonstration data only. Do not enter real patient data."] = (
         "Synthetic demonstration data only. Do not enter real patient data."
     )
@@ -1172,11 +1180,39 @@ class SupportRequestCreateRequest(BaseModel):
     message: str = Field(min_length=8, max_length=2000)
 
 
+class SupportRequestWithdrawRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    expected_version: int = Field(ge=1)
+
+
+class SupportRequestTimelineEvent(BaseModel):
+    sequence: int
+    event_type: Literal["submitted", "status_changed", "withdrawn"]
+    status: Literal["queued", "reviewing", "resolved", "failed", "cancelled"]
+    actor_kind: Literal["requester", "system", "support_team"]
+    summary_code: str
+    occurred_at: datetime
+
+
 class SupportRequestResponse(BaseModel):
     request_id: UUID
+    reference: str
     request_type: Literal["support", "deletion", "feedback"]
-    status: Literal["queued", "reviewing", "resolved", "cancelled"]
+    status: Literal["queued", "reviewing", "resolved", "failed", "cancelled"]
+    version: int
     subject: str
+    retention_boundary_code: Literal[
+        "standard_support_retention",
+        "regulated_and_audit_retention_applies",
+    ]
+    deletion_effect_code: Literal[
+        "not_a_deletion_request",
+        "request_only_no_immediate_deletion",
+    ]
+    available_actions: list[Literal["withdraw"]]
+    timeline: list[SupportRequestTimelineEvent]
+    replayed: bool = False
     created_at: datetime
     updated_at: datetime
     safety_label: Literal["Synthetic demonstration data only. Do not enter real patient data."] = (

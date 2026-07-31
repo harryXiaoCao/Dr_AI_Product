@@ -14,8 +14,23 @@ def test_health_returns_service_and_database_status(client: TestClient) -> None:
         "service": "dr-ai-api",
         "environment": "test",
         "database": "ok",
+        "schema_revision": "20260730_0054",
+        "deployment": {
+            "source_revision": "unrecorded",
+            "image_digest": "unrecorded",
+            "web_sha256": "unrecorded",
+        },
         "patient_chat_generation": "ready_test_bypass",
+        "expected_care_candidate": "disabled",
+        "expected_care_candidate_release_version": None,
         "expected_care_explanation": "disabled",
+        "imaging_observation_draft": "blocked_provider_text_only",
+        "notification_worker": "disabled",
+        "notification_delivery": {
+            "apns": "external_delivery_disabled",
+            "android_emas": "external_delivery_disabled",
+            "web_push": "external_delivery_disabled",
+        },
     }
     assert response.headers["X-Request-ID"].startswith("req_")
 

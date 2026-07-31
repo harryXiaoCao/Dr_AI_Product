@@ -2,7 +2,7 @@
 
 Status: formal production-readiness PRD
 Owner: Harry Cao
-Last updated: 2026-07-25
+Last updated: 2026-07-30
 Primary platforms: Flutter mobile, Flutter web, FastAPI, PostgreSQL, Tencent Cloud
 Product stage: production-quality development in progress; the patient/doctor
 and governed-AI foundation is preserved while Dr. AI adds a China-first,
@@ -114,11 +114,21 @@ Current verified product state:
   public role-scoped reads, and responsive Flutter presentation are now
   implemented locally. Explanation runtime defaults off and remains blocked
   pending external review.
-- External push, SMS, email, native local notifications,
+- A canonical persisted bilingual notification inbox, role-scoped preferences,
+  quiet hours, deep-link authorization, delivery outbox/attempt evidence, and
+  fail-closed APNs/EMAS/Web Push readiness are implemented locally. External
+  push, SMS, email, native local notifications,
   production-authorized model inference, production claims/adjudication,
   reference-pricing and coverage engines, analytics dashboards, clinic
   operations, specialist workflows, and admin workflows are not
   production-ready.
+
+Phase 6 notification implementation does not mean that a provider displayed a
+message. The product preserves in-product, scheduled, attempted, provider
+accepted, delivered-if-supported, failed, expired, and unknown outcomes as
+different facts. Provider credentials, device endpoints, clinical content,
+patient identity, and payer-confidential material are excluded from analytics,
+logs, deduplication keys, and provider metadata.
 - The implementation plan records the Phase 2.5 product-quality gate as
   complete. The bounded Phase 3 chatbot foundation is implemented and deployed
   to controlled staging, while its production evidence gates and every other
@@ -169,7 +179,10 @@ v1.0 three-party core. They need to:
 - Accept, reject, or respond to consultation requests.
 - Provide structured specialist feedback without bypassing doctor ownership.
 
-Specialist UI is not currently implemented and must remain unavailable until Phase 5.
+Specialist UI is not currently implemented and remains outside the Phase 5
+three-role product-coherence slice. It must stay unavailable until a future
+plan amendment provides its authorization, disclosure, persistence, and
+rendered-product gates.
 
 ### 5.4 Administrators
 
@@ -183,7 +196,10 @@ need to:
 - Manage support, feedback, and deletion queues.
 - Oversee clinic resources, billing, analytics, and operational modules where enabled.
 
-Admin UI is not currently implemented and must remain unavailable until Phase 5.
+Admin UI is not currently implemented and remains outside the Phase 5
+three-role product-coherence slice. Phase 5 may use a tightly scoped
+synthetic-only operational route or test fixture for attributable support
+workflow transitions; it must not add a general administrator product surface.
 
 ### 5.5 Payer Reviewers
 
@@ -748,14 +764,23 @@ Acceptance criteria:
 
 Requirements:
 
-- Admin dashboard should support user management, hospital/clinic management, audit-event search, system status, and support/deletion/feedback queue handling.
-- Public unauthenticated privacy/support route and authenticated in-role support submissions should coexist.
-- Support actions must be audited and status-tracked.
+- A future admin dashboard may support user management, hospital/clinic
+  management, audit-event search, system status, and queue handling, but it is
+  not part of Phase 5.
+- The public unauthenticated privacy route and authenticated patient, doctor,
+  and payer support submissions should coexist.
+- Phase 5 support actions must be persisted, audited, status-tracked,
+  requester-isolated, replay-safe, and truthful about deletion-retention
+  boundaries.
+- Synthetic administrative transitions needed for executable testing must use
+  a tightly scoped backend/fixture boundary, not a new specialist or general
+  administrator product surface.
 
 Acceptance criteria:
 
 - Admin routes fail closed until implemented.
-- A patient or doctor can submit and read their own request status.
+- A patient, doctor, or payer reviewer can submit and read only their own
+  request status and history.
 - Admin queue operations cannot leak private user data across roles.
 
 ## 12. UX And Product Quality Requirements
@@ -1115,35 +1140,39 @@ Purpose:
 - Preserve clinic-operations tables but defer their full UI unless required by
   the three-party core.
 
-### Phase 5: Three-Party Multi-Scenario Product Workflow
+### Phase 5: Product Coherence And Lifecycle Completion
 
-Status: in progress locally; patient cost transparency, doctor cost-item CRUD
-and request submission, payer registration, dashboard, queue, detail, and human
-review are implemented for the first slice.
+Status: complete for the controlled synthetic framework. The completed Phase
+1-4 three-party workflow was the foundation. The closed audit and exact
+evidence are
+`docs/periodic_dev_docs/Phase_5_Live_Gap_Matrix_2026-07-28.md` and
+`docs/periodic_dev_docs/Phase_5_Closure_Record_2026-07-28.md`.
 
 Purpose:
 
-- Implement the seven-step journey in Section 10.5 across doctor, payer, and
-  patient interfaces.
-- Expand the current generic request workflow into governed coverage,
-  reference, expected-envelope, variance, clarification, and appeal workflows
-  without weakening the existing human-decision boundary.
-- Add deterministic totals and variance checks, structured AI drafting and
-  explanations, clinician rationale, payer human resolution, and
-  patient-readable transparency.
-- Preserve the implemented model-free comparison engine as the authority for
-  codes, units, quantities, currency, dates, facility applicability, release
-  freshness/rights, integer-minor-unit ranges/totals, reason codes, missing
-  information, justified exceptions, suppression, and immutable re-evaluation.
-  Product routes and UI remain a later authorized slice.
-- Validate with a frozen, representative synthetic/de-identified scenario
-  suite and keep specialist/admin/legacy billing work outside the critical
-  path.
+- Complete every visible patient, doctor, and payer destination or control as
+  a persisted authorized action, a useful persisted destination, a deliberate
+  read-only surface, or a specifically disabled/removed control.
+- Apply one understandable product language to submitted facts, immutable
+  deterministic artifacts, AI drafts/fallbacks, doctor responses, payer
+  evidence, manual reviewer actions, final human decisions, and superseded
+  history.
+- Complete persisted support, feedback, deletion-request, and account
+  lifecycles for all three roles without pretending that a deletion request
+  immediately erases regulated or audit-retained evidence.
+- Add privacy-safe, content-free product analytics with bounded event names,
+  allow-listed dimensions, deduplication, non-blocking failure, and executable
+  redaction tests.
+- Verify representative English and Simplified-Chinese mobile, tablet, and
+  desktop states with enlarged text, keyboard, focus, semantics, contrast,
+  stable goldens, and real built-application journeys.
+- Keep specialist, administrator, Phase 6 notification delivery, and legacy
+  clinic/billing surfaces outside this phase's product boundary.
 
 ### Phase 6: Production Hardening And Stakeholder Validation
 
-Status: existing UX/localization foundations partially complete; new
-three-party validation remains open.
+Status: canonical in-product notification lifecycle and local product hardening
+complete; external transport activation remains independently blocked.
 
 Purpose:
 
@@ -1156,6 +1185,33 @@ Purpose:
   savings.
 - Keep public app-store release, real patient/claim use, and live payer
   integration behind a later regulatory and partnership decision.
+
+### Phase 7: Controlled Staging Activation And Operational Rehearsal
+
+Status: complete for the authorized controlled-synthetic staging scope.
+
+Purpose:
+
+- Deploy the Phase 1-6 framework at immutable API and Flutter web identities.
+- Exercise Slice D, Slice F, and chatbot purposes independently through
+  checksum-bound governed releases and authenticated product routes.
+- Preserve deterministic expected-care facts, comparisons, clinical records,
+  financial allocations, payer actions, and notifications as authoritative.
+- Prove owner-only backup, isolated restoration, schema drift checks,
+  kill-switch disablement, exact-predecessor AI recovery, exact API/schema/web
+  rollback, post-activation backup restoration, and partial-service recovery.
+- Verify content-free health/readiness, usage/latency/fallback evidence,
+  three-role authenticated smoke, responsive rendered states, and count-only
+  redaction scans.
+- Keep APNs, EMAS, Web Push, and imaging release activation disabled when their
+  exact provider, signing, secure endpoint, service-worker, or physical-target
+  prerequisites are unavailable.
+
+The exact evidence and remaining external gates are recorded in
+`docs/periodic_dev_docs/Phase_7_Closure_Record_2026-07-30.md` and
+`docs/periodic_dev_docs/Phase_7_Live_Gap_Matrix_2026-07-30.md`. This phase does
+not create real-patient, live-payer, public-production, clinical,
+regulatory, commercial, provider-delivery, or target-visible evidence.
 
 ## 19. Open Questions
 

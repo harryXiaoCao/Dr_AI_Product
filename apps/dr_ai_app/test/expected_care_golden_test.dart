@@ -143,6 +143,16 @@ void main() {
       find.textContaining('not linked to this Clinical Event'),
       findsOneWidget,
     );
+
+    await tester.scrollUntilVisible(
+      find.text('Exact admitted references'),
+      -700,
+      scrollable: find.byType(Scrollable).last,
+    );
+    expect(find.text('Scenario definition'), findsOneWidget);
+    expect(find.textContaining('SHA-256'), findsNothing);
+    expect(find.textContaining('scenario-release-id'), findsNothing);
+    expect(find.textContaining('initial_assessment'), findsNothing);
   });
 
   testWidgets('patient sees the fact accounting in Simplified Chinese', (

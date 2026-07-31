@@ -71,6 +71,22 @@ Future<void> openDoctorPatientWorkflow(
   await tester.pumpAndSettle();
 }
 
+Future<void> revealPatientEducationalChat(WidgetTester tester) async {
+  final dashboardScrollable = find
+      .descendant(
+        of: find.byKey(const Key('patient-dashboard-list')),
+        matching: find.byType(Scrollable),
+      )
+      .first;
+  final state = tester.state<ScrollableState>(dashboardScrollable);
+  state.position.jumpTo(state.position.maxScrollExtent);
+  await tester.pumpAndSettle();
+  expect(
+    find.byKey(const Key('educational-chat-message-list')),
+    findsOneWidget,
+  );
+}
+
 void main() {
   setUp(() {
     FlutterSecureStorage.setMockInitialValues(<String, String>{});
@@ -267,7 +283,10 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text('Accepted by payer reviewer'), findsOneWidget);
-      expect(find.textContaining('supported request'), findsOneWidget);
+      expect(
+        find.textContaining('does not guarantee reimbursement or payment'),
+        findsOneWidget,
+      );
 
       await tester.tap(
         find.byKey(const Key('payment-request-filter-rejected')),
@@ -280,7 +299,10 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text('Rejected by payer reviewer'), findsOneWidget);
-      expect(find.textContaining('unsupported request'), findsOneWidget);
+      expect(
+        find.textContaining('is not a final adjudicated patient obligation'),
+        findsOneWidget,
+      );
       expect(find.textContaining('reviewer-only'), findsNothing);
     },
   );
@@ -931,94 +953,38 @@ void main() {
     },
   );
 
-  testWidgets('privacy support surface is reachable and local-only', (
-    tester,
-  ) async {
-    setViewport(tester, const Size(412, 917));
-    await pumpApp(tester, FakeDrAiRepository());
+  testWidgets(
+    'public privacy surface is read-only and routes requests to Account',
+    (tester) async {
+      setViewport(tester, const Size(412, 917));
+      await pumpApp(tester, FakeDrAiRepository());
 
-    await tester.tap(find.byKey(const Key('login-privacy-support-link')));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Privacy and support'), findsOneWidget);
-    expect(find.byKey(const Key('beta-privacy-section')), findsOneWidget);
-
-    await tester.dragUntilVisible(
-      find.byKey(const Key('beta-consent-section')),
-      find.byKey(const Key('beta-support-list')),
-      const Offset(0, -360),
-    );
-    expect(find.byKey(const Key('beta-consent-section')), findsOneWidget);
-
-    Future<void> tapConsentCheckbox(Key rowKey) async {
-      final row = find.byKey(rowKey);
-      await tester.ensureVisible(row);
+      await tester.tap(find.byKey(const Key('login-privacy-support-link')));
       await tester.pumpAndSettle();
-      await tester.tap(
-        find.descendant(of: row, matching: find.byType(Checkbox)),
+
+      expect(find.text('Privacy and support'), findsOneWidget);
+      expect(find.byKey(const Key('beta-privacy-section')), findsOneWidget);
+
+      await tester.dragUntilVisible(
+        find.byKey(const Key('beta-consent-section')),
+        find.byKey(const Key('beta-support-list')),
+        const Offset(0, -360),
       );
-      await tester.pumpAndSettle();
-    }
+      expect(find.byKey(const Key('beta-consent-section')), findsOneWidget);
 
-    await tapConsentCheckbox(const Key('consent-synthetic-only-checkbox'));
-    await tapConsentCheckbox(const Key('consent-no-emergency-checkbox'));
-    await tapConsentCheckbox(const Key('consent-no-real-data-checkbox'));
-    await tester.pumpAndSettle();
-    expect(find.text('Consent readiness prepared locally.'), findsOneWidget);
+      expect(find.byType(Checkbox), findsNothing);
+      expect(find.byKey(const Key('account-request-submit')), findsNothing);
+      expect(find.textContaining('Sign in and open Account'), findsOneWidget);
 
-    await tester.dragUntilVisible(
-      find.byKey(const Key('beta-deletion-section')),
-      find.byKey(const Key('beta-support-list')),
-      const Offset(0, -520),
-    );
-    expect(find.byKey(const Key('beta-deletion-section')), findsOneWidget);
-    await tester.enterText(
-      find.byKey(const Key('account-deletion-confirm-field')),
-      'REQUEST ACCOUNT DELETION',
-    );
-    await tester.pumpAndSettle();
-    await tester.ensureVisible(
-      find.byKey(const Key('account-deletion-prepare-button')),
-    );
-    final deletionButton = tester.widget<FilledButton>(
-      find.byKey(const Key('account-deletion-prepare-button')),
-    );
-    expect(deletionButton.onPressed, isNotNull);
-    await tester.tap(find.byKey(const Key('account-deletion-prepare-button')));
-    await tester.pumpAndSettle();
-    expect(
-      find.byKey(const Key('account-deletion-prepared-status')),
-      findsOneWidget,
-    );
-
-    await tester.dragUntilVisible(
-      find.byKey(const Key('beta-feedback-section')),
-      find.byKey(const Key('beta-support-list')),
-      const Offset(0, -520),
-    );
-    await tester.enterText(
-      find.byKey(const Key('beta-feedback-field')),
-      'Account feedback draft only.',
-    );
-    await tester.pumpAndSettle();
-    await tester.ensureVisible(
-      find.byKey(const Key('beta-feedback-prepare-button')),
-    );
-    await tester.tap(find.byKey(const Key('beta-feedback-prepare-button')));
-    await tester.pumpAndSettle();
-    expect(
-      find.byKey(const Key('beta-feedback-prepared-status')),
-      findsOneWidget,
-    );
-
-    await tester.dragUntilVisible(
-      find.byKey(const Key('beta-limitations-section')),
-      find.byKey(const Key('beta-support-list')),
-      const Offset(0, -520),
-    );
-    expect(find.byKey(const Key('beta-limitations-section')), findsOneWidget);
-    expect(tester.takeException(), isNull);
-  });
+      await tester.dragUntilVisible(
+        find.byKey(const Key('beta-limitations-section')),
+        find.byKey(const Key('beta-support-list')),
+        const Offset(0, -520),
+      );
+      expect(find.byKey(const Key('beta-limitations-section')), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('privacy support route is public from a direct web path', (
     tester,
@@ -1206,6 +1172,8 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Record human review'));
     await tester.pumpAndSettle();
+    expect(find.text('Documentation needed'), findsOneWidget);
+    expect(find.textContaining('documentation_needed'), findsNothing);
     await tester.tap(find.byKey(const Key('payer-review-action')));
     await tester.pumpAndSettle();
 
@@ -1263,6 +1231,11 @@ void main() {
     expect(find.text('Authorized expected-care evidence'), findsOneWidget);
     expect(find.text('Human payer review'), findsOneWidget);
     expect(find.text('Request or retry scoped explanation'), findsOneWidget);
+    expect(find.text('Validated baseline published'), findsOneWidget);
+    expect(find.text('Not recorded'), findsOneWidget);
+    expect(find.text('Submitted'), findsWidgets);
+    expect(find.textContaining('payer-request-test-id'), findsNothing);
+    expect(find.textContaining('validated_baseline_published'), findsNothing);
   });
 
   testWidgets(
@@ -1987,9 +1960,10 @@ void main() {
     expect(find.text('Today'), findsWidgets);
     expect(find.text('Medication reminders'), findsOneWidget);
     expect(
-      find.byKey(const Key('patient-medication-notification-shell')),
+      find.byKey(const Key('patient-medication-notification-read-only')),
       findsOneWidget,
     );
+    expect(find.textContaining('are not scheduled in Phase 5'), findsOneWidget);
     expect(find.text('Medical Fee'), findsOneWidget);
     expect(find.text('Dashboard'), findsOneWidget);
     GoRouter.of(
@@ -2090,11 +2064,17 @@ void main() {
       findsOneWidget,
     );
     expect(find.byKey(const Key('today-task-medication')), findsOneWidget);
+    await tester.ensureVisible(find.byKey(const Key('today-task-medication')));
     await tester.tap(find.byKey(const Key('today-task-medication')));
     await tester.pumpAndSettle();
 
     expect(repository.patientToday.tasks.first.isCompleted, isTrue);
     expect(find.byKey(const Key('today-task-medication')), findsOneWidget);
+    await tester.drag(
+      find.byKey(const Key('patient-dashboard-list')),
+      const Offset(0, 400),
+    );
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('today-task-medication')));
     await tester.pumpAndSettle();
 
@@ -2112,11 +2092,7 @@ void main() {
     );
     await pumpApp(tester, repository);
 
-    await tester.dragUntilVisible(
-      find.byKey(const Key('educational-chat-input')),
-      find.byKey(const Key('patient-dashboard-list')),
-      const Offset(0, -360),
-    );
+    await revealPatientEducationalChat(tester);
     await tester.enterText(
       find.byKey(const Key('educational-chat-input')),
       'What should I ask about the synthetic recovery plan?',
@@ -2160,11 +2136,7 @@ void main() {
     );
     await pumpApp(tester, repository);
 
-    await tester.dragUntilVisible(
-      find.byKey(const Key('educational-chat-input')),
-      find.byKey(const Key('patient-dashboard-list')),
-      const Offset(0, -360),
-    );
+    await revealPatientEducationalChat(tester);
     await tester.enterText(
       find.byKey(const Key('educational-chat-input')),
       'Keep this typed question after failure',
@@ -2198,6 +2170,9 @@ void main() {
       );
       await pumpApp(tester, repository);
 
+      await tester.ensureVisible(
+        find.byKey(const Key('today-task-medication')),
+      );
       await tester.tap(find.byKey(const Key('today-task-medication')));
       await tester.pumpAndSettle();
 

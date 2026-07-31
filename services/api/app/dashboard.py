@@ -46,9 +46,11 @@ from app.models import (
     RecoveryTask,
     RecoveryTaskCompletion,
     SimulatedAssessment,
+    User,
     UserRole,
     VisitHistory,
 )
+from app.notification_service import create_notification, suppress_source_notifications
 from app.patient_chat import send_patient_chat_message as run_patient_chat_workflow
 from app.schemas import (
     AssessmentListResponse,
@@ -1267,9 +1269,7 @@ def _authorized_imaging_asset(
     )
     if lock:
         statement = statement.with_for_update()
-    asset = db.scalar(
-        statement
-    )
+    asset = db.scalar(statement)
     if asset is None:
         raise _neutral_not_found()
     return profile, asset
@@ -1519,27 +1519,23 @@ def _queue_reminder_notification(
 ) -> Notification | None:
     if reminder.status != "active":
         return None
-    notification = Notification(
-        user_id=profile.user_id,
+    recipient = db.get(User, profile.user_id)
+    assert recipient is not None
+    notification, _ = create_notification(
+        db,
+        recipient=recipient,
+        event_type=f"{_reminder_type(reminder)}_reminder",
+        source_resource_id=reminder.id,
+        scheduled_for=reminder.next_due_at,
         patient_id=profile.id,
         clinical_event_id=reminder.clinical_event_id,
-        notification_type=f"{_reminder_type(reminder)}_reminder",
-        channel="in_app",
-        status="queued",
-        scheduled_for=reminder.next_due_at,
-        metadata_json={
-            "source": "phase2_in_app_queue",
-            "reminder_id": str(reminder.id),
-            "reminder_type": _reminder_type(reminder),
-            "medication_id": str(reminder.medication_id) if reminder.medication_id else None,
-            "prescription_medication_id": (
-                str(reminder.prescription_medication_id)
-                if reminder.prescription_medication_id
-                else None
-            ),
-        },
+        locale=("zh-Hans" if profile.preferred_language in {"zh", "zh-Hans", "zh-CN"} else "en"),
+        occurrence_key=(
+            reminder.next_due_at.isoformat()
+            if reminder.next_due_at is not None
+            else f"unscheduled-v{reminder.updated_at.isoformat() if reminder.updated_at else 1}"
+        ),
     )
-    db.add(notification)
     return notification
 
 
@@ -1549,16 +1545,13 @@ def _cancel_queued_reminder_notifications(
     profile: PatientProfile,
     reminder: MedicationReminder,
 ) -> int:
-    notifications = db.scalars(
-        select(Notification).where(
-            Notification.patient_id == profile.id,
-            Notification.status == "queued",
-            Notification.metadata_json["reminder_id"].astext == str(reminder.id),
-        )
-    ).all()
-    for notification in notifications:
-        notification.status = "cancelled"
-    return len(notifications)
+    return suppress_source_notifications(
+        db,
+        source_category="medication_reminder",
+        source_resource_id=reminder.id,
+        reason_code="medication_reminder_changed",
+        actor_user_id=None,
+    )
 
 
 def _authorized_recovery_plan(
@@ -2320,6 +2313,19 @@ def update_patient_clinical_event(
     event.diagnosis_summary = request.diagnosis_summary
     event.onset_date = request.onset_date
     event.status = request.status
+    if event.status == "monitoring":
+        patient_user = db.get(User, profile.user_id)
+        assert patient_user is not None
+        create_notification(
+            db,
+            recipient=patient_user,
+            event_type="follow_up_milestone",
+            source_resource_id=event.id,
+            scheduled_for=datetime.now(UTC),
+            patient_id=profile.id,
+            clinical_event_id=event.id,
+            occurrence_key=f"monitoring:{datetime.now(UTC).date().isoformat()}",
+        )
     _record_audit_event(
         db,
         actor_user_id=user.id,
@@ -3855,6 +3861,19 @@ def create_patient_clinical_service(
         source_status=service.status,
         financial=request.financial,
     )
+    if service.status != "cancelled":
+        patient_user = db.get(User, profile.user_id)
+        assert patient_user is not None
+        create_notification(
+            db,
+            recipient=patient_user,
+            event_type="care_service_milestone",
+            source_resource_id=service.id,
+            scheduled_for=service.scheduled_at or service.ordered_at,
+            patient_id=profile.id,
+            clinical_event_id=event.id,
+            occurrence_key=f"{service.status}:{service.scheduled_at or service.ordered_at}",
+        )
     _record_audit_event(
         db,
         actor_user_id=user.id,
@@ -3918,6 +3937,27 @@ def update_patient_clinical_service(
         source_status=service.status,
         financial=request.financial,
     )
+    if service.status == "cancelled":
+        suppress_source_notifications(
+            db,
+            source_category="clinical_service",
+            source_resource_id=service.id,
+            reason_code="clinical_service_cancelled",
+            actor_user_id=user.id,
+        )
+    else:
+        patient_user = db.get(User, profile.user_id)
+        assert patient_user is not None
+        create_notification(
+            db,
+            recipient=patient_user,
+            event_type="care_service_milestone",
+            source_resource_id=service.id,
+            scheduled_for=service.scheduled_at or service.ordered_at,
+            patient_id=profile.id,
+            clinical_event_id=event.id,
+            occurrence_key=f"{service.status}:{service.scheduled_at or service.ordered_at}",
+        )
     _record_audit_event(
         db,
         actor_user_id=user.id,
@@ -4041,9 +4081,7 @@ async def upload_medical_imaging_content(
     db: DbSession,
     settings: AppSettings,
 ) -> MedicalImagingAssetResponse:
-    profile, asset = _authorized_imaging_asset(
-        patient_id, asset_id, user, db, lock=True
-    )
+    profile, asset = _authorized_imaging_asset(patient_id, asset_id, user, db, lock=True)
     if asset.expires_at < datetime.now(UTC) and asset.upload_status != "uploaded":
         asset.upload_status = "expired"
         db.commit()
@@ -4088,6 +4126,26 @@ async def upload_medical_imaging_content(
     asset.upload_status = "uploaded"
     asset.review_status = "pending_review"
     asset.uploaded_at = datetime.now(UTC)
+    doctor_users = db.scalars(
+        select(User)
+        .join(DoctorProfile, DoctorProfile.user_id == User.id)
+        .join(CareRelationship, CareRelationship.doctor_id == DoctorProfile.id)
+        .where(
+            CareRelationship.patient_id == profile.id,
+            CareRelationship.is_active.is_(True),
+        )
+    ).all()
+    for doctor_user in doctor_users:
+        create_notification(
+            db,
+            recipient=doctor_user,
+            event_type="imaging_status_warning",
+            source_resource_id=asset.id,
+            scheduled_for=asset.uploaded_at,
+            patient_id=profile.id,
+            clinical_event_id=asset.clinical_event_id,
+            occurrence_key=f"pending-review:{asset.uploaded_at.isoformat()}",
+        )
     _record_audit_event(
         db,
         actor_user_id=user.id,
@@ -4121,9 +4179,7 @@ def complete_medical_imaging_upload(
     db: DbSession,
     settings: AppSettings,
 ) -> MedicalImagingAssetResponse:
-    profile, asset = _authorized_imaging_asset(
-        patient_id, asset_id, user, db, lock=True
-    )
+    profile, asset = _authorized_imaging_asset(patient_id, asset_id, user, db, lock=True)
     _validate_imaging_completion(asset, request)
     if asset.upload_status != "uploaded" or not asset.versions:
         raise ApiError(
@@ -4302,6 +4358,18 @@ def review_medical_imaging_asset(
     asset.treatment_relevance_date = request.treatment_relevance_date
     asset.reviewed_by_user_id = user.id
     asset.reviewed_at = datetime.now(UTC)
+    patient_user = db.get(User, profile.user_id)
+    assert patient_user is not None
+    create_notification(
+        db,
+        recipient=patient_user,
+        event_type="imaging_action_available",
+        source_resource_id=asset.id,
+        scheduled_for=asset.reviewed_at,
+        patient_id=profile.id,
+        clinical_event_id=asset.clinical_event_id,
+        occurrence_key=f"{asset.review_status}:{asset.reviewed_at.isoformat()}",
+    )
     _record_audit_event(
         db,
         actor_user_id=user.id,
@@ -4410,6 +4478,20 @@ def create_own_clinical_event_update(
     )
     db.add(update)
     db.flush()
+    if update.update_type == "recovery_check_in" and event.doctor_id is not None:
+        doctor = db.get(DoctorProfile, event.doctor_id)
+        doctor_user = db.get(User, doctor.user_id) if doctor is not None else None
+        if doctor_user is not None:
+            create_notification(
+                db,
+                recipient=doctor_user,
+                event_type="adherence_evidence_available",
+                source_resource_id=update.id,
+                scheduled_for=update.occurred_at,
+                patient_id=profile.id,
+                clinical_event_id=event.id,
+                occurrence_key=f"recovery-check-in:{update.id}",
+            )
     _record_audit_event(
         db,
         actor_user_id=user.id,
@@ -4788,6 +4870,23 @@ def activate_recovery_plan(
     if plan.review_status in {"draft", "changes_requested"}:
         plan.submitted_at = datetime.now(UTC)
     _approve_recovery_plan(plan, profile, user, db, source="legacy_activate")
+    activation_time = plan.activated_at or datetime.now(UTC)
+    patient_user = db.get(User, profile.user_id)
+    assert patient_user is not None
+    for task in plan.tasks:
+        create_notification(
+            db,
+            recipient=patient_user,
+            event_type="recovery_task_due",
+            source_resource_id=task.id,
+            scheduled_for=activation_time,
+            patient_id=profile.id,
+            clinical_event_id=plan.clinical_event_id,
+            locale=(
+                "zh-Hans" if profile.preferred_language in {"zh", "zh-Hans", "zh-CN"} else "en"
+            ),
+            occurrence_key=f"plan-activation:{activation_time.isoformat()}",
+        )
     _record_audit_event(
         db,
         actor_user_id=user.id,
@@ -4917,6 +5016,13 @@ def complete_recovery_task(
         )
         db.add(completion)
         db.flush()
+        suppress_source_notifications(
+            db,
+            source_category="recovery_task",
+            source_resource_id=task.id,
+            reason_code="recovery_task_completed",
+            actor_user_id=user.id,
+        )
         _record_audit_event(
             db,
             actor_user_id=user.id,
@@ -5269,6 +5375,18 @@ def create_consultation(
         )
         if service is not None
         else None
+    )
+    patient_user = db.get(User, profile.user_id)
+    assert patient_user is not None
+    create_notification(
+        db,
+        recipient=patient_user,
+        event_type="consultation_milestone",
+        source_resource_id=consultation.id,
+        scheduled_for=consultation.created_at or datetime.now(UTC),
+        patient_id=profile.id,
+        clinical_event_id=consultation.clinical_event_id,
+        occurrence_key=f"requested:{consultation.id}",
     )
     _record_audit_event(
         db,

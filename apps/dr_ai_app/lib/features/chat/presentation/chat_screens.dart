@@ -11,69 +11,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-class ServiceChatScreen extends StatelessWidget {
-  const ServiceChatScreen({
-    required this.role,
-    required this.isSystem,
-    super.key,
-  });
-
-  final AppRole role;
-  final bool isSystem;
-
-  @override
-  Widget build(BuildContext context) {
-    return ResponsiveAppShell(
-      role: role,
-      selectedIndex: role == AppRole.doctor ? 3 : 1,
-      child: _ChatPageFrame(
-        title: isSystem
-            ? context.l10n.systemNotifications
-            : context.l10n.aiAssistant,
-        subtitle: isSystem
-            ? context.l10n.systemNotificationsSubtitle
-            : context.l10n.aiAssistantSubtitle,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Icon(
-              isSystem
-                  ? Icons.notifications_none_rounded
-                  : Icons.auto_awesome_rounded,
-              size: 44,
-              color: isSystem
-                  ? const Color(0xFF087F5B)
-                  : DrAiColors.accentIndigo,
-            ),
-            const SizedBox(height: DrAiSpacing.md),
-            Text(
-              isSystem
-                  ? context.l10n.noSystemNotifications
-                  : context.l10n.aiAvailablePhase3,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                color: DrAiColors.ink,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: DrAiSpacing.sm),
-            Text(
-              isSystem
-                  ? context.l10n.systemReadOnlyNotice
-                  : context.l10n.aiPlaceholderNotice,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: DrAiColors.inkSecondary,
-                height: 1.45,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class PatientAiChatScreen extends ConsumerStatefulWidget {
   const PatientAiChatScreen({super.key});
 

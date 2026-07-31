@@ -980,6 +980,11 @@ class ExpectedCareCandidateRequest(Base):
             "clinical_event_id",
             "created_at",
         ),
+        Index(
+            "ix_expected_care_candidate_request_ai_release",
+            "ai_purpose_release_id",
+            "created_at",
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -1006,6 +1011,10 @@ class ExpectedCareCandidateRequest(Base):
     model_configuration_version: Mapped[str] = mapped_column(String(80))
     provider: Mapped[str] = mapped_column(String(80))
     model: Mapped[str] = mapped_column(String(160))
+    ai_purpose_release_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("governed_care_releases.id", ondelete="RESTRICT")
+    )
+    ai_purpose_release_checksum_sha256: Mapped[str | None] = mapped_column(String(64))
     scenario_release_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("care_scenario_definitions.release_id", ondelete="RESTRICT")
     )
@@ -2608,6 +2617,32 @@ class Notification(Base):
         Index("ix_notifications_user_status", "user_id", "status"),
         Index("ix_notifications_patient_type", "patient_id", "notification_type"),
         Index("ix_notifications_clinical_event", "clinical_event_id"),
+        Index("ix_notifications_user_created", "user_id", "created_at"),
+        UniqueConstraint(
+            "user_id",
+            "notification_type",
+            "source_category",
+            "source_resource_id",
+            "deduplication_key",
+            name="uq_notifications_occurrence",
+        ),
+        CheckConstraint(
+            "status IN ('queued','sent','scheduled','unread','read','dismissed',"
+            "'cancelled','expired','superseded')",
+            name="ck_notifications_status",
+        ),
+        CheckConstraint(
+            "audience_role IN ('patient','doctor','payer')",
+            name="ck_notifications_audience_role",
+        ),
+        CheckConstraint(
+            "severity IN ('information','action','warning')",
+            name="ck_notifications_severity",
+        ),
+        CheckConstraint(
+            "privacy_class IN ('generic','private_in_app')",
+            name="ck_notifications_privacy_class",
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -2621,8 +2656,36 @@ class Notification(Base):
     notification_type: Mapped[str] = mapped_column(String(80))
     channel: Mapped[str] = mapped_column(String(40), default="in_app")
     status: Mapped[str] = mapped_column(String(40), default="queued")
+    severity: Mapped[str] = mapped_column(String(40), default="information")
+    audience_role: Mapped[str] = mapped_column(String(40), default="patient")
+    source_category: Mapped[str] = mapped_column(String(60), default="legacy")
+    source_resource_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    payer_organization_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("payer_organizations.id", ondelete="RESTRICT")
+    )
+    payer_request_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("payer_requests.id", ondelete="RESTRICT")
+    )
+    deduplication_key: Mapped[str] = mapped_column(String(64))
+    content_checksum: Mapped[str] = mapped_column(String(64))
+    template_code: Mapped[str] = mapped_column(String(80), default="legacy_notification")
+    locale: Mapped[str] = mapped_column(String(20), default="en")
+    time_zone: Mapped[str] = mapped_column(String(64), default="UTC")
+    privacy_class: Mapped[str] = mapped_column(String(40), default="generic")
+    title: Mapped[str] = mapped_column(String(160), default="Update available")
+    body: Mapped[str] = mapped_column(String(280), default="Open Dr. AI to review this update.")
+    deep_link_code: Mapped[str | None] = mapped_column(String(80))
     scheduled_for: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    dismissed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    superseded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    superseded_by_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("notifications.id", ondelete="RESTRICT")
+    )
+    version: Mapped[int] = mapped_column(Integer, default=1)
     metadata_json: Mapped[dict[str, object]] = mapped_column(JSONB, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
@@ -2632,6 +2695,205 @@ class Notification(Base):
     user: Mapped[User] = relationship()
     patient: Mapped[PatientProfile | None] = relationship()
     clinical_event: Mapped[ClinicalEvent | None] = relationship(back_populates="notifications")
+    payer_organization: Mapped[PayerOrganization | None] = relationship()
+    payer_request: Mapped[PayerRequest | None] = relationship()
+    outbox_entries: Mapped[list["NotificationOutbox"]] = relationship(
+        back_populates="notification", cascade="all, delete-orphan"
+    )
+    events: Mapped[list["NotificationEvent"]] = relationship(
+        back_populates="notification",
+        cascade="all, delete-orphan",
+        order_by="NotificationEvent.sequence",
+    )
+
+
+class NotificationPreference(Base):
+    __tablename__ = "notification_preferences"
+    __table_args__ = (
+        UniqueConstraint("user_id", "role", name="uq_notification_preference_user_role"),
+        CheckConstraint(
+            "role IN ('patient','doctor','payer')",
+            name="ck_notification_preference_role",
+        ),
+        CheckConstraint(
+            "locale IN ('en','zh-Hans')",
+            name="ck_notification_preference_locale",
+        ),
+        CheckConstraint(
+            "preview_level IN ('generic','private_in_app')",
+            name="ck_notification_preference_preview",
+        ),
+        CheckConstraint(
+            "(quiet_hours_start IS NULL) = (quiet_hours_end IS NULL)",
+            name="ck_notification_preference_quiet_pair",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    role: Mapped[str] = mapped_column(String(40))
+    allowed_categories_json: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    in_product_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    external_channels_json: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    quiet_hours_start: Mapped[str | None] = mapped_column(String(5))
+    quiet_hours_end: Mapped[str | None] = mapped_column(String(5))
+    locale: Mapped[str] = mapped_column(String(20), default="en")
+    time_zone: Mapped[str] = mapped_column(String(64), default="UTC")
+    preview_level: Mapped[str] = mapped_column(String(40), default="generic")
+    last_idempotency_key: Mapped[str | None] = mapped_column(String(120))
+    last_request_checksum: Mapped[str | None] = mapped_column(String(64))
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    user: Mapped[User] = relationship()
+
+
+class NotificationDeviceEndpoint(Base):
+    __tablename__ = "notification_device_endpoints"
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id",
+            "channel",
+            "token_hash",
+            name="uq_notification_endpoint_user_channel_token",
+        ),
+        Index("ix_notification_endpoint_user_status", "user_id", "status"),
+        CheckConstraint(
+            "channel IN ('apns','android_emas','web_push')",
+            name="ck_notification_endpoint_channel",
+        ),
+        CheckConstraint(
+            "status IN ('permission_not_requested','permission_denied','active',"
+            "'revoked','stale','signed_out','unsupported')",
+            name="ck_notification_endpoint_status",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    channel: Mapped[str] = mapped_column(String(40))
+    platform: Mapped[str] = mapped_column(String(40))
+    token_hash: Mapped[str] = mapped_column(String(64))
+    status: Mapped[str] = mapped_column(String(40), default="permission_not_requested")
+    readiness_code: Mapped[str] = mapped_column(String(80), default="not_registered")
+    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    rotated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    user: Mapped[User] = relationship()
+
+
+class NotificationOutbox(Base):
+    __tablename__ = "notification_outbox"
+    __table_args__ = (
+        UniqueConstraint("notification_id", "channel", name="uq_notification_outbox_channel"),
+        Index("ix_notification_outbox_status_available", "status", "available_at"),
+        CheckConstraint(
+            "channel IN ('apns','android_emas','web_push')",
+            name="ck_notification_outbox_channel",
+        ),
+        CheckConstraint(
+            "status IN ('pending','claimed','retrying','accepted','delivered',"
+            "'failed','suppressed','cancelled','expired','unknown')",
+            name="ck_notification_outbox_status",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    notification_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("notifications.id", ondelete="CASCADE")
+    )
+    channel: Mapped[str] = mapped_column(String(40))
+    status: Mapped[str] = mapped_column(String(40), default="pending")
+    available_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    claim_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    attempt_count: Mapped[int] = mapped_column(Integer, default=0)
+    max_attempts: Mapped[int] = mapped_column(Integer, default=3)
+    last_result_code: Mapped[str | None] = mapped_column(String(80))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    notification: Mapped[Notification] = relationship(back_populates="outbox_entries")
+    attempts: Mapped[list["NotificationDeliveryAttempt"]] = relationship(
+        back_populates="outbox", cascade="all, delete-orphan"
+    )
+
+
+class NotificationDeliveryAttempt(Base):
+    __tablename__ = "notification_delivery_attempts"
+    __table_args__ = (
+        UniqueConstraint("outbox_id", "attempt_number", name="uq_notification_attempt_number"),
+        Index("ix_notification_attempt_outbox_created", "outbox_id", "created_at"),
+        CheckConstraint(
+            "result_state IN ('accepted','delivered','failed','unknown')",
+            name="ck_notification_attempt_result",
+        ),
+        CheckConstraint(
+            "provider_receipt_hash IS NULL OR result_state IN ('accepted','delivered')",
+            name="ck_notification_attempt_receipt_state",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    outbox_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("notification_outbox.id", ondelete="CASCADE")
+    )
+    attempt_number: Mapped[int] = mapped_column(Integer)
+    adapter_code: Mapped[str] = mapped_column(String(40))
+    result_state: Mapped[str] = mapped_column(String(40))
+    result_code: Mapped[str] = mapped_column(String(80))
+    provider_receipt_hash: Mapped[str | None] = mapped_column(String(64))
+    retryable: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    outbox: Mapped[NotificationOutbox] = relationship(back_populates="attempts")
+
+
+class NotificationEvent(Base):
+    __tablename__ = "notification_events"
+    __table_args__ = (
+        UniqueConstraint(
+            "notification_id",
+            "sequence",
+            name="uq_notification_event_sequence",
+        ),
+        UniqueConstraint(
+            "notification_id",
+            "idempotency_key",
+            name="uq_notification_event_idempotency",
+        ),
+        Index("ix_notification_event_notification_created", "notification_id", "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    notification_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("notifications.id", ondelete="CASCADE")
+    )
+    sequence: Mapped[int] = mapped_column(Integer)
+    event_type: Mapped[str] = mapped_column(String(60))
+    from_status: Mapped[str | None] = mapped_column(String(40))
+    to_status: Mapped[str] = mapped_column(String(40))
+    actor_kind: Mapped[str] = mapped_column(String(40))
+    actor_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL")
+    )
+    idempotency_key: Mapped[str] = mapped_column(String(120))
+    event_checksum: Mapped[str] = mapped_column(String(64))
+    evidence_json: Mapped[dict[str, object]] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    notification: Mapped[Notification] = relationship(back_populates="events")
+    actor: Mapped[User | None] = relationship()
 
 
 class Invoice(Base):
@@ -2716,6 +2978,23 @@ class AnalyticsEvent(Base):
         Index("ix_analytics_events_type_occurred", "event_type", "occurred_at"),
         Index("ix_analytics_events_patient_occurred", "patient_id", "occurred_at"),
         Index("ix_analytics_events_clinic_occurred", "clinic_id", "occurred_at"),
+        UniqueConstraint(
+            "environment",
+            "deduplication_key",
+            name="uq_analytics_event_environment_dedupe",
+        ),
+        CheckConstraint(
+            """
+            schema_version <> 'content_free_product_v1'
+            OR (
+                actor_user_id IS NULL
+                AND patient_id IS NULL
+                AND clinic_id IS NULL
+                AND resource_id IS NULL
+            )
+            """,
+            name="ck_content_free_analytics_has_no_identity",
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -2731,6 +3010,14 @@ class AnalyticsEvent(Base):
     event_type: Mapped[str] = mapped_column(String(120))
     resource_type: Mapped[str | None] = mapped_column(String(80))
     resource_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    role: Mapped[str] = mapped_column(String(40))
+    environment: Mapped[str] = mapped_column(String(40))
+    schema_version: Mapped[str] = mapped_column(String(40))
+    deduplication_key: Mapped[str] = mapped_column(String(64))
+    event_checksum: Mapped[str | None] = mapped_column(String(64))
+    outcome: Mapped[str | None] = mapped_column(String(40))
+    failure_category: Mapped[str | None] = mapped_column(String(60))
+    latency_ms: Mapped[int | None] = mapped_column(Integer)
     metadata_json: Mapped[dict[str, object]] = mapped_column(JSONB, default=dict)
     occurred_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
@@ -2747,6 +3034,12 @@ class SupportRequest(Base):
         Index("ix_support_requests_requester_status", "requester_user_id", "status"),
         Index("ix_support_requests_patient_type_status", "patient_id", "request_type", "status"),
         Index("ix_support_requests_created", "created_at"),
+        UniqueConstraint("public_reference", name="uq_support_request_public_reference"),
+        UniqueConstraint(
+            "requester_user_id",
+            "idempotency_key",
+            name="uq_support_request_idempotency",
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -2758,6 +3051,13 @@ class SupportRequest(Base):
     )
     request_type: Mapped[str] = mapped_column(String(40))
     status: Mapped[str] = mapped_column(String(40), default="queued")
+    public_reference: Mapped[str] = mapped_column(String(32), unique=True)
+    idempotency_key: Mapped[str | None] = mapped_column(String(120))
+    request_checksum: Mapped[str | None] = mapped_column(String(64))
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    retention_boundary_code: Mapped[str] = mapped_column(
+        String(80), default="standard_support_retention"
+    )
     subject: Mapped[str] = mapped_column(String(160))
     body_redacted: Mapped[str] = mapped_column(Text)
     source: Mapped[str] = mapped_column(String(80), default="authenticated_app")
@@ -2765,6 +3065,7 @@ class SupportRequest(Base):
         ForeignKey("users.id", ondelete="SET NULL")
     )
     audit_metadata_json: Mapped[dict[str, object]] = mapped_column(JSONB, default=dict)
+    withdrawn_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
@@ -2773,6 +3074,52 @@ class SupportRequest(Base):
     requester: Mapped[User | None] = relationship(foreign_keys=[requester_user_id])
     patient: Mapped[PatientProfile | None] = relationship()
     assigned_to: Mapped[User | None] = relationship(foreign_keys=[assigned_to_user_id])
+    events: Mapped[list["SupportRequestEvent"]] = relationship(
+        back_populates="support_request",
+        cascade="all, delete-orphan",
+        order_by="SupportRequestEvent.sequence",
+    )
+
+
+class SupportRequestEvent(Base):
+    __tablename__ = "support_request_events"
+    __table_args__ = (
+        Index(
+            "ix_support_request_events_request_created",
+            "support_request_id",
+            "created_at",
+        ),
+        UniqueConstraint(
+            "support_request_id",
+            "sequence",
+            name="uq_support_request_event_sequence",
+        ),
+        UniqueConstraint(
+            "support_request_id",
+            "idempotency_key",
+            name="uq_support_request_event_idempotency",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    support_request_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("support_requests.id", ondelete="CASCADE")
+    )
+    sequence: Mapped[int] = mapped_column(Integer)
+    event_type: Mapped[str] = mapped_column(String(60))
+    from_status: Mapped[str | None] = mapped_column(String(40))
+    to_status: Mapped[str] = mapped_column(String(40))
+    actor_kind: Mapped[str] = mapped_column(String(40))
+    actor_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL")
+    )
+    public_summary_code: Mapped[str] = mapped_column(String(80))
+    idempotency_key: Mapped[str] = mapped_column(String(120))
+    request_checksum: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    support_request: Mapped[SupportRequest] = relationship(back_populates="events")
+    actor: Mapped[User | None] = relationship()
 
 
 class KbPublisher(Base):

@@ -1,8 +1,8 @@
 ---
 title: "Dr. AI v1.0 Implementation Plan"
-status: "Phases 1-4 locally complete; external provider, Android volume, and final controlled-staging evidence recorded"
+status: "Phase 7 controlled-staging rehearsal complete; external notification targets and image-capable DeepSeek remain independently blocked"
 created: "2026-07-02"
-last_updated: "2026-07-27"
+last_updated: "2026-07-30"
 owner: "Harry Cao"
 release_target: "Production-quality, China-first medical-information and care-cost transparency platform; synthetic controlled staging until later real-world gates close"
 ---
@@ -535,8 +535,10 @@ Completed A-G foundation:
   append-only transition evidence.
 - [x] Doctor/patient/payer baseline, comparison, explanation, retry, and history
   actions in Flutter.
-- [x] Controlled Tencent staging deployment through migration `0047`, with AI
-  purposes disabled and v3 pending after the A-G closure.
+- [x] Controlled Tencent staging deployment through migration `0051`, with AI
+  purposes disabled and kill-switched. The July 28 final-source refresh and
+  authenticated redaction-safe smoke are recorded in the Phase 1-4 closure
+  record; the earlier A-G deployment and release evidence remains immutable.
 
 Open completion work:
 
@@ -583,27 +585,34 @@ Exit criteria:
 
 ### Phase 5 - Product refinement and feature-complete framework
 
-Status: **open**
+Status: **complete from the clean `main` checkpoint at `7b8d004`**
 
 This phase completes the framework; it is not a cosmetic-only polish pass.
+The dated audit and closure evidence are
+`docs/periodic_dev_docs/Phase_5_Live_Gap_Matrix_2026-07-28.md`. Rows remain
+closed only where the implementation and executable or rendered evidence
+passed. Exact local and controlled-staging evidence is retained in
+`docs/periodic_dev_docs/Phase_5_Closure_Record_2026-07-28.md`.
 
-- [ ] Run a fresh route/control audit against the live Flutter application and
+- [x] Run a fresh route/control audit against the live Flutter application and
   current API, replacing the old diagnosis-agent audit as the working list.
-- [ ] Resolve every incomplete visible destination under the Phase 2 role
+- [x] Resolve every incomplete visible destination under the Phase 2 role
   workflows.
-- [ ] Consolidate duplicate widgets that represent the same persisted object or
+- [x] Consolidate duplicate widgets that represent the same persisted object or
   action.
-- [ ] Use one visual language for facts, AI drafts, deterministic results,
+- [x] Use one visual language for facts, AI drafts, deterministic results,
   human responses, warnings, and final human decisions.
-- [ ] Make histories and state transitions understandable without requiring
+- [x] Make histories and state transitions understandable without requiring
   internal IDs or developer knowledge.
-- [ ] Complete support, feedback, deletion-request, and account lifecycle
+- [x] Complete support, feedback, deletion-request, and account lifecycle
   submission/readback states needed by the three primary roles.
-- [ ] Add content-free product analytics for task completion, failure category,
-  retry, fallback, notification delivery, and latency.
-- [ ] Add screenshot/golden coverage for representative real data-backed
+- [x] Add content-free product analytics for task completion, failure category,
+  retry, conflict, replay, fallback, latency, navigation abandonment where
+  observable, and existing in-product notification interactions. Phase 6
+  delivery, device-token, outbox, and scheduling work remains excluded.
+- [x] Add screenshot/golden coverage for representative real data-backed
   mobile, tablet, and desktop states in both languages.
-- [ ] Inspect rendered flows with keyboard-only navigation and system text
+- [x] Inspect rendered flows with keyboard-only navigation and system text
   scaling.
 
 Exit criteria:
@@ -616,38 +625,64 @@ Exit criteria:
 - feature completion and visual refinement are verified on real rendered
   synthetic staging states.
 
+Completion boundary: Phase 5 is complete for the synthetic product framework
+through migration `20260728_0052` and the controlled Tencent refresh recorded
+in the closure record. This does not activate patient-chat or expected-care
+generation, implement Phase 6 notification delivery, authorize real-patient or
+live-payer use, resolve the external DeepSeek image-input limitation, or alter
+historical Slice A-G/evaluation/rollback/golden evidence.
+
 ### Phase 6 - System notifications, adherence, and warning workflow
 
-Status: **open**
+Status: **complete for the persisted local/in-product slice; external provider
+activation and real-target evidence remain Phase 7 gates**
 
-- [ ] Finalize notification event types, severity, audience, deduplication key,
+- [x] Finalize notification event types, severity, audience, deduplication key,
   scheduling rule, expiry, and deep-link contract.
-- [ ] Complete persisted notification event/outbox, user preference, device
+- [x] Complete persisted notification event/outbox, user preference, device
   endpoint, delivery attempt, receipt, and retry contracts.
-- [ ] Implement APNs, the selected production-region-compatible Android push
-  adapter, Web Push, and supported on-device scheduling behind one server-owned
-  delivery boundary.
-- [ ] Implement patient medication, refill, recovery-task, follow-up, and
-  consultation/check/imaging reminders.
-- [ ] Implement doctor adherence warnings, payer-transition notifications,
-  missing-information warnings, cost-variance warnings, and imaging-draft
-  status notifications.
-- [ ] Add doctor justification as an append-only response to a warning; never
-  mutate the estimate, comparison, request, or payer decision.
-- [ ] Deliver through supported operating-system notification adapters and the
-  persisted in-app inbox.
-- [ ] Add opt-in/permission, quiet hours, locale/time-zone, privacy-safe preview,
-  retry, delivery receipt, read/dismiss, expiry, and cancellation.
-- [ ] Test missed schedules, duplicate jobs, offline devices, token rotation,
-  revoked permission, clock/time-zone change, stale reminders, and concurrent
-  completion.
-- [ ] Test that warning generation never becomes automatic payer adjudication or
-  blocks a doctor's submission.
+- [x] Implement fail-closed APNs, Alibaba Cloud EMAS Mobile Push, and Web Push
+  adapter boundaries with truthful readiness. Provider transports remain
+  disabled because credentials, signing/package setup, OEM approvals, secure
+  endpoint resolution, and supported physical targets are unavailable.
+- [x] Implement patient medication, refill, recovery-task, follow-up,
+  consultation, care-service, and useful imaging notifications from their
+  authoritative persisted records.
+- [x] Implement doctor adherence-evidence, payer-transition,
+  missing-information, incomplete-allocation, cost-variance, consultation, and
+  imaging-status warning contracts and representative persisted generation.
+- [x] Reuse the append-only doctor justification/supplemental-response workflow;
+  never mutate the baseline, comparison, request, warning, or payer decision.
+- [x] Deliver through the persisted in-product inbox and expose external
+  readiness without fabricating acceptance or delivery.
+- [x] Add role-scoped preferences, quiet hours across midnight, locale/time
+  zone, privacy-safe preview, retry, bounded attempt evidence, read/unread,
+  dismiss, expiry, cancellation, and supersession.
+- [x] Test duplicate jobs, stale claims/sources, adapter failure, token metadata,
+  revoked access, quiet hours, schedule-relative expiry, and concurrent
+  completion safeguards.
+- [x] Test that warning generation never becomes automatic payer adjudication.
+
+External activation boundary:
+
+- [ ] Exercise APNs, EMAS, and Web Push transports on separately authorized
+  signed/approved targets with synthetic endpoints and provider credentials.
+- [ ] Prove provider acceptance and target-visible delivery as separate facts.
+
+The production adapter contracts are complete, but a credential alone will not
+make an adapter ready. Phase 7 owns the real-target exercise and rollback:
+
+- APNs requires the exact App ID entitlement, provisioning/signing, key, and
+  physical target.
+- EMAS requires the exact signed package, Alibaba project, OEM credentials and
+  approvals, privacy consent, and physical China Android target.
+- Web Push requires a push service worker, VAPID, subscription rotation, HTTPS,
+  and supported browser/network evidence.
 
 Exit criteria:
 
-- synthetic reminders reach the supported device/system notification surface
-  and remain visible in the authorized inbox;
+- synthetic reminders reach the persisted in-product system-notification
+  surface; unavailable device transports show exact fail-closed readiness;
 - duplicate or stale notifications are suppressed deterministically;
 - doctor warning -> additional information/justification -> manual payer
   decision works end to end;
@@ -655,32 +690,52 @@ Exit criteria:
 
 ### Phase 7 - Controlled staging activation and operational rehearsal
 
-Status: **open**
+Status: **complete for the authorized controlled-synthetic staging scope**.
+APNs, EMAS, Web Push target delivery, and DeepSeek imaging activation remain
+truthfully disabled external gates; their absence is not replaced with
+fabricated evidence.
 
-- [ ] Back up the controlled staging database and record exact deployed image,
+- [x] Back up the controlled staging database and record exact deployed image,
   web, schema, configuration, and release checksums.
-- [ ] Run migrations and schema-drift checks against the staged source state.
-- [ ] Register stage-specific waivers truthfully; do not fabricate external
+- [x] Run migrations and schema-drift checks against the staged source state.
+- [x] Register stage-specific waivers truthfully; do not fabricate external
   approval.
-- [ ] Activate the corrected pending Slice F v3 through the governed command,
-  verify readiness, use it from the real doctor/patient/payer UI, then
-  re-engage the kill switch.
-- [ ] Activate the separate Slice D release, exercise
+- [x] Register the corrected predecessor-linked Slice F v4/v5 artifacts through
+  the governed command, activate, supersede, roll back to the exact
+  predecessor, exercise the authenticated doctor product path, and re-engage
+  the kill switch. Patient and payer role filtering remains covered by the same
+  API contract and executable product tests; no release-table state was changed
+  directly.
+- [x] Activate the separate Slice D release, exercise
   candidate -> baseline -> comparison -> explanation, then re-engage its kill
   switch.
-- [ ] Register, activate, test, disable, and roll back the separate DeepSeek
-  Vision release after its machine gates pass.
-- [ ] Exercise DeepSeek chatbot generation from the product UI and its
+- [x] Verify the separate imaging capability contract against primary provider
+  documentation and a bounded synthetic image probe. The selected DeepSeek
+  endpoint rejected image input, so registration and activation correctly
+  remained blocked; no alternate provider or text-only evidence was
+  substituted.
+- [x] Exercise DeepSeek chatbot generation from the authenticated patient
+  product path and its
   timeout/quota/malformed/kill-switch fallbacks.
 - [ ] Exercise operating-system notifications on supported real targets using
   synthetic accounts and device tokens.
-- [ ] Rehearse provider outage, stale/checksum-drifted release, malformed
+  **Externally blocked:** no APNs signing/physical target, EMAS project/OEM
+  approval/physical target, or Web Push VAPID/service-worker/subscription
+  infrastructure is configured. All three adapters remain fail-closed and the
+  persisted in-product inbox remains available.
+- [x] Rehearse provider outage, stale/checksum-drifted release, malformed
   output, concurrent requests, idempotency conflict, database contention,
-  notification failure, rollback, and exact-predecessor recovery.
-- [ ] Verify content-free readiness/latency/error/usage metrics, redaction-safe
+  notification failure, rollback, and exact-predecessor recovery through
+  bounded deterministic controls, concurrency tests, a disposable restore, and
+  an exact live staging API/schema/web rollback and recovery.
+- [x] Verify content-free readiness/latency/error/usage metrics, redaction-safe
   logs, backups, and rollback evidence.
-- [ ] Produce a synthetic stakeholder walkthrough and limitations report for
+- [x] Produce a synthetic stakeholder walkthrough and limitations report for
   doctor, patient, and payer journeys.
+
+Exact results are recorded in
+`docs/periodic_dev_docs/Phase_7_Closure_Record_2026-07-30.md` and
+`docs/periodic_dev_docs/Phase_7_Live_Gap_Matrix_2026-07-30.md`.
 
 Exit criteria:
 

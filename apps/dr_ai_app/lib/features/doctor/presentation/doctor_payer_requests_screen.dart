@@ -6,6 +6,7 @@ import 'package:dr_ai_app/features/care_cost/application/care_cost_providers.dar
 import 'package:dr_ai_app/features/care_cost/domain/care_cost_data.dart';
 import 'package:dr_ai_app/features/patient/application/patient_care_providers.dart';
 import 'package:dr_ai_app/features/patient/domain/patient_care_data.dart';
+import 'package:dr_ai_app/shared/presentation/product_history_copy.dart';
 import 'package:dr_ai_app/shared/widgets/dashboard_states.dart';
 import 'package:dr_ai_app/shared/widgets/responsive_app_shell.dart';
 import 'package:flutter/material.dart';
@@ -21,11 +22,13 @@ class DoctorPayerRequestsScreen extends ConsumerStatefulWidget {
   const DoctorPayerRequestsScreen({
     this.initialPatientId,
     this.initialClinicalEventId,
+    this.initialRequestId,
     super.key,
   });
 
   final String? initialPatientId;
   final String? initialClinicalEventId;
+  final String? initialRequestId;
 
   @override
   ConsumerState<DoctorPayerRequestsScreen> createState() =>
@@ -47,6 +50,14 @@ class _DoctorPayerRequestsScreenState
   bool _submitting = false;
   String? _submissionError;
   PayerRequestData? _createdRequest;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialRequestId != null) {
+      _view = _WorkspaceView.history;
+    }
+  }
 
   @override
   void dispose() {
@@ -102,6 +113,7 @@ class _DoctorPayerRequestsScreenState
                       )
                     : _RequestHistory(
                         requests: requests,
+                        initialRequestId: widget.initialRequestId,
                         onRetry: () =>
                             ref.invalidate(doctorPayerRequestsProvider),
                       ),
@@ -1459,10 +1471,15 @@ class _ReviewStep extends StatelessWidget {
 }
 
 class _RequestHistory extends StatefulWidget {
-  const _RequestHistory({required this.requests, required this.onRetry});
+  const _RequestHistory({
+    required this.requests,
+    required this.onRetry,
+    this.initialRequestId,
+  });
 
   final AsyncValue<List<PayerRequestData>> requests;
   final VoidCallback onRetry;
+  final String? initialRequestId;
 
   @override
   State<_RequestHistory> createState() => _RequestHistoryState();
@@ -1481,6 +1498,11 @@ class _RequestHistoryState extends State<_RequestHistory> {
       ),
       data: (items) {
         final filteredItems = items
+            .where(
+              (request) =>
+                  widget.initialRequestId == null ||
+                  request.id == widget.initialRequestId,
+            )
             .where((request) => _matchesHistoryFilter(request, _filter))
             .toList();
         return RefreshIndicator(
@@ -1511,23 +1533,26 @@ class _RequestHistoryState extends State<_RequestHistory> {
                         style: const TextStyle(color: DrAiColors.inkSecondary),
                       ),
                       const SizedBox(height: DrAiSpacing.md),
-                      Wrap(
-                        spacing: DrAiSpacing.xs,
-                        runSpacing: DrAiSpacing.xs,
-                        children: <Widget>[
-                          for (final filter in _RequestHistoryFilter.values)
-                            ChoiceChip(
-                              key: Key('payment-request-filter-${filter.name}'),
-                              selected: _filter == filter,
-                              label: Text(
-                                '${_historyFilterLabel(context, filter)} '
-                                '(${items.where((request) => _matchesHistoryFilter(request, filter)).length})',
+                      if (widget.initialRequestId == null)
+                        Wrap(
+                          spacing: DrAiSpacing.xs,
+                          runSpacing: DrAiSpacing.xs,
+                          children: <Widget>[
+                            for (final filter in _RequestHistoryFilter.values)
+                              ChoiceChip(
+                                key: Key(
+                                  'payment-request-filter-${filter.name}',
+                                ),
+                                selected: _filter == filter,
+                                label: Text(
+                                  '${_historyFilterLabel(context, filter)} '
+                                  '(${items.where((request) => _matchesHistoryFilter(request, filter)).length})',
+                                ),
+                                onSelected: (_) =>
+                                    setState(() => _filter = filter),
                               ),
-                              onSelected: (_) =>
-                                  setState(() => _filter = filter),
-                            ),
-                        ],
-                      ),
+                          ],
+                        ),
                       const SizedBox(height: DrAiSpacing.lg),
                       if (filteredItems.isEmpty)
                         _InlineEmpty(
@@ -1699,13 +1724,28 @@ class _HistoryCard extends ConsumerWidget {
                 style: const TextStyle(fontWeight: FontWeight.w900),
               ),
             ),
-            for (final response in request.doctorResponses)
+            for (final entry in request.doctorResponses.indexed)
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.history_edu_outlined),
-                title: Text(response.responseType.replaceAll('_', ' ')),
-                subtitle: Text(response.summary),
-                trailing: Text('v${response.version}'),
+                title: Text(
+                  _doctorResponseTypeText(context, entry.$2.responseType),
+                ),
+                subtitle: Text(
+                  '${entry.$2.doctorDisplayName} · ${formatProductHistoryTime(context, entry.$2.createdAt)}\n'
+                  '${entry.$2.summary}',
+                ),
+                trailing: Text(
+                  _copy(
+                    context,
+                    entry.$1 == request.doctorResponses.length - 1
+                        ? 'Current'
+                        : 'Earlier',
+                    entry.$1 == request.doctorResponses.length - 1
+                        ? '当前'
+                        : '较早',
+                  ),
+                ),
               ),
           ],
           if (request.reviews.isNotEmpty) ...<Widget>[
@@ -1717,19 +1757,29 @@ class _HistoryCard extends ConsumerWidget {
                 style: const TextStyle(fontWeight: FontWeight.w900),
               ),
             ),
-            for (final review in request.reviews)
+            for (final entry in request.reviews.indexed)
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.fact_check_outlined),
                 title: Text(
-                  '${review.fromStatus.replaceAll('_', ' ')} → '
-                  '${review.toStatus.replaceAll('_', ' ')}',
+                  '${_statusText(context, entry.$2.fromStatus)} → '
+                  '${_statusText(context, entry.$2.toStatus)}',
                 ),
                 subtitle: Text(
-                  '${review.reviewerDisplayName} · '
-                  '${review.reasonCode}',
+                  '${entry.$2.reviewerDisplayName} · ${entry.$2.reviewerTitle} · '
+                  '${formatProductHistoryTime(context, entry.$2.createdAt)}\n'
+                  '${_copy(context, 'Recorded reason', '记录原因')}: '
+                  '${humanizeProductValue(entry.$2.reasonCode)}',
                 ),
-                trailing: Text('v${review.version}'),
+                trailing: Text(
+                  _copy(
+                    context,
+                    entry.$1 == request.reviews.length - 1
+                        ? 'Current'
+                        : 'Superseded',
+                    entry.$1 == request.reviews.length - 1 ? '当前' : '已取代',
+                  ),
+                ),
               ),
           ],
         ],
@@ -1769,7 +1819,9 @@ Future<void> _showDoctorResponseDialog(
                         .map(
                           (value) => DropdownMenuItem(
                             value: value,
-                            child: Text(value.replaceAll('_', ' ')),
+                            child: Text(
+                              _doctorResponseTypeText(context, value),
+                            ),
                           ),
                         )
                         .toList(),
@@ -1893,7 +1945,7 @@ class _ReviewOutcomeBanner extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               '${_copy(context, 'Recorded reason', '记录原因')} · '
-              '${latestReview!.reasonCode.replaceAll('_', ' ')}',
+              '${humanizeProductValue(latestReview!.reasonCode)}',
               style: const TextStyle(
                 color: DrAiColors.inkSecondary,
                 fontSize: 12,
@@ -2282,6 +2334,7 @@ String _date(BuildContext context, DateTime value) {
 String _statusText(BuildContext context, String status) {
   return switch (status) {
     'submitted' => _copy(context, 'Submitted', '已提交'),
+    'under_review' => _copy(context, 'Under human review', '人工审核中'),
     'clarification_requested' => _copy(
       context,
       'Clarification requested',
@@ -2297,6 +2350,23 @@ String _statusText(BuildContext context, String status) {
     'planned' => _copy(context, 'Planned', '计划中'),
     'cancelled' => _copy(context, 'Cancelled', '已取消'),
     _ => status.replaceAll('_', ' '),
+  };
+}
+
+String _doctorResponseTypeText(BuildContext context, String responseType) {
+  return switch (responseType) {
+    'justification' => _copy(context, 'Doctor justification', '医生说明'),
+    'clarification_response' => _copy(
+      context,
+      'Clarification response',
+      '补充说明答复',
+    ),
+    'additional_information' => _copy(
+      context,
+      'Additional information',
+      '补充资料',
+    ),
+    _ => humanizeProductValue(responseType),
   };
 }
 

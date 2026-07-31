@@ -139,6 +139,11 @@ def test_support_queue_and_role_assignment_models_persist_metadata(settings) -> 
             patient_id=patient.patient_profile.id,
             request_type="deletion",
             status="queued",
+            public_reference="REQ-PHASE1DIRECT",
+            idempotency_key="phase1-direct-request",
+            request_checksum="0" * 64,
+            version=1,
+            retention_boundary_code="regulated_and_audit_retention_applies",
             subject="Synthetic deletion request",
             body_redacted="[redacted synthetic request body]",
             source="authenticated_app",
@@ -171,6 +176,14 @@ def test_support_queue_and_role_assignment_models_persist_metadata(settings) -> 
                 event_type="support_request_queued",
                 resource_type="support_request",
                 resource_id=request.id,
+                role="patient",
+                environment="test",
+                schema_version="legacy",
+                deduplication_key="phase1-direct-analytics",
+                event_checksum=None,
+                outcome="completed",
+                failure_category=None,
+                latency_ms=None,
                 metadata_json={"request_type": "deletion"},
             )
         )
@@ -202,7 +215,7 @@ def test_authenticated_patient_support_request_persists_status_and_audit_metadat
 
     created = client.post(
         "/api/v1/support-requests",
-        headers=headers,
+        headers={**headers, "Idempotency-Key": "patient-deletion-create-001"},
         json={
             "request_type": "deletion",
             "subject": "Synthetic account deletion review",
@@ -264,7 +277,10 @@ def test_doctor_feedback_request_is_not_patient_scoped(
 
     created = client.post(
         "/api/v1/support-requests",
-        headers=auth_header(doctor["access_token"]),
+        headers={
+            **auth_header(doctor["access_token"]),
+            "Idempotency-Key": "doctor-feedback-create-001",
+        },
         json={
             "request_type": "feedback",
             "subject": "Synthetic workflow feedback",
@@ -298,7 +314,10 @@ def test_support_request_status_is_scoped_to_requester(
     )
     created = client.post(
         "/api/v1/support-requests",
-        headers=auth_header(patient["access_token"]),
+        headers={
+            **auth_header(patient["access_token"]),
+            "Idempotency-Key": "patient-support-create-001",
+        },
         json={
             "request_type": "support",
             "subject": "Synthetic support status",
@@ -339,7 +358,10 @@ def test_support_requests_reject_unsupported_roles_without_side_effects_and_unsa
             if method == "post":
                 role_denied = client.post(
                     "/api/v1/support-requests",
-                    headers=headers,
+                    headers={
+                        **headers,
+                        "Idempotency-Key": f"future-{role}-support-001",
+                    },
                     json={
                         "request_type": "support",
                         "subject": f"Synthetic {role} support",
@@ -362,7 +384,10 @@ def test_support_requests_reject_unsupported_roles_without_side_effects_and_unsa
     )
     unsafe = client.post(
         "/api/v1/support-requests",
-        headers=auth_header(patient["access_token"]),
+        headers={
+            **auth_header(patient["access_token"]),
+            "Idempotency-Key": "patient-unsafe-feedback-001",
+        },
         json={
             "request_type": "feedback",
             "subject": "Synthetic feedback",

@@ -44,10 +44,13 @@ def request_json(
     *,
     token: str | None = None,
     payload: dict[str, Any] | None = None,
+    additional_headers: dict[str, str] | None = None,
     expected_status: int | set[int] = 200,
 ) -> ApiResponse:
     data = None
     headers = {"Accept": "application/json"}
+    if additional_headers is not None:
+        headers.update(additional_headers)
     if payload is not None:
         data = json.dumps(payload).encode("utf-8")
         headers["Content-Type"] = "application/json"
@@ -135,6 +138,13 @@ def main() -> int:
     patient_password = env_required("DR_AI_STAGING_PATIENT_PASSWORD")
     unrelated_password = os.environ.get("DR_AI_STAGING_UNRELATED_PATIENT_PASSWORD")
     unrelated_patient_id = os.environ.get("DR_AI_STAGING_UNRELATED_PATIENT_ID")
+    payer_email = os.environ.get("DR_AI_STAGING_PAYER_EMAIL")
+    payer_password = os.environ.get("DR_AI_STAGING_PAYER_PASSWORD")
+    if bool(payer_email) != bool(payer_password):
+        raise SmokeFailure(
+            "DR_AI_STAGING_PAYER_EMAIL and DR_AI_STAGING_PAYER_PASSWORD must "
+            "either both be set or both be omitted"
+        )
 
     health = request_json(base_url, "GET", "/health")
     required_health = {
@@ -162,6 +172,403 @@ def main() -> int:
     doctor_access = doctor_tokens["access_token"]
     patient_access = patient_tokens["access_token"]
     ok("doctor and patient login")
+
+    lifecycle_id = f"phase5-lifecycle-{int(time.time())}-{uuid.uuid4().hex[:8]}"
+    lifecycle_key = f"support-{lifecycle_id}"
+    lifecycle_payload = {
+        "request_type": "deletion",
+        "subject": "Synthetic Phase 5 deletion review",
+        "message": "Verify the persisted synthetic account request lifecycle.",
+    }
+    created_request = request_json(
+        base_url,
+        "POST",
+        "/api/v1/support-requests",
+        token=patient_access,
+        payload=lifecycle_payload,
+        additional_headers={"Idempotency-Key": lifecycle_key},
+        expected_status=201,
+    )
+    assert created_request.body is not None
+    request_id = created_request.body.get("request_id")
+    request_reference = created_request.body.get("reference")
+    request_version = created_request.body.get("version")
+    if (
+        not request_id
+        or not request_reference
+        or request_version != 1
+        or created_request.body.get("status") != "queued"
+        or created_request.body.get("replayed") is not False
+        or (
+            created_request.body.get("retention_boundary_code")
+            != "regulated_and_audit_retention_applies"
+        )
+        or (
+            created_request.body.get("deletion_effect_code")
+            != "request_only_no_immediate_deletion"
+        )
+        or [item.get("event_type") for item in created_request.body.get("timeline", [])]
+        != ["submitted"]
+    ):
+        raise SmokeFailure("Phase 5 support submission did not return a persisted receipt")
+    replayed_request = request_json(
+        base_url,
+        "POST",
+        "/api/v1/support-requests",
+        token=patient_access,
+        payload=lifecycle_payload,
+        additional_headers={"Idempotency-Key": lifecycle_key},
+        expected_status=201,
+    )
+    if (
+        replayed_request.body is None
+        or replayed_request.body.get("request_id") != request_id
+        or replayed_request.body.get("replayed") is not True
+    ):
+        raise SmokeFailure("Phase 5 support retry was not replay-safe")
+    support_conflict = request_json(
+        base_url,
+        "POST",
+        "/api/v1/support-requests",
+        token=patient_access,
+        payload={**lifecycle_payload, "subject": "Changed synthetic deletion review"},
+        additional_headers={"Idempotency-Key": lifecycle_key},
+        expected_status=409,
+    )
+    if (
+        support_conflict.body is None
+        or support_conflict.body.get("error", {}).get("code") != "conflict"
+    ):
+        raise SmokeFailure("Phase 5 support changed-content replay was not rejected")
+    request_json(
+        base_url,
+        "GET",
+        f"/api/v1/support-requests/{request_id}",
+        token=doctor_access,
+        expected_status=404,
+    )
+    request_history = request_json(
+        base_url,
+        "GET",
+        "/api/v1/support-requests",
+        token=patient_access,
+    )
+    assert request_history.body is not None
+    if request_reference not in {
+        item.get("reference") for item in request_history.body.get("items", [])
+    }:
+        raise SmokeFailure("Phase 5 support receipt was absent from requester history")
+    analytics_key = f"analytics-{lifecycle_id}"
+    analytics_payload = {
+        "event_name": "journey_completed",
+        "deduplication_key": analytics_key,
+        "dimensions": {
+            "journey_code": "account_deletion",
+            "surface_code": "account",
+            "outcome": "completed",
+            "latency_bucket": "not_measured",
+            "locale": "en",
+            "platform": "web",
+            "layout": "desktop",
+        },
+    }
+    analytics = request_json(
+        base_url,
+        "POST",
+        "/api/v1/product-events",
+        token=patient_access,
+        payload=analytics_payload,
+        expected_status=202,
+    )
+    if (
+        analytics.body is None
+        or analytics.body.get("accepted") is not True
+        or analytics.body.get("persisted") is not True
+        or analytics.body.get("replayed") is not False
+    ):
+        raise SmokeFailure("Phase 5 content-free product event was not persisted")
+    analytics_replay = request_json(
+        base_url,
+        "POST",
+        "/api/v1/product-events",
+        token=patient_access,
+        payload=analytics_payload,
+        expected_status=202,
+    )
+    if (
+        analytics_replay.body is None
+        or analytics_replay.body.get("persisted") is not True
+        or analytics_replay.body.get("replayed") is not True
+    ):
+        raise SmokeFailure("Phase 5 product-event retry was not replay-safe")
+    analytics_conflict = request_json(
+        base_url,
+        "POST",
+        "/api/v1/product-events",
+        token=patient_access,
+        payload={
+            **analytics_payload,
+            "event_name": "workflow_replayed",
+            "dimensions": {
+                **analytics_payload["dimensions"],
+                "outcome": "replayed",
+            },
+        },
+        expected_status=409,
+    )
+    if (
+        analytics_conflict.body is None
+        or analytics_conflict.body.get("error", {}).get("code") != "conflict"
+    ):
+        raise SmokeFailure("Phase 5 product-event changed replay was not rejected")
+    analytics_identity_injection = request_json(
+        base_url,
+        "POST",
+        "/api/v1/product-events",
+        token=patient_access,
+        payload={
+            **analytics_payload,
+            "deduplication_key": f"analytics-identity-{lifecycle_id}",
+            "dimensions": {
+                **analytics_payload["dimensions"],
+                "patient_id": request_id,
+            },
+        },
+        expected_status=422,
+    )
+    if (
+        analytics_identity_injection.body is None
+        or analytics_identity_injection.body.get("error", {}).get("code")
+        != "validation_failed"
+    ):
+        raise SmokeFailure("Phase 5 product-event identity injection was not rejected")
+    analytics_matrix_mismatch = request_json(
+        base_url,
+        "POST",
+        "/api/v1/product-events",
+        token=patient_access,
+        payload={
+            **analytics_payload,
+            "event_name": "workflow_failed",
+            "deduplication_key": f"analytics-matrix-{lifecycle_id}",
+        },
+        expected_status=422,
+    )
+    if (
+        analytics_matrix_mismatch.body is None
+        or analytics_matrix_mismatch.body.get("error", {}).get("code")
+        != "validation_failed"
+    ):
+        raise SmokeFailure("Phase 5 product-event matrix mismatch was not rejected")
+    withdrawn_request = request_json(
+        base_url,
+        "POST",
+        f"/api/v1/support-requests/{request_id}/withdraw",
+        token=patient_access,
+        payload={"expected_version": request_version},
+        additional_headers={"Idempotency-Key": f"withdraw-{lifecycle_id}"},
+    )
+    if (
+        withdrawn_request.body is None
+        or withdrawn_request.body.get("status") != "cancelled"
+        or withdrawn_request.body.get("version") != 2
+        or not any(
+            item.get("event_type") == "withdrawn"
+            for item in withdrawn_request.body.get("timeline", [])
+        )
+    ):
+        raise SmokeFailure("Phase 5 support withdrawal did not persist its timeline")
+    withdraw_replay = request_json(
+        base_url,
+        "POST",
+        f"/api/v1/support-requests/{request_id}/withdraw",
+        token=patient_access,
+        payload={"expected_version": request_version},
+        additional_headers={"Idempotency-Key": f"withdraw-{lifecycle_id}"},
+    )
+    if (
+        withdraw_replay.body is None
+        or withdraw_replay.body.get("status") != "cancelled"
+        or withdraw_replay.body.get("replayed") is not True
+    ):
+        raise SmokeFailure("Phase 5 support withdrawal retry was not replay-safe")
+    withdraw_conflict = request_json(
+        base_url,
+        "POST",
+        f"/api/v1/support-requests/{request_id}/withdraw",
+        token=patient_access,
+        payload={"expected_version": 2},
+        additional_headers={"Idempotency-Key": f"withdraw-{lifecycle_id}"},
+        expected_status=409,
+    )
+    if (
+        withdraw_conflict.body is None
+        or withdraw_conflict.body.get("error", {}).get("code") != "conflict"
+    ):
+        raise SmokeFailure("Phase 5 withdrawal changed-content replay was not rejected")
+    final_request = request_json(
+        base_url,
+        "GET",
+        f"/api/v1/support-requests/{request_id}",
+        token=patient_access,
+    )
+    if (
+        final_request.body is None
+        or final_request.body.get("status") != "cancelled"
+        or [item.get("event_type") for item in final_request.body.get("timeline", [])]
+        != ["submitted", "withdrawn"]
+    ):
+        raise SmokeFailure("Phase 5 final support history did not match persisted transitions")
+    ok("Phase 5 support conflict/isolation/history and analytics replay/redaction")
+
+    if payer_email is None or payer_password is None:
+        print("SKIP payer credentialed Phase 5 lifecycle (credentials not supplied)")
+    else:
+        payer_tokens = login(base_url, payer_email, payer_password)
+        payer_access = payer_tokens["access_token"]
+        payer_lifecycle_id = (
+            f"phase5-payer-{int(time.time())}-{uuid.uuid4().hex[:8]}"
+        )
+        payer_support_key = f"payer-support-{payer_lifecycle_id}"
+        payer_support_payload = {
+            "request_type": "support",
+            "subject": "Synthetic payer workspace support",
+            "message": "Verify the persisted payer account support lifecycle.",
+        }
+        payer_created = request_json(
+            base_url,
+            "POST",
+            "/api/v1/support-requests",
+            token=payer_access,
+            payload=payer_support_payload,
+            additional_headers={"Idempotency-Key": payer_support_key},
+            expected_status=201,
+        )
+        assert payer_created.body is not None
+        payer_request_id = payer_created.body.get("request_id")
+        payer_reference = payer_created.body.get("reference")
+        if (
+            not payer_request_id
+            or not payer_reference
+            or payer_created.body.get("status") != "queued"
+            or payer_created.body.get("replayed") is not False
+        ):
+            raise SmokeFailure("Payer support submission did not persist a receipt")
+        payer_replay = request_json(
+            base_url,
+            "POST",
+            "/api/v1/support-requests",
+            token=payer_access,
+            payload=payer_support_payload,
+            additional_headers={"Idempotency-Key": payer_support_key},
+            expected_status=201,
+        )
+        if (
+            payer_replay.body is None
+            or payer_replay.body.get("request_id") != payer_request_id
+            or payer_replay.body.get("replayed") is not True
+        ):
+            raise SmokeFailure("Payer support retry was not replay-safe")
+        payer_conflict = request_json(
+            base_url,
+            "POST",
+            "/api/v1/support-requests",
+            token=payer_access,
+            payload={
+                **payer_support_payload,
+                "subject": "Changed synthetic payer workspace support",
+            },
+            additional_headers={"Idempotency-Key": payer_support_key},
+            expected_status=409,
+        )
+        if (
+            payer_conflict.body is None
+            or payer_conflict.body.get("error", {}).get("code") != "conflict"
+        ):
+            raise SmokeFailure("Payer support changed-content replay was not rejected")
+        payer_list = request_json(
+            base_url,
+            "GET",
+            "/api/v1/support-requests",
+            token=payer_access,
+        )
+        assert payer_list.body is not None
+        if payer_reference not in {
+            item.get("reference") for item in payer_list.body.get("items", [])
+        }:
+            raise SmokeFailure("Payer support receipt was absent from own history")
+        payer_detail = request_json(
+            base_url,
+            "GET",
+            f"/api/v1/support-requests/{payer_request_id}",
+            token=payer_access,
+        )
+        if (
+            payer_detail.body is None
+            or payer_detail.body.get("reference") != payer_reference
+            or payer_detail.body.get("status") != "queued"
+        ):
+            raise SmokeFailure("Payer support detail did not match its receipt")
+        for role_label, role_token in (
+            ("patient", patient_access),
+            ("doctor", doctor_access),
+        ):
+            denied = request_json(
+                base_url,
+                "GET",
+                f"/api/v1/support-requests/{payer_request_id}",
+                token=role_token,
+                expected_status=404,
+            )
+            if (
+                denied.body is None
+                or denied.body.get("error", {}).get("code") != "not_found"
+            ):
+                raise SmokeFailure(
+                    f"{role_label} cross-role payer support read was not neutral"
+                )
+        payer_analytics = request_json(
+            base_url,
+            "POST",
+            "/api/v1/product-events",
+            token=payer_access,
+            payload={
+                "event_name": "journey_completed",
+                "deduplication_key": f"payer-analytics-{payer_lifecycle_id}",
+                "dimensions": {
+                    "journey_code": "account_support",
+                    "surface_code": "account",
+                    "outcome": "completed",
+                    "latency_bucket": "not_measured",
+                    "locale": "en",
+                    "platform": "web",
+                    "layout": "desktop",
+                },
+            },
+            expected_status=202,
+        )
+        if (
+            payer_analytics.body is None
+            or payer_analytics.body.get("accepted") is not True
+            or payer_analytics.body.get("persisted") is not True
+        ):
+            raise SmokeFailure("Payer content-free analytics event was not persisted")
+        payer_withdrawn = request_json(
+            base_url,
+            "POST",
+            f"/api/v1/support-requests/{payer_request_id}/withdraw",
+            token=payer_access,
+            payload={"expected_version": 1},
+            additional_headers={
+                "Idempotency-Key": f"payer-withdraw-{payer_lifecycle_id}"
+            },
+        )
+        if (
+            payer_withdrawn.body is None
+            or payer_withdrawn.body.get("status") != "cancelled"
+        ):
+            raise SmokeFailure("Payer support cleanup withdrawal did not persist")
+        ok("payer credentialed Phase 5 support/isolation/analytics lifecycle")
 
     patient_care = request_json(
         base_url,

@@ -4,7 +4,7 @@ Status: approved implementation architecture
 
 Owner: Harry Cao
 
-Last updated: 2026-07-25
+Last updated: 2026-07-30
 
 Applies to: patient, doctor, and authorized payer-reviewer AI workflows
 Initial model provider: DeepSeek through a provider-neutral server adapter
@@ -173,8 +173,6 @@ is made in Slice E.
 - reviewed and rights-cleared live China pricing-reference and
   utilization-rule release content;
 - formal claim and immutable claim-line revisions;
-- deterministic comparison of an immutable baseline against delivered/submitted
-  facts and its role-filtered public presentation;
 - live hospital, payer, eligibility, claim, payment, denial, or appeal
   integration; and
 - authorization for real-patient or real-claim use.
@@ -762,3 +760,41 @@ This architecture does not authorize:
 - unrestricted web retrieval;
 - real-patient or real-claim provider transmission; or
 - public production activation.
+
+## 19. Phase 6 notification authority boundary
+
+Notification scheduling, missing-field checks, cost variance warnings,
+allocation checks, payer transitions, recipient authorization, deep-link
+resolution, suppression, and retry are deterministic application functions.
+DeepSeek is not invoked to decide whether a notification exists, who receives
+it, how severe it is, whether a payer action is valid, or whether care should
+change.
+
+An AI-derived artifact may become a source fact only after its purpose-specific
+schema, validator, release, and human-review gates have already produced an
+authorized persisted record. The notification then references a generic
+allow-listed event template and rechecks the authoritative record. Provider
+payloads, analytics, logs, and deduplication keys never receive prompt text,
+generated prose, medical content, identity, or confidential payer material.
+
+## 20. Phase 7 controlled-staging release result
+
+Slice D, Slice F, chatbot generation, and imaging remain four independent
+purposes. Phase 7 proved governed activation, product-path use, kill-switch
+disablement, and exact-predecessor recovery for Slice D and Slice F; chatbot v1
+was activated through its own release and then killed with its active pointer
+cleared. No purpose borrowed another purpose's checksums, evaluation, active
+pointer, fallback, or evidence.
+
+The selected DeepSeek V4 endpoint is text-only according to current primary
+documentation and rejected a bounded genuine synthetic image-input probe.
+Imaging release registration therefore remains fail-closed. This is a provider
+capability result, not permission to label a text request as multimodal or to
+substitute a different provider.
+
+Final controlled-staging readiness has every generative purpose disabled.
+Health exposes only content-free environment, schema, deployment identity,
+purpose readiness/release version, imaging capability category, worker state,
+and channel readiness. Provider prompts/responses, clinical content, imaging
+content, identities, message bodies, device endpoints, receipts, credentials,
+and tokens are excluded.

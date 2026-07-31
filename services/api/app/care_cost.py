@@ -27,8 +27,10 @@ from app.models import (
     PayerRequest,
     PayerRequestLine,
     PayerReview,
+    User,
     UserRole,
 )
+from app.notification_service import create_notification
 from app.payer_scope import require_active_payer_membership
 from app.schemas import ClinicalFinancialInput
 
@@ -1027,6 +1029,28 @@ def create_payer_request(
                 patient_responsibility_minor=item.patient_responsibility_minor,
             )
         )
+    payer_memberships = db.scalars(
+        select(PayerMembership).where(
+            PayerMembership.payer_organization_id == organization.id,
+            PayerMembership.status == "active",
+        )
+    ).all()
+    for membership in payer_memberships:
+        payer_user = db.get(User, membership.user_id)
+        if payer_user is None:
+            continue
+        create_notification(
+            db,
+            recipient=payer_user,
+            event_type="payer_request_submitted",
+            source_resource_id=payer_request.id,
+            scheduled_for=datetime.now(UTC),
+            patient_id=patient_id,
+            clinical_event_id=event_id,
+            payer_organization_id=organization.id,
+            payer_request_id=payer_request.id,
+            occurrence_key=f"submitted:v{payer_request.version}",
+        )
     _audit(
         db,
         user,
@@ -1138,6 +1162,28 @@ def append_doctor_payer_response(
         doctor=user.doctor_profile,
     )
     payer_request.doctor_responses.append(response)
+    payer_memberships = db.scalars(
+        select(PayerMembership).where(
+            PayerMembership.payer_organization_id == payer_request.payer_organization_id,
+            PayerMembership.status == "active",
+        )
+    ).all()
+    for membership in payer_memberships:
+        payer_user = db.get(User, membership.user_id)
+        if payer_user is None:
+            continue
+        create_notification(
+            db,
+            recipient=payer_user,
+            event_type="payer_doctor_response_added",
+            source_resource_id=payer_request.id,
+            scheduled_for=datetime.now(UTC),
+            patient_id=payer_request.patient_id,
+            clinical_event_id=payer_request.clinical_event_id,
+            payer_organization_id=payer_request.payer_organization_id,
+            payer_request_id=payer_request.id,
+            occurrence_key=f"doctor-response:v{payer_request.version}",
+        )
     _audit(
         db,
         user,
@@ -1342,6 +1388,31 @@ def review_payer_request(
     )
     payer_request.status = next_status
     payer_request.reviewed_at = datetime.now(UTC)
+    doctor_user = db.get(User, payer_request.doctor.user_id)
+    patient_user = db.get(User, payer_request.patient.user_id)
+    for recipient in (doctor_user, patient_user):
+        if recipient is None:
+            continue
+        create_notification(
+            db,
+            recipient=recipient,
+            event_type=(
+                "payer_request_closed"
+                if next_status == "closed"
+                else "payer_final_outcome"
+                if next_status in {"accepted", "rejected"}
+                else "payer_clarification_requested"
+                if next_status == "clarification_requested" and recipient.role.value == "doctor"
+                else "payer_manual_review_transition"
+            ),
+            source_resource_id=payer_request.id,
+            scheduled_for=payer_request.reviewed_at,
+            patient_id=payer_request.patient_id,
+            clinical_event_id=payer_request.clinical_event_id,
+            payer_organization_id=payer_request.payer_organization_id,
+            payer_request_id=payer_request.id,
+            occurrence_key=f"{next_status}:v{payer_request.version}",
+        )
     _audit(
         db,
         user,

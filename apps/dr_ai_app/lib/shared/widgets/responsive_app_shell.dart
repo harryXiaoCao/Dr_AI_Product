@@ -1,5 +1,6 @@
 import 'package:dr_ai_app/app/routing/app_role.dart';
 import 'package:dr_ai_app/design_system/dr_ai_tokens.dart';
+import 'package:dr_ai_app/features/notifications/application/notification_providers.dart';
 import 'package:dr_ai_app/l10n/l10n.dart';
 import 'package:dr_ai_app/shared/widgets/brand_mark.dart';
 import 'package:flutter/material.dart';
@@ -96,6 +97,8 @@ class ResponsiveAppShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final width = MediaQuery.sizeOf(context).width;
+    final unreadCount =
+        ref.watch(notificationInboxProvider).value?.unreadCount ?? 0;
     final destinations = switch (role) {
       AppRole.doctor => _doctorDestinations(
         context,
@@ -108,7 +111,7 @@ class ResponsiveAppShell extends ConsumerWidget {
 
     if (width < DrAiBreakpoints.mobile) {
       return Scaffold(
-        appBar: _appBar(context),
+        appBar: _appBar(context, unreadCount),
         body: child,
         bottomNavigationBar: DecoratedBox(
           decoration: const BoxDecoration(
@@ -179,7 +182,7 @@ class ResponsiveAppShell extends ConsumerWidget {
               Expanded(
                 child: Column(
                   children: <Widget>[
-                    SizedBox(height: 64, child: _header(context)),
+                    SizedBox(height: 64, child: _header(context, unreadCount)),
                     Expanded(child: child),
                   ],
                 ),
@@ -194,7 +197,10 @@ class ResponsiveAppShell extends ConsumerWidget {
       body: SafeArea(
         child: Column(
           children: <Widget>[
-            SizedBox(height: 70, child: _doctorDesktopHeader(context)),
+            SizedBox(
+              height: 70,
+              child: _doctorDesktopHeader(context, unreadCount),
+            ),
             Expanded(child: child),
           ],
         ),
@@ -202,7 +208,7 @@ class ResponsiveAppShell extends ConsumerWidget {
     );
   }
 
-  AppBar _appBar(BuildContext context) {
+  AppBar _appBar(BuildContext context, int unreadCount) {
     return AppBar(
       backgroundColor: DrAiColors.white,
       surfaceTintColor: Colors.transparent,
@@ -220,6 +226,7 @@ class ResponsiveAppShell extends ConsumerWidget {
           fontWeight: FontWeight.w800,
         ),
       ),
+      actions: <Widget>[_notificationButton(context, unreadCount)],
       bottom: const PreferredSize(
         preferredSize: Size.fromHeight(1),
         child: Divider(height: 1, color: DrAiColors.outline),
@@ -227,7 +234,7 @@ class ResponsiveAppShell extends ConsumerWidget {
     );
   }
 
-  Widget _header(BuildContext context) {
+  Widget _header(BuildContext context, int unreadCount) {
     return ColoredBox(
       color: DrAiColors.white,
       child: LayoutBuilder(
@@ -246,6 +253,7 @@ class ResponsiveAppShell extends ConsumerWidget {
                   ),
                 ],
                 const Spacer(),
+                _notificationButton(context, unreadCount),
                 if (!compact) ...<Widget>[
                   const SizedBox(width: DrAiSpacing.md),
                   Flexible(
@@ -269,7 +277,7 @@ class ResponsiveAppShell extends ConsumerWidget {
     );
   }
 
-  Widget _doctorDesktopHeader(BuildContext context) {
+  Widget _doctorDesktopHeader(BuildContext context, int unreadCount) {
     return DecoratedBox(
       decoration: const BoxDecoration(
         color: DrAiColors.white,
@@ -306,6 +314,7 @@ class ResponsiveAppShell extends ConsumerWidget {
               ),
             ),
             const SizedBox(width: DrAiSpacing.md),
+            _notificationButton(context, unreadCount),
           ],
         ),
       ),
@@ -334,6 +343,15 @@ class ResponsiveAppShell extends ConsumerWidget {
                   : FontWeight.w500,
             );
       }),
+    );
+  }
+
+  Widget _notificationButton(BuildContext context, int unreadCount) {
+    return IconButton(
+      key: Key('${role.wireValue}-notification-button'),
+      tooltip: _copy(context, 'Notifications', '通知'),
+      onPressed: () => context.go('/${role.wireValue}/notifications'),
+      icon: _notificationIcon(unreadCount),
     );
   }
 
@@ -386,6 +404,17 @@ class ResponsiveAppShell extends ConsumerWidget {
         context.go('/patient');
     }
   }
+}
+
+Widget _notificationIcon(int unreadCount, {bool selected = false}) {
+  final icon = Icon(
+    selected ? Icons.notifications : Icons.notifications_outlined,
+  );
+  if (unreadCount <= 0) return icon;
+  return Badge(
+    label: Text(unreadCount > 99 ? '99+' : '$unreadCount'),
+    child: icon,
+  );
 }
 
 String _copy(BuildContext context, String en, String zh) {

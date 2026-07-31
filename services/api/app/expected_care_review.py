@@ -29,6 +29,7 @@ from app.care_reference_integration import (
     build_care_reference_scope_key,
     resolve_active_care_reference_bundle,
 )
+from app.config import get_settings
 from app.cost_estimation_facts import serialize_cost_fact_snapshot
 from app.dependencies import CurrentUser, DbSession
 from app.errors import ApiError
@@ -36,7 +37,15 @@ from app.expected_care_baseline import (
     PUBLISHED_BASELINE_STATE,
     ensure_validated_baseline,
 )
-from app.expected_care_candidates import _checksum, _lineage, _release_rows, _validate_candidate
+from app.expected_care_candidate_governance import CandidateReleaseTransitionError
+from app.expected_care_candidates import (
+    ExpectedCareCandidateConflict,
+    _checksum,
+    _lineage,
+    _release_rows,
+    _validate_candidate,
+    generate_expected_care_candidate,
+)
 from app.models import (
     AuditEvent,
     CareRelationship,
@@ -95,6 +104,27 @@ class ClinicianResponseInput(BaseModel):
                 "Disagreement and clinical exceptions require an attributable rationale."
             )
         return self
+
+
+class ExpectedCareCandidateGenerationInput(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    scenario_key: str = Field(min_length=2, max_length=160)
+    care_plan_key: str = Field(min_length=2, max_length=160)
+    pricing_reference_key: str = Field(min_length=2, max_length=160)
+    utilization_rule_key: str = Field(min_length=2, max_length=160)
+    scope_key: str = Field(min_length=4, max_length=240)
+    evaluated_on: date
+    reference_date: date
+    jurisdiction: str = Field(min_length=2, max_length=40)
+    region: str = Field(min_length=2, max_length=120)
+    encounter_type: str = Field(min_length=2, max_length=120)
+    facility_ownership: str = Field(min_length=2, max_length=80)
+    facility_level: str = Field(min_length=2, max_length=80)
+    currency: str = Field(pattern=r"^[A-Z]{3}$")
+    patient_age: int | None = Field(default=None, ge=0, le=130)
+    payer_request_id: uuid.UUID | None = None
+    predecessor_request_id: uuid.UUID | None = None
 
 
 def _not_found() -> ApiError:
@@ -557,6 +587,14 @@ def _candidate_public(
         "missing_information": candidate.get("missing_information", []),
         "limitations": candidate.get("confidence_limitations", []),
         "items": candidate.get("items", []),
+        "purpose_release": (
+            {
+                "release_id": request.ai_purpose_release_id,
+                "payload_checksum_sha256": request.ai_purpose_release_checksum_sha256,
+            }
+            if request.ai_purpose_release_id is not None
+            else None
+        ),
         "references": [
             {
                 **item,
@@ -583,6 +621,70 @@ def _candidate_public(
             fact_snapshot,
             role="doctor",
         ),
+    }
+
+
+@router.post("/patients/{patient_id}/clinical-events/{event_id}/expected-care/candidates")
+def generate_expected_care_baseline_candidate(
+    patient_id: uuid.UUID,
+    event_id: uuid.UUID,
+    payload: ExpectedCareCandidateGenerationInput,
+    db: DbSession,
+    user: CurrentUser,
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+) -> dict[str, object]:
+    if user.role != UserRole.doctor:
+        raise _not_found()
+    if idempotency_key is None or not _KEY.fullmatch(idempotency_key):
+        raise ApiError(
+            422,
+            "validation_failed",
+            "A valid Idempotency-Key header is required.",
+        )
+    _doctor_scope(db, user_id=user.id, patient_id=patient_id, event_id=event_id)
+    try:
+        generated = generate_expected_care_candidate(
+            db,
+            actor_user_id=user.id,
+            patient_id=patient_id,
+            clinical_event_id=event_id,
+            selection=ActiveReleaseSelection(
+                scenario_key=payload.scenario_key,
+                care_plan_key=payload.care_plan_key,
+                pricing_reference_key=payload.pricing_reference_key,
+                utilization_rule_key=payload.utilization_rule_key,
+                scope_key=payload.scope_key,
+            ),
+            request=EvaluationRequest(
+                context=EvaluationContext(
+                    evaluated_on=payload.evaluated_on,
+                    reference_date=payload.reference_date,
+                    jurisdiction=payload.jurisdiction,
+                    region=payload.region,
+                    encounter_type=payload.encounter_type,
+                    facility_ownership=payload.facility_ownership,
+                    facility_level=payload.facility_level,
+                    currency=payload.currency,
+                    patient_age=payload.patient_age,
+                )
+            ),
+            idempotency_key=idempotency_key,
+            settings=get_settings(),
+            payer_request_id=payload.payer_request_id,
+            predecessor_request_id=payload.predecessor_request_id,
+        )
+    except CandidateReleaseTransitionError as exc:
+        raise ApiError(
+            503,
+            "ai_purpose_unavailable",
+            "The expected-care candidate purpose is not available.",
+        ) from exc
+    except ExpectedCareCandidateConflict as exc:
+        raise _conflict(str(exc)) from exc
+    db.commit()
+    return {
+        "candidate": _candidate_public(db, generated.request, generated.result),
+        "idempotent_replay": generated.idempotent_replay,
     }
 
 

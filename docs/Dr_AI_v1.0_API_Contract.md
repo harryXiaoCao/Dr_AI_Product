@@ -22,9 +22,11 @@ workflow clarification now adds persisted Clinical Event/Care Episode records,
 doctor-owned create/update, patient-own read aliases, nullable event links on
 core Phase 2 resources, event-linked care-bundle readback, neutral denials, and
 metadata-only audit events. Production v1.0 still needs the reserved
-specialist, administrator, admin support-queue handling, external notification
-delivery, and audit-read workflows before those surfaces can be treated as
-available. Phase 3 Slice 1 freezes chatbot governance and shared contracts.
+specialist, administrator, general-purpose support-queue UI/API, external
+audit-read workflows before those product surfaces
+can be treated as available. Phase 5 provides only a tightly scoped non-public
+synthetic operations command for attributable request transitions. Phase 3
+Slice 1 freezes chatbot governance and shared contracts.
 Slice 3 adds a doctor-only authoritative-link catalog route. Slice 4 adds
 release-specific doctor and patient retrieval endpoints while keeping the real
 WHO/NHC passage corpus inactive until rights and clinician-review approval.
@@ -35,9 +37,19 @@ coverage decisions, or AI utilization decisions. The 2026-07-25 Slices B/C
 add internal provider-neutral reference persistence and a model-free
 deterministic evaluation service, but intentionally add no public HTTP route.
 Slice D adds a separate internal schema-constrained expected-care candidate
-service and immutable persistence, also without a public HTTP route.
+service and immutable persistence. Phase 7 adds the doctor-authorized
+release-bound candidate-generation route while preserving the internal
+deterministic admission/comparison boundary. Phase 5
+migration `0052` completes authenticated support, feedback, and
+deletion-request replay, timeline, retention-boundary, and withdrawal behavior
+for patient, doctor, and payer users and adds content-free product-event intake.
 
-Contract version: `1.1.0`
+Phase 6 migration `0053` replaces the patient-only notification shell with one
+canonical patient/doctor/payer inbox, preferences, endpoint readiness metadata,
+outbox, append-only delivery attempts/events, secure open resolution, and
+fail-closed external adapters.
+
+Contract version: `1.4.0`
 
 Recorded: 2026-07-04; authentication models frozen: 2026-07-04; Week 2 Days
 6-7 reads added: 2026-07-05; Week 2 Days 8-9 demo upload and simulated
@@ -62,7 +74,9 @@ Episode backend model, endpoints, resource links, and care-bundle readback
 added: 2026-07-08; payer identity and the first three-party care-and-cost
 workflow added: 2026-07-23; canonical Clinical Service and imaging-procedure
 financial workflow added: 2026-07-24; internal governed care-reference
-persistence and deterministic engine added without HTTP routes: 2026-07-25
+persistence and deterministic engine added without HTTP routes: 2026-07-25;
+Phase 5 support lifecycle and product analytics added: 2026-07-28; Phase 6
+canonical notification lifecycle added: 2026-07-30
 
 This contract preserves the public HTTP boundary implemented for the historical
 Dr. AI v1.0.0-beta.1 demo and records the intended shape of production v1.0
@@ -70,7 +84,7 @@ extensions. The current backend exposes the authentication, identity,
 assigned-patient, synthetic dashboard, Week 2 patient-care/upload/assessment
 routes, Day 10 validation polish, Week 3 Days 11-12 recovery-plan/task routes,
 and Week 3 Days 13-14 educational-chat and consultation request/readback
-routes identified below. Later real notification delivery, specialist response
+routes identified below. External provider activation/target evidence, specialist response
 workflows, admin-managed support queues, administrator audit reads, and other
 administrator workflows remain reserved production gaps and must not be
 inferred to be available.
@@ -95,14 +109,17 @@ beta contract is implemented.
   to the unauthorized state instead of doctor UI.
 - `GET /api/v1/audit-events` is reserved for an administrator-only production
   audit-search workflow; no current route or admin UI implements it.
-- Account deletion, feedback, and support submissions now persist to a backend
-  queue for authenticated doctor/patient users with requester-scoped status,
-  authorization, and audit metadata. Admin/support handling, queue assignment,
-  resolution, and UI remain reserved production gaps.
-- Raw Tencent COS file-transfer verification, real notification delivery,
-  billing, appointments, clinic operations, analytics, and production
-  monitoring remain outside the implemented API boundary unless explicitly
-  added in later production phases.
+- Account deletion, feedback, and support submissions persist for authenticated
+  doctor, patient, and payer users with requester-scoped replay, timeline,
+  withdrawal, authorization, and audit metadata. A non-public
+  local/test/staging operations command can apply attributable start-review,
+  resolve, failure, and retry transitions using an authorized synthetic actor.
+  General admin/support assignment UI/API and deletion execution remain
+  reserved gaps.
+- Raw Tencent COS transfer verification, external provider activation, billing,
+  appointments, clinic operations, analytics dashboards, and production
+  monitoring remain outside the implemented API boundary. Phase 5 includes
+  only content-free product-event intake.
 
 ## Transport and representation
 
@@ -322,9 +339,11 @@ Response:
 | `POST` | `/api/v1/private-chats/{contact_id}/messages` | Doctor or patient | Active mutual care relationship | Send a text-only private message |
 | `GET` | `/api/v1/consultations` | Authorized cases | Own requests | List consultation requests |
 | `POST` | `/api/v1/consultations` | Assigned patient | No | Request asynchronous specialist review |
-| `POST` | `/api/v1/support-requests` | Own account | Own account | Submit authenticated support, deletion, or feedback request |
-| `GET` | `/api/v1/support-requests` | Own requests | Own requests | Read own support request statuses |
-| `GET` | `/api/v1/support-requests/{request_id}` | Own request | Own request | Read one own support request status |
+| `POST` | `/api/v1/support-requests` | Own account | Own account | Patient/doctor/payer replay-safe support, deletion, or feedback submission |
+| `GET` | `/api/v1/support-requests` | Own requests | Own requests | Patient/doctor/payer requester-scoped status and timeline readback |
+| `GET` | `/api/v1/support-requests/{request_id}` | Own request | Own request | Read one requester-scoped request and timeline |
+| `POST` | `/api/v1/support-requests/{request_id}/withdraw` | Own request | Own request | Withdraw one eligible own request with version and idempotency checks |
+| `POST` | `/api/v1/product-events` | Own role | Own role | Submit one allow-listed, identity-free, best-effort product event |
 | `GET` | `/api/v1/doctor/resources` | Doctor | No | Search catalog-visible official-link metadata |
 | `GET` | `/api/v1/doctor/resources/{source_id}` | Doctor | No | Read governed source details and display-approved original sections |
 | `POST` | `/api/v1/retrieval/doctor/resources/search` | Doctor | No | Search active doctor-approved evidence release |
@@ -376,12 +395,14 @@ current patient's own view and is distinct from doctor-scoped `/patients`.
 `POST /api/v1/chat/threads/{thread_id}/messages`,
 `GET /api/v1/consultations`, `POST /api/v1/consultations`,
 `POST /api/v1/support-requests`, `GET /api/v1/support-requests`,
-`GET /api/v1/support-requests/{request_id}`, `GET /api/v1/medications`,
+`GET /api/v1/support-requests/{request_id}`,
+`POST /api/v1/support-requests/{request_id}/withdraw`,
+`POST /api/v1/product-events`, `GET /api/v1/medications`,
 `GET /api/v1/reminders`, `GET /api/v1/patient/me/notifications`,
 `GET /api/v1/patient/me/imaging`, `GET /api/v1/patient/me/imaging/{asset_id}`,
 and `GET /api/v1/me/dashboard` are also implemented. Administrator audit
 reads, specialist response workflows, admin-managed support/deletion/feedback
-handling, external notification delivery, raw file transfer verification
+handling, external provider delivery, raw file transfer verification
 against Tencent COS, and real clinical workflows remain unavailable.
 
 ## Phase 2 patient and doctor core
@@ -901,6 +922,7 @@ reuse with different content returns `409 conflict`.
 
 ### Doctor
 
+- `POST /api/v1/patients/{patient_id}/clinical-events/{event_id}/expected-care/candidates`
 - `GET /api/v1/patients/{patient_id}/clinical-events/{event_id}/expected-care/candidates`
 - `GET /api/v1/patients/{patient_id}/clinical-events/{event_id}/expected-care/candidates/{candidate_result_id}`
 - `GET /api/v1/patients/{patient_id}/clinical-events/{event_id}/expected-care/candidates/{candidate_result_id}/history`
@@ -927,6 +949,12 @@ patient-safe summary, and admitted item keys. Reviewer-only notes are
 doctor-only. Every accepted response re-runs deterministic validation, but no
 response can alter, reject, unpublish, or hide the baseline.
 
+Candidate generation requires an `Idempotency-Key` and an active compatible
+Slice D purpose release. The persisted request records the exact governed
+release ID and checksum. Disabled, inactive, stale, superseded,
+checksum-drifted, or contract-incompatible purposes fail closed with the fixed
+`ai_purpose_unavailable` category; they do not fall back to an ungoverned model.
+
 ### Patient and payer
 
 - `GET /api/v1/patient/clinical-events/{event_id}/expected-care-envelope`
@@ -950,14 +978,19 @@ approval or automated reimbursement action.
 
 ## Authenticated support request contract
 
-Phase 1 adds a minimal backend submission/status path for signed-in doctor and
-patient accounts only. It does not add public support submission, production
-support UI integration, admin queue assignment, admin queue resolution, account
-deletion execution, or specialist/admin support workflows.
+Phase 5 completes the authenticated requester lifecycle for signed-in patient,
+doctor, and payer accounts. It does not add a specialist/admin product surface,
+admin queue assignment, account-deletion execution, or public unauthenticated
+message submission.
 
 ### Submit support, deletion, or feedback request
 
 `POST /api/v1/support-requests`
+
+Requires an `Idempotency-Key` header containing 12-120 allow-listed
+characters. Repeating the same key and content returns the original request
+with `replayed: true`; reusing the key for different content returns
+`409 conflict`.
 
 ```json
 {
@@ -969,13 +1002,15 @@ deletion execution, or specialist/admin support workflows.
 
 Rules:
 
-- Only authenticated `doctor` and `patient` users can submit requests in Phase
-  1. `specialist`, `admin`, unsupported, and unauthenticated callers fail
+- Only authenticated `doctor`, `patient`, and `payer` users can submit
+  requests. `specialist`, `admin`, unsupported, and unauthenticated callers fail
   closed.
 - `request_type` is `support`, `deletion`, or `feedback`.
 - The request status starts as `queued`.
-- Patients' requests are linked to their own `patient_id`; doctor requests are
-  account-scoped and not patient-scoped.
+- Patients' requests are linked to their own `patient_id`; doctor and payer
+  requests are account-scoped and not patient-scoped. Payer submissions do not
+  modify organization, membership, jurisdiction, scope, verification, or
+  authorization facts.
 - The message must not include contact details, clinical details, medical
   records, imaging/scan content, medication-change requests, or real patient
   data. Unsafe content returns `422 validation_failed`.
@@ -984,15 +1019,36 @@ Rules:
   synthetic-data flag.
 - Audit events are metadata-only. They include request type, status,
   requester role, and redaction flags, but not the request subject or message.
+- Each request has a public reference, optimistic version, content checksum,
+  and append-only requester-visible timeline.
+- A deletion request is a review request. It does not immediately erase the
+  account, clinical or financial records, immutable evidence, or audit-retained
+  history.
 
 Response:
 
 ```json
 {
   "request_id": "support-request-opaque-uuid",
+  "reference": "REQ-7A18C25F03A1",
   "request_type": "deletion",
   "status": "queued",
+  "version": 1,
   "subject": "Synthetic account deletion review",
+  "retention_boundary_code": "regulated_and_audit_retention_applies",
+  "deletion_effect_code": "request_only_no_immediate_deletion",
+  "available_actions": ["withdraw"],
+  "timeline": [
+    {
+      "sequence": 1,
+      "event_type": "submitted",
+      "status": "queued",
+      "actor_kind": "requester",
+      "summary_code": "request_submitted",
+      "occurred_at": "2026-07-28T09:30:00Z"
+    }
+  ],
+  "replayed": false,
   "created_at": "2026-07-07T09:30:00Z",
   "updated_at": "2026-07-07T09:30:00Z",
   "safety_label": "Synthetic demonstration data only. Do not enter real patient data."
@@ -1005,10 +1061,110 @@ Response:
 
 `GET /api/v1/support-requests/{request_id}`
 
-Doctors and patients can read only their own submitted request statuses.
+Patients, doctors, and payers can read only their own submitted request
+statuses.
 Cross-requester probes return neutral `404 not_found`. Status reads create
-metadata-only audit events. Admin-managed queue search, assignment, resolution,
-policy review, and deletion execution remain Phase 5 production gaps.
+metadata-only audit events. Timeline output uses role-safe actor kinds and
+summary codes rather than internal IDs, checksums, redacted bodies, or
+confidential notes.
+
+### Withdraw an eligible request
+
+`POST /api/v1/support-requests/{request_id}/withdraw`
+
+Requires `Idempotency-Key` and:
+
+```json
+{
+  "expected_version": 1
+}
+```
+
+Only the requester may withdraw a `queued` or `reviewing` request. The stored
+status becomes `cancelled`, the version increments, and an append-only
+`request_withdrawn_by_requester` event becomes visible. Exact replay is safe.
+A stale version, changed replay content, or final request returns
+`409 conflict`. Withdrawal stops the pending request; it does not erase its
+audit evidence or records covered by the displayed retention boundary.
+
+## Content-free product analytics contract
+
+`POST /api/v1/product-events` returns `202 Accepted`.
+
+```json
+{
+  "event_name": "journey_completed",
+  "deduplication_key": "patient-support-complete-001",
+  "dimensions": {
+    "journey_code": "account_support",
+    "surface_code": "account",
+    "outcome": "completed",
+    "failure_category": null,
+    "latency_bucket": "250_999ms",
+    "locale": "zh-Hans",
+    "platform": "web",
+    "layout": "mobile"
+  }
+}
+```
+
+The server derives role and environment. Clients cannot submit or override
+them. Every event name and dimension is selected from a closed allow-list.
+Role-incompatible journeys, event/outcome mismatches, journey/surface
+mismatches, and notification events outside the notification-inbox journey
+fail validation.
+
+The stored v1 row contains no actor, patient, clinic, resource identifier, free
+clinical text, message body, imaging content, reviewer note, direct contact
+information, or secret. A database constraint requires all legacy
+identity/resource columns to remain null for `content_free_product_v1`.
+Metadata contains only the validated dimensions shown above.
+
+The client deduplication key is validated and immediately SHA-256 hashed. Only
+the digest is used for locking, lookup, uniqueness, and persistence; the raw
+key is never stored. The digest is unique within the server-owned environment.
+Exact replay returns `202` with `replayed: true`; changed content returns
+`409 conflict`. Normal response:
+
+```json
+{
+  "accepted": true,
+  "persisted": true,
+  "replayed": false
+}
+```
+
+If analytics storage is unavailable, this independent best-effort call still
+returns `202` with `persisted: false`; no user workflow depends on analytics
+success. This slice covers in-product journeys and existing notification-inbox
+interactions only. It does not add Phase 6 push delivery, device tokens,
+outbox processing, or scheduled notifications.
+
+## Non-public support operations
+
+Support-team/system transitions are deliberately not exposed as an admin,
+specialist, or general product route. The synthetic-stage operational command
+is:
+
+```bash
+uv run python -m scripts.transition_support_request \
+  --reference REQ-7A18C25F03A1 \
+  --action start_review \
+  --expected-version 1 \
+  --idempotency-key phase5-review-start-001 \
+  --actor-user-id 00000000-0000-0000-0000-000000000000
+```
+
+The actor must be an active backend `admin` identity, but the reserved admin
+role still cannot register through or inherit the patient, doctor, or payer
+product UI/routes. The helper
+supports `queued -> reviewing -> resolved`, `reviewing -> failed`, and
+`failed -> queued`. It holds a row lock, checks the expected version, applies
+content-bound idempotency, appends a role-safe `status_changed` timeline event,
+and writes a metadata-only attributable audit event. Competing transitions
+from the same version serialize so exactly one succeeds. The command is
+disabled in production until a separate authorized operational boundary is
+approved.
 
 ## Phase 1 production foundation tables
 
@@ -1350,8 +1506,9 @@ Rules:
   plans for a patient.
 - Patients cannot create, edit, or activate plans.
 - Each plan must include medication, exercise, diet, and follow-up tasks.
-- Medication tasks require a `notification_time` label so Flutter can schedule
-  the local demo notification shell.
+- Medication tasks require a `notification_time` label so the server-owned
+  notification lifecycle can derive a bounded schedule without changing the
+  clinical plan.
 - Cross-patient and wrong-role attempts return neutral `404 not_found`.
 - Audit metadata records status, task count, task categories, and affected IDs;
   it must not copy plan instructions or task details.
@@ -1840,3 +1997,33 @@ unsuitable-release correction are server-operator commands. They require
 advisory locking, exact expected versions, content-bound idempotency,
 checksum/contract verification, mandatory executable gates, and an explicit
 rollback target, and they append only content-free transition evidence.
+
+## Phase 6 canonical notification API
+
+All routes require an authenticated patient, doctor, or payer role. Payer
+notifications additionally bind the recipient to an active membership in the
+exact request organization. Wrong-recipient and revoked-scope reads return the
+neutral resource boundary.
+
+| Method | Route | Contract |
+|---|---|---|
+| `GET` | `/api/v1/notifications` | Canonical inbox, persisted unread count, bounded category/status filters, generated timestamp |
+| `GET/PUT` | `/api/v1/notification-preferences` | Role-scoped category, external-channel, quiet-hours, locale, time-zone, and preview preferences; PUT requires `Idempotency-Key` and `expected_version` |
+| `GET` | `/api/v1/notifications/readiness` | APNs, Alibaba Cloud EMAS, and Web Push readiness with bounded blocker codes |
+| `GET/POST/DELETE` | `/api/v1/notification-device-endpoints` | Endpoint readiness metadata and sign-out lifecycle; raw endpoints are never returned |
+| `POST` | `/api/v1/notifications/{id}/read` | Versioned, idempotent read transition |
+| `POST` | `/api/v1/notifications/{id}/unread` | Versioned, idempotent unread transition |
+| `POST` | `/api/v1/notifications/{id}/dismiss` | Versioned, idempotent dismissal where the contract permits it |
+| `POST` | `/api/v1/notifications/{id}/open` | Revalidates role, source actionability, care relationship, and exact payer organization/request before returning an allow-listed relative route |
+
+The server owns source-event mapping, recipient scope, content-free occurrence
+deduplication, scheduling, expiry, supersession, and stale suppression. A
+scheduled work item and a delivery attempt are not duplicate notification
+records. Provider exceptions become bounded attempt results; no raw payload,
+token, receipt, patient/resource identity, clinical content, or payer note is
+returned or written to product analytics.
+
+External readiness is deliberately false in the current local and controlled
+staging configuration. The API therefore proves in-product persistence and
+fail-closed behavior; it does not claim provider acceptance or user-visible
+delivery.

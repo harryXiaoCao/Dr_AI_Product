@@ -699,6 +699,30 @@ def test_timeout_has_one_bounded_retry_and_safe_fallback(client, settings, monke
     assert provider.calls == 2
 
 
+def test_quota_exhaustion_is_non_retrying_and_uses_safe_fallback(
+    client, settings, monkeypatch
+) -> None:
+    actor_id, patient_id, event_id = _connected_case(client, suffix="quota")
+    _enable(settings, monkeypatch)
+    provider = StubProvider([ExpectedCareProviderError("quota", retryable=False)])
+    with SessionLocal() as session:
+        install_synthetic_care_reference_bundle(session)
+        generated = _generate(
+            session,
+            actor_id=actor_id,
+            patient_id=patient_id,
+            event_id=event_id,
+            settings=settings,
+            provider=provider,
+            key="candidate-quota-001",
+        )
+        session.commit()
+    assert generated.request.lifecycle_state == "provider_unavailable"
+    assert generated.request.validation_reason_codes_json == ["quota"]
+    assert generated.result.candidate_json["artifact_type"] == "fixed_safe_fallback"
+    assert provider.calls == 1
+
+
 def test_budget_exhaustion_prevents_provider_call(client, settings, monkeypatch) -> None:
     actor_id, patient_id, event_id = _connected_case(client, suffix="budget")
     _enable(settings, monkeypatch)

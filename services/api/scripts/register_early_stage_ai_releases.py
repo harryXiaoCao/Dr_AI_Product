@@ -44,7 +44,12 @@ from app.models import (
     GovernedCareReleaseReview,
 )
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
+API_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = (
+    API_ROOT.parents[1]
+    if API_ROOT.name == "api" and API_ROOT.parent.name == "services"
+    else API_ROOT
+)
 F_SUITE = REPO_ROOT / "evaluation/expected_care/frozen_suite.v1.json"
 F_RESULT = REPO_ROOT / "evaluation/expected_care/results/20260726T141758Z.sanitized.json"
 D_SUITE = REPO_ROOT / "evaluation/expected_care_candidate/frozen_suite.v1.json"

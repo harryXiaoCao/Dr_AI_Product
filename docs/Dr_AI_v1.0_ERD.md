@@ -1,7 +1,7 @@
 # Dr. AI v1.0 Database ERD
 
-Status: implemented-schema map plus planned production-ready care-and-cost target
-Last updated: 2026-07-26
+Status: implemented-schema map through Phase 6 plus planned production-ready care-and-cost target
+Last updated: 2026-07-30
 Implemented source: `services/api/app/models.py` and current Alembic migrations
 Planned source: `Dr_AI_Product_Requirements_Document_v1.0.md` and
 `docs/Dr_AI_v1.0_Implementation_Plan.md`
@@ -661,6 +661,14 @@ erDiagram
     varchar_120 event_type
     varchar_80 resource_type "nullable"
     uuid resource_id "nullable"
+    varchar_40 role
+    varchar_40 environment
+    varchar_40 schema_version
+    varchar_64 deduplication_key "SHA-256 of client key"
+    varchar_64 event_checksum "nullable"
+    varchar_40 outcome "nullable"
+    varchar_60 failure_category "nullable"
+    integer latency_ms "nullable"
     jsonb metadata_json
     datetime_tz occurred_at
   }
@@ -671,13 +679,34 @@ erDiagram
     uuid patient_id FK "nullable"
     varchar_40 request_type
     varchar_40 status
+    varchar_32 public_reference UK
+    varchar_120 idempotency_key "nullable"
+    varchar_64 request_checksum "nullable"
+    integer version
+    varchar_80 retention_boundary_code
     varchar_160 subject
     text body_redacted
     varchar_80 source
     uuid assigned_to_user_id FK "nullable"
     jsonb audit_metadata_json
+    datetime_tz withdrawn_at "nullable"
     datetime_tz created_at
     datetime_tz updated_at
+  }
+
+  SUPPORT_REQUEST_EVENTS {
+    uuid id PK
+    uuid support_request_id FK
+    integer sequence
+    varchar_60 event_type
+    varchar_40 from_status "nullable"
+    varchar_40 to_status
+    varchar_40 actor_kind
+    uuid actor_user_id FK "nullable"
+    varchar_80 public_summary_code
+    varchar_120 idempotency_key
+    varchar_64 request_checksum
+    datetime_tz created_at
   }
 
   USERS ||--o| DOCTOR_PROFILES : owns
@@ -767,6 +796,8 @@ erDiagram
   USERS ||--o{ SUPPORT_REQUESTS : requests
   USERS ||--o{ SUPPORT_REQUESTS : assigned_to
   PATIENT_PROFILES ||--o{ SUPPORT_REQUESTS : about
+  SUPPORT_REQUESTS ||--o{ SUPPORT_REQUEST_EVENTS : records
+  USERS ||--o{ SUPPORT_REQUEST_EVENTS : acts
 
   HOSPITALS ||--o{ CLINICS : contains
   HOSPITALS ||--o{ ROLE_ASSIGNMENTS : scopes
@@ -1494,8 +1525,14 @@ erDiagram
 - `invoices`, `payment_statuses`, and `revenue_summaries`: bounded billing and
   revenue foundation. These are not the source of truth for the new claim-line
   or payer-review workflow.
-- `analytics_events`: operational/product analytics events.
-- `support_requests`: support, deletion, and feedback queue foundation.
+- `analytics_events`: Phase 5 content-free product events use server-owned role
+  and environment, a bounded event/dimension vocabulary, environment-scoped
+  deduplication, and a checksum. For `content_free_product_v1`, the database
+  requires actor, patient, clinic, and resource identifiers to remain null.
+- `support_requests` and `support_request_events`: replay-safe support,
+  deletion, and feedback requests plus an append-only requester-visible
+  timeline. Deletion requests preserve an explicit regulated/audit retention
+  boundary and do not directly delete accounts or retained evidence.
 
 ### Payer And Care-Cost Review
 
@@ -1643,6 +1680,19 @@ erDiagram
 - Password changes and phone-verified resets revoke active refresh sessions;
   verification codes are stored only as keyed hashes with expiry and attempt
   limits.
+- Support creation and withdrawal use content-bound idempotency. Request rows
+  carry one public reference and optimistic version; timeline events have
+  request-local unique sequence and idempotency keys. Cross-requester reads and
+  actions fail with neutral not-found.
+- Content-free product analytics accepts only allow-listed dimensions. Role and
+  environment are server-owned, event/outcome and journey/surface combinations
+  must agree, and direct identity/resource columns remain null. Client
+  deduplication keys are SHA-256 hashed before locking or persistence, and
+  telemetry failure cannot roll back or block a product workflow.
+- Non-public support operations require an active operational admin identity,
+  row locking, expected version, content-bound idempotency, a valid state
+  transition, append-only role-safe history, and a metadata-only audit event.
+  This helper does not make the reserved admin role a product surface.
 - Financial, operations, specialist, and admin tables are schema foundations.
   They should remain hidden from production-facing navigation until the matching
   workflows, authorization, validation, empty states, and tests are implemented.
@@ -1693,6 +1743,41 @@ a new comparison version; they never rewrite history.
 Explanation artifacts are derived records only and cannot mutate candidates,
 baselines, clinician responses, services, costs, payer requests, comparisons,
 or payer decisions.
+
+## Phase 6 notification lifecycle
+
+Migration `20260730_0053` extends the existing `notifications` row into the one
+canonical user-visible record. It adds typed audience/source/payer scope,
+content-free occurrence deduplication, localized template identity, privacy
+class, schedule/expiry, lifecycle timestamps, supersession, and optimistic
+versioning.
+
+| Table | Implemented contract |
+|---|---|
+| `notifications` | One authorized inbox record; never duplicated as a reminder, outbox item, or attempt |
+| `notification_preferences` | Unique user/role preference with category allow-list, always-visible in-product safety record, external channels, quiet hours, locale, time zone, preview, and versioned idempotency |
+| `notification_device_endpoints` | Multiple-device readiness and permission lifecycle using endpoint hashes only; no raw token column |
+| `notification_outbox` | One scheduled work item per notification/channel with claim lease, attempt bounds, retry availability, and terminal result |
+| `notification_delivery_attempts` | Append-only bounded adapter result and optional receipt hash; unique attempt number |
+| `notification_events` | Append-only ordered lifecycle evidence for creation, user transitions, suppression, cancellation, and supersession |
+
+The composite occurrence constraint scopes deduplication through typed
+recipient, event, source category, source resource, and a content-free digest.
+Advisory locking closes concurrent creation races; `FOR UPDATE SKIP LOCKED` and
+claim expiry close worker races. Authoritative source revalidation suppresses
+completed, cancelled, replaced, revoked, expired, or superseded work before
+delivery.
+
+## Phase 7 governed-purpose provenance
+
+Migration `20260730_0054` adds the exact Slice D governed-purpose release ID and
+payload checksum to `expected_care_candidate_requests`, with an index on the
+release ID. The fields bind every candidate generation to the independently
+active compatible purpose release without changing the immutable
+care-reference lineage. Downgrade removes only these provenance columns and
+index; the Phase 7 rollback rehearsal restored the verified post-activation
+dump afterward so the append-only staging evidence was recovered at schema
+`0054`.
 
 ## Current Caveats
 

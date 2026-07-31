@@ -1,6 +1,8 @@
+import uuid
+
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import func, inspect, select
+from sqlalchemy import func, inspect, select, text
 from sqlalchemy.orm import Session
 
 from app.database import engine
@@ -44,7 +46,94 @@ def test_empty_database_migrates_to_head() -> None:
         "chat_messages",
         "chat_rate_limits",
         "consultation_requests",
+        "support_requests",
+        "support_request_events",
+        "analytics_events",
+        "notification_preferences",
+        "notification_device_endpoints",
+        "notification_outbox",
+        "notification_delivery_attempts",
+        "notification_events",
     }
+
+
+def test_phase5_upgrade_backfills_existing_deletion_retention_boundary() -> None:
+    config = Config("alembic.ini")
+    command.downgrade(config, "20260727_0051")
+    user_id = uuid.uuid4()
+    request_id = uuid.uuid4()
+    try:
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    """
+                    INSERT INTO users (
+                        id, email, password_hash, role, is_active, created_at, updated_at
+                    )
+                    VALUES (
+                        :user_id,
+                        'legacy.deletion@example.com',
+                        'not-a-real-password-hash',
+                        CAST('patient' AS user_role),
+                        true,
+                        now(),
+                        now()
+                    )
+                    """
+                ),
+                {"user_id": user_id},
+            )
+            connection.execute(
+                text(
+                    """
+                    INSERT INTO support_requests (
+                        id,
+                        requester_user_id,
+                        patient_id,
+                        request_type,
+                        status,
+                        subject,
+                        body_redacted,
+                        source,
+                        assigned_to_user_id,
+                        audit_metadata_json,
+                        created_at,
+                        updated_at
+                    )
+                    VALUES (
+                        :request_id,
+                        :user_id,
+                        NULL,
+                        'deletion',
+                        'queued',
+                        'Legacy deletion request',
+                        '[redacted legacy body]',
+                        'authenticated_app',
+                        NULL,
+                        '{}'::jsonb,
+                        now(),
+                        now()
+                    )
+                    """
+                ),
+                {"request_id": request_id, "user_id": user_id},
+            )
+        command.upgrade(config, "head")
+        with engine.connect() as connection:
+            row = connection.execute(
+                text(
+                    """
+                    SELECT retention_boundary_code, public_reference
+                    FROM support_requests
+                    WHERE id = :request_id
+                    """
+                ),
+                {"request_id": request_id},
+            ).one()
+        assert row.retention_boundary_code == "regulated_and_audit_retention_applies"
+        assert row.public_reference.startswith("REQ-")
+    finally:
+        command.upgrade(config, "head")
 
 
 def test_synthetic_seed_is_idempotent(settings) -> None:

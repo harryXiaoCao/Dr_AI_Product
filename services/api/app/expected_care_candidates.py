@@ -348,6 +348,7 @@ def _minimum_input(
     bundle: ResolvedCareReferenceBundle,
     deterministic: EvaluationResult,
     release_lineage: list[dict[str, object]],
+    ai_purpose_release: dict[str, str] | None,
     request: EvaluationRequest,
     clinical_fact_snapshot: dict[str, object],
 ) -> tuple[dict[str, object], str]:
@@ -397,6 +398,7 @@ def _minimum_input(
         },
         "scenario_release_id": str(bundle.scenario.control.release_id),
         "release_lineage": release_lineage,
+        "ai_purpose_release": ai_purpose_release,
         "admitted_candidates": candidates,
         "server_totals": {
             "currency": deterministic.currency,
@@ -535,6 +537,8 @@ def _request_fingerprint(
     request: EvaluationRequest,
     predecessor_request_id: uuid.UUID | None,
     clinical_fact_snapshot_checksum: str,
+    ai_purpose_release_id: uuid.UUID | None,
+    ai_purpose_release_checksum_sha256: str | None,
 ) -> str:
     return _checksum(
         {
@@ -547,6 +551,10 @@ def _request_fingerprint(
                 str(predecessor_request_id) if predecessor_request_id else None
             ),
             "clinical_fact_snapshot_checksum": clinical_fact_snapshot_checksum,
+            "ai_purpose_release_id": (
+                str(ai_purpose_release_id) if ai_purpose_release_id is not None else None
+            ),
+            "ai_purpose_release_checksum_sha256": ai_purpose_release_checksum_sha256,
         }
     )
 
@@ -573,6 +581,8 @@ def _persist(
     attempts: list[_Attempt],
     candidate_payload: dict[str, object],
     deterministic: EvaluationResult,
+    ai_purpose_release_id: uuid.UUID | None,
+    ai_purpose_release_checksum_sha256: str | None,
 ) -> CandidateGenerationResult:
     output_checksum = _checksum(candidate_payload)
     successful = [attempt.response for attempt in attempts if attempt.response is not None]
@@ -595,6 +605,8 @@ def _persist(
         model_configuration_version=MODEL_CONFIGURATION_VERSION,
         provider=provider,
         model=model,
+        ai_purpose_release_id=ai_purpose_release_id,
+        ai_purpose_release_checksum_sha256=ai_purpose_release_checksum_sha256,
         scenario_release_id=bundle.scenario.control.release_id,
         care_plan_release_id=bundle.plan.control.release_id,
         pricing_reference_release_id=bundle.pricing.control.release_id,
@@ -669,6 +681,7 @@ def _persist(
                 "validation_outcome": validation_outcome,
                 "provider_attempt_count": len(attempts),
                 "payer_request_linked": payer_request_id is not None,
+                "ai_purpose_release_bound": ai_purpose_release_id is not None,
                 "content_free": True,
             },
         )
@@ -710,6 +723,14 @@ def generate_expected_care_candidate(
 
     if not _IDEMPOTENCY_PATTERN.fullmatch(idempotency_key):
         raise ExpectedCareCandidateConflict("invalid_idempotency_key")
+    ai_purpose_release = None
+    if settings.expected_care_candidate_enabled and not (
+        settings.environment == "test"
+        and (provider is not None or settings.expected_care_provider != "deepseek")
+    ):
+        from app.expected_care_candidate_governance import active_candidate_release
+
+        ai_purpose_release = active_candidate_release(session, settings)
     _authorize(
         session,
         actor_user_id=actor_user_id,
@@ -731,6 +752,12 @@ def generate_expected_care_candidate(
         request=request,
         predecessor_request_id=predecessor_request_id,
         clinical_fact_snapshot_checksum=clinical_fact_snapshot_checksum,
+        ai_purpose_release_id=(
+            ai_purpose_release.release_id if ai_purpose_release is not None else None
+        ),
+        ai_purpose_release_checksum_sha256=(
+            ai_purpose_release.payload_checksum_sha256 if ai_purpose_release is not None else None
+        ),
     )
     lock_key = f"{actor_user_id}:{clinical_event_id}:{idempotency_key}"
     session.execute(
@@ -784,6 +811,15 @@ def generate_expected_care_candidate(
         bundle=bundle,
         deterministic=deterministic,
         release_lineage=release_lineage,
+        ai_purpose_release=(
+            {
+                "release_id": str(ai_purpose_release.release_id),
+                "version": ai_purpose_release.version,
+                "payload_checksum_sha256": ai_purpose_release.payload_checksum_sha256,
+            }
+            if ai_purpose_release is not None
+            else None
+        ),
         request=request,
         clinical_fact_snapshot=clinical_fact_snapshot,
     )
@@ -804,6 +840,12 @@ def generate_expected_care_candidate(
         "model": settings.expected_care_model,
         "attempts": [],
         "deterministic": deterministic,
+        "ai_purpose_release_id": (
+            ai_purpose_release.release_id if ai_purpose_release is not None else None
+        ),
+        "ai_purpose_release_checksum_sha256": (
+            ai_purpose_release.payload_checksum_sha256 if ai_purpose_release is not None else None
+        ),
     }
     if deterministic.status != "comparison_not_ready" or not deterministic.lines:
         reasons = tuple(
@@ -825,7 +867,7 @@ def generate_expected_care_candidate(
             reason_codes=reasons,
             candidate_payload=_fallback_payload("suppressed", reasons),
         )
-    if settings.environment not in {"local", "test"}:
+    if settings.environment not in {"local", "test", "staging"}:
         reasons = ("synthetic_environment_required",)
         return _persist(
             **common,
@@ -948,6 +990,20 @@ def generate_expected_care_candidate(
         validation_reasons = tuple(
             sorted(set(validation_reasons) | {"active_release_changed_during_generation"})
         )
+    if ai_purpose_release is not None:
+        from app.expected_care_candidate_governance import (
+            CandidateReleaseTransitionError,
+            active_candidate_release,
+        )
+
+        try:
+            resolved_purpose = active_candidate_release(session, settings)
+        except CandidateReleaseTransitionError:
+            resolved_purpose = None
+        if resolved_purpose != ai_purpose_release:
+            validation_reasons = tuple(
+                sorted(set(validation_reasons) | {"ai_purpose_release_changed_during_generation"})
+            )
     payload = candidate.model_dump(mode="json")
     if validation_reasons:
         return _persist(

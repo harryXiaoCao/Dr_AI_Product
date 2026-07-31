@@ -959,16 +959,6 @@ class RecoveryTaskCompletionController
   }
 }
 
-final medicationNotificationShellProvider =
-    FutureProvider.autoDispose<MedicationNotificationScheduleResult>((
-      ref,
-    ) async {
-      final today = await ref.watch(patientTodayProvider.future);
-      return ref
-          .read(repositoryProvider)
-          .scheduleMedicationNotifications(today.tasks);
-    });
-
 final educationalChatControllerProvider =
     StateNotifierProvider.autoDispose<
       EducationalChatController,

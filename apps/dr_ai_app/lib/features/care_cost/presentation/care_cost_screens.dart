@@ -4,6 +4,7 @@ import 'package:dr_ai_app/design_system/dr_ai_tokens.dart';
 import 'package:dr_ai_app/features/auth/application/auth_controller.dart';
 import 'package:dr_ai_app/features/care_cost/application/care_cost_providers.dart';
 import 'package:dr_ai_app/features/care_cost/domain/care_cost_data.dart';
+import 'package:dr_ai_app/shared/presentation/product_history_copy.dart';
 import 'package:dr_ai_app/shared/widgets/dashboard_states.dart';
 import 'package:dr_ai_app/shared/widgets/responsive_app_shell.dart';
 import 'package:flutter/material.dart';
@@ -27,6 +28,36 @@ String _date(BuildContext context, DateTime value) {
   return DateFormat.yMMMd(
     Localizations.localeOf(context).toLanguageTag(),
   ).format(value);
+}
+
+String _requestNextAction(BuildContext context, String status) {
+  return switch (status) {
+    'submitted' => _copy(
+      context,
+      'Next: an authorized payer reviewer will review the submitted evidence.',
+      '下一步：获授权的支付方审核员将审核已提交证据。',
+    ),
+    'clarification_requested' => _copy(
+      context,
+      'Next: the doctor can add clarification without changing the submitted record.',
+      '下一步：医生可补充说明，但不会更改已提交记录。',
+    ),
+    'escalated' => _copy(
+      context,
+      'Next: another authorized human review is required.',
+      '下一步：需要另一项获授权的人工审核。',
+    ),
+    'accepted' || 'rejected' || 'closed' => _copy(
+      context,
+      'This human review state is final for this request. Historical evidence remains available.',
+      '此申请的人工审核状态已最终确定，历史证据仍可查看。',
+    ),
+    _ => _copy(
+      context,
+      'Review the current status and available actions below.',
+      '请查看当前状态及下方可用操作。',
+    ),
+  };
 }
 
 class PatientCareCostScreen extends ConsumerWidget {
@@ -338,8 +369,8 @@ class _ClinicalEventLedger extends StatelessWidget {
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                   Text(
-                                    '${item.sourceCategory.replaceAll('_', ' ')} · '
-                                    '${item.sourceStatus.replaceAll('_', ' ')}',
+                                    '${humanizeProductValue(item.sourceCategory)} · '
+                                    '${humanizeProductValue(item.sourceStatus)}',
                                     style: const TextStyle(
                                       color: DrAiColors.inkSecondary,
                                       fontSize: 12,
@@ -351,9 +382,9 @@ class _ClinicalEventLedger extends StatelessWidget {
                           ),
                           DataCell(
                             Text(
-                              '${item.status.replaceAll('_', ' ')} · '
-                              '${item.pricingState.replaceAll('_', ' ')}'
-                              '${item.alreadySubmitted ? ' · submitted' : ''}',
+                              '${humanizeProductValue(item.status)} · '
+                              '${humanizeProductValue(item.pricingState)}'
+                              '${item.alreadySubmitted ? ' · ${_copy(context, 'Submitted', '已提交')}' : ''}',
                             ),
                           ),
                           DataCell(
@@ -594,7 +625,7 @@ class _PayerRequestSummary extends StatelessWidget {
             children: <InlineSpan>[
               TextSpan(
                 text:
-                    '${request.payerOrganization.name} · ${request.status.replaceAll('_', ' ')}\n',
+                    '${request.payerOrganization.name} · ${_payerRequestStatusText(context, request.status)}\n',
               ),
               TextSpan(
                 text: _copy(
@@ -675,13 +706,28 @@ class _PayerRequestDetail extends StatelessWidget {
               _copy(context, 'Doctor responses', '医生补充说明'),
               style: const TextStyle(fontWeight: FontWeight.w800),
             ),
-            for (final response in request.doctorResponses)
+            for (final entry in request.doctorResponses.indexed)
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.medical_information_outlined),
-                title: Text(response.responseType.replaceAll('_', ' ')),
-                subtitle: Text(response.summary),
-                trailing: Text('v${response.version}'),
+                title: Text(
+                  _doctorResponseTypeText(context, entry.$2.responseType),
+                ),
+                subtitle: Text(
+                  '${entry.$2.doctorDisplayName} · ${formatProductHistoryTime(context, entry.$2.createdAt)}\n'
+                  '${entry.$2.summary}',
+                ),
+                trailing: Text(
+                  _copy(
+                    context,
+                    entry.$1 == request.doctorResponses.length - 1
+                        ? 'Current'
+                        : 'Earlier',
+                    entry.$1 == request.doctorResponses.length - 1
+                        ? '当前'
+                        : '较早',
+                  ),
+                ),
               ),
           ],
           const SizedBox(height: DrAiSpacing.md),
@@ -747,6 +793,14 @@ class _PayerRequestDetail extends StatelessWidget {
             ],
           ),
           const SizedBox(height: DrAiSpacing.md),
+          Text(
+            _requestNextAction(context, request.status),
+            style: const TextStyle(
+              color: DrAiColors.inkSecondary,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: DrAiSpacing.md),
           Align(
             alignment: Alignment.centerRight,
             child: OutlinedButton.icon(
@@ -770,19 +824,29 @@ class _PayerRequestDetail extends StatelessWidget {
                 _copy(context, 'Manual transition history', '人工状态变更记录'),
                 style: const TextStyle(fontWeight: FontWeight.w800),
               ),
-              for (final review in request.reviews)
+              for (final entry in request.reviews.indexed)
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: const Icon(Icons.history),
                   title: Text(
-                    '${review.fromStatus.replaceAll('_', ' ')} → '
-                    '${review.toStatus.replaceAll('_', ' ')}',
+                    '${_payerRequestStatusText(context, entry.$2.fromStatus)} → '
+                    '${_payerRequestStatusText(context, entry.$2.toStatus)}',
                   ),
                   subtitle: Text(
-                    '${review.reviewerDisplayName} · ${review.reviewerTitle}\n'
-                    '${review.reasonCode.replaceAll('_', ' ')}',
+                    '${entry.$2.reviewerDisplayName} · ${entry.$2.reviewerTitle} · '
+                    '${formatProductHistoryTime(context, entry.$2.createdAt)}\n'
+                    '${_copy(context, 'Recorded reason', '记录原因')}: '
+                    '${humanizeProductValue(entry.$2.reasonCode)}',
                   ),
-                  trailing: Text('v${review.version}'),
+                  trailing: Text(
+                    _copy(
+                      context,
+                      entry.$1 == request.reviews.length - 1
+                          ? 'Current'
+                          : 'Superseded',
+                      entry.$1 == request.reviews.length - 1 ? '当前' : '已取代',
+                    ),
+                  ),
                 ),
             ],
             const SizedBox(height: DrAiSpacing.md),
@@ -813,7 +877,7 @@ class _StatusLabel extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
-        status.replaceAll('_', ' '),
+        _payerRequestStatusText(context, status),
         style: const TextStyle(
           color: DrAiColors.brandDark,
           fontWeight: FontWeight.w700,
@@ -831,7 +895,9 @@ Future<void> _showReviewDialog(
 ) async {
   final note = TextEditingController();
   var action = 'request_clarification';
-  var reason = 'documentation_needed';
+  var reason = Localizations.localeOf(context).languageCode == 'zh'
+      ? '需要补充材料'
+      : 'Documentation needed';
   String? error;
   await showDialog<void>(
     context: context,
@@ -870,7 +936,16 @@ Future<void> _showReviewDialog(
               TextFormField(
                 initialValue: reason,
                 decoration: InputDecoration(
-                  labelText: _copy(context, 'Reason code', '原因代码'),
+                  labelText: _copy(
+                    context,
+                    'Reason for this decision',
+                    '作出此决定的原因',
+                  ),
+                  helperText: _copy(
+                    context,
+                    'Use a short structured reason; reviewer-only details belong below.',
+                    '请填写简短的结构化原因；仅审核员可见的细节请写在下方。',
+                  ),
                 ),
                 onChanged: (value) => reason = value.trim(),
               ),
@@ -939,5 +1014,31 @@ String _payerReviewActionText(BuildContext context, String action) {
     'escalate' => _copy(context, 'Escalate review', '升级审核'),
     'close' => _copy(context, 'Close review', '关闭审核'),
     _ => action.replaceAll('_', ' '),
+  };
+}
+
+String _payerRequestStatusText(BuildContext context, String status) {
+  return switch (status) {
+    'submitted' => _copy(context, 'Submitted', '已提交'),
+    'under_review' => _copy(context, 'Under human review', '人工审核中'),
+    'clarification_requested' => _copy(
+      context,
+      'Clarification requested',
+      '需要补充说明',
+    ),
+    'accepted' => _copy(context, 'Accepted', '已接受'),
+    'rejected' => _copy(context, 'Rejected', '已拒绝'),
+    'escalated' => _copy(context, 'Escalated', '已升级'),
+    'closed' => _copy(context, 'Closed', '已关闭'),
+    _ => humanizeProductValue(status),
+  };
+}
+
+String _doctorResponseTypeText(BuildContext context, String responseType) {
+  return switch (responseType) {
+    'justification' => _copy(context, 'Doctor justification', '医生说明'),
+    'supplemental_evidence' => _copy(context, 'Supplemental evidence', '补充证据'),
+    'clarification' => _copy(context, 'Doctor clarification', '医生补充说明'),
+    _ => humanizeProductValue(responseType),
   };
 }

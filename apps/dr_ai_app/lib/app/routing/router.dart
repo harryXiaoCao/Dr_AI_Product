@@ -13,11 +13,21 @@ import 'package:dr_ai_app/features/doctor/presentation/doctor_resources_screen.d
 import 'package:dr_ai_app/features/doctor/presentation/patient_management_screen.dart';
 import 'package:dr_ai_app/features/expected_care/presentation/expected_care_screens.dart';
 import 'package:dr_ai_app/features/foundation/presentation/unauthorized_screen.dart';
+import 'package:dr_ai_app/features/notifications/presentation/notification_inbox_screen.dart';
 import 'package:dr_ai_app/features/patient/presentation/patient_contacts_screen.dart';
 import 'package:dr_ai_app/features/patient/presentation/patient_dashboard_screen.dart';
 import 'package:dr_ai_app/l10n/l10n.dart';
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
+
+String? _pendingNotificationPath;
+
+bool _isSafePendingNotificationPath(String path) {
+  return RegExp(
+    r'^/(doctor|patient|payer)/notifications'
+    r'(?:/[0-9a-fA-F-]{36}/open)?$',
+  ).hasMatch(path);
+}
 
 GoRouter createRouter(AppRole? role, {String? initialLocation}) {
   final homePath = switch (role) {
@@ -40,11 +50,20 @@ GoRouter createRouter(AppRole? role, {String? initialLocation}) {
       final publicLegalPath =
           path == '/privacy' || path == '/terms' || path == '/privacy-policy';
       if (role == null) {
+        if (_isSafePendingNotificationPath(path)) {
+          _pendingNotificationPath = path;
+        }
         return path == '/login' || path == '/register' || publicLegalPath
             ? null
             : '/login';
       }
       if (path == '/login' || path == '/register') {
+        final pending = _pendingNotificationPath;
+        _pendingNotificationPath = null;
+        if (pending != null &&
+            pending.startsWith('/${role.wireValue}/notifications')) {
+          return pending;
+        }
         return homePath;
       }
       if (role == AppRole.unsupported) {
@@ -104,10 +123,7 @@ GoRouter createRouter(AppRole? role, {String? initialLocation}) {
             routes: <RouteBase>[
               GoRoute(
                 path: 'system',
-                pageBuilder: (context, state) => _drAiPage(
-                  state,
-                  const ServiceChatScreen(role: AppRole.doctor, isSystem: true),
-                ),
+                redirect: (context, state) => '/doctor/notifications',
               ),
               GoRoute(
                 path: 'ai',
@@ -144,6 +160,16 @@ GoRouter createRouter(AppRole? role, {String? initialLocation}) {
             ),
           ),
           GoRoute(
+            path: 'payer-requests/:requestId',
+            pageBuilder: (context, state) => _drAiPage(
+              state,
+              DoctorPayerRequestsScreen(
+                initialRequestId: state.pathParameters['requestId']!,
+              ),
+            ),
+          ),
+          _notificationRoute(AppRole.doctor),
+          GoRoute(
             path: 'expected-care',
             redirect: (context, state) {
               final patient = state.uri.queryParameters['patient'];
@@ -178,13 +204,7 @@ GoRouter createRouter(AppRole? role, {String? initialLocation}) {
             routes: <RouteBase>[
               GoRoute(
                 path: 'system',
-                pageBuilder: (context, state) => _drAiPage(
-                  state,
-                  const ServiceChatScreen(
-                    role: AppRole.patient,
-                    isSystem: true,
-                  ),
-                ),
+                redirect: (context, state) => '/patient/notifications',
               ),
               GoRoute(
                 path: 'ai',
@@ -250,6 +270,7 @@ GoRouter createRouter(AppRole? role, {String? initialLocation}) {
             pageBuilder: (context, state) =>
                 _drAiPage(state, const PatientAccountScreen()),
           ),
+          _notificationRoute(AppRole.patient),
         ],
       ),
       GoRoute(
@@ -276,6 +297,7 @@ GoRouter createRouter(AppRole? role, {String? initialLocation}) {
             pageBuilder: (context, state) =>
                 _drAiPage(state, const PayerAccountScreen()),
           ),
+          _notificationRoute(AppRole.payer),
         ],
       ),
       GoRoute(
@@ -307,6 +329,36 @@ GoRouter createRouter(AppRole? role, {String? initialLocation}) {
         path: '/unauthorized',
         pageBuilder: (context, state) =>
             _drAiPage(state, UnauthorizedScreen(role: role)),
+      ),
+    ],
+  );
+}
+
+GoRoute _notificationRoute(AppRole role) {
+  return GoRoute(
+    path: 'notifications',
+    pageBuilder: (context, state) =>
+        _drAiPage(state, NotificationInboxScreen(role: role)),
+    routes: <RouteBase>[
+      GoRoute(
+        path: ':notificationId/open',
+        pageBuilder: (context, state) => _drAiPage(
+          state,
+          NotificationOpenScreen(
+            role: role,
+            notificationId: state.pathParameters['notificationId']!,
+          ),
+        ),
+      ),
+      GoRoute(
+        path: ':notificationId/unavailable',
+        pageBuilder: (context, state) => _drAiPage(
+          state,
+          NotificationUnavailableScreen(
+            role: role,
+            reason: state.uri.queryParameters['reason'] ?? 'unavailable',
+          ),
+        ),
       ),
     ],
   );

@@ -8,6 +8,7 @@ import 'package:dr_ai_app/features/doctor/domain/doctor_profile.dart';
 import 'package:dr_ai_app/l10n/l10n.dart';
 import 'package:dr_ai_app/l10n/locale_controller.dart';
 import 'package:dr_ai_app/shared/avatar/avatar_upload.dart';
+import 'package:dr_ai_app/shared/widgets/account_request_center.dart';
 import 'package:dr_ai_app/shared/widgets/account_security.dart';
 import 'package:dr_ai_app/shared/widgets/dashboard_states.dart';
 import 'package:dr_ai_app/shared/widgets/responsive_app_shell.dart';
@@ -52,11 +53,30 @@ class DoctorAccountScreen extends ConsumerWidget {
       role: AppRole.doctor,
       selectedIndex: 5,
       child: profile.when(
-        loading: () =>
-            DashboardLoadingView(label: context.l10n.loadingDoctorAccount),
-        error: (error, stackTrace) => DashboardErrorView(
-          message: error.toString(),
-          onRetry: () => ref.invalidate(doctorProfileProvider),
+        loading: () => ListView(
+          padding: const EdgeInsets.all(DrAiSpacing.md),
+          children: <Widget>[
+            SizedBox(
+              height: 180,
+              child: DashboardLoadingView(
+                label: context.l10n.loadingDoctorAccount,
+              ),
+            ),
+            const AccountRequestCenter(role: AppRole.doctor),
+          ],
+        ),
+        error: (error, stackTrace) => ListView(
+          padding: const EdgeInsets.all(DrAiSpacing.md),
+          children: <Widget>[
+            SizedBox(
+              height: 220,
+              child: DashboardErrorView(
+                message: error.toString(),
+                onRetry: () => ref.invalidate(doctorProfileProvider),
+              ),
+            ),
+            const AccountRequestCenter(role: AppRole.doctor),
+          ],
         ),
         data: (profile) => _DoctorAccountView(profile: profile, email: email),
       ),
@@ -366,6 +386,8 @@ class _DoctorAccountViewState extends ConsumerState<_DoctorAccountView> {
                       _formPanel(),
                     ],
                   ),
+                const SizedBox(height: DrAiSpacing.lg),
+                const AccountRequestCenter(role: AppRole.doctor),
               ],
             ),
           ),

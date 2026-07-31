@@ -13,6 +13,28 @@ public-production, and commercial gates remain separate. See
 `docs/periodic_dev_docs/Phase_4_Slices_F_G_Comparison_Explanation_Governance_Record.md`
 and `docs/runbooks/Expected_Care_Explanation_Controlled_Staging_Runbook.md`.
 
+Phases 1-7 have now passed the authorized controlled Tencent synthetic-staging
+rehearsal through migration `0054`. Phase 5 completed the persisted three-role account-request lifecycle,
+content-free analytics, unified history language, rendered accessibility
+coverage, and actual built-app journeys. Its exact evidence is in
+`docs/periodic_dev_docs/Phase_5_Closure_Record_2026-07-28.md` and
+`docs/periodic_dev_docs/Phase_5_Live_Gap_Matrix_2026-07-28.md`.
+
+Phase 6 adds the canonical persisted patient/doctor/payer notification inbox,
+preferences, outbox/attempt history, deterministic source integrations,
+authorized deep links, and fail-closed APNs/Alibaba Cloud EMAS/Web Push
+readiness. External provider activation and target-visible delivery are not
+claimed. See
+`docs/periodic_dev_docs/Phase_6_Closure_Record_2026-07-30.md`.
+
+Phase 7 deployed immutable API/web identities, independently exercised governed
+Slice D, Slice F, and chatbot purposes, restored their disabled states, proved
+backup restoration and exact predecessor API/schema/web rollback, passed
+authenticated patient/doctor/payer smoke, and inspected the deployed responsive
+doctor UI. APNs, EMAS, Web Push target delivery, and image-capable DeepSeek
+remain disabled external gates. See
+`docs/periodic_dev_docs/Phase_7_Closure_Record_2026-07-30.md`.
+
 Dr. AI is a production-quality product in development for China-first,
 multi-scenario care-and-cost transparency. The implemented foundation includes
 patient, doctor, and organization-scoped payer-reviewer workflows, Clinical
@@ -32,7 +54,7 @@ The historical invited-beta foundation is preserved, but it is not the current
 product boundary. Production claims/adjudication, live coverage and payment,
 live reference-pricing releases, production immutable expected-care baselines,
 public AI cost assistance,
-external notification delivery, specialist/admin/clinic operations, public
+external notification-provider activation, specialist/admin/clinic operations, public
 store distribution, final-domain production deployment, real-patient use, and
 live institutional integration remain independently gated until their
 implementation, evaluation, authorization, and external requirements close.

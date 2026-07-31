@@ -44,3 +44,29 @@ Created: 2026-07-09
    failure remains visibly server-controlled. An AI disclosure supplements,
    but never replaces, deterministic emergency, authorization, privacy, record,
    and action boundaries.
+
+## Controlled-Staging Operational Gate
+
+A product-quality implementation is not operationally complete merely because
+its local tests pass. Before a controlled-staging phase closes:
+
+- the deployed API, retrieval, web, and schema identities must be immutable and
+  recorded;
+- pre-change and post-change backups must be owner-only, checksum-verified, and
+  listable or restorable;
+- enabled AI purposes must have separate compatible governed releases and must
+  return to the documented disabled state after exercise;
+- patient, doctor, and payer authentication, authorization, idempotency,
+  conflict, history, and neutral-denial paths must pass against the deployed
+  system;
+- mobile, tablet, and desktop rendered states must be inspected in addition to
+  executable localization/accessibility coverage;
+- logs and closure artifacts must pass presence-only or count-only redaction
+  scans; and
+- exact predecessor rollback and recovery must be exercised without using a
+  missing provider credential, approval, receipt, or physical target as
+  fabricated completion evidence.
+
+Phase 7 met this gate for controlled synthetic staging. External notification
+display, multimodal DeepSeek capability, real-patient, live-payer,
+public-production, and commercial authorization remain separate gates.

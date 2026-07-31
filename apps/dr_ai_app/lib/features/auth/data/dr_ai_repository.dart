@@ -3,12 +3,14 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:dr_ai_app/app/routing/app_role.dart';
 import 'package:dr_ai_app/core/api/api_error.dart';
+import 'package:dr_ai_app/features/account/domain/support_request_data.dart';
 import 'package:dr_ai_app/features/auth/domain/auth_models.dart';
 import 'package:dr_ai_app/features/care_cost/domain/care_cost_data.dart';
 import 'package:dr_ai_app/features/dashboard/domain/dashboard_data.dart';
 import 'package:dr_ai_app/features/doctor/domain/doctor_profile.dart';
 import 'package:dr_ai_app/features/doctor/domain/medical_resource_fixture.dart';
 import 'package:dr_ai_app/features/expected_care/domain/expected_care_data.dart';
+import 'package:dr_ai_app/features/notifications/domain/notification_data.dart';
 import 'package:dr_ai_app/features/patient/domain/patient_care_data.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
@@ -39,6 +41,38 @@ abstract interface class DrAiRepository {
     PayerSignupProfile? payerProfile,
   });
   Future<void> logout();
+  Future<List<SupportRequestData>> loadSupportRequests();
+  Future<SupportRequestData> createSupportRequest({
+    required String requestType,
+    required String subject,
+    required String message,
+    required String idempotencyKey,
+  });
+  Future<SupportRequestData> withdrawSupportRequest({
+    required String requestId,
+    required int expectedVersion,
+    required String idempotencyKey,
+  });
+  Future<void> recordProductEvent(ProductEventInput event);
+  Future<NotificationInboxData> loadNotificationInbox();
+  Future<NotificationPreferences> loadNotificationPreferences();
+  Future<NotificationPreferences> updateNotificationPreferences(
+    NotificationPreferences preferences, {
+    required String idempotencyKey,
+  });
+  Future<NotificationReadiness> loadNotificationReadiness();
+  Future<NotificationInboxItem> setNotificationReadStatus({
+    required String notificationId,
+    required bool read,
+    required int expectedVersion,
+    required String idempotencyKey,
+  });
+  Future<NotificationInboxItem> dismissNotification({
+    required String notificationId,
+    required int expectedVersion,
+    required String idempotencyKey,
+  });
+  Future<NotificationOpenResult> resolveNotificationOpen(String notificationId);
   Future<DashboardData> loadDashboard(AppRole role);
   Future<DoctorProfile> loadOwnDoctorProfile();
   Future<List<MedicalResourceFixture>> loadMedicalResources();
@@ -284,9 +318,6 @@ abstract interface class DrAiRepository {
   Future<PatientTodayData> loadPatientToday();
   Future<RecoveryTaskItem> completeRecoveryTask(String taskId);
   Future<RecoveryTaskItem> uncompleteRecoveryTask(String taskId);
-  Future<MedicationNotificationScheduleResult> scheduleMedicationNotifications(
-    List<RecoveryTaskItem> tasks,
-  );
   Future<ChatMessageResult> sendEducationalChatMessage({
     String? threadId,
     required String message,
@@ -709,6 +740,131 @@ class DioDrAiRepository implements DrAiRepository {
       _session = null;
       await secureStorage.delete(key: _refreshTokenKey);
     }
+  }
+
+  @override
+  Future<List<SupportRequestData>> loadSupportRequests() async {
+    final response = await _authorizedGet('/api/v1/support-requests');
+    return (response['items'] as List<dynamic>? ?? const <dynamic>[])
+        .map(
+          (item) => SupportRequestData.fromJson(
+            Map<String, dynamic>.from(item as Map),
+          ),
+        )
+        .toList();
+  }
+
+  @override
+  Future<SupportRequestData> createSupportRequest({
+    required String requestType,
+    required String subject,
+    required String message,
+    required String idempotencyKey,
+  }) async {
+    final response = await _authorizedPost(
+      '/api/v1/support-requests',
+      data: <String, dynamic>{
+        'request_type': requestType,
+        'subject': subject.trim(),
+        'message': message.trim(),
+      },
+      additionalHeaders: <String, String>{'Idempotency-Key': idempotencyKey},
+    );
+    return SupportRequestData.fromJson(response);
+  }
+
+  @override
+  Future<SupportRequestData> withdrawSupportRequest({
+    required String requestId,
+    required int expectedVersion,
+    required String idempotencyKey,
+  }) async {
+    final response = await _authorizedPost(
+      '/api/v1/support-requests/$requestId/withdraw',
+      data: <String, dynamic>{'expected_version': expectedVersion},
+      additionalHeaders: <String, String>{'Idempotency-Key': idempotencyKey},
+    );
+    return SupportRequestData.fromJson(response);
+  }
+
+  @override
+  Future<void> recordProductEvent(ProductEventInput event) async {
+    try {
+      await _authorizedPost('/api/v1/product-events', data: event.toJson());
+    } on Exception {
+      // Product analytics must never block or change the user workflow.
+    }
+  }
+
+  @override
+  Future<NotificationInboxData> loadNotificationInbox() async {
+    final response = await _authorizedGet('/api/v1/notifications');
+    return NotificationInboxData.fromJson(response);
+  }
+
+  @override
+  Future<NotificationPreferences> loadNotificationPreferences() async {
+    final response = await _authorizedGet('/api/v1/notification-preferences');
+    return NotificationPreferences.fromJson(response);
+  }
+
+  @override
+  Future<NotificationPreferences> updateNotificationPreferences(
+    NotificationPreferences preferences, {
+    required String idempotencyKey,
+  }) async {
+    final response = await _authorizedPut(
+      '/api/v1/notification-preferences',
+      data: preferences.toJson(),
+      additionalHeaders: <String, String>{'Idempotency-Key': idempotencyKey},
+    );
+    return NotificationPreferences.fromJson(response);
+  }
+
+  @override
+  Future<NotificationReadiness> loadNotificationReadiness() async {
+    final response = await _authorizedGet('/api/v1/notifications/readiness');
+    return NotificationReadiness.fromJson(response);
+  }
+
+  @override
+  Future<NotificationInboxItem> setNotificationReadStatus({
+    required String notificationId,
+    required bool read,
+    required int expectedVersion,
+    required String idempotencyKey,
+  }) async {
+    final response = await _authorizedPost(
+      '/api/v1/notifications/$notificationId/${read ? 'read' : 'unread'}',
+      data: <String, dynamic>{'expected_version': expectedVersion},
+      additionalHeaders: <String, String>{'Idempotency-Key': idempotencyKey},
+    );
+    return NotificationInboxItem.fromJson(response);
+  }
+
+  @override
+  Future<NotificationInboxItem> dismissNotification({
+    required String notificationId,
+    required int expectedVersion,
+    required String idempotencyKey,
+  }) async {
+    final response = await _authorizedPost(
+      '/api/v1/notifications/$notificationId/dismiss',
+      data: <String, dynamic>{'expected_version': expectedVersion},
+      additionalHeaders: <String, String>{'Idempotency-Key': idempotencyKey},
+    );
+    return NotificationInboxItem.fromJson(response);
+  }
+
+  @override
+  Future<NotificationOpenResult> resolveNotificationOpen(
+    String notificationId,
+  ) async {
+    final response = await _authorizedPost(
+      '/api/v1/notifications/$notificationId/open',
+      data: const <String, dynamic>{},
+    );
+    return NotificationOpenResult.fromJson(response);
   }
 
   @override
@@ -1602,20 +1758,6 @@ class DioDrAiRepository implements DrAiRepository {
   }
 
   @override
-  Future<MedicationNotificationScheduleResult> scheduleMedicationNotifications(
-    List<RecoveryTaskItem> tasks,
-  ) async {
-    final medicationTasks = tasks
-        .where((task) => task.category == 'medication' && !task.isCompleted)
-        .length;
-    return MedicationNotificationScheduleResult(
-      scheduledCount: medicationTasks,
-      label:
-          'Local demo medication notifications armed for $medicationTasks task(s).',
-    );
-  }
-
-  @override
   Future<ChatMessageResult> sendEducationalChatMessage({
     String? threadId,
     required String message,
@@ -2381,6 +2523,7 @@ class DioDrAiRepository implements DrAiRepository {
   Future<Map<String, dynamic>> _authorizedPut(
     String path, {
     required Map<String, dynamic> data,
+    Map<String, String> additionalHeaders = const <String, String>{},
     bool allowRefresh = true,
   }) async {
     final session = _session;
@@ -2398,6 +2541,7 @@ class DioDrAiRepository implements DrAiRepository {
         options: Options(
           headers: <String, String>{
             'Authorization': 'Bearer ${session.accessToken}',
+            ...additionalHeaders,
           },
         ),
       );
@@ -2406,7 +2550,12 @@ class DioDrAiRepository implements DrAiRepository {
       final apiError = _toApiError(error);
       if (apiError.statusCode == 401 && allowRefresh && _session != null) {
         await _refresh(_session!.refreshToken);
-        return _authorizedPut(path, data: data, allowRefresh: false);
+        return _authorizedPut(
+          path,
+          data: data,
+          additionalHeaders: additionalHeaders,
+          allowRefresh: false,
+        );
       }
       throw apiError;
     }

@@ -366,7 +366,27 @@ def record_kill_switch(
     actor_user_id: uuid.UUID | None = None,
 ) -> ChatbotGenerationReleaseEvent:
     _lock(session)
-    return _append_event(
+    existing = session.scalar(
+        select(ChatbotGenerationReleaseEvent).where(
+            ChatbotGenerationReleaseEvent.purpose_code == PURPOSE_CODE,
+            ChatbotGenerationReleaseEvent.event_type == "purpose_kill_switch_engaged",
+            ChatbotGenerationReleaseEvent.idempotency_key == idempotency_key,
+        )
+    )
+    if existing is not None:
+        return _append_event(
+            session,
+            event_type="purpose_kill_switch_engaged",
+            idempotency_key=idempotency_key,
+            release_id=active_release.id if active_release else None,
+            target_release_id=None,
+            actor_user_id=actor_user_id,
+            evidence={"reason_code": reason_code},
+        )
+    pointer = session.get(ChatbotGenerationActiveRelease, PURPOSE_CODE)
+    if active_release is None or pointer is None or pointer.release_id != active_release.id:
+        raise ChatbotReleaseTransitionError("expected_active_release_conflict")
+    event = _append_event(
         session,
         event_type="purpose_kill_switch_engaged",
         idempotency_key=idempotency_key,
@@ -375,3 +395,6 @@ def record_kill_switch(
         actor_user_id=actor_user_id,
         evidence={"reason_code": reason_code},
     )
+    session.delete(pointer)
+    session.flush()
+    return event

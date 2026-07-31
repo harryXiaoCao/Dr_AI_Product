@@ -4,6 +4,7 @@ import 'package:dr_ai_app/design_system/dr_ai_tokens.dart';
 import 'package:dr_ai_app/features/auth/application/auth_controller.dart';
 import 'package:dr_ai_app/features/expected_care/application/expected_care_providers.dart';
 import 'package:dr_ai_app/features/expected_care/domain/expected_care_data.dart';
+import 'package:dr_ai_app/shared/presentation/product_history_copy.dart';
 import 'package:dr_ai_app/shared/widgets/dashboard_states.dart';
 import 'package:dr_ai_app/shared/widgets/responsive_app_shell.dart';
 import 'package:flutter/material.dart';
@@ -18,6 +19,83 @@ String _money(String currency, int minor) => NumberFormat.currency(
   symbol: currency == 'CNY' ? '¥' : '$currency ',
   decimalDigits: 2,
 ).format(minor / 100);
+
+String _referenceLabel(BuildContext context, String value) {
+  return switch (value) {
+    'scenario_definition' => _copy(context, 'Scenario definition', '适用场景定义'),
+    'care_plan' => _copy(context, 'Care pathway', '诊疗路径'),
+    'pricing_reference' => _copy(context, 'Pricing reference', '价格参考'),
+    'utilization_rule' => _copy(context, 'Utilization rule', '服务使用规则'),
+    _ => humanizeProductValue(value),
+  };
+}
+
+String _evidenceStateLabel(BuildContext context, String value) {
+  return switch (value) {
+    'validated_baseline_published' => _copy(
+      context,
+      'Validated baseline published',
+      '已发布经验证基线',
+    ),
+    'validated' => _copy(context, 'Deterministically validated', '已通过确定性验证'),
+    'doctor_acknowledged' => _copy(context, 'Clinician acknowledged', '临床医生已确认'),
+    'doctor_concurred' => _copy(context, 'Clinician agreed', '临床医生同意'),
+    'doctor_disagreed' => _copy(context, 'Clinician disagreed', '临床医生不同意'),
+    'doctor_exception_recorded' =>
+      _copy(context, 'Clinical exception recorded', '已记录临床例外'),
+    'concur' => _copy(context, 'Clinician agreed', '临床医生同意'),
+    'disagree' => _copy(context, 'Clinician disagreed', '临床医生不同意'),
+    'exception' => _copy(context, 'Clinical exception recorded', '已记录临床例外'),
+    'submitted' => _copy(context, 'Submitted', '已提交'),
+    'under_review' => _copy(context, 'Under human review', '人工审核中'),
+    'clarification_requested' => _copy(
+      context,
+      'Clarification requested',
+      '需要补充说明',
+    ),
+    'accepted' => _copy(context, 'Accepted by human reviewer', '人工审核员已接受'),
+    'rejected' => _copy(context, 'Rejected by human reviewer', '人工审核员已拒绝'),
+    'not_recorded' => _copy(context, 'Not recorded', '尚未记录'),
+    _ => humanizeProductValue(value),
+  };
+}
+
+String _careCategoryLabel(BuildContext context, String value) {
+  return switch (value) {
+    'therapy' => _copy(context, 'Therapy', '治疗'),
+    'consultation' => _copy(context, 'Consultation', '问诊'),
+    'imaging' => _copy(context, 'Imaging', '影像检查'),
+    'laboratory' => _copy(context, 'Laboratory testing', '实验室检查'),
+    'medication' => _copy(context, 'Medication', '用药'),
+    'rehabilitation' => _copy(context, 'Rehabilitation', '康复'),
+    'treatment' => _copy(context, 'Treatment', '治疗服务'),
+    _ => humanizeProductValue(value),
+  };
+}
+
+String _careUnitLabel(BuildContext context, String value, int high) {
+  return switch (value) {
+    'session' || 'sessions' =>
+      _copy(context, high == 1 ? 'session' : 'sessions', '次'),
+    'visit' || 'visits' =>
+      _copy(context, high == 1 ? 'visit' : 'visits', '次就诊'),
+    'item' || 'items' =>
+      _copy(context, high == 1 ? 'item' : 'items', '项'),
+    'day' || 'days' => _copy(context, high == 1 ? 'day' : 'days', '天'),
+    _ => humanizeProductValue(value),
+  };
+}
+
+String _clinicianPositionLabel(BuildContext context, String value) {
+  return switch (value) {
+    'acknowledge' => _copy(context, 'Acknowledged', '已确认阅读'),
+    'concur' => _copy(context, 'Clinically concurred', '临床同意'),
+    'disagree' => _copy(context, 'Disagreement recorded', '已记录不同意见'),
+    'exception' => _copy(context, 'Clinical exception recorded', '已记录临床例外'),
+    'not_recorded' => _copy(context, 'Not recorded', '尚未记录'),
+    _ => humanizeProductValue(value),
+  };
+}
 
 class DoctorExpectedCareReviewScreen extends ConsumerStatefulWidget {
   const DoctorExpectedCareReviewScreen({
@@ -79,8 +157,8 @@ class _DoctorExpectedCareReviewScreenState
           _messageIsError = false;
           _message = _copy(
             context,
-            'Clinician position recorded as ${result.state}. The published baseline was not changed.',
-            '临床立场已记录为 ${result.state}，已发布基线未被更改。',
+            'Clinician position recorded as ${_evidenceStateLabel(context, result.state)}. The published baseline was not changed.',
+            '临床立场已记录为${_evidenceStateLabel(context, result.state)}，已发布基线未被更改。',
           );
         });
       }
@@ -348,7 +426,8 @@ class _CandidateRail extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
                     Text(
-                      '${_copy(context, 'System baseline', '系统基线')} · ${item.state}',
+                      '${_copy(context, 'System baseline', '系统基线')} · '
+                      '${_evidenceStateLabel(context, item.state)}',
                       style: const TextStyle(
                         color: DrAiColors.brandDark,
                         fontWeight: FontWeight.w800,
@@ -514,12 +593,19 @@ class _DoctorCandidateDetail extends StatelessWidget {
                     contentPadding: EdgeInsets.zero,
                     dense: true,
                     leading: const Icon(Icons.verified_outlined),
-                    title: Text(reference.releaseType),
+                    title: Text(
+                      _referenceLabel(context, reference.releaseType),
+                    ),
                     subtitle: Text(
-                      '${reference.version}'
-                      '${reference.effectiveFrom == null ? '' : ' · effective ${reference.effectiveFrom}'}'
-                      '${reference.releaseId == null ? '' : ' · ${reference.releaseId}'}'
-                      '${reference.checksum == null ? '' : '\nSHA-256 ${reference.checksum}'}',
+                      _copy(
+                        context,
+                        reference.effectiveFrom == null
+                            ? 'Governed reference preserved for this baseline'
+                            : 'Effective ${reference.effectiveFrom} · governed reference preserved',
+                        reference.effectiveFrom == null
+                            ? '此基线保留的受治理参考'
+                            : '生效日期 ${reference.effectiveFrom} · 已保留受治理参考',
+                      ),
                     ),
                   ),
                 )
@@ -547,22 +633,34 @@ class _DoctorCandidateDetail extends StatelessWidget {
               ),
               _TimelineEntry(
                 title: _copy(context, 'Deterministic validation', '确定性验证'),
-                detail: candidate.validationState,
+                detail: _evidenceStateLabel(context, candidate.validationState),
               ),
               _TimelineEntry(
                 title: _copy(context, 'Baseline published', '基线已发布'),
                 detail:
-                    '${candidate.state} · ${_copy(context, 'cannot be edited or hidden', '不可编辑或隐藏')}',
+                    '${_evidenceStateLabel(context, candidate.state)} · '
+                    '${_copy(context, 'cannot be edited or hidden', '不可编辑或隐藏')}',
               ),
-              ...candidate.clinicianResponses.map(
-                (response) => _TimelineEntry(
+              ...candidate.clinicianResponses.indexed.map(
+                (entry) => _TimelineEntry(
                   title: _copy(
                     context,
-                    'Clinician response v${response.version}',
-                    '临床响应 v${response.version}',
+                    entry.$1 == candidate.clinicianResponses.length - 1
+                        ? 'Current doctor response'
+                        : 'Earlier doctor response',
+                    entry.$1 == candidate.clinicianResponses.length - 1
+                        ? '当前医生响应'
+                        : '较早的医生响应',
                   ),
-                  detail:
-                      '${response.position}${response.patientSafeSummary == null ? '' : ' · ${response.patientSafeSummary}'}',
+                  detail: _copy(
+                    context,
+                    'Recorded by the doctor · ${formatProductHistoryTimestamp(context, entry.$2.createdAt)}\n'
+                        '${_clinicianPositionLabel(context, entry.$2.position)}'
+                        '${entry.$2.patientSafeSummary == null ? '' : ' · ${entry.$2.patientSafeSummary}'}',
+                    '由医生记录 · ${formatProductHistoryTimestamp(context, entry.$2.createdAt)}\n'
+                        '${_clinicianPositionLabel(context, entry.$2.position)}'
+                        '${entry.$2.patientSafeSummary == null ? '' : ' · ${entry.$2.patientSafeSummary}'}',
+                  ),
                 ),
               ),
             ],
@@ -602,8 +700,8 @@ class _StatusStrip extends StatelessWidget {
               ? _copy(context, 'Clinician response optional', '可选择记录临床响应')
               : _copy(
                   context,
-                  'Clinician: ${candidate.latestClinicianPosition}',
-                  '临床立场：${candidate.latestClinicianPosition}',
+                  'Clinician: ${_clinicianPositionLabel(context, candidate.latestClinicianPosition)}',
+                  '临床立场：${_clinicianPositionLabel(context, candidate.latestClinicianPosition)}',
                 ),
         ),
       ],
@@ -690,11 +788,12 @@ class _DoctorItemRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 Text(
-                  item.category,
+                  _careCategoryLabel(context, item.category),
                   style: const TextStyle(fontWeight: FontWeight.w800),
                 ),
                 Text(
-                  '${item.itemKey} · ${item.quantityLow}–${item.quantityHigh} ${item.unit}',
+                  '${item.quantityLow}–${item.quantityHigh} '
+                  '${_careUnitLabel(context, item.unit, item.quantityHigh)}',
                   style: const TextStyle(color: DrAiColors.inkSecondary),
                 ),
               ],
@@ -1013,8 +1112,8 @@ class _PlainFacts extends StatelessWidget {
             Text(
               _copy(
                 context,
-                'Sources: ${data.references.map((item) => '${item.releaseType} ${item.version}${item.effectiveFrom == null ? '' : ', effective ${item.effectiveFrom}'}').join(' · ')}',
-                '来源：${data.references.map((item) => '${item.releaseType} ${item.version}${item.effectiveFrom == null ? '' : '，生效于 ${item.effectiveFrom}'}').join(' · ')}',
+                'Sources: ${data.references.map((item) => '${_referenceLabel(context, item.releaseType)}${item.effectiveFrom == null ? '' : ', effective ${item.effectiveFrom}'}').join(' · ')}',
+                '来源：${data.references.map((item) => '${_referenceLabel(context, item.releaseType)}${item.effectiveFrom == null ? '' : '，生效于 ${item.effectiveFrom}'}').join(' · ')}',
               ),
               style: const TextStyle(color: DrAiColors.inkSecondary),
             ),
@@ -1324,15 +1423,19 @@ String? _factValue(BuildContext context, Object? value) {
   }
   if (value is Map) {
     final entries = value.entries
-        .where(
-          (entry) =>
-              entry.key != 'detail_withheld' &&
-              entry.key != 'present' &&
-              entry.key != 'withholding_reason',
-        )
+        .where((entry) {
+          final key = entry.key.toString().toLowerCase();
+          return key != 'detail_withheld' &&
+              key != 'present' &&
+              key != 'withholding_reason' &&
+              !key.endsWith('_id') &&
+              !key.contains('checksum') &&
+              !key.contains('item_key') &&
+              !key.contains('internal_code');
+        })
         .take(5)
         .map((entry) {
-          final label = entry.key.toString().replaceAll('_', ' ');
+          final label = humanizeProductValue(entry.key.toString());
           final displayValue = _factValue(context, entry.value);
           return displayValue == null ? null : '$label: $displayValue';
         })
@@ -1386,14 +1489,14 @@ class _ClinicianResponses extends StatelessWidget {
                 Text(
                   _copy(
                     context,
-                    'Latest position: $latestPosition',
-                    '最新立场：$latestPosition',
+                    'Latest position: ${_clinicianPositionLabel(context, latestPosition)}',
+                    '最新立场：${_clinicianPositionLabel(context, latestPosition)}',
                   ),
                   style: const TextStyle(fontWeight: FontWeight.w800),
                 ),
                 const SizedBox(height: 10),
-                ...responses.map(
-                  (response) => Padding(
+                ...responses.indexed.map(
+                  (entry) => Padding(
                     padding: const EdgeInsets.only(bottom: 10),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1406,9 +1509,11 @@ class _ClinicianResponses extends StatelessWidget {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            '${response.position} · v${response.version}'
-                            '${response.patientSafeSummary == null ? '' : '\n${response.patientSafeSummary}'}'
-                            '${patientSafe || response.clinicalRationale == null ? '' : '\n${response.clinicalRationale!['rationale']}'}',
+                            '${_copy(context, entry.$1 == responses.length - 1 ? 'Current doctor response' : 'Earlier doctor response', entry.$1 == responses.length - 1 ? '当前医生响应' : '较早的医生响应')}'
+                            ' · ${formatProductHistoryTimestamp(context, entry.$2.createdAt)}\n'
+                            '${_clinicianPositionLabel(context, entry.$2.position)}'
+                            '${entry.$2.patientSafeSummary == null ? '' : '\n${entry.$2.patientSafeSummary}'}'
+                            '${patientSafe || entry.$2.clinicalRationale == null ? '' : '\n${entry.$2.clinicalRationale!['rationale']}'}',
                             style: const TextStyle(height: 1.45),
                           ),
                         ),
@@ -1529,8 +1634,8 @@ class _PayerEvidence extends StatelessWidget {
                   child: Text(
                     _copy(
                       context,
-                      'Immutable request ${data.payerRequestId} · ${data.submittedState} · requested ${_money(baseline.currency, data.requestedTotalMinor)}',
-                      '不可变申请 ${data.payerRequestId} · ${data.submittedState} · 申请金额 ${_money(baseline.currency, data.requestedTotalMinor)}',
+                      'Submitted evidence snapshot · ${_evidenceStateLabel(context, data.submittedState)} · requested ${_money(baseline.currency, data.requestedTotalMinor)}',
+                      '已提交证据快照 · ${_evidenceStateLabel(context, data.submittedState)} · 申请金额 ${_money(baseline.currency, data.requestedTotalMinor)}',
                     ),
                   ),
                 ),
@@ -1643,8 +1748,8 @@ class _RoleComparisonAndExplanationState
                 )
               : _copy(
                   context,
-                  'Immutable comparison version ${created.version} was appended.',
-                  '已追加不可变比较版本 ${created.version}。',
+                  'A new immutable comparison was added to the history.',
+                  '新的不可变比较已加入历史记录。',
                 );
         });
       }
@@ -1766,14 +1871,21 @@ class _RoleComparisonAndExplanationState
                   ),
                   style: const TextStyle(fontWeight: FontWeight.w800),
                 ),
-                ...comparisons.map(
-                  (item) => ListTile(
+                ...comparisons.indexed.map(
+                  (entry) => ListTile(
                     leading: const Icon(Icons.calculate_outlined),
                     title: Text(
-                      '${_copy(context, 'Version', '版本')} ${item.version}',
+                      _copy(
+                        context,
+                        entry.$1 == 0
+                            ? 'Current immutable comparison'
+                            : 'Earlier immutable comparison',
+                        entry.$1 == 0 ? '当前不可变比较' : '较早的不可变比较',
+                      ),
                     ),
                     subtitle: Text(
-                      _comparisonLabel(context, item.deliveredTotalLabel),
+                      '${_comparisonLabel(context, entry.$2.deliveredTotalLabel)} · '
+                      '${_copy(context, entry.$1 == 0 ? 'current' : 'superseded by a later comparison', entry.$1 == 0 ? '当前记录' : '已被后续比较取代')}',
                     ),
                   ),
                 ),
@@ -1786,15 +1898,31 @@ class _RoleComparisonAndExplanationState
                   ),
                   style: const TextStyle(fontWeight: FontWeight.w800),
                 ),
-                ...explanations.map(
-                  (item) => ListTile(
+                ...explanations.indexed.map(
+                  (entry) => ListTile(
                     leading: Icon(
-                      item.isValidated
+                      entry.$2.isValidated
                           ? Icons.verified_outlined
                           : Icons.shield_outlined,
                     ),
-                    title: Text(item.displayMode),
-                    subtitle: Text(item.state),
+                    title: Text(
+                      _copy(
+                        context,
+                        entry.$2.isValidated
+                            ? 'Validated explanation'
+                            : 'Structured fallback',
+                        entry.$2.isValidated ? '已验证解释' : '结构化回退',
+                      ),
+                    ),
+                    subtitle: Text(
+                      _copy(
+                        context,
+                        entry.$1 == 0
+                            ? 'Current display record'
+                            : 'Earlier display record',
+                        entry.$1 == 0 ? '当前展示记录' : '较早的展示记录',
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -1901,15 +2029,15 @@ class _RoleComparisonAndExplanationState
                     icon: Icons.history_outlined,
                     label: _copy(
                       context,
-                      'Immutable version ${data.version}',
-                      '不可变版本 ${data.version}',
+                      'Current immutable comparison',
+                      '当前不可变比较',
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 12),
-              ...data.items.map(
-                (item) => Padding(
+              ...data.items.indexed.map(
+                (entry) => Padding(
                   padding: const EdgeInsets.only(bottom: 8),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1922,9 +2050,9 @@ class _RoleComparisonAndExplanationState
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          '${item.itemKey} · '
-                          '${_comparisonLabel(context, item.deliveredLabel)}'
-                          '${item.deliveredAmountMinor == null ? '' : ' · ${_money(data.currency, item.deliveredAmountMinor!)}'}',
+                          '${_copy(context, 'Care item ${entry.$1 + 1}', '诊疗项目 ${entry.$1 + 1}')} · '
+                          '${_comparisonLabel(context, entry.$2.deliveredLabel)}'
+                          '${entry.$2.deliveredAmountMinor == null ? '' : ' · ${_money(data.currency, entry.$2.deliveredAmountMinor!)}'}',
                         ),
                       ),
                     ],
@@ -2227,22 +2355,22 @@ class _EvidenceFlow extends StatelessWidget {
       (
         Icons.medical_services_outlined,
         _copy(context, 'Published baseline', '已发布基线'),
-        data.baseline.state,
+        _evidenceStateLabel(context, data.baseline.state),
       ),
       (
         Icons.comment_outlined,
         _copy(context, 'Clinician response', '临床响应'),
-        data.baseline.latestClinicianPosition,
+        _evidenceStateLabel(context, data.baseline.latestClinicianPosition),
       ),
       (
         Icons.receipt_long_outlined,
         _copy(context, 'Delivered / submitted facts', '已交付／已提交事实'),
-        data.submittedState,
+        _evidenceStateLabel(context, data.submittedState),
       ),
       (
         Icons.person_outline,
         _copy(context, 'Human payer review', '支付方人工审核'),
-        data.humanReviewState,
+        _evidenceStateLabel(context, data.humanReviewState),
       ),
     ];
     return LayoutBuilder(

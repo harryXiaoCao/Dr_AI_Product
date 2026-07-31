@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:dr_ai_app/app/routing/app_role.dart';
 import 'package:dr_ai_app/core/api/api_error.dart';
+import 'package:dr_ai_app/features/account/domain/support_request_data.dart';
 import 'package:dr_ai_app/features/auth/data/dr_ai_repository.dart';
 import 'package:dr_ai_app/features/auth/domain/auth_models.dart';
 import 'package:dr_ai_app/features/care_cost/domain/care_cost_data.dart';
@@ -9,6 +10,7 @@ import 'package:dr_ai_app/features/dashboard/domain/dashboard_data.dart';
 import 'package:dr_ai_app/features/doctor/domain/doctor_profile.dart';
 import 'package:dr_ai_app/features/doctor/domain/medical_resource_fixture.dart';
 import 'package:dr_ai_app/features/expected_care/domain/expected_care_data.dart';
+import 'package:dr_ai_app/features/notifications/domain/notification_data.dart';
 import 'package:dr_ai_app/features/patient/domain/patient_care_data.dart';
 
 const doctorUser = SessionUser(
@@ -72,6 +74,168 @@ const payerSession = AuthSession(
   refreshToken: 'test-refresh',
   user: payerUser,
 );
+
+NotificationInboxItem notificationFixture({
+  String id = '11111111-1111-4111-8111-111111111111',
+  String eventType = 'recovery_task_due',
+  String category = 'recovery_task',
+  String status = 'unread',
+  String title = 'Recovery reminder',
+  String body = 'Open Dr. AI to review a recovery task.',
+  String severity = 'action',
+  String deliveryState = 'in_product_only',
+  DateTime? readAt,
+  DateTime? dismissedAt,
+  DateTime? expiresAt,
+  DateTime? supersededAt,
+  bool canDismiss = true,
+  bool canMarkUnread = false,
+  bool deepLinkAvailable = true,
+  int version = 1,
+}) {
+  return NotificationInboxItem(
+    id: id,
+    eventType: eventType,
+    severity: severity,
+    category: category,
+    status: status,
+    title: title,
+    body: body,
+    actorKind: 'system',
+    occurredAt: DateTime.utc(2026, 7, 30, 9),
+    scheduledFor: DateTime.utc(2026, 7, 30, 9),
+    deliveryState: deliveryState,
+    readAt: readAt,
+    dismissedAt: dismissedAt,
+    expiresAt: expiresAt,
+    supersededAt: supersededAt,
+    canDismiss: canDismiss,
+    canMarkUnread: canMarkUnread,
+    deepLinkAvailable: deepLinkAvailable,
+    version: version,
+  );
+}
+
+final notificationInboxFixture = NotificationInboxData(
+  items: <NotificationInboxItem>[notificationFixture()],
+  unreadCount: 1,
+  generatedAt: DateTime.now().toUtc(),
+);
+
+const notificationPreferencesFixture = NotificationPreferences(
+  allowedCategories: <String>[
+    'medication_reminder',
+    'refill_reminder',
+    'recovery_task_due',
+  ],
+  inProductEnabled: true,
+  externalChannels: <String>[],
+  quietHoursStart: '22:00',
+  quietHoursEnd: '07:00',
+  locale: 'en',
+  timeZone: 'Asia/Shanghai',
+  previewLevel: 'generic',
+  version: 1,
+);
+
+const notificationReadinessFixture = NotificationReadiness(
+  channels: <NotificationChannelReadiness>[
+    NotificationChannelReadiness(
+      channel: 'apns',
+      provider: 'apns',
+      status: 'server_readiness',
+      readinessCode: 'missing_provider_credentials',
+      supported: true,
+      enabled: false,
+      blockers: <String>['credential_not_configured'],
+    ),
+    NotificationChannelReadiness(
+      channel: 'android_emas',
+      provider: 'alibaba_cloud_emas',
+      status: 'server_readiness',
+      readinessCode: 'missing_provider_credentials',
+      supported: true,
+      enabled: false,
+      blockers: <String>['credential_not_configured'],
+    ),
+    NotificationChannelReadiness(
+      channel: 'web_push',
+      provider: 'web_push',
+      status: 'server_readiness',
+      readinessCode: 'missing_provider_credentials',
+      supported: true,
+      enabled: false,
+      blockers: <String>['credential_not_configured'],
+    ),
+  ],
+);
+
+SupportRequestData supportRequestFixture({
+  String id = 'support-request-test-id',
+  String reference = 'REQ-2026-0001',
+  String requestType = 'support',
+  String status = 'queued',
+  int version = 1,
+  bool replay = false,
+  List<String> availableActions = const <String>['withdraw'],
+  String? retentionBoundaryCode,
+  String? deletionEffectCode,
+}) {
+  final deletion = requestType == 'deletion';
+  return SupportRequestData(
+    id: id,
+    publicReference: reference,
+    requestType: requestType,
+    status: status,
+    subject: 'Account access help',
+    version: version,
+    timeline: <SupportRequestTimelineEntry>[
+      SupportRequestTimelineEntry(
+        sequence: 1,
+        eventType: 'submitted',
+        status: status,
+        actorKind: 'requester',
+        summaryCode: 'request_submitted',
+        occurredAt: DateTime(2026, 7, 28, 9, 30),
+      ),
+    ],
+    retentionBoundaryCode:
+        retentionBoundaryCode ??
+        (deletion
+            ? 'regulated_and_audit_retention_applies'
+            : 'standard_support_retention'),
+    deletionEffectCode:
+        deletionEffectCode ??
+        (deletion
+            ? 'request_only_no_immediate_deletion'
+            : 'not_a_deletion_request'),
+    availableActions: availableActions,
+    replay: replay,
+    createdAt: DateTime(2026, 7, 28, 9, 30),
+    updatedAt: DateTime(2026, 7, 28, 9, 30),
+  );
+}
+
+SupportRequestData _copySupportRequest(
+  SupportRequestData source, {
+  bool? replay,
+}) {
+  return SupportRequestData(
+    id: source.id,
+    publicReference: source.publicReference,
+    requestType: source.requestType,
+    status: source.status,
+    subject: source.subject,
+    version: source.version,
+    timeline: source.timeline,
+    retentionBoundaryCode: source.retentionBoundaryCode,
+    deletionEffectCode: source.deletionEffectCode,
+    availableActions: source.availableActions,
+    replay: replay ?? source.replay,
+    createdAt: source.createdAt,
+    updatedAt: source.updatedAt,
+  );
+}
 
 const demoPayerProfile = PayerProfileData(
   membershipId: 'payer-membership-test-id',
@@ -787,6 +951,10 @@ class FakeDrAiRepository implements DrAiRepository {
     Map<String, MedicalResourceDetail>? medicalResourceDetails,
     List<PayerRequestData>? payerRequests,
     PayerProfileData? payerProfile,
+    List<SupportRequestData>? supportRequests,
+    NotificationInboxData? notificationInbox,
+    NotificationPreferences? notificationPreferences,
+    NotificationReadiness? notificationReadiness,
     this.patientListError,
     this.patientCareError,
     this.presignError,
@@ -798,6 +966,15 @@ class FakeDrAiRepository implements DrAiRepository {
     this.chatError,
     this.consultationError,
     this.payerProfileUpdateError,
+    this.supportRequestLoadError,
+    this.supportRequestCreateError,
+    this.supportRequestWithdrawError,
+    this.notificationLoadError,
+    this.notificationMutationError,
+    this.notificationPreferencesError,
+    this.notificationReadinessError,
+    this.notificationOpenResult,
+    this.supportRequestCreateErrorAfterPersist = false,
     this.loginCompleter,
   }) : dashboard = dashboard ?? doctorDashboard,
        patientList =
@@ -825,7 +1002,15 @@ class FakeDrAiRepository implements DrAiRepository {
        _payerRequests = List<PayerRequestData>.from(
          payerRequests ?? <PayerRequestData>[payerRequestFixture()],
        ),
-       _payerProfile = payerProfile ?? demoPayerProfile;
+       _payerProfile = payerProfile ?? demoPayerProfile,
+       supportRequests = List<SupportRequestData>.from(
+         supportRequests ?? const <SupportRequestData>[],
+       ),
+       notificationInbox = notificationInbox ?? notificationInboxFixture,
+       notificationPreferences =
+           notificationPreferences ?? notificationPreferencesFixture,
+       notificationReadiness =
+           notificationReadiness ?? notificationReadinessFixture;
 
   AuthSession? restoredSession;
   AuthSession loginSession;
@@ -847,6 +1032,10 @@ class FakeDrAiRepository implements DrAiRepository {
   Map<String, MedicalResourceDetail> medicalResourceDetails;
   final List<PayerRequestData> _payerRequests;
   PayerProfileData _payerProfile;
+  List<SupportRequestData> supportRequests;
+  NotificationInboxData notificationInbox;
+  NotificationPreferences notificationPreferences;
+  NotificationReadiness notificationReadiness;
   ApiError? patientListError;
   ApiError? patientCareError;
   ApiError? presignError;
@@ -858,6 +1047,15 @@ class FakeDrAiRepository implements DrAiRepository {
   ApiError? chatError;
   ApiError? consultationError;
   ApiError? payerProfileUpdateError;
+  ApiError? supportRequestLoadError;
+  ApiError? supportRequestCreateError;
+  ApiError? supportRequestWithdrawError;
+  ApiError? notificationLoadError;
+  ApiError? notificationMutationError;
+  ApiError? notificationPreferencesError;
+  ApiError? notificationReadinessError;
+  NotificationOpenResult? notificationOpenResult;
+  bool supportRequestCreateErrorAfterPersist;
   Completer<AuthSession>? loginCompleter;
   bool logoutCalled = false;
   bool registerCalled = false;
@@ -898,6 +1096,14 @@ class FakeDrAiRepository implements DrAiRepository {
   int payerProfileUpdateCount = 0;
   int payerProfileLoadCount = 0;
   int payerDashboardLoadCount = 0;
+  int supportRequestLoadCount = 0;
+  int supportRequestCreateCount = 0;
+  int supportRequestWithdrawCount = 0;
+  final List<String> supportRequestIdempotencyKeys = <String>[];
+  final List<ProductEventInput> productEvents = <ProductEventInput>[];
+  final Map<String, String> _supportRequestSignatures = <String, String>{};
+  final Map<String, SupportRequestData> _supportRequestsByKey =
+      <String, SupportRequestData>{};
 
   static const expectedCareFactSnapshot = CostEstimationFactSnapshotData(
     available: true,
@@ -1111,6 +1317,239 @@ class FakeDrAiRepository implements DrAiRepository {
 
   @override
   Future<AuthSession?> restore() async => restoredSession;
+
+  @override
+  Future<List<SupportRequestData>> loadSupportRequests() async {
+    supportRequestLoadCount += 1;
+    if (supportRequestLoadError != null) throw supportRequestLoadError!;
+    return List<SupportRequestData>.unmodifiable(supportRequests);
+  }
+
+  @override
+  Future<SupportRequestData> createSupportRequest({
+    required String requestType,
+    required String subject,
+    required String message,
+    required String idempotencyKey,
+  }) async {
+    supportRequestCreateCount += 1;
+    supportRequestIdempotencyKeys.add(idempotencyKey);
+    final signature = '$requestType|${subject.trim()}|${message.trim()}';
+    final existing = _supportRequestsByKey[idempotencyKey];
+    if (existing != null) {
+      if (_supportRequestSignatures[idempotencyKey] != signature) {
+        throw const ApiError(
+          code: 'conflict',
+          message: 'Idempotency key belongs to different content.',
+          statusCode: 409,
+        );
+      }
+      return _copySupportRequest(existing, replay: true);
+    }
+    if (supportRequestCreateError != null &&
+        !supportRequestCreateErrorAfterPersist) {
+      throw supportRequestCreateError!;
+    }
+    final deletion = requestType == 'deletion';
+    final created = SupportRequestData(
+      id: 'support-request-created-$supportRequestCreateCount',
+      publicReference: 'REQ-2026-NEW$supportRequestCreateCount',
+      requestType: requestType,
+      status: 'queued',
+      subject: subject.trim(),
+      version: 1,
+      timeline: <SupportRequestTimelineEntry>[
+        SupportRequestTimelineEntry(
+          sequence: 1,
+          eventType: 'submitted',
+          status: 'queued',
+          actorKind: 'requester',
+          summaryCode: 'request_submitted',
+          occurredAt: DateTime(2026, 7, 28, 10),
+        ),
+      ],
+      retentionBoundaryCode: deletion
+          ? 'regulated_and_audit_retention_applies'
+          : 'standard_support_retention',
+      deletionEffectCode: deletion
+          ? 'request_only_no_immediate_deletion'
+          : 'not_a_deletion_request',
+      availableActions: const <String>['withdraw'],
+      createdAt: DateTime(2026, 7, 28, 10),
+      updatedAt: DateTime(2026, 7, 28, 10),
+    );
+    _supportRequestSignatures[idempotencyKey] = signature;
+    _supportRequestsByKey[idempotencyKey] = created;
+    supportRequests = <SupportRequestData>[
+      created,
+      ...supportRequests.where((item) => item.id != created.id),
+    ];
+    if (supportRequestCreateError != null &&
+        supportRequestCreateErrorAfterPersist) {
+      throw supportRequestCreateError!;
+    }
+    return created;
+  }
+
+  @override
+  Future<SupportRequestData> withdrawSupportRequest({
+    required String requestId,
+    required int expectedVersion,
+    required String idempotencyKey,
+  }) async {
+    supportRequestWithdrawCount += 1;
+    supportRequestIdempotencyKeys.add(idempotencyKey);
+    if (supportRequestWithdrawError != null) {
+      throw supportRequestWithdrawError!;
+    }
+    final current = supportRequests.firstWhere(
+      (item) => item.id == requestId,
+      orElse: supportRequestFixture,
+    );
+    final updated = SupportRequestData(
+      id: current.id,
+      publicReference: current.publicReference,
+      requestType: current.requestType,
+      status: 'cancelled',
+      subject: current.subject,
+      version: expectedVersion + 1,
+      timeline: <SupportRequestTimelineEntry>[
+        ...current.timeline,
+        SupportRequestTimelineEntry(
+          sequence: current.timeline.length + 1,
+          eventType: 'withdrawn',
+          status: 'cancelled',
+          actorKind: 'requester',
+          summaryCode: 'request_withdrawn_by_requester',
+          occurredAt: DateTime(2026, 7, 28, 10, 5),
+        ),
+      ],
+      retentionBoundaryCode: current.retentionBoundaryCode,
+      deletionEffectCode: current.deletionEffectCode,
+      availableActions: const <String>[],
+      createdAt: current.createdAt,
+      updatedAt: DateTime(2026, 7, 28, 10, 5),
+    );
+    supportRequests = <SupportRequestData>[
+      updated,
+      ...supportRequests.where((item) => item.id != requestId),
+    ];
+    return updated;
+  }
+
+  @override
+  Future<void> recordProductEvent(ProductEventInput event) async {
+    productEvents.add(event);
+  }
+
+  @override
+  Future<NotificationInboxData> loadNotificationInbox() async {
+    if (notificationLoadError != null) throw notificationLoadError!;
+    return notificationInbox;
+  }
+
+  @override
+  Future<NotificationPreferences> loadNotificationPreferences() async {
+    if (notificationPreferencesError != null) {
+      throw notificationPreferencesError!;
+    }
+    return notificationPreferences;
+  }
+
+  @override
+  Future<NotificationPreferences> updateNotificationPreferences(
+    NotificationPreferences preferences, {
+    required String idempotencyKey,
+  }) async {
+    if (notificationPreferencesError != null) {
+      throw notificationPreferencesError!;
+    }
+    notificationPreferences = NotificationPreferences(
+      allowedCategories: preferences.allowedCategories,
+      inProductEnabled: true,
+      externalChannels: preferences.externalChannels,
+      quietHoursStart: preferences.quietHoursStart,
+      quietHoursEnd: preferences.quietHoursEnd,
+      locale: preferences.locale,
+      timeZone: preferences.timeZone,
+      previewLevel: preferences.previewLevel,
+      version: preferences.version + 1,
+    );
+    return notificationPreferences;
+  }
+
+  @override
+  Future<NotificationReadiness> loadNotificationReadiness() async {
+    if (notificationReadinessError != null) {
+      throw notificationReadinessError!;
+    }
+    return notificationReadiness;
+  }
+
+  @override
+  Future<NotificationInboxItem> setNotificationReadStatus({
+    required String notificationId,
+    required bool read,
+    required int expectedVersion,
+    required String idempotencyKey,
+  }) async {
+    if (notificationMutationError != null) throw notificationMutationError!;
+    final current = notificationInbox.items.firstWhere(
+      (item) => item.id == notificationId,
+    );
+    final updated = _copyNotification(
+      current,
+      status: read ? 'read' : 'unread',
+      readAt: read ? DateTime.utc(2026, 7, 30, 10) : null,
+      clearReadAt: !read,
+      version: expectedVersion + 1,
+    );
+    _replaceNotification(updated);
+    return updated;
+  }
+
+  @override
+  Future<NotificationInboxItem> dismissNotification({
+    required String notificationId,
+    required int expectedVersion,
+    required String idempotencyKey,
+  }) async {
+    if (notificationMutationError != null) throw notificationMutationError!;
+    final current = notificationInbox.items.firstWhere(
+      (item) => item.id == notificationId,
+    );
+    final updated = _copyNotification(
+      current,
+      status: 'dismissed',
+      dismissedAt: DateTime.utc(2026, 7, 30, 10),
+      version: expectedVersion + 1,
+    );
+    _replaceNotification(updated);
+    return updated;
+  }
+
+  @override
+  Future<NotificationOpenResult> resolveNotificationOpen(
+    String notificationId,
+  ) async {
+    return notificationOpenResult ??
+        const NotificationOpenResult(
+          status: 'resolved',
+          destinationPath: '/patient/recovery-plan',
+        );
+  }
+
+  void _replaceNotification(NotificationInboxItem updated) {
+    final items = <NotificationInboxItem>[
+      updated,
+      ...notificationInbox.items.where((item) => item.id != updated.id),
+    ];
+    notificationInbox = NotificationInboxData(
+      items: items,
+      unreadCount: items.where((item) => item.isUnread).length,
+      generatedAt: DateTime.now().toUtc(),
+    );
+  }
 
   @override
   Future<List<ExpectedCareCandidateData>> loadExpectedCareCandidates(
@@ -2333,19 +2772,6 @@ class FakeDrAiRepository implements DrAiRepository {
   }
 
   @override
-  Future<MedicationNotificationScheduleResult> scheduleMedicationNotifications(
-    List<RecoveryTaskItem> tasks,
-  ) async {
-    final count = tasks
-        .where((task) => task.category == 'medication' && !task.isCompleted)
-        .length;
-    return MedicationNotificationScheduleResult(
-      scheduledCount: count,
-      label: 'Local demo medication notifications armed for $count task(s).',
-    );
-  }
-
-  @override
   Future<DoctorPatientContactList> loadOwnDoctorContacts() async {
     return const DoctorPatientContactList(items: <DoctorPatientContact>[]);
   }
@@ -2959,5 +3385,36 @@ PatientCareBundle _copyCareBundle(
     medicationReminders: medicationReminders ?? bundle.medicationReminders,
     recoveryPlans: recoveryPlans ?? bundle.recoveryPlans,
     doctorNotes: bundle.doctorNotes,
+  );
+}
+
+NotificationInboxItem _copyNotification(
+  NotificationInboxItem item, {
+  required String status,
+  DateTime? readAt,
+  bool clearReadAt = false,
+  DateTime? dismissedAt,
+  required int version,
+}) {
+  return NotificationInboxItem(
+    id: item.id,
+    eventType: item.eventType,
+    severity: item.severity,
+    category: item.category,
+    status: status,
+    title: item.title,
+    body: item.body,
+    actorKind: item.actorKind,
+    occurredAt: item.occurredAt,
+    scheduledFor: item.scheduledFor,
+    deliveryState: item.deliveryState,
+    readAt: clearReadAt ? null : readAt ?? item.readAt,
+    dismissedAt: dismissedAt ?? item.dismissedAt,
+    expiresAt: item.expiresAt,
+    supersededAt: item.supersededAt,
+    canDismiss: item.canDismiss,
+    canMarkUnread: status == 'read',
+    deepLinkAvailable: item.deepLinkAvailable,
+    version: version,
   );
 }

@@ -1,0 +1,26 @@
+{
+  "suite_id": "dr-ai-imaging-capability-v1",
+  "purpose_code": "imaging_observation_draft",
+  "capability_contract_version": "image-input-capability.v1",
+  "cases": [
+    {
+      "case_id": "documented-text-only",
+      "declared_input_modalities": [
+        "text"
+      ],
+      "expected_status": "unavailable_text_only",
+      "expected_provider_call_attempted": false,
+      "expected_release_registration_allowed": false
+    },
+    {
+      "case_id": "image-declared-probe-required",
+      "declared_input_modalities": [
+        "text",
+        "image"
+      ],
+      "expected_status": "unavailable_probe_not_run",
+      "expected_provider_call_attempted": false,
+      "expected_release_registration_allowed": false
+    }
+  ]
+}

@@ -8,6 +8,8 @@ import json
 import uuid
 from pathlib import Path
 
+from sqlalchemy import select
+
 from app.database import SessionLocal
 from app.expected_care_release_operations import (
     activate_release,
@@ -60,6 +62,27 @@ def _assert_artifact(
     }
     if any(artifact.get(key) != value for key, value in expected.items()):
         raise SystemExit("release_artifact_database_mismatch")
+
+
+def _rollback_target(
+    db,
+    release: ExpectedCareExplanationRelease,
+    artifact: dict[str, object],
+) -> str:
+    version = artifact.get("rollback_target_release_version")
+    if version is not None:
+        target = db.scalar(
+            select(ExpectedCareExplanationRelease).where(
+                ExpectedCareExplanationRelease.release_key == release.release_key,
+                ExpectedCareExplanationRelease.version == str(version),
+            )
+        )
+        if target is None:
+            raise SystemExit("rollback_target_release_not_found")
+        if release.rollback_target_release_id != target.id:
+            raise SystemExit("rollback_target_release_mismatch")
+        return str(target.id)
+    return str(artifact["rollback_target"])
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -143,7 +166,7 @@ def main() -> None:
                 schema_version=str(artifact["schema_version"]),
                 prompt_version=str(artifact["prompt_version"]),
                 model_configuration_version=str(artifact["model_configuration_version"]),
-                rollback_target=str(artifact["rollback_target"]),
+                rollback_target=_rollback_target(db, release, artifact),
             )
         elif args.action == "supersede":
             if not args.target_release_id or not args.artifact:
@@ -158,7 +181,7 @@ def main() -> None:
                 expected_active_version=args.expected_version,
                 actor_user_id=actor_id,
                 idempotency_key=args.idempotency_key,
-                rollback_target=str(artifact["rollback_target"]),
+                rollback_target=_rollback_target(db, successor, artifact),
             )
         elif args.action == "kill-switch":
             result = engage_purpose_kill_switch(

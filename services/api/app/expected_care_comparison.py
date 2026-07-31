@@ -36,6 +36,7 @@ from app.models import (
     UserRole,
 )
 from app.payer_scope import require_active_payer_membership
+from app.notification_service import create_notification
 
 router = APIRouter(prefix="/api/v1", tags=["expected-care comparison"])
 
@@ -563,6 +564,28 @@ def create_comparison(
             },
         )
     )
+    actor = db.get(User, actor_user_id)
+    outside_labels = {"below_reference_range", "above_reference_range"}
+    if (
+        actor is not None
+        and actor.role == UserRole.doctor
+        and (
+            result["delivered_total_label"] in outside_labels
+            or result["submitted_total_label"] in outside_labels
+        )
+    ):
+        create_notification(
+            db,
+            recipient=actor,
+            event_type="cost_variance_warning",
+            source_resource_id=comparison.id,
+            scheduled_for=None,
+            patient_id=baseline.patient_id,
+            clinical_event_id=baseline.clinical_event_id,
+            payer_organization_id=(payer_request.payer_organization_id if payer_request else None),
+            payer_request_id=payer_request.id if payer_request else None,
+            occurrence_key=f"comparison:v{version}",
+        )
     db.commit()
     db.refresh(comparison)
     return comparison, False

@@ -1009,10 +1009,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String get loadTodayTasksFailed => '无法加载今日康复任务，请重试。';
 
   @override
-  String get preparingNotifications => '正在准备本地用药通知…';
-
-  @override
-  String get notificationsUnavailable => '本地用药通知当前不可用。';
+  String get phase5MedicationNotificationsReadOnly =>
+      'Phase 5 不会安排系统用药通知。Phase 6 需完成设备注册并接入受治理的通知投递服务；目前请使用已持久化的应用内任务清单。';
 
   @override
   String get noTodayTasks => '今天没有待完成的康复任务。';
@@ -3242,4 +3240,204 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get imagingProcedureValidation =>
       '请输入检查项目名称、影像方式和检查部位。已预约项目需要预约时间；已执行或已完成项目需要实际检查时间。';
+
+  @override
+  String get accountRequestsTitle => '支持、反馈与账户申请';
+
+  @override
+  String get accountRequestsDescription =>
+      '提交并跟踪已持久化的申请。回执、状态变更、重试和撤回都会在此保留可追溯记录。';
+
+  @override
+  String get requestTypeLabel => '申请类型';
+
+  @override
+  String get supportRequestType => '支持请求';
+
+  @override
+  String get feedbackRequestType => '产品反馈';
+
+  @override
+  String get deletionRequestType => '账户删除审核';
+
+  @override
+  String get requestSubjectLabel => '主题';
+
+  @override
+  String get requestSubjectValidation => '请至少输入 3 个字符。';
+
+  @override
+  String get requestMessageLabel => '您需要什么帮助？';
+
+  @override
+  String get requestMessageValidation => '请至少输入 8 个字符。';
+
+  @override
+  String get requestPrivacyHelper => '请勿填写患者身份、联系方式、临床文本、影像内容或支付方保密备注。';
+
+  @override
+  String get deletionRetentionBoundary =>
+      '此操作提交删除审核申请，不会立即删除账户，也不会立即删除依法或因安全、财务、临床及审计要求需保留的记录。身份核验和适用的保留期限仍然有效。';
+
+  @override
+  String get standardSupportRetentionBoundary => '此支持或反馈申请将按照标准支持记录政策保留。';
+
+  @override
+  String get unknownRetentionBoundary =>
+      '适用的保留边界暂不可用。在据此判断删除或保留情况前，请联系获授权的支持人员。';
+
+  @override
+  String get deletionRequestOnlyEffect => '这只是删除审核申请；不会立即删除账户或需保留的记录。';
+
+  @override
+  String get notDeletionRequestEffect => '此申请不要求删除账户或记录。';
+
+  @override
+  String get unknownDeletionEffect => '删除效果暂不可用；请勿假定任何内容会被立即删除。';
+
+  @override
+  String get deletionBoundaryConfirmation => '我理解这是一项审核申请，适用记录可能仍需依法或依规保留。';
+
+  @override
+  String get submitRequest => '提交申请';
+
+  @override
+  String get submittingRequest => '正在提交';
+
+  @override
+  String get retryRequest => '安全重试';
+
+  @override
+  String requestSubmitted(String reference) {
+    return '申请 $reference 已提交并持久化。';
+  }
+
+  @override
+  String requestReplayConfirmed(String reference) {
+    return '申请 $reference 已被接收，未创建重复申请。';
+  }
+
+  @override
+  String get requestConflict => '此次重试与另一份已保存申请冲突。您的文本已保留；请查看更新后的记录再重试。';
+
+  @override
+  String get requestNetworkFailure => '暂时无法连接 Dr. AI。您的文本已保留；重试不会创建重复申请。';
+
+  @override
+  String get requestSafeContentFailure => '请移除联系方式、患者信息、临床文本或保密备注后重试。';
+
+  @override
+  String get requestAuthorizationFailure => '此账户无权使用该申请。';
+
+  @override
+  String get requestGenericFailure => '暂时无法完成申请。您的文本已保留，可安全重试。';
+
+  @override
+  String get requestHistoryTitle => '申请记录';
+
+  @override
+  String get loadingAccountRequests => '正在加载账户申请记录';
+
+  @override
+  String get loadAccountRequestsFailed => '申请记录暂时不可用。';
+
+  @override
+  String get noAccountRequests => '此账户尚未提交支持、反馈或删除申请。';
+
+  @override
+  String get startAccountRequest => '开始申请';
+
+  @override
+  String requestReceipt(String reference) {
+    return '回执编号：$reference';
+  }
+
+  @override
+  String get requestTimelineTitle => '状态时间线';
+
+  @override
+  String get requestTimelineUnavailable => '此较早申请暂无详细状态变更记录。';
+
+  @override
+  String get requestStatusQueued => '已排队';
+
+  @override
+  String get requestStatusReviewing => '审核中';
+
+  @override
+  String get requestStatusResolved => '已处理';
+
+  @override
+  String get requestStatusFailed => '需要处理';
+
+  @override
+  String get requestStatusCancelled => '已撤回';
+
+  @override
+  String get requestStatusUnavailable => '状态不可用';
+
+  @override
+  String get requestNextQueued => '下一步：由获授权的工作人员审核此申请。';
+
+  @override
+  String get requestNextReviewing => '下一步：等待当前审核完成；申请会继续显示在此处。';
+
+  @override
+  String get requestNextResolved => '此申请已结束，请在时间线查看记录结果。';
+
+  @override
+  String get requestNextFailed => '申请未能继续处理。请查看时间线；如仍无可执行操作，请提交新申请。';
+
+  @override
+  String get requestNextCancelled => '此申请已撤回；回执和必要审计记录仍会保留。';
+
+  @override
+  String get requestNextUnavailable => '当前没有可执行的下一步。';
+
+  @override
+  String get timelineRequestSubmitted => '申请已提交';
+
+  @override
+  String get timelineRequestWithdrawn => '申请已撤回';
+
+  @override
+  String get timelineReviewStarted => '已开始审核';
+
+  @override
+  String get timelineRequestResolved => '审核已完成';
+
+  @override
+  String get timelineActorYou => '您';
+
+  @override
+  String get timelineActorAuthorizedOperator => '获授权工作人员';
+
+  @override
+  String get timelineActorSystem => '受治理系统';
+
+  @override
+  String get withdrawRequest => '撤回申请';
+
+  @override
+  String get withdrawRequestQuestion => '撤回此申请？';
+
+  @override
+  String get withdrawRequestDescription => '在合同允许的情况下，撤回会停止后续处理；回执和必要审计记录仍会保留。';
+
+  @override
+  String requestWithdrawn(String reference) {
+    return '申请 $reference 已撤回。';
+  }
+
+  @override
+  String get withdrawalReplayConfirmed => '此撤回操作已被接收，未创建重复状态变更。';
+
+  @override
+  String get withdrawalConflict => '申请在撤回前已发生变化。记录已刷新，请查看当前状态。';
+
+  @override
+  String get signInForAccountRequests => '请登录并打开“账户”，提交或跟踪支持、反馈及删除审核申请。';
+
+  @override
+  String get openAccountForRequests => '请打开“账户”，提交或跟踪支持、反馈及删除审核申请。';
 }

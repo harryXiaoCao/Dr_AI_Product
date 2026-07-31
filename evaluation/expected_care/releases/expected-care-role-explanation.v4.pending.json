@@ -1,0 +1,91 @@
+{
+  "release_key": "expected-care-role-explanation",
+  "version": "v4-2026-07-30",
+  "purpose_code": "expected_care_role_explanation",
+  "purpose_contract_version": "expected-care-role-explanation-purpose.v2",
+  "schema_version": "expected-care-role-explanation-claim-graph.v2",
+  "prompt_version": "expected-care-role-explanation-prompt.v3",
+  "model_configuration_version": "expected-care-role-explanation-deepseek.v1",
+  "provider": "deepseek",
+  "model": "deepseek-v4-flash",
+  "source_checksums": {
+    "frozen_suite_file_sha256": "63a397e1f594661227739adc41d7cf4cb9df4f18f29eefdbfef51ec3121a180c",
+    "sanitized_result_file_sha256": "b5bedb8f81e43f2176b9d9fac0d7999ea94a5388b8d612a3cade38497f2b8257",
+    "explanation_source_sha256": "9bc95f2f6fc158d5e6c2b1025b76f25dbf82735b7035b07416948635426091e0",
+    "comparison_source_sha256": "e36525a44d2359a62f318069ff7eac2b73bad5eea6dcd10f949c1bb6a297f7e4",
+    "output_schema_sha256": "4323e659736351bc93da9e47431c78cf409744cd9cb59dff1905e91ab1392874"
+  },
+  "evaluation_manifest_checksum_sha256": "a22127d01cd114e0e35c4651fab380b8f2f7d7b5e48174ec6c5f09a1d27e3454",
+  "evaluation_result_checksum_sha256": "b5bedb8f81e43f2176b9d9fac0d7999ea94a5388b8d612a3cade38497f2b8257",
+  "review_requirements": [
+    {
+      "review_type": "clinical",
+      "status": "pending",
+      "scope": "early_synthetic_development_and_controlled_staging_only",
+      "future_real_world_gate_preserved": true
+    },
+    {
+      "review_type": "pricing",
+      "status": "pending",
+      "scope": "early_synthetic_development_and_controlled_staging_only",
+      "future_real_world_gate_preserved": true
+    },
+    {
+      "review_type": "native_simplified_chinese",
+      "status": "pending",
+      "scope": "early_synthetic_development_and_controlled_staging_only",
+      "future_real_world_gate_preserved": true
+    },
+    {
+      "review_type": "privacy",
+      "status": "pending",
+      "scope": "early_synthetic_development_and_controlled_staging_only",
+      "future_real_world_gate_preserved": true
+    },
+    {
+      "review_type": "security",
+      "status": "pending",
+      "scope": "early_synthetic_development_and_controlled_staging_only",
+      "future_real_world_gate_preserved": true
+    },
+    {
+      "review_type": "legal",
+      "status": "pending",
+      "scope": "early_synthetic_development_and_controlled_staging_only",
+      "future_real_world_gate_preserved": true
+    },
+    {
+      "review_type": "payer_workflow",
+      "status": "pending",
+      "scope": "early_synthetic_development_and_controlled_staging_only",
+      "future_real_world_gate_preserved": true
+    },
+    {
+      "review_type": "regulatory",
+      "status": "pending",
+      "scope": "early_synthetic_development_and_controlled_staging_only",
+      "future_real_world_gate_preserved": true
+    }
+  ],
+  "machine_gates": {
+    "schema_valid": true,
+    "fact_id_citations": true,
+    "exactness": true,
+    "unsupported_claims": true,
+    "leakage": true,
+    "bilingual": true,
+    "comparison": true,
+    "authorization": true,
+    "fallback": true
+  },
+  "activation_state": "blocked_pending_external_reviews",
+  "kill_switch_state": "on",
+  "predecessor_release_version": "v3-2026-07-26",
+  "rollback_target": "fixed_structured_fallback",
+  "real_world_activation_allowed": false,
+  "rollback_evidence": {
+    "required": true,
+    "target": "fixed_structured_fallback",
+    "content_free": true
+  }
+}

@@ -1348,16 +1348,6 @@ class PatientTodayData {
   final RecoveryPlanProgressData progressSummary;
 }
 
-class MedicationNotificationScheduleResult {
-  const MedicationNotificationScheduleResult({
-    required this.scheduledCount,
-    required this.label,
-  });
-
-  final int scheduledCount;
-  final String label;
-}
-
 class ChatMessageResult {
   const ChatMessageResult({
     required this.threadId,
