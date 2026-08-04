@@ -11,14 +11,15 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 COPY --from=uv /uv /uvx /bin/
-COPY pyproject.toml uv.lock ./
+COPY services/api/pyproject.toml services/api/uv.lock ./
 RUN uv sync --frozen --no-dev --no-install-project
 
-COPY alembic.ini ./
-COPY migrations ./migrations
-COPY app ./app
-COPY scripts ./scripts
-COPY knowledge_base ./knowledge_base
+COPY services/api/alembic.ini ./
+COPY services/api/migrations ./migrations
+COPY services/api/app ./app
+COPY services/api/scripts ./scripts
+COPY services/api/knowledge_base ./knowledge_base
+COPY evaluation/clinical_event_intelligence ./evaluation/clinical_event_intelligence
 
 EXPOSE 8000
 CMD ["uv", "run", "--no-sync", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-access-log"]

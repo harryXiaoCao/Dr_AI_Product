@@ -80,8 +80,14 @@ are recorded in
 1. Create and validate host-only backups of `.env`, Compose/Caddy configuration,
    the current web bundle, knowledge release artifacts, and a PostgreSQL
    custom-format dump. Do not mutate the live release until these checks pass.
-2. Build `services/api/Dockerfile` and push an immutable digest to the existing
-   Tencent Container Registry repository.
+2. From the repository root, build `services/api/Dockerfile` with the repository
+   root as its context and push an immutable digest to the existing Tencent
+   Container Registry repository. The root context includes the checksum-bound
+   Clinical Event Intelligence evaluation package required at runtime:
+
+   ```bash
+   docker build --platform linux/amd64 -f services/api/Dockerfile .
+   ```
 3. Set `DR_AI_IMAGE` to that digest and configure the approved staging
    hostname/database values in the host-only `.env`.
 4. Keep `DR_AI_RETRIEVAL_IMAGE` pinned to a validated immutable digest; replace

@@ -18,6 +18,7 @@ from app.clinical_event_intelligence_governance import (
     PRIMARY_RELEASE_KEY,
     PURPOSE_SPECS,
     RELEASE_TYPE,
+    REPO_ROOT,
     SCOPE_KEY,
     evaluation_checksums,
     purpose_runtime_contract,
@@ -44,9 +45,6 @@ REVIEW_TYPES = (
     "regulatory",
 )
 DEFAULT_ARTIFACT_ROOT = EVALUATION_PATHS["evaluation_manifest_checksum_sha256"].parent / "releases"
-REPO_ROOT = Path(__file__).resolve().parents[3]
-
-
 class IntelligenceReleaseInstallationError(ValueError):
     pass
 

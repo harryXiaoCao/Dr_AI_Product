@@ -57,8 +57,16 @@ ACCEPTED_SYNTHETIC_REVIEW_STATES = frozenset(
     }
 )
 
-_REPO_ROOT = Path(__file__).resolve().parents[3]
-_EVALUATION_ROOT = _REPO_ROOT / "evaluation/clinical_event_intelligence"
+_API_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = next(
+    (
+        candidate
+        for candidate in (_API_ROOT, *_API_ROOT.parents)
+        if (candidate / "evaluation/clinical_event_intelligence").is_dir()
+    ),
+    _API_ROOT,
+)
+_EVALUATION_ROOT = REPO_ROOT / "evaluation/clinical_event_intelligence"
 EVALUATION_PATHS = {
     "evaluation_manifest_checksum_sha256": _EVALUATION_ROOT / "frozen_suite.v1.json",
     "verification_matrix_checksum_sha256": _EVALUATION_ROOT / "verification_matrix.v1.json",
