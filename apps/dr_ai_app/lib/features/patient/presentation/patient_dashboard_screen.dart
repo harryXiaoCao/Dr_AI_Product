@@ -1191,7 +1191,9 @@ class _PatientMedicalSurveyScreenState
   final _surgeryHistoryController = TextEditingController();
   final _familyHistoryController = TextEditingController();
   final _lifestyleNotesController = TextEditingController();
-  String _gender = 'Unspecified';
+  // Canonical values are deliberately locale-independent. Labels are resolved
+  // only when the menu is rendered so a locale change cannot corrupt state.
+  String _gender = 'unspecified';
   String _bloodType = 'Unknown';
   String _pregnancyStatus = 'Prefer not to say';
   String _preferredLanguage = 'Simplified Chinese';
@@ -1379,11 +1381,7 @@ class _PatientMedicalSurveyScreenState
     _country = _knownLocationCountry(patient.country);
     _province = _knownLocationProvince(_country, patient.province);
     _city = _knownLocationCity(_country, _province, patient.city);
-    final savedGender = patient.gender ?? patient.sex;
-    _gender =
-        savedGender == null || savedGender.toLowerCase() == 'not specified'
-        ? 'Unspecified'
-        : savedGender;
+    _gender = _canonicalGender(patient.gender ?? patient.sex);
     _preferredLanguage = _knownOption(patient.preferredLanguage, <String>[
       'Simplified Chinese',
       'English',
@@ -1523,11 +1521,11 @@ class _PatientMedicalSurveyScreenState
                     labelText: context.l10n.gender,
                     border: const OutlineInputBorder(),
                   ),
-                  items: _localizedOptionItems(context, <String>[
-                    'Unspecified',
-                    'Female',
-                    'Male',
-                    'Other',
+                  items: _canonicalDropdownItems(context, const <String>[
+                    'unspecified',
+                    'female',
+                    'male',
+                    'other',
                   ]),
                   onChanged: (value) =>
                       setState(() => _gender = value ?? _gender),
@@ -2422,6 +2420,38 @@ class _PatientMedicalSurveyScreenState
           ),
         )
         .toList();
+  }
+
+  List<DropdownMenuItem<String>> _canonicalDropdownItems(
+    BuildContext context,
+    Iterable<String> values,
+  ) {
+    final seen = <String>{};
+    return <DropdownMenuItem<String>>[
+      for (final rawValue in values)
+        if (seen.add(rawValue.trim().toLowerCase()))
+          DropdownMenuItem<String>(
+            value: rawValue.trim().toLowerCase(),
+            child: Text(
+              context.l10n.stableValue(rawValue.trim().toLowerCase()),
+            ),
+          ),
+    ];
+  }
+
+  String _canonicalGender(String? savedValue) {
+    final normalized = savedValue?.trim().toLowerCase().replaceAll('_', ' ');
+    return switch (normalized) {
+      'female' || '女' || '女性' => 'female',
+      'male' || '男' || '男性' => 'male',
+      'other' || '其他' => 'other',
+      'unspecified' ||
+      'not specified' ||
+      'prefer not to say' ||
+      null ||
+      '' => 'unspecified',
+      _ => 'unspecified',
+    };
   }
 
   String _knownOption(

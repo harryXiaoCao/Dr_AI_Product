@@ -14,7 +14,7 @@ def test_health_returns_service_and_database_status(client: TestClient) -> None:
         "service": "dr-ai-api",
         "environment": "test",
         "database": "ok",
-        "schema_revision": "20260730_0054",
+        "schema_revision": "20260802_0058",
         "deployment": {
             "source_revision": "unrecorded",
             "image_digest": "unrecorded",
@@ -24,6 +24,11 @@ def test_health_returns_service_and_database_status(client: TestClient) -> None:
         "expected_care_candidate": "disabled",
         "expected_care_candidate_release_version": None,
         "expected_care_explanation": "disabled",
+        "clinical_event_intelligence": {
+            "primary": "disabled",
+            "critic": "disabled",
+            "explanation": "disabled",
+        },
         "imaging_observation_draft": "blocked_provider_text_only",
         "notification_worker": "disabled",
         "notification_delivery": {

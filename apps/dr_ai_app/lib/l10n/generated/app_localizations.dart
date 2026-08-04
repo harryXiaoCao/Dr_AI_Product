@@ -6586,6 +6586,492 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Open Account to submit or track support, feedback, and deletion-review requests.'**
   String get openAccountForRequests;
+
+  /// No description provided for @ceiTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Clinical Event intelligence'**
+  String get ceiTitle;
+
+  /// No description provided for @ceiPatientTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your care and cost intelligence'**
+  String get ceiPatientTitle;
+
+  /// No description provided for @ceiDoctorTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Clinical Event intelligence review'**
+  String get ceiDoctorTitle;
+
+  /// No description provided for @ceiPayerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Authorized request intelligence'**
+  String get ceiPayerTitle;
+
+  /// No description provided for @ceiLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading frozen Clinical Event intelligence'**
+  String get ceiLoading;
+
+  /// No description provided for @ceiUnavailableTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Intelligence is unavailable'**
+  String get ceiUnavailableTitle;
+
+  /// No description provided for @ceiUnavailableBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The request remains usable for ordinary clinical documentation, pending-cost work, clarification, and human review.'**
+  String get ceiUnavailableBody;
+
+  /// No description provided for @ceiEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No validated intelligence artifact yet'**
+  String get ceiEmptyTitle;
+
+  /// No description provided for @ceiEmptyPatientBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your request and care records remain available while the responsible care team reviews the next step.'**
+  String get ceiEmptyPatientBody;
+
+  /// No description provided for @ceiEmptyDoctorBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Generate a bounded artifact when the governed release is available. Clinical and pending-cost work does not need to wait.'**
+  String get ceiEmptyDoctorBody;
+
+  /// No description provided for @ceiEmptyPayerBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue human review or request clarification. No AI artifact is required for a permitted decision.'**
+  String get ceiEmptyPayerBody;
+
+  /// No description provided for @ceiRefresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get ceiRefresh;
+
+  /// No description provided for @ceiGenerate.
+  ///
+  /// In en, this message translates to:
+  /// **'Generate intelligence'**
+  String get ceiGenerate;
+
+  /// No description provided for @ceiGenerating.
+  ///
+  /// In en, this message translates to:
+  /// **'Generating intelligence'**
+  String get ceiGenerating;
+
+  /// No description provided for @ceiArtifact.
+  ///
+  /// In en, this message translates to:
+  /// **'Immutable artifact'**
+  String get ceiArtifact;
+
+  /// No description provided for @ceiSnapshot.
+  ///
+  /// In en, this message translates to:
+  /// **'Frozen snapshot'**
+  String get ceiSnapshot;
+
+  /// No description provided for @ceiHumanReview.
+  ///
+  /// In en, this message translates to:
+  /// **'Human review'**
+  String get ceiHumanReview;
+
+  /// No description provided for @ceiLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Deterministic location'**
+  String get ceiLocation;
+
+  /// No description provided for @ceiLocationSource.
+  ///
+  /// In en, this message translates to:
+  /// **'From Clinical Event, provider organization, and facility records—not IP or model inference.'**
+  String get ceiLocationSource;
+
+  /// No description provided for @ceiHumanOnlyNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'AI support scores inform people only. They never approve, deny, reduce, delay, remove, or prescribe care.'**
+  String get ceiHumanOnlyNotice;
+
+  /// No description provided for @ceiRequestedItems.
+  ///
+  /// In en, this message translates to:
+  /// **'Requested billable items'**
+  String get ceiRequestedItems;
+
+  /// No description provided for @ceiRequestedItemsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Every requested line appears exactly once and stays separate from predicted pathway items.'**
+  String get ceiRequestedItemsDescription;
+
+  /// No description provided for @ceiRequested.
+  ///
+  /// In en, this message translates to:
+  /// **'Requested'**
+  String get ceiRequested;
+
+  /// No description provided for @ceiEstimated.
+  ///
+  /// In en, this message translates to:
+  /// **'Estimated range'**
+  String get ceiEstimated;
+
+  /// No description provided for @ceiUsefulness.
+  ///
+  /// In en, this message translates to:
+  /// **'Usefulness'**
+  String get ceiUsefulness;
+
+  /// No description provided for @ceiConfidence.
+  ///
+  /// In en, this message translates to:
+  /// **'Confidence'**
+  String get ceiConfidence;
+
+  /// No description provided for @ceiAiSupportScore.
+  ///
+  /// In en, this message translates to:
+  /// **'AI support score'**
+  String get ceiAiSupportScore;
+
+  /// No description provided for @ceiScoreVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'Aggregation rule'**
+  String get ceiScoreVersion;
+
+  /// No description provided for @ceiClinicalFit.
+  ///
+  /// In en, this message translates to:
+  /// **'Clinical fit'**
+  String get ceiClinicalFit;
+
+  /// No description provided for @ceiEvidenceSupport.
+  ///
+  /// In en, this message translates to:
+  /// **'Evidence support'**
+  String get ceiEvidenceSupport;
+
+  /// No description provided for @ceiTimingSequence.
+  ///
+  /// In en, this message translates to:
+  /// **'Timing / sequence'**
+  String get ceiTimingSequence;
+
+  /// No description provided for @ceiQuantityIntensity.
+  ///
+  /// In en, this message translates to:
+  /// **'Quantity / intensity'**
+  String get ceiQuantityIntensity;
+
+  /// No description provided for @ceiDocumentationCompleteness.
+  ///
+  /// In en, this message translates to:
+  /// **'Documentation completeness'**
+  String get ceiDocumentationCompleteness;
+
+  /// No description provided for @ceiCostAlignment.
+  ///
+  /// In en, this message translates to:
+  /// **'Cost alignment'**
+  String get ceiCostAlignment;
+
+  /// No description provided for @ceiTier.
+  ///
+  /// In en, this message translates to:
+  /// **'Provenance tier'**
+  String get ceiTier;
+
+  /// No description provided for @ceiTier5Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Model-only exploratory estimate'**
+  String get ceiTier5Title;
+
+  /// No description provided for @ceiTier5Body.
+  ///
+  /// In en, this message translates to:
+  /// **'No admitted price reference was available. This range is intentionally wide, cannot become authoritative pricing, and receives reduced or zero cost-alignment weight.'**
+  String get ceiTier5Body;
+
+  /// No description provided for @ceiSources.
+  ///
+  /// In en, this message translates to:
+  /// **'Admitted sources'**
+  String get ceiSources;
+
+  /// No description provided for @ceiNoAdmittedPriceSource.
+  ///
+  /// In en, this message translates to:
+  /// **'No admitted price source'**
+  String get ceiNoAdmittedPriceSource;
+
+  /// No description provided for @ceiSupportingFacts.
+  ///
+  /// In en, this message translates to:
+  /// **'Supporting facts'**
+  String get ceiSupportingFacts;
+
+  /// No description provided for @ceiContradictingFacts.
+  ///
+  /// In en, this message translates to:
+  /// **'Contradicting facts'**
+  String get ceiContradictingFacts;
+
+  /// No description provided for @ceiMissingInformation.
+  ///
+  /// In en, this message translates to:
+  /// **'Missing information'**
+  String get ceiMissingInformation;
+
+  /// No description provided for @ceiAlternatives.
+  ///
+  /// In en, this message translates to:
+  /// **'Alternatives'**
+  String get ceiAlternatives;
+
+  /// No description provided for @ceiPredictedPathways.
+  ///
+  /// In en, this message translates to:
+  /// **'Plausible predicted pathways'**
+  String get ceiPredictedPathways;
+
+  /// No description provided for @ceiPredictedBoundary.
+  ///
+  /// In en, this message translates to:
+  /// **'Predicted pathway items are not doctor-requested items and do not change the request.'**
+  String get ceiPredictedBoundary;
+
+  /// No description provided for @ceiTypicalPathway.
+  ///
+  /// In en, this message translates to:
+  /// **'Typical / first-line'**
+  String get ceiTypicalPathway;
+
+  /// No description provided for @ceiAlternativePathway.
+  ///
+  /// In en, this message translates to:
+  /// **'Reasonable alternative'**
+  String get ceiAlternativePathway;
+
+  /// No description provided for @ceiEscalatedPathway.
+  ///
+  /// In en, this message translates to:
+  /// **'Escalated'**
+  String get ceiEscalatedPathway;
+
+  /// No description provided for @ceiMissingDocumentation.
+  ///
+  /// In en, this message translates to:
+  /// **'Missing-documentation assistant'**
+  String get ceiMissingDocumentation;
+
+  /// No description provided for @ceiMissingDocumentationEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No missing documentation was identified in this frozen artifact.'**
+  String get ceiMissingDocumentationEmpty;
+
+  /// No description provided for @ceiCounterfactuals.
+  ///
+  /// In en, this message translates to:
+  /// **'Counterfactual comparisons'**
+  String get ceiCounterfactuals;
+
+  /// No description provided for @ceiCounterfactualBoundary.
+  ///
+  /// In en, this message translates to:
+  /// **'Plausible alternatives support discussion; they do not replace the doctor-requested items.'**
+  String get ceiCounterfactualBoundary;
+
+  /// No description provided for @ceiCritic.
+  ///
+  /// In en, this message translates to:
+  /// **'Primary and critic'**
+  String get ceiCritic;
+
+  /// No description provided for @ceiAgreement.
+  ///
+  /// In en, this message translates to:
+  /// **'Agreement'**
+  String get ceiAgreement;
+
+  /// No description provided for @ceiPartialDisagreement.
+  ///
+  /// In en, this message translates to:
+  /// **'Partial disagreement'**
+  String get ceiPartialDisagreement;
+
+  /// No description provided for @ceiMaterialDisagreement.
+  ///
+  /// In en, this message translates to:
+  /// **'Material disagreement'**
+  String get ceiMaterialDisagreement;
+
+  /// No description provided for @ceiCriticUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Critic unavailable'**
+  String get ceiCriticUnavailable;
+
+  /// No description provided for @ceiCriticUnavailableBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The validated primary artifact remains visible; no agreement is implied.'**
+  String get ceiCriticUnavailableBody;
+
+  /// No description provided for @ceiLineage.
+  ///
+  /// In en, this message translates to:
+  /// **'Immutable outcome lineage'**
+  String get ceiLineage;
+
+  /// No description provided for @ceiFallbackTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Structured fallback is active'**
+  String get ceiFallbackTitle;
+
+  /// No description provided for @ceiFallbackBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Validated structured facts remain visible without generated role-specific prose.'**
+  String get ceiFallbackBody;
+
+  /// No description provided for @ceiProviderUnavailableTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'AI provider unavailable'**
+  String get ceiProviderUnavailableTitle;
+
+  /// No description provided for @ceiProviderUnavailableBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This frozen artifact remains usable. Clinical documentation, pending-cost, clarification, and human-review workflows continue.'**
+  String get ceiProviderUnavailableBody;
+
+  /// No description provided for @ceiAcknowledge.
+  ///
+  /// In en, this message translates to:
+  /// **'Acknowledge'**
+  String get ceiAcknowledge;
+
+  /// No description provided for @ceiConcur.
+  ///
+  /// In en, this message translates to:
+  /// **'Concur'**
+  String get ceiConcur;
+
+  /// No description provided for @ceiDisagree.
+  ///
+  /// In en, this message translates to:
+  /// **'Disagree'**
+  String get ceiDisagree;
+
+  /// No description provided for @ceiException.
+  ///
+  /// In en, this message translates to:
+  /// **'Record exception'**
+  String get ceiException;
+
+  /// No description provided for @ceiResponseRecorded.
+  ///
+  /// In en, this message translates to:
+  /// **'Clinician response appended. The artifact was not changed.'**
+  String get ceiResponseRecorded;
+
+  /// No description provided for @ceiResponseFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The response could not be appended. Manual clinical documentation remains available.'**
+  String get ceiResponseFailed;
+
+  /// No description provided for @ceiRationale.
+  ///
+  /// In en, this message translates to:
+  /// **'Attributable rationale'**
+  String get ceiRationale;
+
+  /// No description provided for @ceiCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get ceiCancel;
+
+  /// No description provided for @ceiAppendResponse.
+  ///
+  /// In en, this message translates to:
+  /// **'Append response'**
+  String get ceiAppendResponse;
+
+  /// No description provided for @ceiValidated.
+  ///
+  /// In en, this message translates to:
+  /// **'Validated'**
+  String get ceiValidated;
+
+  /// No description provided for @ceiValidatedWithUncertainty.
+  ///
+  /// In en, this message translates to:
+  /// **'Validated with uncertainty'**
+  String get ceiValidatedWithUncertainty;
+
+  /// No description provided for @ceiValidatedWithResults.
+  ///
+  /// In en, this message translates to:
+  /// **'Validated with recorded checks'**
+  String get ceiValidatedWithResults;
+
+  /// No description provided for @ceiAwaitingHumanReview.
+  ///
+  /// In en, this message translates to:
+  /// **'Awaiting human review'**
+  String get ceiAwaitingHumanReview;
+
+  /// No description provided for @ceiHumanReviewRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Human review required'**
+  String get ceiHumanReviewRequired;
+
+  /// No description provided for @ceiStronglySupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Strongly supported by current information'**
+  String get ceiStronglySupported;
+
+  /// No description provided for @ceiPlausible.
+  ///
+  /// In en, this message translates to:
+  /// **'Plausible'**
+  String get ceiPlausible;
+
+  /// No description provided for @ceiMateriallyUncertain.
+  ///
+  /// In en, this message translates to:
+  /// **'Materially uncertain; clarification recommended'**
+  String get ceiMateriallyUncertain;
+
+  /// No description provided for @ceiWeaklySupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Weakly supported; human review required'**
+  String get ceiWeaklySupported;
 }
 
 class _AppLocalizationsDelegate

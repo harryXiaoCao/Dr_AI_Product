@@ -68,6 +68,61 @@ class Settings(BaseSettings):
     expected_care_explanation_max_attempts: int = Field(default=2, ge=1, le=2)
     expected_care_explanation_max_output_tokens: int = Field(default=1200, ge=400, le=2000)
     expected_care_explanation_kill_switch: bool = True
+    clinical_event_intelligence_primary_enabled: bool = False
+    clinical_event_intelligence_primary_kill_switch: bool = True
+    clinical_event_intelligence_primary_provider: Literal["deepseek"] = "deepseek"
+    clinical_event_intelligence_primary_model: str = "deepseek-v4-pro"
+    clinical_event_intelligence_primary_timeout_seconds: float = Field(
+        default=20.0, ge=0.1, le=60.0
+    )
+    clinical_event_intelligence_primary_max_attempts: int = Field(default=2, ge=1, le=2)
+    clinical_event_intelligence_primary_max_output_tokens: int = Field(
+        default=4000, ge=500, le=8000
+    )
+    clinical_event_intelligence_primary_max_cost_microunits: int = Field(
+        default=20000, ge=1, le=1_000_000
+    )
+    clinical_event_intelligence_primary_input_price_per_million_usd: float = Field(
+        default=0.435, ge=0.0
+    )
+    clinical_event_intelligence_primary_output_price_per_million_usd: float = Field(
+        default=0.87, ge=0.0
+    )
+    clinical_event_intelligence_critic_enabled: bool = False
+    clinical_event_intelligence_critic_kill_switch: bool = True
+    clinical_event_intelligence_critic_provider: Literal["deepseek"] = "deepseek"
+    clinical_event_intelligence_critic_model: str = "deepseek-v4-pro"
+    clinical_event_intelligence_critic_timeout_seconds: float = Field(default=20.0, ge=0.1, le=60.0)
+    clinical_event_intelligence_critic_max_output_tokens: int = Field(default=1800, ge=300, le=4000)
+    clinical_event_intelligence_critic_max_cost_microunits: int = Field(
+        default=10000, ge=1, le=1_000_000
+    )
+    clinical_event_intelligence_critic_input_price_per_million_usd: float = Field(
+        default=0.435, ge=0.0
+    )
+    clinical_event_intelligence_critic_output_price_per_million_usd: float = Field(
+        default=0.87, ge=0.0
+    )
+    clinical_event_intelligence_explanation_enabled: bool = False
+    clinical_event_intelligence_explanation_kill_switch: bool = True
+    clinical_event_intelligence_explanation_provider: Literal["deepseek"] = "deepseek"
+    clinical_event_intelligence_explanation_model: str = "deepseek-v4-flash"
+    clinical_event_intelligence_explanation_timeout_seconds: float = Field(
+        default=8.0, ge=0.1, le=30.0
+    )
+    clinical_event_intelligence_explanation_max_attempts: int = Field(default=2, ge=1, le=2)
+    clinical_event_intelligence_explanation_max_output_tokens: int = Field(
+        default=1400, ge=300, le=3000
+    )
+    clinical_event_intelligence_explanation_max_cost_microunits: int = Field(
+        default=5000, ge=1, le=1_000_000
+    )
+    clinical_event_intelligence_explanation_input_price_per_million_usd: float = Field(
+        default=0.14, ge=0.0
+    )
+    clinical_event_intelligence_explanation_output_price_per_million_usd: float = Field(
+        default=0.28, ge=0.0
+    )
     chatbot_grounded_generation_enabled: bool = True
     chatbot_general_model_knowledge_enabled: bool = True
     chatbot_grounded_answer_schema_version: str = "grounded-answer-v2-2026-07-24"

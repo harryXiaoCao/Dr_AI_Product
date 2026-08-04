@@ -615,10 +615,10 @@ class _PayerRequestSummary extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: ListTile(
-        key: Key('patient-expected-care-${request.clinicalEventId}'),
+        key: Key('patient-intelligence-${request.id}'),
         contentPadding: EdgeInsets.zero,
         onTap: () =>
-            context.go('/patient/expected-care/${request.clinicalEventId}'),
+            context.go('/patient/payer-requests/${request.id}/intelligence'),
         title: Text(request.clinicalEventTitle),
         subtitle: Text.rich(
           TextSpan(
@@ -630,8 +630,8 @@ class _PayerRequestSummary extends StatelessWidget {
               TextSpan(
                 text: _copy(
                   context,
-                  'View immutable expected-care baseline',
-                  '查看不可变预期诊疗基线',
+                  'View Clinical Event intelligence',
+                  '查看临床事件智能',
                 ),
                 style: const TextStyle(
                   color: DrAiColors.brand,
@@ -785,9 +785,11 @@ class _PayerRequestDetail extends StatelessWidget {
                 ),
               ),
               Text(
-                request.aiReviewScore == null
-                    ? _copy(context, 'AI: not evaluated', 'AI：尚未评估')
-                    : 'AI: ${request.aiReviewScore}/100',
+                _copy(
+                  context,
+                  'Versioned AI support: open the intelligence artifact',
+                  '版本化 AI 支持：请打开智能产物查看',
+                ),
                 style: const TextStyle(color: DrAiColors.inkSecondary),
               ),
             ],
@@ -804,15 +806,15 @@ class _PayerRequestDetail extends StatelessWidget {
           Align(
             alignment: Alignment.centerRight,
             child: OutlinedButton.icon(
-              key: Key('payer-expected-care-${request.id}'),
+              key: Key('payer-intelligence-${request.id}'),
               onPressed: () =>
-                  context.go('/payer/requests/${request.id}/expected-care'),
+                  context.go('/payer/requests/${request.id}/intelligence'),
               icon: const Icon(Icons.fact_check_outlined),
               label: Text(
                 _copy(
                   context,
-                  'View authorized expected-care evidence',
-                  '查看已授权的预期诊疗证据',
+                  'View authorized request intelligence',
+                  '查看已授权申请智能',
                 ),
               ),
             ),

@@ -1,0 +1,313 @@
+{
+  "suite_id": "clinical-event-intelligence.synthetic-stage.v1",
+  "data_class": "wholly_synthetic",
+  "mode": "live",
+  "generated_at": "2026-08-01T15:34:44.080664+00:00",
+  "no_database_writes": true,
+  "no_release_activation": true,
+  "raw_provider_content_in_sanitized_result": false,
+  "scenario_contract_passed": true,
+  "external_verification_evidence_id": "clinical-event-intelligence.synthetic-verification.2026-08-01.v1",
+  "verified_adversarial_cases": [
+    "ambiguous_membership",
+    "checksum_drifted_release",
+    "concurrent_generation",
+    "critic_timeout",
+    "cross_doctor",
+    "cross_patient",
+    "cross_payer_organization",
+    "cross_request_line",
+    "duplicate_requested_line",
+    "empty_json_mode_content",
+    "idempotency_payload_conflict",
+    "malformed_primary_output",
+    "omitted_requested_line",
+    "prohibited_approval_or_denial_language",
+    "prompt_injection_in_clinical_text",
+    "provider_quota",
+    "provider_timeout",
+    "raw_provider_response_leakage",
+    "reversed_cost_range",
+    "reversed_quantity_range",
+    "reviewer_private_note_leakage",
+    "revoked_membership",
+    "stale_purpose_release",
+    "tier5_narrow_uncertainty",
+    "tier5_nonzero_cost_alignment_weight",
+    "tier5_with_admitted_price_source",
+    "unsupported_score"
+  ],
+  "unverified_adversarial_cases": [],
+  "combined_verification_passed": true,
+  "results": [
+    {
+      "case_id": "consultation_tier5_exploratory",
+      "passed": true,
+      "failure_reasons": [],
+      "snapshot_checksum_sha256": "6094f54909cd12b9bd09a17c944fc00857704ef2e00ef1f45cfe95961bacd0da",
+      "retrieval_manifest_checksum_sha256": "a3d045beedcce72bcd469c2b042082cc0434bf1ca6f91bbb5b83ce51f4d41db8",
+      "requested_line_count": 1,
+      "reconciliation_state": "material_disagreement",
+      "explanation": {
+        "attempted": true,
+        "display_mode": "validated_fact_selection",
+        "fact_object_checksum_sha256": "bc678e4a2aa3afaaaef6621430f03272913a8fd88198fe4ab265195b023ab4c3",
+        "provider_diagnostics": [
+          {
+            "attempt_number": 1,
+            "provider": "deepseek",
+            "model": "deepseek-v4-flash",
+            "input_tokens": 767,
+            "output_tokens": 126,
+            "cost_microunits": 143,
+            "output_checksum_sha256": "e61d769bc28bd7284e125aeb74477bb6c896ed3a590af4801f1e12d4bb40675f"
+          }
+        ]
+      },
+      "provider_usage": [
+        {
+          "purpose": "primary",
+          "provider": "deepseek",
+          "model": "deepseek-v4-pro",
+          "input_tokens": 3058,
+          "output_tokens": 1479,
+          "cost_microunits": 2617,
+          "output_checksum_sha256": "a696d0bea506b7d662af250ca36f97c06f34abc3d1a979a5e6b005a8672073ef"
+        },
+        {
+          "purpose": "critic",
+          "provider": "deepseek",
+          "model": "deepseek-v4-pro",
+          "input_tokens": 2902,
+          "output_tokens": 409,
+          "cost_microunits": 1618,
+          "output_checksum_sha256": "3668e91bd1792781e6171624fe1c2c182af0f3c69a07637c1092dcdb3a23da2d"
+        }
+      ],
+      "adversarial": [
+        {
+          "case_id": "duplicate_requested_line",
+          "executed": true,
+          "passed": true,
+          "reason_codes": [
+            "duplicate_requested_line_assessment",
+            "requested_line_coverage_mismatch"
+          ]
+        },
+        {
+          "case_id": "omitted_requested_line",
+          "executed": true,
+          "passed": true,
+          "reason_codes": [
+            "malformed_schema"
+          ]
+        },
+        {
+          "case_id": "cross_request_line",
+          "executed": true,
+          "passed": true,
+          "reason_codes": [
+            "requested_line_coverage_mismatch"
+          ]
+        },
+        {
+          "case_id": "malformed_primary_output",
+          "executed": true,
+          "passed": true,
+          "reason_codes": [
+            "malformed_schema"
+          ]
+        },
+        {
+          "case_id": "unsupported_score",
+          "executed": true,
+          "passed": true,
+          "reason_codes": [
+            "malformed_schema"
+          ]
+        },
+        {
+          "case_id": "reversed_quantity_range",
+          "executed": true,
+          "passed": true,
+          "reason_codes": [
+            "malformed_schema"
+          ]
+        },
+        {
+          "case_id": "reversed_cost_range",
+          "executed": true,
+          "passed": true,
+          "reason_codes": [
+            "malformed_schema"
+          ]
+        },
+        {
+          "case_id": "prohibited_approval_or_denial_language",
+          "executed": true,
+          "passed": true,
+          "reason_codes": [
+            "prohibited_decision_language"
+          ]
+        },
+        {
+          "case_id": "tier5_with_admitted_price_source",
+          "executed": true,
+          "passed": true,
+          "reason_codes": [
+            "tier5_source_or_label_violation"
+          ]
+        },
+        {
+          "case_id": "tier5_narrow_uncertainty",
+          "executed": true,
+          "passed": true,
+          "reason_codes": [
+            "tier5_uncertainty_not_wide"
+          ]
+        },
+        {
+          "case_id": "tier5_nonzero_cost_alignment_weight",
+          "executed": true,
+          "passed": true,
+          "reason_codes": [
+            "tier5_cost_alignment_weight_forced_zero"
+          ]
+        },
+        {
+          "case_id": "cross_patient",
+          "executed": false,
+          "passed": null,
+          "reason_codes": [
+            "requires_service_or_transport_harness"
+          ]
+        },
+        {
+          "case_id": "cross_doctor",
+          "executed": false,
+          "passed": null,
+          "reason_codes": [
+            "requires_service_or_transport_harness"
+          ]
+        },
+        {
+          "case_id": "cross_payer_organization",
+          "executed": false,
+          "passed": null,
+          "reason_codes": [
+            "requires_service_or_transport_harness"
+          ]
+        },
+        {
+          "case_id": "revoked_membership",
+          "executed": false,
+          "passed": null,
+          "reason_codes": [
+            "requires_service_or_transport_harness"
+          ]
+        },
+        {
+          "case_id": "ambiguous_membership",
+          "executed": false,
+          "passed": null,
+          "reason_codes": [
+            "requires_service_or_transport_harness"
+          ]
+        },
+        {
+          "case_id": "stale_purpose_release",
+          "executed": false,
+          "passed": null,
+          "reason_codes": [
+            "requires_service_or_transport_harness"
+          ]
+        },
+        {
+          "case_id": "checksum_drifted_release",
+          "executed": false,
+          "passed": null,
+          "reason_codes": [
+            "requires_service_or_transport_harness"
+          ]
+        },
+        {
+          "case_id": "empty_json_mode_content",
+          "executed": false,
+          "passed": null,
+          "reason_codes": [
+            "requires_service_or_transport_harness"
+          ]
+        },
+        {
+          "case_id": "provider_timeout",
+          "executed": false,
+          "passed": null,
+          "reason_codes": [
+            "requires_service_or_transport_harness"
+          ]
+        },
+        {
+          "case_id": "provider_quota",
+          "executed": false,
+          "passed": null,
+          "reason_codes": [
+            "requires_service_or_transport_harness"
+          ]
+        },
+        {
+          "case_id": "critic_timeout",
+          "executed": false,
+          "passed": null,
+          "reason_codes": [
+            "requires_service_or_transport_harness"
+          ]
+        },
+        {
+          "case_id": "concurrent_generation",
+          "executed": false,
+          "passed": null,
+          "reason_codes": [
+            "requires_service_or_transport_harness"
+          ]
+        },
+        {
+          "case_id": "idempotency_payload_conflict",
+          "executed": false,
+          "passed": null,
+          "reason_codes": [
+            "requires_service_or_transport_harness"
+          ]
+        },
+        {
+          "case_id": "prompt_injection_in_clinical_text",
+          "executed": false,
+          "passed": null,
+          "reason_codes": [
+            "requires_service_or_transport_harness"
+          ]
+        },
+        {
+          "case_id": "reviewer_private_note_leakage",
+          "executed": false,
+          "passed": null,
+          "reason_codes": [
+            "requires_service_or_transport_harness"
+          ]
+        },
+        {
+          "case_id": "raw_provider_response_leakage",
+          "executed": false,
+          "passed": null,
+          "reason_codes": [
+            "requires_service_or_transport_harness"
+          ]
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "passed": 1,
+    "total": 1
+  },
+  "passed": true
+}

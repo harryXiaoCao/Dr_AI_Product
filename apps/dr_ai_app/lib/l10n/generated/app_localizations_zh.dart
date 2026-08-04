@@ -3440,4 +3440,247 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get openAccountForRequests => '请打开“账户”，提交或跟踪支持、反馈及删除审核申请。';
+
+  @override
+  String get ceiTitle => '临床事件智能';
+
+  @override
+  String get ceiPatientTitle => '您的诊疗与费用智能';
+
+  @override
+  String get ceiDoctorTitle => '临床事件智能审核';
+
+  @override
+  String get ceiPayerTitle => '已授权申请智能';
+
+  @override
+  String get ceiLoading => '正在加载已冻结的临床事件智能';
+
+  @override
+  String get ceiUnavailableTitle => '智能信息暂不可用';
+
+  @override
+  String get ceiUnavailableBody => '该申请仍可继续用于常规临床记录、待补费用、澄清及人工审核。';
+
+  @override
+  String get ceiEmptyTitle => '尚无经验证的智能产物';
+
+  @override
+  String get ceiEmptyPatientBody => '在负责的诊疗团队审核下一步期间，您的申请和诊疗记录仍可使用。';
+
+  @override
+  String get ceiEmptyDoctorBody => '受治理版本可用时可生成有界产物。临床和待补费用工作无需等待。';
+
+  @override
+  String get ceiEmptyPayerBody => '请继续人工审核或请求澄清。获准的决定不以 AI 产物为前提。';
+
+  @override
+  String get ceiRefresh => '刷新';
+
+  @override
+  String get ceiGenerate => '生成智能产物';
+
+  @override
+  String get ceiGenerating => '正在生成智能产物';
+
+  @override
+  String get ceiArtifact => '不可变产物';
+
+  @override
+  String get ceiSnapshot => '已冻结快照';
+
+  @override
+  String get ceiHumanReview => '人工审核';
+
+  @override
+  String get ceiLocation => '确定性地点';
+
+  @override
+  String get ceiLocationSource => '来自临床事件、提供方机构及设施记录，不来自 IP 或模型推断。';
+
+  @override
+  String get ceiHumanOnlyNotice => 'AI 支持分数仅供人员参考，绝不会自动批准、拒绝、减少、延误、移除或开具诊疗。';
+
+  @override
+  String get ceiRequestedItems => '申请中的可计费项目';
+
+  @override
+  String get ceiRequestedItemsDescription => '每条申请项目仅出现一次，并与预测路径项目保持分离。';
+
+  @override
+  String get ceiRequested => '申请值';
+
+  @override
+  String get ceiEstimated => '估算范围';
+
+  @override
+  String get ceiUsefulness => '用途说明';
+
+  @override
+  String get ceiConfidence => '置信度';
+
+  @override
+  String get ceiAiSupportScore => 'AI 支持分数';
+
+  @override
+  String get ceiScoreVersion => '聚合规则';
+
+  @override
+  String get ceiClinicalFit => '临床匹配度';
+
+  @override
+  String get ceiEvidenceSupport => '证据支持度';
+
+  @override
+  String get ceiTimingSequence => '时机／顺序';
+
+  @override
+  String get ceiQuantityIntensity => '数量／强度';
+
+  @override
+  String get ceiDocumentationCompleteness => '文档完整度';
+
+  @override
+  String get ceiCostAlignment => '费用匹配度';
+
+  @override
+  String get ceiTier => '溯源层级';
+
+  @override
+  String get ceiTier5Title => '仅模型探索性估算';
+
+  @override
+  String get ceiTier5Body => '没有可准入的价格参考。该范围有意保持较宽，不能成为权威价格，费用匹配权重会显著降低或归零。';
+
+  @override
+  String get ceiSources => '已准入来源';
+
+  @override
+  String get ceiNoAdmittedPriceSource => '无已准入价格来源';
+
+  @override
+  String get ceiSupportingFacts => '支持事实';
+
+  @override
+  String get ceiContradictingFacts => '矛盾事实';
+
+  @override
+  String get ceiMissingInformation => '缺失信息';
+
+  @override
+  String get ceiAlternatives => '替代方案';
+
+  @override
+  String get ceiPredictedPathways => '可能的预测路径';
+
+  @override
+  String get ceiPredictedBoundary => '预测路径项目并非医生申请项目，也不会改变原申请。';
+
+  @override
+  String get ceiTypicalPathway => '典型／一线';
+
+  @override
+  String get ceiAlternativePathway => '合理替代';
+
+  @override
+  String get ceiEscalatedPathway => '升级路径';
+
+  @override
+  String get ceiMissingDocumentation => '缺失文档助手';
+
+  @override
+  String get ceiMissingDocumentationEmpty => '此冻结产物未发现缺失文档。';
+
+  @override
+  String get ceiCounterfactuals => '反事实比较';
+
+  @override
+  String get ceiCounterfactualBoundary => '可能的替代方案用于辅助讨论，不会替代医生申请项目。';
+
+  @override
+  String get ceiCritic => '主模型与审查模型';
+
+  @override
+  String get ceiAgreement => '一致';
+
+  @override
+  String get ceiPartialDisagreement => '部分分歧';
+
+  @override
+  String get ceiMaterialDisagreement => '重大分歧';
+
+  @override
+  String get ceiCriticUnavailable => '审查模型不可用';
+
+  @override
+  String get ceiCriticUnavailableBody => '经验证的主产物仍保持可见，但不表示双方一致。';
+
+  @override
+  String get ceiLineage => '不可变结果沿袭';
+
+  @override
+  String get ceiFallbackTitle => '结构化后备内容已启用';
+
+  @override
+  String get ceiFallbackBody => '即使没有生成的角色解释，经验证的结构化事实仍保持可见。';
+
+  @override
+  String get ceiProviderUnavailableTitle => 'AI 提供方不可用';
+
+  @override
+  String get ceiProviderUnavailableBody => '此冻结产物仍可使用。临床记录、待补费用、澄清和人工审核流程可继续。';
+
+  @override
+  String get ceiAcknowledge => '确认阅读';
+
+  @override
+  String get ceiConcur => '同意';
+
+  @override
+  String get ceiDisagree => '不同意';
+
+  @override
+  String get ceiException => '记录例外';
+
+  @override
+  String get ceiResponseRecorded => '临床响应已追加，产物未被更改。';
+
+  @override
+  String get ceiResponseFailed => '无法追加响应。手动临床记录仍可使用。';
+
+  @override
+  String get ceiRationale => '可归属理由';
+
+  @override
+  String get ceiCancel => '取消';
+
+  @override
+  String get ceiAppendResponse => '追加响应';
+
+  @override
+  String get ceiValidated => '已验证';
+
+  @override
+  String get ceiValidatedWithUncertainty => '已验证但存在不确定性';
+
+  @override
+  String get ceiValidatedWithResults => '已验证并记录检查结果';
+
+  @override
+  String get ceiAwaitingHumanReview => '等待人工审核';
+
+  @override
+  String get ceiHumanReviewRequired => '需要人工审核';
+
+  @override
+  String get ceiStronglySupported => '当前信息强力支持';
+
+  @override
+  String get ceiPlausible => '具有合理性';
+
+  @override
+  String get ceiMateriallyUncertain => '存在重大不确定性，建议澄清';
+
+  @override
+  String get ceiWeaklySupported => '当前信息支持较弱，需要人工审核';
 }

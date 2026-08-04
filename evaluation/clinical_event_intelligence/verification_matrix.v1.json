@@ -1,0 +1,40 @@
+{
+  "evidence_id": "clinical-event-intelligence.synthetic-verification.2026-08-01.v1",
+  "data_class": "wholly_synthetic",
+  "execution": {
+    "status": "passed",
+    "command": "./.venv/bin/pytest -q tests/test_clinical_event_intelligence_backend.py tests/test_clinical_event_intelligence_integration.py tests/test_clinical_event_intelligence_persistence.py tests/test_clinical_event_intelligence_release_governance.py tests/test_evaluate_clinical_event_intelligence.py",
+    "scope": "focused CEI backend, integration, persistence, release governance, and provider-free evaluator suites",
+    "executed_at": "2026-08-02",
+    "database": "disposable dr_ai_test"
+  },
+  "cases": [
+    {"case_id": "duplicate_requested_line", "status": "passed", "test": "test_tier5_narrow_range_and_duplicate_line_fail_deterministically"},
+    {"case_id": "omitted_requested_line", "status": "passed", "test": "test_provider_free_frozen_suite_is_deterministic_and_writes_no_raw_content"},
+    {"case_id": "cross_request_line", "status": "passed", "test": "test_provider_free_frozen_suite_is_deterministic_and_writes_no_raw_content"},
+    {"case_id": "cross_patient", "status": "passed", "test": "test_request_routes_fail_closed_across_roles_and_revoked_membership"},
+    {"case_id": "cross_doctor", "status": "passed", "test": "test_request_routes_fail_closed_across_roles_and_revoked_membership"},
+    {"case_id": "cross_payer_organization", "status": "passed", "test": "test_request_routes_fail_closed_across_roles_and_revoked_membership"},
+    {"case_id": "revoked_membership", "status": "passed", "test": "test_request_routes_fail_closed_across_roles_and_revoked_membership"},
+    {"case_id": "ambiguous_membership", "status": "passed", "test": "test_cei_payer_with_ambiguous_active_organization_fails_closed"},
+    {"case_id": "stale_purpose_release", "status": "passed", "test": "test_expected_version_and_checksum_are_required"},
+    {"case_id": "checksum_drifted_release", "status": "passed", "test": "test_expected_version_and_checksum_are_required"},
+    {"case_id": "malformed_primary_output", "status": "passed", "test": "test_provider_free_frozen_suite_is_deterministic_and_writes_no_raw_content"},
+    {"case_id": "empty_json_mode_content", "status": "passed", "test": "test_timeout_fallback_commits_exact_lines_and_replays_idempotently"},
+    {"case_id": "unsupported_score", "status": "passed", "test": "test_provider_free_frozen_suite_is_deterministic_and_writes_no_raw_content"},
+    {"case_id": "reversed_quantity_range", "status": "passed", "test": "test_provider_free_frozen_suite_is_deterministic_and_writes_no_raw_content"},
+    {"case_id": "reversed_cost_range", "status": "passed", "test": "test_provider_free_frozen_suite_is_deterministic_and_writes_no_raw_content"},
+    {"case_id": "tier5_with_admitted_price_source", "status": "passed", "test": "test_provider_free_frozen_suite_is_deterministic_and_writes_no_raw_content"},
+    {"case_id": "tier5_narrow_uncertainty", "status": "passed", "test": "test_tier5_narrow_range_and_duplicate_line_fail_deterministically"},
+    {"case_id": "tier5_nonzero_cost_alignment_weight", "status": "passed", "test": "test_tier5_scoring_has_zero_cost_weight_and_exact_line_coverage"},
+    {"case_id": "provider_timeout", "status": "passed", "test": "test_timeout_fallback_commits_exact_lines_and_replays_idempotently"},
+    {"case_id": "provider_quota", "status": "passed", "test": "test_quota_failure_is_non_retrying_and_preserves_safe_workflows"},
+    {"case_id": "critic_timeout", "status": "passed", "test": "test_critic_failure_persists_valid_primary_and_unavailable_reconciliation"},
+    {"case_id": "concurrent_generation", "status": "passed", "test": "test_same_idempotency_key_concurrency_creates_one_artifact"},
+    {"case_id": "idempotency_payload_conflict", "status": "passed", "test": "test_idempotency_payload_conflict_after_exact_release_binding_change"},
+    {"case_id": "prompt_injection_in_clinical_text", "status": "passed", "test": "test_primary_provider_body_excludes_scope_ids_excluded_facts_and_internal_scopes"},
+    {"case_id": "prohibited_approval_or_denial_language", "status": "passed", "test": "test_provider_free_frozen_suite_is_deterministic_and_writes_no_raw_content"},
+    {"case_id": "reviewer_private_note_leakage", "status": "passed", "test": "test_role_payload_is_allowlisted_and_flutter_contract_aligned"},
+    {"case_id": "raw_provider_response_leakage", "status": "passed", "test": "test_role_payload_is_allowlisted_and_flutter_contract_aligned"}
+  ]
+}

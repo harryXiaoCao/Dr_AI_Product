@@ -900,6 +900,46 @@ def _fallback_response(
         next_action = NextActionCode.seek_local_care
     elif urgency_route == UrgencyRoute.clinician_contact.value:
         next_action = NextActionCode.contact_connected_doctor
+    sections = [text]
+    provider_failure = fallback_code in {
+        FallbackCode.provider_timeout,
+        FallbackCode.provider_quota,
+        FallbackCode.provider_unavailable,
+        FallbackCode.malformed_model_output,
+        FallbackCode.policy_validation_failed,
+    }
+    acute_joint_question = bool(
+        re.search(
+            r"\b(joint|knee|ankle|shoulder|wrist|elbow|hip|pop(?:ping|ped)?|swelling)\b"
+            r"|(?:\u5173\u8282|\u819d|\u8e1d|\u80a9|\u624b\u8155|\u8098|\u9acb|\u5f39\u54cd|\u7830\u7684\u4e00\u58f0|\u80bf\u80c0)",
+            request.message,
+            re.IGNORECASE,
+        )
+    )
+    if provider_failure and acute_joint_question:
+        if request.language == "zh-Hans":
+            sections = [
+                "一般模型知识服务暂时不可用；以下是 Dr. AI 的固定安全指引，不是诊断。",
+                "受伤时出现弹响和肿胀可能与扭伤、韧带或肌腱损伤、"
+                "软骨或骨损伤等有关，仅凭描述不能确定。",
+                "可先停止加重疼痛的活动，保护受伤部位，记录肿胀、"
+                "活动范围和是否能承重，并尽快安排专业评估。",
+                "如有明显变形、无法承重、关节卡住、迅速加重的肿胀或疼痛、"
+                "麻木、肢体发冷或变色，应紧急就医。",
+            ]
+        else:
+            sections = [
+                "The general-model service is temporarily unavailable. This is fixed "
+                "Dr. AI safety guidance, not a diagnosis.",
+                "A pop with swelling after an injury can occur with a sprain, ligament or "
+                "tendon injury, cartilage injury, or a fracture, among other possibilities. "
+                "The description alone cannot identify the cause.",
+                "Stop activities that worsen pain, protect the joint, note swelling, movement, "
+                "and ability to bear weight, and arrange prompt in-person assessment.",
+                "Seek urgent care for deformity, inability to bear weight, a locked joint, "
+                "rapidly worsening swelling or pain, numbness, or a cold or discolored limb.",
+            ]
+        next_action = NextActionCode.seek_local_care
     limitation = (
         "Dr. AI 是 AI 助手，可能会出错；重要信息请通过权威来源或医生核实。"
         if request.language == "zh-Hans"
@@ -918,7 +958,7 @@ def _fallback_response(
         request_id=request_id,
         session_id=session_id,
         answer_language=request.language,
-        answer_sections=[text],
+        answer_sections=sections,
         limitation=limitation,
         next_action_code=next_action,
         safety_code=safety_code,

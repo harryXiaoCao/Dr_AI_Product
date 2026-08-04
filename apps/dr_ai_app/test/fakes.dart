@@ -6,6 +6,7 @@ import 'package:dr_ai_app/features/account/domain/support_request_data.dart';
 import 'package:dr_ai_app/features/auth/data/dr_ai_repository.dart';
 import 'package:dr_ai_app/features/auth/domain/auth_models.dart';
 import 'package:dr_ai_app/features/care_cost/domain/care_cost_data.dart';
+import 'package:dr_ai_app/features/clinical_event_intelligence/domain/clinical_event_intelligence_data.dart';
 import 'package:dr_ai_app/features/dashboard/domain/dashboard_data.dart';
 import 'package:dr_ai_app/features/doctor/domain/doctor_profile.dart';
 import 'package:dr_ai_app/features/doctor/domain/medical_resource_fixture.dart';
@@ -657,6 +658,55 @@ final demoPatientCareBundle = PatientCareBundle(
   ],
 );
 
+PatientCareBundle patientCareBundleWithLegacyGender(String gender) {
+  final patient = demoPatientCareBundle.patient;
+  return _copyCareBundle(
+    demoPatientCareBundle,
+    patient: PatientProfile(
+      patientId: patient.patientId,
+      displayName: patient.displayName,
+      syntheticIdentifier: patient.syntheticIdentifier,
+      safetyLabel: patient.safetyLabel,
+      relationshipLabel: patient.relationshipLabel,
+      overview: patient.overview,
+      birthDate: patient.birthDate,
+      birthYear: patient.birthYear,
+      sex: gender,
+      gender: gender,
+      contactPhone: patient.contactPhone,
+      emergencyContactName: patient.emergencyContactName,
+      emergencyContactPhone: patient.emergencyContactPhone,
+      preferredLanguage: patient.preferredLanguage,
+      contactPreference: patient.contactPreference,
+      avatarUrl: patient.avatarUrl,
+      country: patient.country,
+      province: patient.province,
+      city: patient.city,
+      homeAddress: patient.homeAddress,
+      heightCm: patient.heightCm,
+      weightKg: patient.weightKg,
+      bloodType: patient.bloodType,
+      systolicBloodPressure: patient.systolicBloodPressure,
+      diastolicBloodPressure: patient.diastolicBloodPressure,
+      smokingStatus: patient.smokingStatus,
+      alcoholConsumption: patient.alcoholConsumption,
+      heartHistory: patient.heartHistory,
+      endocrineHistory: patient.endocrineHistory,
+      neuroHistory: patient.neuroHistory,
+      digestiveHistory: patient.digestiveHistory,
+      respiratoryHistory: patient.respiratoryHistory,
+      kidneyHistory: patient.kidneyHistory,
+      cancerHistory: patient.cancerHistory,
+      patientReportedMedications: patient.patientReportedMedications,
+      surgeryHistory: patient.surgeryHistory,
+      familyHistory: patient.familyHistory,
+      lifestyleNotes: patient.lifestyleNotes,
+      pregnancyStatus: patient.pregnancyStatus,
+      medicalHistorySetupCompleted: patient.medicalHistorySetupCompleted,
+    ),
+  );
+}
+
 final incompleteOnboardingPatientCareBundle = _copyCareBundle(
   demoPatientCareBundle,
   patient: const PatientProfile(
@@ -927,6 +977,7 @@ final demoConsultation = ConsultationRequestItem(
       'Synthetic demonstration data only. Do not enter real patient data.',
   createdAt: DateTime(2026, 7, 5, 12),
   updatedAt: DateTime(2026, 7, 5, 12),
+  consultationType: 'specialist_referral',
 );
 
 class FakeDrAiRepository implements DrAiRepository {
@@ -955,6 +1006,8 @@ class FakeDrAiRepository implements DrAiRepository {
     NotificationInboxData? notificationInbox,
     NotificationPreferences? notificationPreferences,
     NotificationReadiness? notificationReadiness,
+    ClinicalEventIntelligenceData? intelligenceArtifact,
+    this.noIntelligenceArtifact = false,
     this.patientListError,
     this.patientCareError,
     this.presignError,
@@ -974,6 +1027,8 @@ class FakeDrAiRepository implements DrAiRepository {
     this.notificationPreferencesError,
     this.notificationReadinessError,
     this.notificationOpenResult,
+    this.intelligenceError,
+    this.intelligenceCompleter,
     this.supportRequestCreateErrorAfterPersist = false,
     this.loginCompleter,
   }) : dashboard = dashboard ?? doctorDashboard,
@@ -1010,7 +1065,10 @@ class FakeDrAiRepository implements DrAiRepository {
        notificationPreferences =
            notificationPreferences ?? notificationPreferencesFixture,
        notificationReadiness =
-           notificationReadiness ?? notificationReadinessFixture;
+           notificationReadiness ?? notificationReadinessFixture,
+       intelligenceArtifact = noIntelligenceArtifact
+           ? null
+           : intelligenceArtifact ?? clinicalEventIntelligenceFixture;
 
   AuthSession? restoredSession;
   AuthSession loginSession;
@@ -1024,6 +1082,7 @@ class FakeDrAiRepository implements DrAiRepository {
   PatientDoctorContactList patientDoctorContacts;
   AssessmentListData assessments;
   RecoveryPlanListData recoveryPlans;
+  List<RecoveryPhaseInput> lastRecoveryPhases = <RecoveryPhaseInput>[];
   PatientTodayData patientToday;
   ChatMessageResult chatResult;
   List<PatientChatThreadSummary> chatThreads;
@@ -1036,6 +1095,8 @@ class FakeDrAiRepository implements DrAiRepository {
   NotificationInboxData notificationInbox;
   NotificationPreferences notificationPreferences;
   NotificationReadiness notificationReadiness;
+  ClinicalEventIntelligenceData? intelligenceArtifact;
+  final bool noIntelligenceArtifact;
   ApiError? patientListError;
   ApiError? patientCareError;
   ApiError? presignError;
@@ -1055,6 +1116,8 @@ class FakeDrAiRepository implements DrAiRepository {
   ApiError? notificationPreferencesError;
   ApiError? notificationReadinessError;
   NotificationOpenResult? notificationOpenResult;
+  ApiError? intelligenceError;
+  Completer<ClinicalEventIntelligenceData?>? intelligenceCompleter;
   bool supportRequestCreateErrorAfterPersist;
   Completer<AuthSession>? loginCompleter;
   bool logoutCalled = false;
@@ -1104,6 +1167,177 @@ class FakeDrAiRepository implements DrAiRepository {
   final Map<String, String> _supportRequestSignatures = <String, String>{};
   final Map<String, SupportRequestData> _supportRequestsByKey =
       <String, SupportRequestData>{};
+
+  static const clinicalEventIntelligenceFixture = ClinicalEventIntelligenceData(
+    artifactId: 'intelligence-artifact-test-id',
+    artifactVersion: 1,
+    clinicalEventSnapshotVersion: 2,
+    lifecycleState: 'validated',
+    createdAt: '2026-08-01T09:00:00Z',
+    location: IntelligenceLocationData(
+      jurisdictionCode: 'CN',
+      provinceCode: 'Guangdong',
+      cityCode: 'Shenzhen',
+      facilityLevel: 'tertiary',
+      source: 'clinical_event_and_provider_records',
+    ),
+    requestedItems: <RequestedItemAssessmentData>[
+      RequestedItemAssessmentData(
+        requestedLineId: 'requested-line-assessment',
+        label: 'Specialist assessment',
+        requestedQuantity: 1,
+        requestedUnit: 'visit',
+        requestedAmountMinor: 1800,
+        currency: 'CNY',
+        codeSystem: 'Synthetic catalog',
+        serviceCode: 'SYN-CONSULT-01',
+        usefulness: 'Reviews progression and confirms the next care step.',
+        mappedPathwayIds: <String>['pathway-typical'],
+        scores: IntelligenceScoresData(
+          clinicalFit: 84,
+          evidenceSupport: 78,
+          timingSequence: 82,
+          quantityIntensity: 90,
+          documentationCompleteness: 64,
+          costAlignment: 76,
+          aiSupportScore: 79,
+          scoreContractVersion: 'cei-score-v1',
+          band: 'plausible',
+        ),
+        estimatedQuantity: EstimatedQuantityData(
+          low: 1,
+          high: 1,
+          unit: 'visit',
+        ),
+        estimatedCost: EstimatedCostData(
+          lowMinor: 1200,
+          highMinor: 2200,
+          currency: 'CNY',
+          provenanceTier: 2,
+          sourceLabels: <String>['Synthetic Shenzhen regional reference'],
+          isModelOnlyExploratory: false,
+        ),
+        supportingFacts: <String>['Symptoms progressed for seven days.'],
+        contradictingFacts: <String>[],
+        missingInformation: <String>['Latest laboratory report'],
+        alternatives: <String>['Primary-care reassessment'],
+        confidence: 'moderate',
+        comment: 'Human review remains required.',
+        validationState: 'validated',
+        disagreementState: 'partial_disagreement',
+      ),
+      RequestedItemAssessmentData(
+        requestedLineId: 'requested-line-tier5',
+        label: 'Specialized monitoring service',
+        requestedQuantity: 2,
+        requestedUnit: 'sessions',
+        requestedAmountMinor: 5000,
+        currency: 'CNY',
+        codeSystem: null,
+        serviceCode: null,
+        usefulness:
+            'Explores a monitored alternative where references are absent.',
+        mappedPathwayIds: <String>['pathway-escalated'],
+        scores: IntelligenceScoresData(
+          clinicalFit: 58,
+          evidenceSupport: 44,
+          timingSequence: 52,
+          quantityIntensity: 48,
+          documentationCompleteness: 35,
+          costAlignment: 0,
+          aiSupportScore: 47,
+          scoreContractVersion: 'cei-score-v1',
+          band: 'materially_uncertain',
+        ),
+        estimatedQuantity: EstimatedQuantityData(
+          low: 1,
+          high: 4,
+          unit: 'sessions',
+        ),
+        estimatedCost: EstimatedCostData(
+          lowMinor: 1000,
+          highMinor: 12000,
+          currency: 'CNY',
+          provenanceTier: 5,
+          sourceLabels: <String>[],
+          isModelOnlyExploratory: true,
+        ),
+        supportingFacts: <String>[],
+        contradictingFacts: <String>['No administered service recorded.'],
+        missingInformation: <String>['Facility price', 'Monitoring duration'],
+        alternatives: <String>['Standard outpatient follow-up'],
+        confidence: 'low',
+        comment: 'Exploratory only.',
+        validationState: 'validated_with_uncertainty',
+        disagreementState: 'material_disagreement',
+      ),
+    ],
+    pathways: <IntelligencePathwayData>[
+      IntelligencePathwayData(
+        id: 'pathway-typical',
+        type: 'typical_first_line',
+        summary: 'Review current findings before changing treatment.',
+        items: <PredictedPathwayItemData>[
+          PredictedPathwayItemData(
+            key: 'follow-up',
+            category: 'consultation',
+            label: 'Follow-up consultation',
+            code: null,
+            quantityLow: 1,
+            quantityHigh: 1,
+            unit: 'visit',
+          ),
+        ],
+      ),
+      IntelligencePathwayData(
+        id: 'pathway-escalated',
+        type: 'escalated',
+        summary: 'Escalate only if structured trigger facts are confirmed.',
+        items: <PredictedPathwayItemData>[
+          PredictedPathwayItemData(
+            key: 'monitoring',
+            category: 'monitoring',
+            label: 'Specialized monitoring',
+            code: null,
+            quantityLow: 1,
+            quantityHigh: 4,
+            unit: 'sessions',
+          ),
+        ],
+      ),
+    ],
+    missingDocumentation: <String>[
+      'Attach the latest laboratory report.',
+      'Confirm whether monitoring was ordered or only planned.',
+    ],
+    counterfactuals: <CounterfactualData>[
+      CounterfactualData(
+        title: 'If recent laboratory results are normal',
+        summary: 'A routine follow-up pathway may remain plausible.',
+      ),
+    ],
+    critic: IntelligenceCriticData(
+      state: 'partial_disagreement',
+      summary:
+          'The critic questioned monitoring intensity; deterministic validation preserved the requested line.',
+    ),
+    lineage: <IntelligenceLineageData>[
+      IntelligenceLineageData(
+        eventType: 'snapshot_frozen',
+        label: 'Clinical Event snapshot frozen',
+        occurredAt: '2026-08-01T08:59:00Z',
+      ),
+      IntelligenceLineageData(
+        eventType: 'artifact_validated',
+        label: 'Intelligence artifact validated',
+        occurredAt: '2026-08-01T09:00:00Z',
+      ),
+    ],
+    humanReviewState: 'awaiting_human_review',
+    purposeSummary:
+        'Explains the request using frozen, authorized clinical and cost facts.',
+    explanationDisplayMode: 'structured_facts',
+  );
 
   static const expectedCareFactSnapshot = CostEstimationFactSnapshotData(
     available: true,
@@ -1669,6 +1903,42 @@ class FakeDrAiRepository implements DrAiRepository {
     required String requestId,
     required String comparisonId,
   }) async => expectedCareExplanation;
+
+  @override
+  Future<ClinicalEventIntelligenceData?> loadClinicalEventIntelligence({
+    required AppRole role,
+    required String requestId,
+    required String locale,
+  }) async {
+    if (intelligenceError != null) throw intelligenceError!;
+    if (intelligenceCompleter != null) return intelligenceCompleter!.future;
+    return intelligenceArtifact;
+  }
+
+  @override
+  Future<ClinicalEventIntelligenceData> generateClinicalEventIntelligence({
+    required String requestId,
+    required String idempotencyKey,
+  }) async {
+    if (intelligenceError != null) throw intelligenceError!;
+    intelligenceArtifact = clinicalEventIntelligenceFixture;
+    return clinicalEventIntelligenceFixture;
+  }
+
+  @override
+  Future<IntelligenceResponseResultData> appendIntelligenceClinicianResponse({
+    required String requestId,
+    required String artifactId,
+    required String action,
+    required String idempotencyKey,
+    String? rationale,
+  }) async {
+    if (intelligenceError != null) throw intelligenceError!;
+    return const IntelligenceResponseResultData(
+      responseId: 'intelligence-response-test-id',
+      idempotentReplay: false,
+    );
+  }
 
   @override
   Future<AuthSession> login(String email, String password) async {
@@ -2279,6 +2549,7 @@ class FakeDrAiRepository implements DrAiRepository {
     required String dosage,
     required String schedule,
     required String notes,
+    List<PrescriptionMedicationDraft>? lines,
   }) async {
     prescriptionCreated = true;
     final prescription = PrescriptionItem(
@@ -2552,10 +2823,12 @@ class FakeDrAiRepository implements DrAiRepository {
     required String title,
     required String instructions,
     required List<RecoveryTaskInput> tasks,
+    required List<RecoveryPhaseInput> phases,
   }) async {
     if (recoveryPlanError != null) {
       throw recoveryPlanError!;
     }
+    lastRecoveryPhases = phases;
     final plan = _planFromInput(
       patientId: patientId,
       clinicalEventId: clinicalEventId,
@@ -2579,10 +2852,12 @@ class FakeDrAiRepository implements DrAiRepository {
     required String title,
     required String instructions,
     required List<RecoveryTaskInput> tasks,
+    required List<RecoveryPhaseInput> phases,
   }) async {
     if (recoveryPlanError != null) {
       throw recoveryPlanError!;
     }
+    lastRecoveryPhases = phases;
     final plan = _planFromInput(
       patientId: patientId,
       clinicalEventId: clinicalEventId,
@@ -2925,11 +3200,104 @@ class FakeDrAiRepository implements DrAiRepository {
           'Synthetic demonstration data only. Do not enter real patient data.',
       createdAt: DateTime(2026, 7, 5, 12),
       updatedAt: DateTime(2026, 7, 5, 12),
+      consultationType: 'specialist_referral',
     );
     consultations = ConsultationListData(
       items: <ConsultationRequestItem>[request, ...consultations.items],
     );
     return request;
+  }
+
+  @override
+  Future<ConsultationRequestItem> createClinicalEventConsultation({
+    required String patientId,
+    required String clinicalEventId,
+    required String specialty,
+    required String consultationType,
+    required String status,
+    required String clinicianProvider,
+    required String serviceDate,
+    required String reasonIndication,
+    required String outcomeSummary,
+    required String followUpRequirement,
+    required int quantity,
+    required String idempotencyKey,
+    ClinicalFinancialDraft? financial,
+  }) async {
+    lastConsultationFinancial = financial;
+    final request = ConsultationRequestItem(
+      consultationId: 'clinical-event-consultation-id',
+      patientId: patientId,
+      clinicalEventId: clinicalEventId,
+      clinicalServiceId: 'clinical-event-consultation-service-id',
+      specialty: specialty,
+      questionSummary: reasonIndication,
+      priority: 'routine',
+      status: status,
+      safetyLabel:
+          'Synthetic demonstration data only. Do not enter real patient data.',
+      createdAt: DateTime(2026, 8, 2, 12),
+      updatedAt: DateTime(2026, 8, 2, 12),
+      consultationType: consultationType,
+      clinicianProvider: clinicianProvider,
+      serviceDate: serviceDate,
+      reasonIndication: reasonIndication,
+      outcomeSummary: <String, dynamic>{'summary': outcomeSummary},
+      followUpRequirement: followUpRequirement,
+      quantity: quantity,
+    );
+    consultations = ConsultationListData(
+      items: <ConsultationRequestItem>[request, ...consultations.items],
+    );
+    return request;
+  }
+
+  @override
+  Future<VisitHistoryItem> createVisitHistory({
+    required String patientId,
+    required String clinicalEventId,
+    required String visitType,
+    required String title,
+    required String summary,
+    required DateTime occurredAt,
+    required String clinicianLabel,
+  }) async {
+    final item = VisitHistoryItem(
+      id: 'created-visit-history-id',
+      clinicalEventId: clinicalEventId,
+      visitType: visitType,
+      title: title,
+      summary: summary,
+      occurredAt: occurredAt,
+      clinicianLabel: clinicianLabel,
+    );
+    patientCareBundle = patientCareBundle.copyWith(
+      visitHistory: <VisitHistoryItem>[item, ...patientCareBundle.visitHistory],
+    );
+    return item;
+  }
+
+  @override
+  Future<DiagnosisItem> createDiagnosis({
+    required String patientId,
+    required String clinicalEventId,
+    required String label,
+    required String status,
+    required String diagnosedOn,
+    required String notes,
+  }) async {
+    final item = DiagnosisItem(
+      id: 'created-diagnosis-id',
+      clinicalEventId: clinicalEventId,
+      label: label,
+      status: status,
+      diagnosedOn: diagnosedOn,
+      notes: notes,
+    );
+    patientCareBundle = patientCareBundle.copyWith(
+      diagnoses: <DiagnosisItem>[item, ...patientCareBundle.diagnoses],
+    );
+    return item;
   }
 
   @override

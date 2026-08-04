@@ -988,6 +988,51 @@ def test_general_knowledge_response_preserves_no_evidence_decision(settings, mon
     assert response.evidence_decision == EvidenceDecision.no_eligible_evidence
 
 
+def test_acute_joint_pop_and_swelling_gets_useful_provider_failure_guidance(
+    client: TestClient, settings, monkeypatch
+) -> None:
+    with Session(engine) as db:
+        seed_database(db, settings)
+        db.commit()
+
+    adapter = FakeGeneralAdapter()
+
+    def fail_general(**kwargs):
+        del kwargs
+        raise DeepSeekChatError(
+            "service_unavailable",
+            diagnostic_code="synthetic_provider_unavailable",
+        )
+
+    monkeypatch.setattr(adapter, "complete_general_knowledge", fail_general)
+    monkeypatch.setattr("app.patient_chat.deepseek_chat_adapter", adapter)
+
+    response = client.post(
+        "/api/v1/patient/chat/messages",
+        headers=_patient_headers(client, settings),
+        json={
+            "message": (
+                "I twisted my knee, heard a popping sound, and now the joint is swelling. "
+                "What could it be?"
+            ),
+            "language": "en",
+            "session_id": "acute-joint-provider-failure",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["grounding_mode"] == "fixed_safety_response"
+    assert payload["fallback_code"] == "provider_unavailable"
+    assert len(payload["answer_sections"]) == 4
+    combined = " ".join(payload["answer_sections"]).lower()
+    assert "ligament" in combined
+    assert "fracture" in combined
+    assert "urgent care" in combined
+    assert "diagnosis" in combined
+    assert payload["next_action_code"] == "seek_local_care"
+
+
 def test_mixed_medication_request_answers_safe_portion_and_declines_change(
     client: TestClient, settings, monkeypatch
 ) -> None:

@@ -5,6 +5,7 @@ import 'package:dr_ai_app/features/beta/presentation/beta_support_screen.dart';
 import 'package:dr_ai_app/features/care_cost/presentation/care_cost_screens.dart';
 import 'package:dr_ai_app/features/care_cost/presentation/payer_account_screen.dart';
 import 'package:dr_ai_app/features/chat/presentation/chat_screens.dart';
+import 'package:dr_ai_app/features/clinical_event_intelligence/presentation/clinical_event_intelligence_screen.dart';
 import 'package:dr_ai_app/features/doctor/presentation/doctor_contacts_screen.dart';
 import 'package:dr_ai_app/features/doctor/presentation/doctor_dashboard_screen.dart';
 import 'package:dr_ai_app/features/doctor/presentation/doctor_payer_requests_screen.dart';
@@ -167,6 +168,18 @@ GoRouter createRouter(AppRole? role, {String? initialLocation}) {
                 initialRequestId: state.pathParameters['requestId']!,
               ),
             ),
+            routes: <RouteBase>[
+              GoRoute(
+                path: 'intelligence',
+                pageBuilder: (context, state) => _drAiPage(
+                  state,
+                  ClinicalEventIntelligenceScreen(
+                    role: AppRole.doctor,
+                    requestId: state.pathParameters['requestId']!,
+                  ),
+                ),
+              ),
+            ],
           ),
           _notificationRoute(AppRole.doctor),
           GoRoute(
@@ -266,6 +279,16 @@ GoRouter createRouter(AppRole? role, {String? initialLocation}) {
             ),
           ),
           GoRoute(
+            path: 'payer-requests/:requestId/intelligence',
+            pageBuilder: (context, state) => _drAiPage(
+              state,
+              ClinicalEventIntelligenceScreen(
+                role: AppRole.patient,
+                requestId: state.pathParameters['requestId']!,
+              ),
+            ),
+          ),
+          GoRoute(
             path: 'account',
             pageBuilder: (context, state) =>
                 _drAiPage(state, const PatientAccountScreen()),
@@ -288,6 +311,16 @@ GoRouter createRouter(AppRole? role, {String? initialLocation}) {
             pageBuilder: (context, state) => _drAiPage(
               state,
               PayerExpectedCareScreen(
+                requestId: state.pathParameters['requestId']!,
+              ),
+            ),
+          ),
+          GoRoute(
+            path: 'requests/:requestId/intelligence',
+            pageBuilder: (context, state) => _drAiPage(
+              state,
+              ClinicalEventIntelligenceScreen(
+                role: AppRole.payer,
                 requestId: state.pathParameters['requestId']!,
               ),
             ),

@@ -193,36 +193,40 @@ void main() {
     },
   );
 
-  testWidgets(
-    'doctor request history opens the expected-care review workspace',
-    (tester) async {
-      setViewport(tester, const Size(1280, 900));
-      await pumpApp(tester, FakeDrAiRepository(restoredSession: doctorSession));
+  testWidgets('doctor request history opens request-scoped intelligence', (
+    tester,
+  ) async {
+    setViewport(tester, const Size(1280, 900));
+    await pumpApp(tester, FakeDrAiRepository(restoredSession: doctorSession));
 
-      await tester.tap(find.text('Payment requests').last);
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Request history'));
-      await tester.pumpAndSettle();
-      await tester.tap(
-        find.byKey(const Key('payment-request-history-payer-request-test-id')),
-      );
-      await tester.pumpAndSettle();
-      final openReview = find.byKey(
-        const Key('doctor-expected-care-payer-request-test-id'),
-      );
-      await tester.ensureVisible(openReview);
-      await tester.tap(openReview);
-      await tester.pumpAndSettle();
+    await tester.tap(find.text('Payment requests').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Request history'));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const Key('payment-request-history-payer-request-test-id')),
+    );
+    await tester.pumpAndSettle();
+    final openReview = find.byKey(
+      const Key('doctor-intelligence-payer-request-test-id'),
+    );
+    await tester.ensureVisible(openReview);
+    await tester.tap(openReview);
+    await tester.pumpAndSettle();
 
-      expect(find.text('Immutable expected-care baseline'), findsOneWidget);
-      expect(find.text('Acknowledge'), findsOneWidget);
-      expect(find.text('Record disagreement'), findsOneWidget);
-      expect(find.text('Append comparison'), findsOneWidget);
-      expect(find.text('Request or retry scoped explanation'), findsOneWidget);
-      expect(find.text('View history'), findsOneWidget);
-      expect(find.text('Reject'), findsNothing);
-    },
-  );
+    expect(find.text('Clinical Event intelligence review'), findsOneWidget);
+    expect(find.text('Acknowledge'), findsOneWidget);
+    expect(find.text('Disagree'), findsOneWidget);
+    expect(find.text('AI support score'), findsNWidgets(2));
+    expect(find.text('Model-only exploratory estimate'), findsOneWidget);
+    expect(find.text('Reject'), findsNothing);
+    expect(
+      GoRouter.of(
+        tester.element(find.text('Clinical Event intelligence review')),
+      ).routeInformationProvider.value.uri.path,
+      '/doctor/payer-requests/payer-request-test-id/intelligence',
+    );
+  });
 
   testWidgets(
     'doctor request history separates accepted and rejected payer outcomes',
@@ -676,6 +680,37 @@ void main() {
     expect(find.byKey(const Key('onboarding-language-field')), findsOneWidget);
     expect(find.text('My Account'), findsWidgets);
   });
+
+  testWidgets(
+    'patient account normalizes exact legacy female value without dropdown assertion',
+    (tester) async {
+      setViewport(tester, const Size(412, 917));
+      final repository = FakeDrAiRepository(
+        restoredSession: patientSession,
+        loginSession: patientSession,
+        dashboard: patientDashboard,
+      )..patientCareBundle = patientCareBundleWithLegacyGender('female');
+      await pumpApp(tester, repository);
+
+      await tester.tap(find.text('My Account'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(
+        find.byKey(const Key('patient-account-edit-profile-button')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const Key('patient-account-edit-profile-button')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('onboarding-gender-field')), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      final field = tester.widget<DropdownButtonFormField<String>>(
+        find.byKey(const Key('onboarding-gender-field')),
+      );
+      expect(field.initialValue, 'female');
+    },
+  );
 
   testWidgets('logout clears the session and returns to sign in', (
     tester,
@@ -1181,39 +1216,44 @@ void main() {
     expect(find.text('Reject request'), findsOneWidget);
   });
 
-  testWidgets(
-    'patient payer status opens the immutable expected-care baseline',
-    (tester) async {
-      setViewport(tester, const Size(412, 917));
-      await pumpApp(
-        tester,
-        FakeDrAiRepository(
-          restoredSession: patientSession,
-          loginSession: patientSession,
-          dashboard: patientDashboard,
-        ),
-      );
+  testWidgets('patient payer status opens request-scoped intelligence', (
+    tester,
+  ) async {
+    setViewport(tester, const Size(412, 917));
+    await pumpApp(
+      tester,
+      FakeDrAiRepository(
+        restoredSession: patientSession,
+        loginSession: patientSession,
+        dashboard: patientDashboard,
+      ),
+    );
 
-      await tester.tap(find.text('Care & costs'));
-      await tester.pumpAndSettle();
-      final openRange = find.byKey(
-        const Key('patient-expected-care-clinical-event-test-id'),
-      );
-      await tester.dragUntilVisible(
-        openRange,
-        find.byKey(const Key('care-cost-ledger-list')),
-        const Offset(0, -260),
-      );
-      tester.widget<ListTile>(openRange).onTap!();
-      await tester.pumpAndSettle();
+    await tester.tap(find.text('Care & costs'));
+    await tester.pumpAndSettle();
+    final openRange = find.byKey(
+      const Key('patient-intelligence-payer-request-test-id'),
+    );
+    await tester.dragUntilVisible(
+      openRange,
+      find.byKey(const Key('care-cost-ledger-list')),
+      const Offset(0, -260),
+    );
+    tester.widget<ListTile>(openRange).onTap!();
+    await tester.pumpAndSettle();
 
-      expect(find.text('System expected-care baseline'), findsOneWidget);
-      expect(find.textContaining('not a quote'), findsOneWidget);
-      expect(find.text('Request or retry safe explanation'), findsOneWidget);
-    },
-  );
+    expect(find.text('Your care and cost intelligence'), findsOneWidget);
+    expect(find.text('AI support score'), findsNWidgets(2));
+    expect(find.textContaining('never approve'), findsOneWidget);
+    expect(
+      GoRouter.of(
+        tester.element(find.text('Your care and cost intelligence')),
+      ).routeInformationProvider.value.uri.path,
+      '/patient/payer-requests/payer-request-test-id/intelligence',
+    );
+  });
 
-  testWidgets('payer request opens authorized expected-care evidence', (
+  testWidgets('payer request opens authorized request intelligence', (
     tester,
   ) async {
     setViewport(tester, const Size(1280, 900));
@@ -1222,20 +1262,24 @@ void main() {
     await tester.tap(find.text('Review queue'));
     await tester.pumpAndSettle();
     final openEvidence = find.byKey(
-      const Key('payer-expected-care-payer-request-test-id'),
+      const Key('payer-intelligence-payer-request-test-id'),
     );
     await tester.ensureVisible(openEvidence);
     await tester.tap(openEvidence);
     await tester.pumpAndSettle();
 
-    expect(find.text('Authorized expected-care evidence'), findsOneWidget);
-    expect(find.text('Human payer review'), findsOneWidget);
-    expect(find.text('Request or retry scoped explanation'), findsOneWidget);
-    expect(find.text('Validated baseline published'), findsOneWidget);
-    expect(find.text('Not recorded'), findsOneWidget);
-    expect(find.text('Submitted'), findsWidgets);
+    expect(find.text('Authorized request intelligence'), findsOneWidget);
+    expect(find.text('Human review'), findsWidgets);
+    expect(find.text('AI support score'), findsNWidgets(2));
+    expect(find.text('Model-only exploratory estimate'), findsOneWidget);
     expect(find.textContaining('payer-request-test-id'), findsNothing);
     expect(find.textContaining('validated_baseline_published'), findsNothing);
+    expect(
+      GoRouter.of(
+        tester.element(find.text('Authorized request intelligence')),
+      ).routeInformationProvider.value.uri.path,
+      '/payer/requests/payer-request-test-id/intelligence',
+    );
   });
 
   testWidgets(
@@ -1708,12 +1752,22 @@ void main() {
     await tester.pumpAndSettle();
     await tester.drag(
       find.byKey(const Key('doctor-section-list-recoveryPlans')),
+      const Offset(0, -320),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('recovery-add-phase-button')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('recovery-phase-preview-0')), findsOneWidget);
+    await tester.drag(
+      find.byKey(const Key('doctor-section-list-recoveryPlans')),
       const Offset(0, -680),
     );
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('recovery-plan-save-button')));
     await tester.pumpAndSettle();
     expect(repository.recoveryPlans.items.first.title, 'Updated recovery plan');
+    expect(repository.lastRecoveryPhases, hasLength(1));
+    expect(repository.lastRecoveryPhases.single.tasks, hasLength(4));
     expect(
       repository.recoveryPlans.items.first.clinicalEventId,
       'clinical-event-test-id',
@@ -1743,6 +1797,111 @@ void main() {
 
     expect(find.byKey(const Key('demo-upload-filename-field')), findsNothing);
     expect(find.byKey(const Key('demo-upload-presign-button')), findsNothing);
+  });
+
+  testWidgets(
+    'doctor appends and reads back a consultation in the Clinical Event',
+    (tester) async {
+      setViewport(tester, const Size(1280, 1400));
+      final repository = FakeDrAiRepository(restoredSession: doctorSession);
+      await pumpApp(tester, repository);
+      await openDoctorPatientWorkflow(tester, section: 'clinicalEvents');
+
+      expect(
+        find.byKey(const Key('clinical-event-append-panel')),
+        findsOneWidget,
+      );
+      await tester.enterText(
+        find.byKey(const Key('event-consultation-reason-field')),
+        'Review the synthetic knee injury',
+      );
+      await tester.enterText(
+        find.byKey(const Key('event-consultation-outcome-field')),
+        'Exam findings and next steps recorded.',
+      );
+      await tester.drag(
+        find.byKey(const Key('doctor-section-list-clinicalEvents')),
+        const Offset(0, -900),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const Key('clinical-event-append-save-button')),
+      );
+      await tester.pumpAndSettle();
+      expect(repository.consultations.items, isNotEmpty);
+      expect(
+        repository.lastConsultationFinancial?.pricingState,
+        'pending_cost',
+      );
+      expect(
+        find.byKey(const Key('clinical-event-consultations-section')),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets('doctor appends an encounter update to the Clinical Event', (
+    tester,
+  ) async {
+    setViewport(tester, const Size(1280, 1400));
+    final repository = FakeDrAiRepository(restoredSession: doctorSession);
+    await pumpApp(tester, repository);
+    await openDoctorPatientWorkflow(tester, section: 'clinicalEvents');
+
+    await tester.tap(find.byKey(const Key('event-append-mode-update')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('event-update-title-field')),
+      'Follow-up examination',
+    );
+    await tester.enterText(
+      find.byKey(const Key('event-update-summary-field')),
+      'Swelling and range of motion reviewed.',
+    );
+    await tester.drag(
+      find.byKey(const Key('doctor-section-list-clinicalEvents')),
+      const Offset(0, -700),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const Key('clinical-event-append-save-button')),
+    );
+    await tester.pumpAndSettle();
+    expect(repository.patientCareBundle.visitHistory, isNotEmpty);
+  });
+
+  testWidgets('doctor appends a diagnosis to the Clinical Event', (
+    tester,
+  ) async {
+    setViewport(tester, const Size(1280, 1400));
+    final repository = FakeDrAiRepository(restoredSession: doctorSession);
+    await pumpApp(tester, repository);
+    await openDoctorPatientWorkflow(tester, section: 'clinicalEvents');
+
+    await tester.tap(find.byKey(const Key('event-append-mode-diagnosis')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('event-diagnosis-label-field')),
+      'Synthetic knee sprain',
+    );
+    await tester.enterText(
+      find.byKey(const Key('event-diagnosis-notes-field')),
+      'Clinician-authored synthetic diagnosis note.',
+    );
+    await tester.drag(
+      find.byKey(const Key('doctor-section-list-clinicalEvents')),
+      const Offset(0, -500),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const Key('clinical-event-append-save-button')),
+    );
+    await tester.pumpAndSettle();
+    expect(repository.patientCareBundle.diagnoses, isNotEmpty);
+    expect(
+      find.byKey(const Key('clinical-event-append-success')),
+      findsOneWidget,
+    );
   });
 
   testWidgets(
@@ -2201,13 +2360,10 @@ void main() {
       find.byKey(const Key('consultation-summary-field')),
       'Review respiratory symptoms and recent imaging.',
     );
-    final consultationBillable = find
-        .byKey(const Key('billable-clinical-item-checkbox'))
-        .last;
-    await tester.ensureVisible(consultationBillable);
-    await tester.pumpAndSettle();
-    await tester.tap(consultationBillable);
-    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const Key('specialist-request-not-billable-notice')),
+      findsOneWidget,
+    );
     await tester.testTextInput.receiveAction(TextInputAction.done);
     await tester.dragUntilVisible(
       find.byKey(const Key('consultation-request-button')),
@@ -2219,8 +2375,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(repository.consultations.items, isNotEmpty);
-    expect(repository.lastConsultationFinancial, isNotNull);
-    expect(repository.lastConsultationFinancial!.pricingState, 'pending_cost');
+    expect(repository.lastConsultationFinancial, isNull);
     expect(
       repository.consultations.items.first.clinicalEventId,
       'clinical-event-test-id',
@@ -2228,25 +2383,10 @@ void main() {
     expect(find.textContaining('consultation requested'), findsWidgets);
     expect(find.textContaining('Pulmonology - requested'), findsWidgets);
 
-    final editCost = find.byKey(
-      const Key('edit-consultation-cost-created-consultation-id'),
+    expect(
+      find.byKey(const Key('edit-consultation-cost-created-consultation-id')),
+      findsNothing,
     );
-    await tester.ensureVisible(editCost);
-    await tester.drag(
-      find.byKey(const Key('doctor-section-list-consultationActivity')),
-      const Offset(0, -120),
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(editCost);
-    await tester.pumpAndSettle();
-    await tester.ensureVisible(
-      find.byKey(const Key('consultation-request-button')),
-    );
-    await tester.tap(find.byKey(const Key('consultation-request-button')));
-    await tester.pumpAndSettle();
-
-    expect(repository.consultationFinancialUpdates, 1);
-    expect(find.text('Save consultation cost'), findsOneWidget);
   });
 
   testWidgets('core controls expose accessible labels and disabled states', (

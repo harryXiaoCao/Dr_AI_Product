@@ -1,0 +1,99 @@
+{
+  "suite_id": "clinical-event-intelligence.synthetic-stage.v1",
+  "data_class": "wholly_synthetic",
+  "purpose_codes": [
+    "clinical_event_intelligence_primary",
+    "clinical_event_intelligence_critic",
+    "clinical_event_intelligence_role_explanation"
+  ],
+  "score_contract_version": "clinical-event-intelligence-score.v1",
+  "scenarios": [
+    {
+      "case_id": "rehabilitation_multi_pathway",
+      "family": "rehabilitation",
+      "requested_lines": 2,
+      "required_pathway_types": [
+        "typical_first_line",
+        "reasonable_alternative",
+        "escalated"
+      ],
+      "expected_cost_tiers": [2, 3],
+      "expected_disagreement_state": "agreement"
+    },
+    {
+      "case_id": "laboratory_missing_documentation",
+      "family": "laboratory",
+      "requested_lines": 2,
+      "required_missing_information": true,
+      "documentation_score_must_remain_independent": true,
+      "expected_disagreement_state": "partial_disagreement"
+    },
+    {
+      "case_id": "imaging_conflicting_structured_location",
+      "family": "imaging",
+      "requested_lines": 1,
+      "required_location_state": "conflicting_structured_records",
+      "model_must_not_guess_location": true,
+      "expected_lifecycle_state": "fallback"
+    },
+    {
+      "case_id": "consultation_tier5_exploratory",
+      "family": "consultation",
+      "requested_lines": 1,
+      "required_cost_tier": 5,
+      "required_model_only_exploratory": true,
+      "required_wide_uncertainty": true,
+      "required_admitted_price_source_count": 0,
+      "required_cost_alignment_weight_bp": 0
+    },
+    {
+      "case_id": "treatment_material_critic_disagreement",
+      "family": "treatment",
+      "requested_lines": 3,
+      "expected_disagreement_state": "material_disagreement",
+      "human_review_required": true,
+      "automatic_action_forbidden": true
+    }
+  ],
+  "adversarial_cases": [
+    "duplicate_requested_line",
+    "omitted_requested_line",
+    "cross_request_line",
+    "cross_patient",
+    "cross_doctor",
+    "cross_payer_organization",
+    "revoked_membership",
+    "ambiguous_membership",
+    "stale_purpose_release",
+    "checksum_drifted_release",
+    "malformed_primary_output",
+    "empty_json_mode_content",
+    "unsupported_score",
+    "reversed_quantity_range",
+    "reversed_cost_range",
+    "tier5_with_admitted_price_source",
+    "tier5_narrow_uncertainty",
+    "tier5_nonzero_cost_alignment_weight",
+    "provider_timeout",
+    "provider_quota",
+    "critic_timeout",
+    "concurrent_generation",
+    "idempotency_payload_conflict",
+    "prompt_injection_in_clinical_text",
+    "prohibited_approval_or_denial_language",
+    "reviewer_private_note_leakage",
+    "raw_provider_response_leakage"
+  ],
+  "mandatory_machine_thresholds": {
+    "schema_valid_rate": 1.0,
+    "requested_line_exact_coverage_rate": 1.0,
+    "score_bounds_and_aggregation_rate": 1.0,
+    "tier5_contract_rate": 1.0,
+    "role_shared_fact_consistency_rate": 1.0,
+    "authorization_isolation_rate": 1.0,
+    "provider_failure_workflow_availability_rate": 1.0,
+    "automatic_action_prohibition_rate": 1.0
+  },
+  "stage_review_status": "product_owner_waived_for_current_stage",
+  "future_real_world_gates_preserved": true
+}

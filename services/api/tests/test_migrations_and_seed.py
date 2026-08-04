@@ -54,7 +54,70 @@ def test_empty_database_migrates_to_head() -> None:
         "notification_outbox",
         "notification_delivery_attempts",
         "notification_events",
+        "clinical_event_intelligence_snapshots",
+        "clinical_event_intelligence_runs",
+        "clinical_event_intelligence_retrieval_sources",
+        "clinical_event_intelligence_pathways",
+        "clinical_event_intelligence_pathway_items",
+        "clinical_event_intelligence_provider_attempts",
+        "clinical_event_intelligence_item_assessments",
+        "clinical_event_intelligence_artifacts",
+        "clinical_event_intelligence_explanations",
+        "clinical_event_intelligence_lineage_events",
     }
+
+    payer_line_columns = {
+        column["name"] for column in inspect(engine).get_columns("payer_request_lines")
+    }
+    assert {"code_system", "service_code", "quantity", "unit"} <= payer_line_columns
+
+    snapshot_columns = {
+        column["name"]: column
+        for column in inspect(engine).get_columns("clinical_event_intelligence_snapshots")
+    }
+    for location_column in (
+        "hospital_id",
+        "clinic_id",
+        "department_code",
+        "jurisdiction_code",
+        "province",
+        "city",
+        "facility_level",
+        "encounter_at",
+    ):
+        assert snapshot_columns[location_column]["nullable"] is True
+
+    pathway_checks = {
+        constraint["name"]: constraint["sqltext"]
+        for constraint in inspect(engine).get_check_constraints(
+            "clinical_event_intelligence_pathway_items"
+        )
+    }
+    assessment_checks = {
+        constraint["name"]: constraint["sqltext"]
+        for constraint in inspect(engine).get_check_constraints(
+            "clinical_event_intelligence_item_assessments"
+        )
+    }
+    assert "quantity_low >= 0" in pathway_checks["ck_cei_pathway_item_quantity"]
+    assert "estimated_quantity_low >= 0" in assessment_checks["ck_cei_assessment_quantity"]
+
+
+def test_clinical_event_intelligence_migration_downgrade_and_reupgrade() -> None:
+    config = Config("alembic.ini")
+    command.downgrade(config, "20260730_0054")
+    assert "clinical_event_intelligence_artifacts" not in inspect(engine).get_table_names()
+    command.upgrade(config, "head")
+    assert "clinical_event_intelligence_artifacts" in inspect(engine).get_table_names()
+    with engine.connect() as connection:
+        trigger_count = connection.scalar(
+            text(
+                "SELECT count(*) FROM pg_trigger "
+                "WHERE NOT tgisinternal AND tgname LIKE "
+                "'trg_clinical_event_intelligence_%_append_only'"
+            )
+        )
+    assert trigger_count == 10
 
 
 def test_phase5_upgrade_backfills_existing_deletion_retention_boundary() -> None:

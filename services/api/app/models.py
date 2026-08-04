@@ -290,6 +290,7 @@ class ClinicalEvent(Base):
     __table_args__ = (
         Index("ix_clinical_events_patient_status", "patient_id", "status"),
         Index("ix_clinical_events_doctor_updated", "doctor_id", "updated_at"),
+        Index("ix_clinical_event_facility", "hospital_id", "clinic_id"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -299,6 +300,14 @@ class ClinicalEvent(Base):
     doctor_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("doctor_profiles.id", ondelete="SET NULL")
     )
+    hospital_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("hospitals.id", ondelete="RESTRICT")
+    )
+    clinic_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("clinics.id", ondelete="RESTRICT")
+    )
+    department_code: Mapped[str | None] = mapped_column(String(80))
+    encounter_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     title: Mapped[str] = mapped_column(String(160))
     chief_complaint: Mapped[str] = mapped_column(String(240))
     symptom_summary: Mapped[str | None] = mapped_column(Text)
@@ -351,6 +360,12 @@ class ClinicalService(Base):
         Index("ix_clinical_services_patient_status", "patient_id", "status"),
         Index("ix_clinical_services_event_category", "clinical_event_id", "category"),
         Index("ix_clinical_services_appointment", "appointment_id"),
+        UniqueConstraint(
+            "ordered_by_doctor_id",
+            "idempotency_key",
+            name="uq_clinical_service_doctor_idempotency",
+        ),
+        CheckConstraint("quantity > 0", name="ck_clinical_services_quantity_positive"),
         CheckConstraint(
             "scheduled_at IS NULL OR ordered_at IS NULL OR scheduled_at >= ordered_at",
             name="ck_clinical_services_schedule_after_order",
@@ -384,6 +399,13 @@ class ClinicalService(Base):
     scheduled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     performed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     indication_summary: Mapped[str | None] = mapped_column(Text)
+    service_date: Mapped[date | None] = mapped_column(Date)
+    facility_name: Mapped[str | None] = mapped_column(String(200))
+    quantity: Mapped[int] = mapped_column(Integer, default=1)
+    unit: Mapped[str] = mapped_column(String(60), default="service")
+    documentation_state: Mapped[str] = mapped_column(String(40), default="pending")
+    provenance_json: Mapped[dict[str, object]] = mapped_column(JSONB, default=dict)
+    idempotency_key: Mapped[str | None] = mapped_column(String(120))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
@@ -524,6 +546,8 @@ class PayerRequestLine(Base):
     __tablename__ = "payer_request_lines"
     __table_args__ = (
         UniqueConstraint("payer_request_id", "care_cost_item_id", name="uq_payer_request_item"),
+        CheckConstraint("quantity > 0", name="ck_payer_request_line_quantity"),
+        CheckConstraint("length(btrim(unit)) > 0", name="ck_payer_request_line_unit"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -535,6 +559,10 @@ class PayerRequestLine(Base):
     )
     item_type: Mapped[str] = mapped_column(String(60))
     label: Mapped[str] = mapped_column(String(200))
+    code_system: Mapped[str | None] = mapped_column(String(80))
+    service_code: Mapped[str | None] = mapped_column(String(120))
+    quantity: Mapped[int] = mapped_column(Integer, default=1)
+    unit: Mapped[str] = mapped_column(String(80), default="item")
     service_date: Mapped[date] = mapped_column(Date)
     currency: Mapped[str] = mapped_column(String(3))
     actual_cost_minor: Mapped[int] = mapped_column(Integer)
@@ -738,6 +766,19 @@ class GovernedCareReleaseActivation(Base):
             "scope_key",
             "created_at",
         ),
+        UniqueConstraint(
+            "release_type",
+            "release_key",
+            "scope_key",
+            "idempotency_key",
+            name="uq_governed_care_release_activation_idempotency",
+        ),
+        CheckConstraint(
+            "(idempotency_key IS NULL AND operation_checksum_sha256 IS NULL) OR "
+            "(length(btrim(idempotency_key)) > 0 AND "
+            "operation_checksum_sha256 ~ '^[0-9a-f]{64}$')",
+            name="ck_governed_care_release_activation_idempotency",
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -755,6 +796,9 @@ class GovernedCareReleaseActivation(Base):
         ForeignKey("users.id", ondelete="SET NULL")
     )
     reason_code: Mapped[str] = mapped_column(String(80))
+    idempotency_key: Mapped[str | None] = mapped_column(String(120))
+    operation_checksum_sha256: Mapped[str | None] = mapped_column(String(64))
+    evidence_json: Mapped[dict[str, object]] = mapped_column(JSONB, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -2058,6 +2102,12 @@ class RecoveryPlan(Base):
         Index("ix_recovery_plans_patient_status", "patient_id", "status"),
         Index("ix_recovery_plans_patient_review", "patient_id", "review_status"),
         Index("ix_recovery_plans_clinical_event", "clinical_event_id"),
+        UniqueConstraint(
+            "doctor_id",
+            "idempotency_key",
+            name="uq_recovery_plan_doctor_idempotency",
+        ),
+        CheckConstraint("version > 0", name="ck_recovery_plan_version_positive"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -2072,6 +2122,13 @@ class RecoveryPlan(Base):
     )
     title: Mapped[str] = mapped_column(String(160))
     instructions: Mapped[str] = mapped_column(Text)
+    indication: Mapped[str | None] = mapped_column(Text)
+    start_date: Mapped[date | None] = mapped_column(Date)
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    supersedes_plan_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("recovery_plans.id", ondelete="RESTRICT")
+    )
+    idempotency_key: Mapped[str | None] = mapped_column(String(120))
     status: Mapped[str] = mapped_column(String(40), default="draft")
     review_status: Mapped[str] = mapped_column(String(40), default="draft")
     safety_label: Mapped[str] = mapped_column(String(120))
@@ -2087,6 +2144,9 @@ class RecoveryPlan(Base):
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     activated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    paused_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     patient: Mapped[PatientProfile] = relationship(back_populates="recovery_plans")
     doctor: Mapped[DoctorProfile] = relationship()
@@ -2095,6 +2155,41 @@ class RecoveryPlan(Base):
     tasks: Mapped[list["RecoveryTask"]] = relationship(
         back_populates="plan", cascade="all, delete-orphan", order_by="RecoveryTask.sort_order"
     )
+    phases: Mapped[list["RecoveryPhase"]] = relationship(
+        back_populates="plan", cascade="all, delete-orphan", order_by="RecoveryPhase.sort_order"
+    )
+
+
+class RecoveryPhase(Base):
+    __tablename__ = "recovery_phases"
+    __table_args__ = (
+        UniqueConstraint("plan_id", "sort_order", name="uq_recovery_phase_order"),
+        CheckConstraint("sort_order >= 0", name="ck_recovery_phase_order_nonnegative"),
+        CheckConstraint(
+            "end_date IS NULL OR start_date IS NULL OR end_date >= start_date",
+            name="ck_recovery_phase_date_range",
+        ),
+        Index("ix_recovery_phases_plan_order", "plan_id", "sort_order"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    plan_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("recovery_plans.id", ondelete="CASCADE"))
+    sort_order: Mapped[int] = mapped_column(Integer)
+    name: Mapped[str] = mapped_column(String(160))
+    start_date: Mapped[date | None] = mapped_column(Date)
+    end_date: Mapped[date | None] = mapped_column(Date)
+    start_week: Mapped[int | None] = mapped_column(Integer)
+    end_week: Mapped[int | None] = mapped_column(Integer)
+    goals: Mapped[str] = mapped_column(Text)
+    instructions: Mapped[str] = mapped_column(Text)
+    precautions: Mapped[str] = mapped_column(Text, default="")
+    progression_criteria: Mapped[str] = mapped_column(Text)
+    hold_escalation_criteria: Mapped[str] = mapped_column(Text)
+    review_checkpoint: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    plan: Mapped[RecoveryPlan] = relationship(back_populates="phases")
+    tasks: Mapped[list["RecoveryTask"]] = relationship(back_populates="phase")
 
 
 class RecoveryTask(Base):
@@ -2102,6 +2197,7 @@ class RecoveryTask(Base):
     __table_args__ = (
         Index("ix_recovery_tasks_patient_category", "patient_id", "category"),
         Index("ix_recovery_tasks_plan_sort", "plan_id", "sort_order"),
+        Index("ix_recovery_tasks_phase_order", "phase_id", "sort_order"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -2112,15 +2208,25 @@ class RecoveryTask(Base):
     medication_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("medications.id", ondelete="SET NULL")
     )
+    phase_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("recovery_phases.id", ondelete="CASCADE")
+    )
     category: Mapped[str] = mapped_column(String(40))
     title: Mapped[str] = mapped_column(String(160))
     detail: Mapped[str] = mapped_column(Text)
     due_label: Mapped[str] = mapped_column(String(80))
     notification_time: Mapped[str | None] = mapped_column(String(20))
+    frequency: Mapped[str | None] = mapped_column(String(120))
+    schedule: Mapped[str | None] = mapped_column(String(200))
+    duration: Mapped[str | None] = mapped_column(String(120))
+    responsible_person: Mapped[str | None] = mapped_column(String(120))
+    completion_criteria: Mapped[str | None] = mapped_column(Text)
+    reminder_json: Mapped[dict[str, object]] = mapped_column(JSONB, default=dict)
     sort_order: Mapped[int] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     plan: Mapped[RecoveryPlan] = relationship(back_populates="tasks")
+    phase: Mapped[RecoveryPhase | None] = relationship(back_populates="tasks")
     patient: Mapped[PatientProfile] = relationship()
     medication: Mapped[Medication | None] = relationship()
     completions: Mapped[list["RecoveryTaskCompletion"]] = relationship(
@@ -2233,6 +2339,12 @@ class ConsultationRequest(Base):
         Index("ix_consultations_requested_by_created", "requested_by_user_id", "created_at"),
         Index("ix_consultations_clinical_event", "clinical_event_id"),
         UniqueConstraint("clinical_service_id", name="uq_consultations_clinical_service"),
+        UniqueConstraint(
+            "requested_by_user_id",
+            "idempotency_key",
+            name="uq_consultation_actor_idempotency",
+        ),
+        CheckConstraint("quantity > 0", name="ck_consultation_quantity_positive"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -2249,6 +2361,14 @@ class ConsultationRequest(Base):
         ForeignKey("users.id", ondelete="CASCADE")
     )
     specialty: Mapped[str] = mapped_column(String(120))
+    consultation_type: Mapped[str | None] = mapped_column(String(80))
+    clinician_provider: Mapped[str | None] = mapped_column(String(200))
+    service_date: Mapped[date | None] = mapped_column(Date)
+    reason_indication: Mapped[str | None] = mapped_column(Text)
+    outcome_summary: Mapped[dict[str, object] | None] = mapped_column(JSONB)
+    follow_up_requirement: Mapped[str | None] = mapped_column(Text)
+    quantity: Mapped[int] = mapped_column(Integer, default=1)
+    idempotency_key: Mapped[str | None] = mapped_column(String(120))
     question_summary: Mapped[str] = mapped_column(String(240))
     priority: Mapped[str] = mapped_column(String(40))
     status: Mapped[str] = mapped_column(String(40), default="requested")
@@ -2294,6 +2414,11 @@ class Hospital(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String(160))
     legal_name: Mapped[str | None] = mapped_column(String(240))
+    organization_code: Mapped[str | None] = mapped_column(String(80))
+    jurisdiction_code: Mapped[str | None] = mapped_column(String(40))
+    country_code: Mapped[str | None] = mapped_column(String(8))
+    province: Mapped[str | None] = mapped_column(String(80))
+    city: Mapped[str | None] = mapped_column(String(80))
     status: Mapped[str] = mapped_column(String(40), default="active")
     metadata_json: Mapped[dict[str, object]] = mapped_column(JSONB, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -2316,6 +2441,9 @@ class Clinic(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     hospital_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("hospitals.id", ondelete="CASCADE"))
     name: Mapped[str] = mapped_column(String(160))
+    facility_code: Mapped[str | None] = mapped_column(String(80))
+    facility_level: Mapped[str | None] = mapped_column(String(60))
+    department_code: Mapped[str | None] = mapped_column(String(80))
     timezone: Mapped[str] = mapped_column(String(80), default="UTC")
     status: Mapped[str] = mapped_column(String(40), default="active")
     metadata_json: Mapped[dict[str, object]] = mapped_column(JSONB, default=dict)
@@ -2520,6 +2648,12 @@ class Prescription(Base):
     __table_args__ = (
         Index("ix_prescriptions_patient_status", "patient_id", "status"),
         Index("ix_prescriptions_clinical_event", "clinical_event_id"),
+        UniqueConstraint(
+            "prescribed_by_user_id",
+            "idempotency_key",
+            name="uq_prescription_actor_idempotency",
+        ),
+        CheckConstraint("version > 0", name="ck_prescription_version_positive"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -2535,6 +2669,13 @@ class Prescription(Base):
     status: Mapped[str] = mapped_column(String(40), default="draft")
     issued_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     notes: Mapped[str | None] = mapped_column(Text)
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    supersedes_prescription_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("prescriptions.id", ondelete="RESTRICT")
+    )
+    idempotency_key: Mapped[str | None] = mapped_column(String(120))
+    finalized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    content_checksum_sha256: Mapped[str | None] = mapped_column(String(64))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
@@ -2563,6 +2704,16 @@ class PrescriptionMedication(Base):
     name: Mapped[str] = mapped_column(String(160))
     dosage: Mapped[str] = mapped_column(String(120))
     schedule: Mapped[str] = mapped_column(String(160))
+    formulation_strength: Mapped[str | None] = mapped_column(String(160))
+    route: Mapped[str | None] = mapped_column(String(80))
+    recorded_directions: Mapped[str | None] = mapped_column(Text)
+    quantity: Mapped[int | None] = mapped_column(Integer)
+    duration_days: Mapped[int | None] = mapped_column(Integer)
+    sort_order: Mapped[int | None] = mapped_column(Integer)
+    pricing_state: Mapped[str | None] = mapped_column(String(40))
+    currency: Mapped[str | None] = mapped_column(String(3))
+    unit_amount_minor: Mapped[int | None] = mapped_column(Integer)
+    total_amount_minor: Mapped[int | None] = mapped_column(Integer)
     start_date: Mapped[date | None] = mapped_column(Date)
     end_date: Mapped[date | None] = mapped_column(Date)
     metadata_json: Mapped[dict[str, object]] = mapped_column(JSONB, default=dict)
@@ -3757,3 +3908,18 @@ class KbActiveIndexRelease(Base):
     )
     activated_by: Mapped[str] = mapped_column(String(120))
     activated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+# Re-export the additive intelligence models from the canonical model module.
+from app.clinical_event_intelligence_models import (  # noqa: E402, F401
+    ClinicalEventIntelligenceArtifact,
+    ClinicalEventIntelligenceExplanation,
+    ClinicalEventIntelligenceItemAssessment,
+    ClinicalEventIntelligenceLineageEvent,
+    ClinicalEventIntelligencePathway,
+    ClinicalEventIntelligencePathwayItem,
+    ClinicalEventIntelligenceProviderAttempt,
+    ClinicalEventIntelligenceRetrievalSource,
+    ClinicalEventIntelligenceRun,
+    ClinicalEventIntelligenceSnapshot,
+)

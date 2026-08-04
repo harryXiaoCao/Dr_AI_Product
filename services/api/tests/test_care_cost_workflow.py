@@ -116,6 +116,8 @@ def test_three_role_care_cost_and_human_review_workflow(client: TestClient) -> N
             "specialty": "Respiratory medicine",
             "question_summary": "Review the follow-up plan and documented findings.",
             "priority": "routine",
+            "consultation_type": "in_person",
+            "status": "completed",
             "financial": {
                 "pricing_state": "estimated",
                 "service_date": "2026-08-02",

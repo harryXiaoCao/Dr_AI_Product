@@ -2,7 +2,7 @@
 
 Status: formal production-readiness PRD
 Owner: Harry Cao
-Last updated: 2026-07-30
+Last updated: 2026-08-01
 Primary platforms: Flutter mobile, Flutter web, FastAPI, PostgreSQL, Tencent Cloud
 Product stage: production-quality development in progress; the patient/doctor
 and governed-AI foundation is preserved while Dr. AI adds a China-first,
@@ -75,6 +75,14 @@ The product must communicate three boundaries clearly:
 - A variance is a prompt for review, not proof of waste, abuse, fraud, poor
   care, or an incorrect bill.
 
+The product's central AI capability is the **Clinical Event Intelligence
+Engine**: a shared, versioned analysis of each payer-requested item that uses
+the exact Clinical Event, location-aware references, multiple plausible care
+pathways, multidimensional support scores, quantity and cost ranges, and
+role-appropriate explanations. DeepSeek is the current production inference
+provider and placeholder for a future specialized cost-estimation model;
+human clinical and payer decisions remain authoritative.
+
 ## 4. Source Of Truth And Current Product Reality
 
 This PRD is grounded in:
@@ -92,6 +100,13 @@ This PRD is grounded in:
 
 Current verified product state:
 
+- The Clinical Event Intelligence Engine is implemented as a default-off,
+  provider-neutral vertical slice: immutable snapshots and artifacts,
+  server-directed retrieval, multiple pathways, exact requested-line
+  assessments, six score dimensions, five-tier cost provenance, one bounded
+  critic, three role-safe views, explanations, human responses, and outcome
+  lineage. Verification is wholly synthetic and does not activate real-patient
+  or live-payer use.
 - Doctor, patient, and payer primary roles are implemented. Payer access also
   requires an active organization membership; the role alone grants no case
   access.
@@ -438,19 +453,34 @@ separate records with independent provenance and timestamps.
    same production contract until live-data gates close.
 2. Dr. AI generates a draft expected-care envelope from versioned, admitted
    clinical/utilization rules and jurisdiction-specific price references.
-3. The system publishes a deterministically validated immutable baseline
+   Before inference, the server freezes the event-linked symptoms, diagnoses,
+   relevant history, allergies, current and taken medicines, laboratory and
+   imaging reports, treatment state, requested lines, facility, and location,
+   while marking missing and conflicting information.
+3. The engine proposes typical/first-line, reasonable alternative, and
+   escalated pathways where supported. Predicted care remains distinct from
+   doctor-requested care. Every requested item receives clinical-fit,
+   evidence-support, timing/sequence, quantity/intensity,
+   documentation-completeness, and cost-alignment scores, plus an explained
+   aggregate AI support score from 0 to 100.
+4. Every requested billable item receives an estimated quantity and cost
+   range. Cost provenance is visibly classified from authoritative
+   facility/payer price through official regional, comparable, analogous, and
+   DeepSeek-only exploratory tiers. The exploratory tier uses wider uncertainty
+   and never presents model memory as an official reference.
+5. The system publishes a deterministically validated immutable baseline
    independently of clinician response. A doctor may append concurrence,
    disagreement, or an exception rationale but cannot edit, reject, or hide
    the baseline.
-4. Synthetic delivered-service and claim line items are recorded separately
+6. Synthetic delivered-service and claim line items are recorded separately
    from the plan and AI output.
-5. The deterministic engine compares itemized delivered/submitted facts
+7. The deterministic engine compares itemized delivered/submitted facts
    without waiting for clinician concurrence, then emits neutral range labels.
    Any later `review_recommended` alert remains a separate human-review signal.
-6. The payer reviewer inspects sources and clinician rationale, requests
+8. The payer reviewer inspects sources and clinician rationale, requests
    clarification or records a human resolution, and never delegates the final
    reimbursement or abuse decision to the model.
-7. The patient sees plain-language planned-versus-actual-versus-covered amounts
+9. The patient sees plain-language planned-versus-actual-versus-covered amounts
    and review status without internal fraud scores, reviewer-only notes, or
    another patient's data.
 
@@ -716,6 +746,20 @@ Requirements:
 - Generate versioned expected-care envelopes containing a range rather than a
   single correct cost, plus source/rule lineage, jurisdiction, effective date,
   confidence, assumptions, and missing information.
+- Produce a non-empty assessment for every requested item. Missing information
+  lowers the applicable confidence or documentation-completeness dimension; it
+  must not cause silent omission or be treated as proof that care is
+  inappropriate.
+- Keep the overall 0-100 value explicitly labeled `AI support score`, never
+  approval, denial, fraud, risk, or medical-necessity score. Show its component
+  dimensions and concise factors; no threshold may trigger an automatic payer
+  or clinical action.
+- Use default interpretation bands of 80-100 strongly supported, 60-79
+  plausible, 40-59 materially uncertain or clarification recommended, and
+  0-39 weakly supported by current information and requiring human review.
+- Preserve one shared intelligence-artifact identity and version across all
+  three roles while applying strict field-level visibility and role-specific
+  explanations.
 - Link envelope items to relevant care categories, expected quantity/range,
   and estimated low/high amounts. Do not require exact one-to-one agreement
   where multiple clinically reasonable pathways exist.
@@ -988,6 +1032,10 @@ AI agents planned:
 - Variance Explanation Agent for translating deterministic comparisons into
   patient-, doctor-, or reviewer-appropriate explanations. It does not decide
   whether care was necessary or abusive.
+- Clinical Event Intelligence Critic for one bounded independent review of the
+  structured pathway/item analysis. The server records agreement or material
+  disagreement and deterministically reconciles the artifact; the critic does
+  not create an autonomous debate loop or approve its own output.
 
 AI safety principles:
 
@@ -997,7 +1045,9 @@ AI safety principles:
 - Model provenance, limitations, and simulated/validated status must be visible.
 - AI workflows must be audited without storing raw sensitive content in logs.
 - AI must output ranges, assumptions, missing information, and source IDs when
-  estimating care or costs; unsupported codes or amounts fail closed.
+  available. A model-only cost estimate is allowed only as an explicit
+  lowest-provenance exploratory tier with wide uncertainty; unsupported codes
+  still fail closed and the estimate never enters authoritative pricing data.
 - Deterministic duplicate, quantity, price-range, documentation, and total
   checks precede any generative explanation.
 - AI cannot automatically deny, pay, reduce, escalate, or close a claim; alter
@@ -1300,3 +1350,47 @@ interpretation:
   multi-scenario platform that joins the existing doctor/patient foundation to
   payer review without overstating what AI, synthetic evidence, or a cost
   variance can prove.
+
+## 22. Clinical Event Intelligence synthetic activation status
+
+As of 2026-08-02, the Clinical Event Intelligence workflow satisfies the local
+controlled-synthetic product acceptance boundary: patient, doctor, and payer
+read the same immutable artifact; every requested line remains distinct from
+predicted pathway items; six independent support dimensions, quantity/cost
+ranges, provenance, critic disagreement, and role-safe explanations are
+visible; and every action remains human-owned. Tier 5 is explicitly model-only,
+exploratory, unreferenced, wide-range, and zero-weighted for cost alignment.
+
+The three purpose releases are locally active and rollback-tested. This status
+is not real-world clinical validation, reimbursement accuracy, payer approval,
+privacy/security certification, legal/regulatory authorization, or production
+permission.
+
+## 23. Clinical workflow integrity and recovery calendar (2026-08-02)
+
+The selected patient and Clinical Event are now the mandatory context for
+ordinary treating-doctor consultations, encounter updates, diagnoses,
+billable clinical services, finalized
+prescriptions, and recovery plans. Consultations and services remain clinical
+records; their price is held only in one source-linked financial companion.
+Missing prices are valid as `pending_cost`, while payer submission remains
+fail-closed until a complete allocation exists. Submitted payer lines retain
+their immutable snapshot even when the source record later changes.
+
+A prescription is one atomic set of ordered medication lines. Finalization
+makes the prescription and all lines immutable; correction creates a new
+version with explicit supersession lineage. Recovery plans use ordered calendar
+phases and typed tasks. Drafts are editable, published versions are immutable,
+and patient completion history never rewrites clinician-authored plan content.
+
+Patient profile dropdowns use canonical stored values separately from localized
+labels and normalize legacy values safely. Patient chat prefers governed
+retrieval, then identifies bounded `general_model_knowledge`; deterministic
+emergency and other safety/authorization boundaries remain first. Provider
+failure returns useful fixed safety guidance and preserves the original turn.
+
+The separate Consultation section retains its original, narrower purpose:
+requesting asynchronous specialist consultation. It is not the entry point for
+ordinary treating-doctor encounters. Those records are appended in the
+Clinical Event workspace and read back in the event's consultation, encounter
+update, and diagnosis lists.

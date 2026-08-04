@@ -445,6 +445,15 @@ class PrescriptionMedicationInput(BaseModel):
     name: str = Field(min_length=2, max_length=160)
     dosage: str = Field(min_length=1, max_length=120)
     schedule: str = Field(min_length=2, max_length=160)
+    formulation_strength: str | None = Field(default=None, max_length=160)
+    route: str | None = Field(default=None, max_length=80)
+    recorded_directions: str | None = Field(default=None, max_length=1200)
+    quantity: int | None = Field(default=None, ge=1, le=100_000)
+    duration_days: int | None = Field(default=None, ge=1, le=3650)
+    pricing_state: Literal["pending_cost", "estimated", "final"] = "pending_cost"
+    currency: Literal["CNY"] = "CNY"
+    unit_amount_minor: int = Field(default=0, ge=0, le=1_000_000_000)
+    total_amount_minor: int = Field(default=0, ge=0, le=1_000_000_000)
     start_date: date | None = None
     end_date: date | None = None
 
@@ -453,10 +462,12 @@ class PrescriptionRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
     clinical_event_id: UUID | None = None
-    status: Literal["draft", "issued", "cancelled"] = "draft"
+    status: Literal["draft", "finalized", "issued"] = "draft"
     issued_at: datetime | None = None
     notes: str | None = Field(default=None, max_length=1200)
     medications: list[PrescriptionMedicationInput] = Field(min_length=1, max_length=12)
+    idempotency_key: str | None = Field(default=None, min_length=12, max_length=120)
+    supersedes_prescription_id: UUID | None = None
 
 
 class PrescriptionMedicationResponse(BaseModel):
@@ -465,6 +476,16 @@ class PrescriptionMedicationResponse(BaseModel):
     name: str
     dosage: str
     schedule: str
+    formulation_strength: str | None
+    route: str | None
+    recorded_directions: str | None
+    quantity: int | None
+    duration_days: int | None
+    sort_order: int
+    pricing_state: str
+    currency: str
+    unit_amount_minor: int
+    total_amount_minor: int
     start_date: date | None
     end_date: date | None
 
@@ -473,7 +494,11 @@ class PrescriptionResponse(BaseModel):
     id: UUID
     patient_id: UUID
     clinical_event_id: UUID | None
-    status: Literal["draft", "issued", "cancelled"]
+    status: Literal["draft", "finalized", "issued"]
+    version: int
+    supersedes_prescription_id: UUID | None
+    finalized_at: datetime | None
+    content_checksum_sha256: str | None
     issued_at: datetime | None
     notes: str | None
     created_at: datetime
@@ -793,6 +818,7 @@ class ClinicalEventListResponse(BaseModel):
 
 
 ClinicalServiceStatus = Literal[
+    "planned",
     "ordered",
     "requested",
     "scheduled",
@@ -815,6 +841,10 @@ class ClinicalServiceRequest(BaseModel):
         "laboratory",
         "consultation",
         "treatment",
+        "procedure",
+        "surgery",
+        "implant_device",
+        "anesthesia",
         "rehabilitation",
         "other_service",
     ]
@@ -829,6 +859,13 @@ class ClinicalServiceRequest(BaseModel):
     scheduled_at: datetime | None = None
     performed_at: datetime | None = None
     indication_summary: str | None = Field(default=None, max_length=1200)
+    service_date: date | None = None
+    facility_name: str | None = Field(default=None, max_length=200)
+    quantity: int = Field(default=1, ge=1, le=100_000)
+    unit: str = Field(default="service", min_length=1, max_length=60)
+    documentation_state: Literal["pending", "available", "reviewed", "not_applicable"] = "pending"
+    provenance: dict[str, object] = Field(default_factory=dict)
+    idempotency_key: str | None = Field(default=None, min_length=12, max_length=120)
     financial: ClinicalFinancialInput | None = None
 
     @model_validator(mode="after")
@@ -866,6 +903,12 @@ class ClinicalServiceResponse(BaseModel):
     scheduled_at: datetime | None
     performed_at: datetime | None
     indication_summary: str | None
+    service_date: date | None
+    facility_name: str | None
+    quantity: int
+    unit: str
+    documentation_state: str
+    provenance: dict[str, object]
     imaging_asset_ids: list[UUID]
     created_at: datetime
     updated_at: datetime
@@ -1038,12 +1081,47 @@ class AssessmentListResponse(BaseModel):
 class RecoveryTaskInput(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
-    category: Literal["medication", "exercise", "diet", "follow_up"]
+    category: Literal["medication", "exercise", "diet", "follow_up", "tracking", "custom"]
     title: str = Field(min_length=3, max_length=160)
     detail: str = Field(min_length=3, max_length=800)
     due_label: str = Field(min_length=3, max_length=80)
     notification_time: str | None = Field(default=None, max_length=20)
     medication_id: UUID | None = None
+    frequency: str = Field(default="as scheduled", min_length=2, max_length=120)
+    schedule: str = Field(default="see plan", min_length=2, max_length=200)
+    duration: str = Field(default="phase duration", min_length=2, max_length=120)
+    responsible_person: str = Field(default="patient", min_length=2, max_length=120)
+    completion_criteria: str = Field(
+        default="completed as instructed", min_length=3, max_length=800
+    )
+    reminder: dict[str, object] = Field(default_factory=dict)
+
+
+class RecoveryPhaseInput(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    name: str = Field(min_length=2, max_length=160)
+    start_date: date | None = None
+    end_date: date | None = None
+    start_week: int | None = Field(default=None, ge=1, le=520)
+    end_week: int | None = Field(default=None, ge=1, le=520)
+    goals: str = Field(min_length=3, max_length=1200)
+    instructions: str = Field(min_length=3, max_length=2000)
+    precautions: str = Field(default="", max_length=1200)
+    progression_criteria: str = Field(min_length=3, max_length=1200)
+    hold_escalation_criteria: str = Field(min_length=3, max_length=1200)
+    review_checkpoint: str | None = Field(default=None, max_length=800)
+    tasks: list[RecoveryTaskInput] = Field(min_length=1, max_length=24)
+
+    @model_validator(mode="after")
+    def validate_range(self) -> "RecoveryPhaseInput":
+        if self.start_date and self.end_date and self.end_date < self.start_date:
+            raise ValueError("Phase end date must be on or after its start date.")
+        if self.start_week and self.end_week and self.end_week < self.start_week:
+            raise ValueError("Phase end week must be on or after its start week.")
+        if self.start_date is None and self.start_week is None:
+            raise ValueError("Each phase requires a start date or start week.")
+        return self
 
 
 class RecoveryPlanCreateRequest(BaseModel):
@@ -1051,8 +1129,13 @@ class RecoveryPlanCreateRequest(BaseModel):
 
     clinical_event_id: UUID | None = None
     title: str = Field(min_length=3, max_length=160)
-    instructions: str = Field(min_length=3, max_length=1200)
-    tasks: list[RecoveryTaskInput] = Field(min_length=1, max_length=12)
+    indication: str = Field(default="Recovery support", min_length=3, max_length=1200)
+    start_date: date | None = None
+    instructions: str = Field(default="Structured phase plan", min_length=3, max_length=1200)
+    phases: list[RecoveryPhaseInput] = Field(default_factory=list, max_length=24)
+    tasks: list[RecoveryTaskInput] = Field(default_factory=list, max_length=24)
+    idempotency_key: str | None = Field(default=None, min_length=12, max_length=120)
+    supersedes_plan_id: UUID | None = None
 
 
 class RecoveryPlanUpdateRequest(RecoveryPlanCreateRequest):
@@ -1062,12 +1145,19 @@ class RecoveryPlanUpdateRequest(RecoveryPlanCreateRequest):
 class RecoveryTaskResponse(BaseModel):
     task_id: UUID
     plan_id: UUID
-    category: Literal["medication", "exercise", "diet", "follow_up"]
+    phase_id: UUID | None
+    category: Literal["medication", "exercise", "diet", "follow_up", "tracking", "custom"]
     title: str
     detail: str
     due_label: str
     notification_time: str | None
     medication_id: UUID | None
+    frequency: str | None
+    schedule: str | None
+    duration: str | None
+    responsible_person: str | None
+    completion_criteria: str | None
+    reminder: dict[str, object]
     is_completed: bool
     completed_at: datetime | None
     notification_status: str | None = None
@@ -1086,7 +1176,13 @@ class RecoveryPlanResponse(BaseModel):
     clinical_event_id: UUID | None
     title: str
     instructions: str
-    status: Literal["draft", "active", "completed"]
+    indication: str | None
+    start_date: date | None
+    version: int
+    supersedes_plan_id: UUID | None
+    status: Literal[
+        "draft", "active", "published", "paused", "completed", "cancelled", "superseded"
+    ]
     review_status: Literal["draft", "in_review", "changes_requested", "approved"]
     safety_label: Literal["Synthetic demonstration data only. Do not enter real patient data."] = (
         "Synthetic demonstration data only. Do not enter real patient data."
@@ -1098,7 +1194,28 @@ class RecoveryPlanResponse(BaseModel):
     approved_at: datetime | None
     activated_at: datetime | None
     completed_at: datetime | None
+    published_at: datetime | None
+    paused_at: datetime | None
+    cancelled_at: datetime | None
     progress_summary: RecoveryPlanProgressResponse
+    tasks: list[RecoveryTaskResponse]
+    phases: list["RecoveryPhaseResponse"]
+
+
+class RecoveryPhaseResponse(BaseModel):
+    phase_id: UUID
+    sort_order: int
+    name: str
+    start_date: date | None
+    end_date: date | None
+    start_week: int | None
+    end_week: int | None
+    goals: str
+    instructions: str
+    precautions: str
+    progression_criteria: str
+    hold_escalation_criteria: str
+    review_checkpoint: str | None
     tasks: list[RecoveryTaskResponse]
 
 
@@ -1148,6 +1265,15 @@ class ConsultationCreateRequest(BaseModel):
     specialty: str = Field(min_length=3, max_length=120)
     question_summary: str = Field(min_length=8, max_length=240)
     priority: Literal["routine", "soon"] = "routine"
+    consultation_type: str = Field(default="specialist_referral", min_length=2, max_length=80)
+    status: Literal["requested", "completed"] = "requested"
+    clinician_provider: str = Field(default="Requested clinician", min_length=2, max_length=200)
+    service_date: date | None = None
+    reason_indication: str = Field(default="Specialist consultation", min_length=3, max_length=1200)
+    outcome_summary: dict[str, object] = Field(default_factory=dict)
+    follow_up_requirement: str = Field(default="To be determined", min_length=2, max_length=1200)
+    quantity: int = Field(default=1, ge=1, le=1000)
+    idempotency_key: str | None = Field(default=None, min_length=12, max_length=120)
     financial: ClinicalFinancialInput | None = None
 
 
@@ -1159,6 +1285,13 @@ class ConsultationResponse(BaseModel):
     specialty: str
     question_summary: str
     priority: Literal["routine", "soon"]
+    consultation_type: str | None
+    clinician_provider: str | None
+    service_date: date | None
+    reason_indication: str | None
+    outcome_summary: dict[str, object]
+    follow_up_requirement: str | None
+    quantity: int
     status: Literal["requested", "accepted", "completed", "cancelled"]
     safety_label: Literal["Synthetic demonstration data only. Do not enter real patient data."] = (
         "Synthetic demonstration data only. Do not enter real patient data."

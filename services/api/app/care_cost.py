@@ -9,6 +9,10 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
+from app.clinical_event_intelligence_models import (
+    ClinicalEventIntelligenceArtifact,
+    ClinicalEventIntelligenceLineageEvent,
+)
 from app.dependencies import CurrentUser, DbSession
 from app.errors import ApiError
 from app.models import (
@@ -166,6 +170,10 @@ class PayerRequestLineResponse(BaseModel):
     care_cost_item_id: uuid.UUID | None
     item_type: str
     label: str
+    code_system: str | None
+    service_code: str | None
+    quantity: int
+    unit: str
     service_date: date
     currency: str
     actual_cost_minor: int
@@ -604,6 +612,10 @@ def _request_response(
                 care_cost_item_id=line.care_cost_item_id,
                 item_type=line.item_type,
                 label=line.label,
+                code_system=line.code_system,
+                service_code=line.service_code,
+                quantity=line.quantity,
+                unit=line.unit,
                 service_date=line.service_date,
                 currency=line.currency,
                 actual_cost_minor=line.actual_cost_minor,
@@ -1022,6 +1034,18 @@ def create_payer_request(
                 care_cost_item_id=item.id,
                 item_type=item.item_type,
                 label=item.label,
+                code_system=(
+                    "DR_AI_INTERNAL"
+                    if item.clinical_service is not None and item.clinical_service.service_code
+                    else None
+                ),
+                service_code=(
+                    item.clinical_service.service_code
+                    if item.clinical_service is not None and item.clinical_service.service_code
+                    else None
+                ),
+                quantity=item.quantity,
+                unit="item",
                 service_date=item.service_date,
                 currency=item.currency,
                 actual_cost_minor=item.actual_cost_minor,
@@ -1373,8 +1397,7 @@ def review_payer_request(
         )
     from_status = payer_request.status
     payer_request.version += 1
-    payer_request.reviews.append(
-        PayerReview(
+    review = PayerReview(
             payer_membership_id=membership.id,
             action=body.action,
             reason_code=body.reason_code,
@@ -1385,9 +1408,34 @@ def review_payer_request(
             to_status=next_status,
             version=payer_request.version,
         )
-    )
+    payer_request.reviews.append(review)
     payer_request.status = next_status
     payer_request.reviewed_at = datetime.now(UTC)
+    db.flush()
+    intelligence_artifact = db.scalar(
+        select(ClinicalEventIntelligenceArtifact)
+        .where(ClinicalEventIntelligenceArtifact.payer_request_id == payer_request.id)
+        .order_by(ClinicalEventIntelligenceArtifact.artifact_version.desc())
+    )
+    if intelligence_artifact is not None:
+        db.add(
+            ClinicalEventIntelligenceLineageEvent(
+                artifact_id=intelligence_artifact.id,
+                actor_user_id=user.id,
+                doctor_response_id=None,
+                payer_review_id=review.id,
+                event_type="payer_human_resolution",
+                source_event_key=f"payer-review:{review.id}",
+                source_checksum_sha256=checksum,
+                occurred_at=payer_request.reviewed_at,
+                metadata_json={
+                    "action": body.action,
+                    "from_status": from_status,
+                    "to_status": next_status,
+                    "human_owned": True,
+                },
+            )
+        )
     doctor_user = db.get(User, payer_request.doctor.user_id)
     patient_user = db.get(User, payer_request.patient.user_id)
     for recipient in (doctor_user, patient_user):

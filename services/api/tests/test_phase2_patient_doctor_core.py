@@ -1119,8 +1119,35 @@ def test_doctor_can_manage_medication_prescription_and_reminders_with_safe_readb
             ],
         },
     )
-    assert updated_prescription.status_code == 200
-    line_id = updated_prescription.json()["medications"][0]["id"]
+    assert updated_prescription.status_code == 409
+    assert "replacement" in updated_prescription.json()["error"]["message"].lower()
+
+    replacement_prescription = client.post(
+        f"/api/v1/patients/{assigned_id}/prescriptions",
+        headers=doctor_headers,
+        json={
+            "status": "issued",
+            "issued_at": "2026-07-07T11:00:00Z",
+            "notes": "Updated synthetic prescription note.",
+            "supersedes_prescription_id": prescription_id,
+            "idempotency_key": "phase2-prescription-replacement",
+            "medications": [
+                {
+                    "medication_id": medication_id,
+                    "name": "Synthetic Phase 2 medication updated",
+                    "dosage": "10 mg",
+                    "schedule": "Every demo evening",
+                    "start_date": "2026-07-07",
+                    "end_date": "2026-07-21",
+                }
+            ],
+        },
+    )
+    assert replacement_prescription.status_code == 200
+    replacement_payload = replacement_prescription.json()
+    assert replacement_payload["supersedes_prescription_id"] == prescription_id
+    assert replacement_payload["version"] == 2
+    line_id = replacement_payload["medications"][0]["id"]
 
     medication_reminder = client.post(
         f"/api/v1/patients/{assigned_id}/medication-reminders",
@@ -1171,7 +1198,10 @@ def test_doctor_can_manage_medication_prescription_and_reminders_with_safe_readb
     assert patient_care.status_code == 200
     care_payload = patient_care.json()
     assert any(item["id"] == medication_id for item in care_payload["medications"])
-    assert care_payload["prescriptions"][0]["id"] == prescription_id
+    assert {item["id"] for item in care_payload["prescriptions"]} >= {
+        prescription_id,
+        replacement_payload["id"],
+    }
     assert {item["reminder_type"] for item in care_payload["medication_reminders"]} == {
         "medication",
         "refill",
@@ -1232,7 +1262,6 @@ def test_doctor_can_manage_medication_prescription_and_reminders_with_safe_readb
             "medication_created",
             "medication_updated",
             "prescription_created",
-            "prescription_updated",
             "medication_reminder_created",
             "medication_reminder_updated",
             "notifications_listed",

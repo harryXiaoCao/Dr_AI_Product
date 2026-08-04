@@ -1,6 +1,7 @@
 import 'package:dr_ai_app/app/routing/app_role.dart';
 import 'package:dr_ai_app/core/api/api_error.dart';
 import 'package:dr_ai_app/design_system/dr_ai_tokens.dart';
+import 'package:dr_ai_app/features/auth/application/auth_controller.dart';
 import 'package:dr_ai_app/features/care_cost/application/care_cost_providers.dart';
 import 'package:dr_ai_app/features/care_cost/domain/care_cost_data.dart';
 import 'package:dr_ai_app/features/patient/application/patient_care_providers.dart';
@@ -1082,47 +1083,41 @@ class _SectionScaffold extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            Padding(
-              padding: const EdgeInsets.all(DrAiSpacing.md),
-              child: Row(
-                children: <Widget>[
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: DrAiColors.brandSoft,
-                      borderRadius: BorderRadius.circular(DrAiRadii.md),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(DrAiSpacing.xs),
-                      child: Icon(section.icon, color: DrAiColors.brand),
-                    ),
-                  ),
-                  const SizedBox(width: DrAiSpacing.sm),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Text(
-                          section.localizedLabel(context),
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(
-                                color: DrAiColors.ink,
-                                fontWeight: FontWeight.w700,
-                              ),
-                        ),
-                        Text(
-                          section.localizedSummary(context),
-                          style: const TextStyle(
-                            color: DrAiColors.mutedInk,
-                            fontSize: 12,
+            ColoredBox(
+              color: DrAiColors.sectionHeader,
+              child: Padding(
+                padding: const EdgeInsets.all(DrAiSpacing.md),
+                child: Row(
+                  children: <Widget>[
+                    Icon(section.icon, color: DrAiColors.white),
+                    const SizedBox(width: DrAiSpacing.sm),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            section.localizedLabel(context),
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(
+                                  color: DrAiColors.white,
+                                  fontWeight: FontWeight.w700,
+                                ),
                           ),
-                        ),
-                      ],
+                          Text(
+                            section.localizedSummary(context),
+                            style: const TextStyle(
+                              color: DrAiColors.white,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-            const Divider(height: 1),
+            const Divider(height: 1, color: DrAiColors.brand),
             if (expandBody)
               Expanded(
                 child: Padding(
@@ -1587,6 +1582,16 @@ class _ClinicalEventsSection extends StatelessWidget {
           onEventChanged: onEventChanged,
         ),
         const SizedBox(height: DrAiSpacing.sm),
+        _ClinicalEventAppendPanel(
+          patientId: bundle.patient.patientId,
+          selectedEvent: selectedEvent,
+        ),
+        const SizedBox(height: DrAiSpacing.sm),
+        _ClinicalEventConsultationList(
+          patientId: bundle.patient.patientId,
+          selectedEvent: selectedEvent,
+        ),
+        const SizedBox(height: DrAiSpacing.sm),
         _ClinicalEventContextCard(bundle: bundle, selectedEvent: selectedEvent),
         const SizedBox(height: DrAiSpacing.sm),
         _ItemSection<VisitHistoryItem>(
@@ -1621,6 +1626,64 @@ class _ClinicalEventsSection extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _ClinicalEventConsultationList extends ConsumerWidget {
+  const _ClinicalEventConsultationList({
+    required this.patientId,
+    required this.selectedEvent,
+  });
+
+  final String patientId;
+  final ClinicalEventItem? selectedEvent;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final consultations = ref.watch(consultationListProvider);
+    return consultations.when(
+      loading: () => const LinearProgressIndicator(
+        key: Key('clinical-event-consultations-loading'),
+      ),
+      error: (error, _) => _InlineMessage(
+        message: _safeErrorMessage(context, error),
+        icon: Icons.error_outline,
+      ),
+      data: (data) {
+        final items = data.items
+            .where(
+              (item) =>
+                  item.patientId == patientId &&
+                  item.clinicalEventId == selectedEvent?.id &&
+                  item.consultationType != null &&
+                  item.consultationType != 'specialist' &&
+                  item.consultationType != 'specialist_referral',
+            )
+            .toList();
+        return _ItemSection<ConsultationRequestItem>(
+          key: const Key('clinical-event-consultations-section'),
+          title: Localizations.localeOf(context).languageCode == 'zh'
+              ? '普通问诊记录'
+              : 'Doctor consultation records',
+          icon: Icons.medical_services_outlined,
+          items: items,
+          emptyTitle: Localizations.localeOf(context).languageCode == 'zh'
+              ? '当前临床事件暂无普通问诊记录'
+              : 'No doctor consultation has been recorded for this event.',
+          itemBuilder: (item) => _InfoTile(
+            title: item.reasonIndication ?? item.questionSummary,
+            subtitle:
+                '${context.l10n.stableValue(item.status)} - ${item.serviceDate ?? _dateLabel(context, item.createdAt)}',
+            body: <String>[
+              '${item.specialty} - ${item.clinicianProvider ?? context.l10n.notRecorded}',
+              if (item.outcomeSummary?['summary'] case final String summary)
+                summary,
+              if (item.followUpRequirement case final String followUp) followUp,
+            ].join('\n'),
+          ),
+        );
+      },
     );
   }
 }
@@ -1812,11 +1875,18 @@ class _ImagingClinicalServicePanelState
                   'imaging',
                   'laboratory',
                   'consultation',
+                  'procedure',
+                  'surgery',
+                  'implant_device',
+                  'anesthesia',
                   'treatment',
                   'rehabilitation',
                   'other_service',
                 ])
-                  DropdownMenuItem(value: value, child: Text(value)),
+                  DropdownMenuItem(
+                    value: value,
+                    child: Text(context.l10n.stableValue(value)),
+                  ),
               ],
               onChanged: (value) =>
                   setState(() => _category = value ?? 'imaging'),
@@ -2875,6 +2945,515 @@ class _ClinicalEventEditorState extends ConsumerState<_ClinicalEventEditor> {
   }
 }
 
+enum _ClinicalEventAppendMode { consultation, encounter, diagnosis }
+
+class _ClinicalEventAppendPanel extends ConsumerStatefulWidget {
+  const _ClinicalEventAppendPanel({
+    required this.patientId,
+    required this.selectedEvent,
+  });
+
+  final String patientId;
+  final ClinicalEventItem? selectedEvent;
+
+  @override
+  ConsumerState<_ClinicalEventAppendPanel> createState() =>
+      _ClinicalEventAppendPanelState();
+}
+
+class _ClinicalEventAppendPanelState
+    extends ConsumerState<_ClinicalEventAppendPanel> {
+  _ClinicalEventAppendMode _mode = _ClinicalEventAppendMode.consultation;
+  final _specialty = TextEditingController(text: 'General medicine');
+  final _provider = TextEditingController(text: 'Current treating doctor');
+  final _serviceDate = TextEditingController(
+    text: DateTime.now().toIso8601String().substring(0, 10),
+  );
+  final _reason = TextEditingController();
+  final _outcome = TextEditingController();
+  final _followUp = TextEditingController(
+    text: 'Follow up as clinically indicated',
+  );
+  final _quantity = TextEditingController(text: '1');
+  final _visitType = TextEditingController(text: 'clinical_event_update');
+  final _updateTitle = TextEditingController();
+  final _updateSummary = TextEditingController();
+  final _diagnosisLabel = TextEditingController();
+  final _diagnosisNotes = TextEditingController();
+  final _total = TextEditingController();
+  final _payer = TextEditingController();
+  final _patient = TextEditingController();
+  String _consultationType = 'in_person';
+  String _consultationStatus = 'completed';
+  String _diagnosisStatus = 'active';
+  String _pricingState = 'pending_cost';
+  bool _billable = true;
+  bool _saving = false;
+  String? _message;
+  String? _validationError;
+
+  @override
+  void dispose() {
+    for (final controller in <TextEditingController>[
+      _specialty,
+      _provider,
+      _serviceDate,
+      _reason,
+      _outcome,
+      _followUp,
+      _quantity,
+      _visitType,
+      _updateTitle,
+      _updateSummary,
+      _diagnosisLabel,
+      _diagnosisNotes,
+      _total,
+      _payer,
+      _patient,
+    ]) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  String _text(String en, String zh) =>
+      Localizations.localeOf(context).languageCode == 'zh' ? zh : en;
+
+  @override
+  Widget build(BuildContext context) {
+    final event = widget.selectedEvent;
+    return DecoratedBox(
+      key: const Key('clinical-event-append-panel'),
+      decoration: BoxDecoration(
+        color: DrAiColors.surfaceSubtle,
+        borderRadius: BorderRadius.circular(DrAiRadii.md),
+        border: Border.all(color: DrAiColors.outline),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(DrAiSpacing.sm),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Text(
+              _text('Append to this Clinical Event', '追加到当前临床事件'),
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: DrAiSpacing.xs),
+            Wrap(
+              key: const Key('clinical-event-append-mode'),
+              spacing: DrAiSpacing.xs,
+              runSpacing: DrAiSpacing.xs,
+              children: <Widget>[
+                ChoiceChip(
+                  key: const Key('event-append-mode-consultation'),
+                  avatar: const Icon(Icons.medical_services_outlined),
+                  label: Text(_text('Consultation', '普通问诊')),
+                  selected: _mode == _ClinicalEventAppendMode.consultation,
+                  onSelected: _saving
+                      ? null
+                      : (_) => setState(
+                          () => _mode = _ClinicalEventAppendMode.consultation,
+                        ),
+                ),
+                ChoiceChip(
+                  key: const Key('event-append-mode-update'),
+                  avatar: const Icon(Icons.post_add),
+                  label: Text(_text('Update', '诊疗更新')),
+                  selected: _mode == _ClinicalEventAppendMode.encounter,
+                  onSelected: _saving
+                      ? null
+                      : (_) => setState(
+                          () => _mode = _ClinicalEventAppendMode.encounter,
+                        ),
+                ),
+                ChoiceChip(
+                  key: const Key('event-append-mode-diagnosis'),
+                  avatar: const Icon(Icons.fact_check_outlined),
+                  label: Text(_text('Diagnosis', '诊断记录')),
+                  selected: _mode == _ClinicalEventAppendMode.diagnosis,
+                  onSelected: _saving
+                      ? null
+                      : (_) => setState(
+                          () => _mode = _ClinicalEventAppendMode.diagnosis,
+                        ),
+                ),
+              ],
+            ),
+            const SizedBox(height: DrAiSpacing.sm),
+            if (event == null)
+              _InlineMessage(
+                message: _text(
+                  'Select or save a Clinical Event before appending records.',
+                  '请先选择或保存临床事件。',
+                ),
+                icon: Icons.account_tree_outlined,
+              )
+            else if (_mode == _ClinicalEventAppendMode.consultation)
+              _consultationFields()
+            else if (_mode == _ClinicalEventAppendMode.encounter)
+              _encounterFields()
+            else
+              _diagnosisFields(),
+            if (_validationError != null)
+              _InlineMessage(
+                message: _validationError!,
+                icon: Icons.error_outline,
+              ),
+            if (_message != null)
+              _InlineMessage(
+                key: const Key('clinical-event-append-success'),
+                message: _message!,
+                icon: Icons.check_circle_outline,
+              ),
+            if (_saving) const LinearProgressIndicator(),
+            const SizedBox(height: DrAiSpacing.xs),
+            FilledButton.icon(
+              key: const Key('clinical-event-append-save-button'),
+              onPressed: event == null || _saving ? null : _save,
+              icon: const Icon(Icons.add_circle_outline),
+              label: Text(_text('Append record', '追加记录')),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _consultationFields() => Column(
+    children: <Widget>[
+      Row(
+        children: <Widget>[
+          Expanded(
+            child: DropdownButtonFormField<String>(
+              key: const Key('event-consultation-type-field'),
+              isExpanded: true,
+              initialValue: _consultationType,
+              items:
+                  <String>['in_person', 'video', 'telephone', 'record_review']
+                      .map(
+                        (value) => DropdownMenuItem(
+                          value: value,
+                          child: Text(context.l10n.stableValue(value)),
+                        ),
+                      )
+                      .toList(),
+              onChanged: (value) =>
+                  setState(() => _consultationType = value ?? 'in_person'),
+              decoration: InputDecoration(
+                labelText: _text('Consultation type', '问诊类型'),
+              ),
+            ),
+          ),
+          const SizedBox(width: DrAiSpacing.xs),
+          Expanded(
+            child: DropdownButtonFormField<String>(
+              key: const Key('event-consultation-status-field'),
+              isExpanded: true,
+              initialValue: _consultationStatus,
+              items: <String>['requested', 'completed']
+                  .map(
+                    (value) => DropdownMenuItem(
+                      value: value,
+                      child: Text(context.l10n.stableValue(value)),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (value) =>
+                  setState(() => _consultationStatus = value ?? 'completed'),
+              decoration: InputDecoration(labelText: _text('Status', '状态')),
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: DrAiSpacing.xs),
+      TextField(
+        key: const Key('event-consultation-specialty-field'),
+        controller: _specialty,
+        decoration: InputDecoration(labelText: _text('Specialty', '专科')),
+      ),
+      const SizedBox(height: DrAiSpacing.xs),
+      Wrap(
+        spacing: DrAiSpacing.xs,
+        runSpacing: DrAiSpacing.xs,
+        children: <Widget>[
+          SizedBox(
+            width: 260,
+            child: TextField(
+              key: const Key('event-consultation-provider-field'),
+              controller: _provider,
+              decoration: InputDecoration(
+                labelText: _text('Clinician / provider', '医生 / 服务方'),
+              ),
+            ),
+          ),
+          SizedBox(
+            width: 180,
+            child: TextField(
+              key: const Key('event-consultation-date-field'),
+              controller: _serviceDate,
+              decoration: InputDecoration(
+                labelText: _text('Service date', '服务日期'),
+                hintText: 'YYYY-MM-DD',
+              ),
+            ),
+          ),
+          SizedBox(
+            width: 110,
+            child: TextField(
+              key: const Key('event-consultation-quantity-field'),
+              controller: _quantity,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(labelText: _text('Quantity', '数量')),
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: DrAiSpacing.xs),
+      TextField(
+        key: const Key('event-consultation-reason-field'),
+        controller: _reason,
+        decoration: InputDecoration(
+          labelText: _text('Reason / indication', '原因 / 适应证'),
+        ),
+      ),
+      const SizedBox(height: DrAiSpacing.xs),
+      TextField(
+        key: const Key('event-consultation-outcome-field'),
+        controller: _outcome,
+        minLines: 2,
+        maxLines: 3,
+        decoration: InputDecoration(
+          labelText: _text('Structured outcome / summary', '结果 / 结构化摘要'),
+        ),
+      ),
+      const SizedBox(height: DrAiSpacing.xs),
+      TextField(
+        key: const Key('event-consultation-follow-up-field'),
+        controller: _followUp,
+        decoration: InputDecoration(
+          labelText: _text('Follow-up requirement', '后续要求'),
+        ),
+      ),
+      const SizedBox(height: DrAiSpacing.xs),
+      _ClinicalFinancialSection(
+        billable: _billable,
+        pricingState: _pricingState,
+        totalController: _total,
+        payerController: _payer,
+        patientController: _patient,
+        onBillableChanged: (value) => setState(() => _billable = value),
+        onPricingStateChanged: (value) => setState(() => _pricingState = value),
+      ),
+    ],
+  );
+
+  Widget _encounterFields() => Column(
+    children: <Widget>[
+      TextField(
+        key: const Key('event-update-type-field'),
+        controller: _visitType,
+        decoration: InputDecoration(labelText: _text('Update type', '更新类型')),
+      ),
+      const SizedBox(height: DrAiSpacing.xs),
+      TextField(
+        key: const Key('event-update-title-field'),
+        controller: _updateTitle,
+        decoration: InputDecoration(labelText: _text('Update title', '更新标题')),
+      ),
+      const SizedBox(height: DrAiSpacing.xs),
+      TextField(
+        key: const Key('event-update-summary-field'),
+        controller: _updateSummary,
+        minLines: 2,
+        maxLines: 4,
+        decoration: InputDecoration(
+          labelText: _text('Clinical update', '诊疗更新'),
+        ),
+      ),
+    ],
+  );
+
+  Widget _diagnosisFields() => Column(
+    children: <Widget>[
+      TextField(
+        key: const Key('event-diagnosis-label-field'),
+        controller: _diagnosisLabel,
+        decoration: InputDecoration(
+          labelText: _text('Diagnosis label', '诊断名称'),
+        ),
+      ),
+      const SizedBox(height: DrAiSpacing.xs),
+      DropdownButtonFormField<String>(
+        key: const Key('event-diagnosis-status-field'),
+        isExpanded: true,
+        initialValue: _diagnosisStatus,
+        items: <String>['active', 'resolved', 'entered_in_error']
+            .map(
+              (value) => DropdownMenuItem(
+                value: value,
+                child: Text(context.l10n.stableValue(value)),
+              ),
+            )
+            .toList(),
+        onChanged: (value) =>
+            setState(() => _diagnosisStatus = value ?? 'active'),
+        decoration: InputDecoration(labelText: _text('Status', '状态')),
+      ),
+      const SizedBox(height: DrAiSpacing.xs),
+      TextField(
+        key: const Key('event-diagnosis-notes-field'),
+        controller: _diagnosisNotes,
+        minLines: 2,
+        maxLines: 4,
+        decoration: InputDecoration(
+          labelText: _text('Diagnosis notes', '诊断说明'),
+        ),
+      ),
+    ],
+  );
+
+  Future<void> _save() async {
+    final event = widget.selectedEvent;
+    if (event == null) return;
+    setState(() {
+      _validationError = null;
+      _message = null;
+    });
+    try {
+      setState(() => _saving = true);
+      final repository = ref.read(repositoryProvider);
+      if (_mode == _ClinicalEventAppendMode.consultation) {
+        final quantity = int.tryParse(_quantity.text.trim());
+        if (_specialty.text.trim().length < 2 ||
+            _provider.text.trim().length < 2 ||
+            DateTime.tryParse(_serviceDate.text.trim()) == null ||
+            _reason.text.trim().length < 3 ||
+            _followUp.text.trim().length < 3 ||
+            quantity == null ||
+            quantity < 1 ||
+            (_consultationStatus == 'completed' &&
+                _outcome.text.trim().length < 3)) {
+          throw FormatException(
+            _text(
+              'Complete each required consultation field.',
+              '请完整填写所有必填问诊字段。',
+            ),
+          );
+        }
+        ClinicalFinancialDraft? financial;
+        if (_billable) {
+          financial = _pricingState == 'pending_cost'
+              ? const ClinicalFinancialDraft(
+                  pricingState: 'pending_cost',
+                  totalCostMinor: 0,
+                  payerRequestedMinor: 0,
+                  patientResponsibilityMinor: 0,
+                )
+              : _allocatedFinancialDraft();
+          if (financial == null) {
+            throw FormatException(
+              _text(
+                'The financial allocation must be complete.',
+                '请完整填写费用分配，且合计金额需与总额一致。',
+              ),
+            );
+          }
+        }
+        await repository.createClinicalEventConsultation(
+          patientId: widget.patientId,
+          clinicalEventId: event.id,
+          specialty: _specialty.text.trim(),
+          consultationType: _consultationType,
+          status: _consultationStatus,
+          clinicianProvider: _provider.text.trim(),
+          serviceDate: _serviceDate.text.trim(),
+          reasonIndication: _reason.text.trim(),
+          outcomeSummary: _outcome.text.trim(),
+          followUpRequirement: _followUp.text.trim(),
+          quantity: quantity,
+          idempotencyKey:
+              'event-consultation-${event.id}-${_serviceDate.text.trim()}-${_reason.text.trim().hashCode.abs()}',
+          financial: financial,
+        );
+      } else if (_mode == _ClinicalEventAppendMode.encounter) {
+        if (_visitType.text.trim().length < 2 ||
+            _updateTitle.text.trim().length < 3 ||
+            _updateSummary.text.trim().length < 3) {
+          throw FormatException(
+            _text(
+              'Complete the update type, title, and summary.',
+              '请完整填写更新类型、标题和摘要。',
+            ),
+          );
+        }
+        await repository.createVisitHistory(
+          patientId: widget.patientId,
+          clinicalEventId: event.id,
+          visitType: _visitType.text.trim(),
+          title: _updateTitle.text.trim(),
+          summary: _updateSummary.text.trim(),
+          occurredAt: DateTime.now(),
+          clinicianLabel: _provider.text.trim(),
+        );
+      } else {
+        if (_diagnosisLabel.text.trim().length < 2) {
+          throw FormatException(_text('Enter a diagnosis label.', '请填写诊断名称。'));
+        }
+        await repository.createDiagnosis(
+          patientId: widget.patientId,
+          clinicalEventId: event.id,
+          label: _diagnosisLabel.text.trim(),
+          status: _diagnosisStatus,
+          diagnosedOn: _serviceDate.text.trim(),
+          notes: _diagnosisNotes.text.trim(),
+        );
+      }
+      ref.invalidate(patientCareBundleProvider(widget.patientId));
+      ref.invalidate(consultationListProvider);
+      ref.invalidate(patientCareCostLedgerProvider(widget.patientId));
+      if (!mounted) return;
+      setState(() {
+        _message = _text(
+          'Record appended to the Clinical Event.',
+          '记录已追加到临床事件。',
+        );
+      });
+    } on FormatException catch (error) {
+      if (mounted) {
+        setState(() => _validationError = error.message);
+      }
+    } catch (error) {
+      if (mounted) {
+        setState(() => _validationError = _safeErrorMessage(context, error));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _saving = false);
+      }
+    }
+  }
+
+  ClinicalFinancialDraft? _allocatedFinancialDraft() {
+    final total = _moneyMinor(_total.text);
+    final payer = _moneyMinor(_payer.text);
+    final patient = _moneyMinor(_patient.text);
+    if (total == null ||
+        total <= 0 ||
+        payer == null ||
+        patient == null ||
+        payer + patient != total) {
+      return null;
+    }
+    return ClinicalFinancialDraft(
+      pricingState: _pricingState,
+      totalCostMinor: total,
+      payerRequestedMinor: payer,
+      patientResponsibilityMinor: patient,
+      serviceDate: DateTime.tryParse(_serviceDate.text.trim()),
+    );
+  }
+}
+
 class _EventLinkNotice extends StatelessWidget {
   const _EventLinkNotice({required this.text});
 
@@ -3240,6 +3819,9 @@ class _MedicationWorkflowPanelState
   late TextEditingController _scheduleController;
   late final TextEditingController _noteController;
   late final TextEditingController _prescriptionNoteController;
+  late final TextEditingController _routeController;
+  late final TextEditingController _quantityController;
+  late final TextEditingController _durationController;
   late final TextEditingController _totalCostController;
   late final TextEditingController _payerRequestedController;
   late final TextEditingController _patientResponsibilityController;
@@ -3249,6 +3831,8 @@ class _MedicationWorkflowPanelState
   bool _financialLoaded = false;
   String? _validationMessage;
   bool _localizedDefaultsApplied = false;
+  final List<PrescriptionMedicationDraft> _prescriptionLines =
+      <PrescriptionMedicationDraft>[];
 
   MedicationItem? get _selectedMedication {
     final medications = _eventMedicationsById(
@@ -3271,6 +3855,9 @@ class _MedicationWorkflowPanelState
     );
     _noteController = TextEditingController(text: medication?.note ?? '');
     _prescriptionNoteController = TextEditingController(text: '');
+    _routeController = TextEditingController(text: 'oral');
+    _quantityController = TextEditingController(text: '1');
+    _durationController = TextEditingController(text: '7');
     _totalCostController = TextEditingController();
     _payerRequestedController = TextEditingController();
     _patientResponsibilityController = TextEditingController();
@@ -3295,6 +3882,9 @@ class _MedicationWorkflowPanelState
     _scheduleController.dispose();
     _noteController.dispose();
     _prescriptionNoteController.dispose();
+    _routeController.dispose();
+    _quantityController.dispose();
+    _durationController.dispose();
     _totalCostController.dispose();
     _payerRequestedController.dispose();
     _patientResponsibilityController.dispose();
@@ -3437,6 +4027,81 @@ class _MedicationWorkflowPanelState
             ],
             if (widget.mode ==
                 _MedicationWorkflowMode.prescription) ...<Widget>[
+              const SizedBox(height: DrAiSpacing.xs),
+              Row(
+                children: <Widget>[
+                  Expanded(
+                    child: TextField(
+                      key: const Key('prescription-route-field'),
+                      controller: _routeController,
+                      decoration: InputDecoration(
+                        labelText: _bilingual('Route', '给药途径'),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: DrAiSpacing.xs),
+                  Expanded(
+                    child: TextField(
+                      key: const Key('prescription-quantity-field'),
+                      controller: _quantityController,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: _bilingual('Quantity', '数量'),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: DrAiSpacing.xs),
+                  Expanded(
+                    child: TextField(
+                      key: const Key('prescription-duration-field'),
+                      controller: _durationController,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: _bilingual('Days', '天数'),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: DrAiSpacing.xs),
+              OutlinedButton.icon(
+                key: const Key('add-prescription-line-button'),
+                onPressed: _addPrescriptionLine,
+                icon: const Icon(Icons.playlist_add),
+                label: Text(_bilingual('Add medication line', '添加药物行')),
+              ),
+              if (_prescriptionLines.isNotEmpty)
+                ReorderableListView.builder(
+                  key: const Key('prescription-draft-lines'),
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: _prescriptionLines.length,
+                  onReorderItem: (oldIndex, newIndex) {
+                    setState(() {
+                      final line = _prescriptionLines.removeAt(oldIndex);
+                      _prescriptionLines.insert(newIndex, line);
+                    });
+                  },
+                  itemBuilder: (context, index) {
+                    final line = _prescriptionLines[index];
+                    return ListTile(
+                      key: ValueKey('prescription-line-$index-${line.name}'),
+                      leading: const Icon(Icons.drag_handle),
+                      title: Text('${index + 1}. ${line.name}'),
+                      subtitle: Text(
+                        '${line.formulationStrength} · ${line.route} · ${line.recordedDirections}\n'
+                        '${_bilingual('Quantity', '数量')} ${line.quantity} · ${line.durationDays} ${_bilingual('days', '天')}',
+                      ),
+                      isThreeLine: true,
+                      trailing: IconButton(
+                        tooltip: _bilingual('Remove line', '删除药物行'),
+                        onPressed: () =>
+                            setState(() => _prescriptionLines.removeAt(index)),
+                        icon: const Icon(Icons.remove_circle_outline),
+                      ),
+                    );
+                  },
+                ),
               const SizedBox(height: DrAiSpacing.xs),
               TextField(
                 key: const Key('prescription-note-field'),
@@ -3591,9 +4256,8 @@ class _MedicationWorkflowPanelState
   }
 
   Future<void> _createPrescription() async {
-    if (!_validateMedicationFields()) {
-      return;
-    }
+    if (_prescriptionLines.isEmpty) _addPrescriptionLine();
+    if (_prescriptionLines.isEmpty) return;
     final medication = _selectedMedication;
     if (medication == null) {
       setState(() {
@@ -3611,8 +4275,45 @@ class _MedicationWorkflowPanelState
           dosage: _dosageController.text.trim(),
           schedule: _scheduleController.text.trim(),
           notes: _prescriptionNoteController.text.trim(),
+          lines: List<PrescriptionMedicationDraft>.unmodifiable(
+            _prescriptionLines,
+          ),
         );
   }
+
+  void _addPrescriptionLine() {
+    if (!_validateMedicationFields()) return;
+    final quantity = int.tryParse(_quantityController.text.trim());
+    final duration = int.tryParse(_durationController.text.trim());
+    if (quantity == null || quantity < 1 || duration == null || duration < 1) {
+      setState(() {
+        _validationMessage = _bilingual(
+          'Quantity and duration must be positive numbers.',
+          '数量和天数必须为正整数。',
+        );
+      });
+      return;
+    }
+    setState(() {
+      _prescriptionLines.add(
+        PrescriptionMedicationDraft(
+          medicationId: _selectedMedication?.id,
+          name: _nameController.text.trim(),
+          formulationStrength: _dosageController.text.trim(),
+          route: _routeController.text.trim().isEmpty
+              ? 'not recorded'
+              : _routeController.text.trim(),
+          recordedDirections: _scheduleController.text.trim(),
+          quantity: quantity,
+          durationDays: duration,
+        ),
+      );
+      _validationMessage = null;
+    });
+  }
+
+  String _bilingual(String english, String chinese) =>
+      Localizations.localeOf(context).languageCode == 'zh' ? chinese : english;
 }
 
 class _ClinicalFinancialSection extends StatelessWidget {
@@ -4393,10 +5094,28 @@ class _RecoveryPlanEditor extends ConsumerStatefulWidget {
 class _RecoveryPlanEditorState extends ConsumerState<_RecoveryPlanEditor> {
   final _titleController = TextEditingController();
   final _instructionsController = TextEditingController();
+  final _phaseNameController = TextEditingController(text: 'Phase 1');
+  final _startDateController = TextEditingController(
+    text: DateTime.now().toIso8601String().substring(0, 10),
+  );
+  final _endDateController = TextEditingController();
+  final _progressionController = TextEditingController(
+    text: 'Progress after clinician review',
+  );
+  final _holdController = TextEditingController(
+    text: 'Pause and contact the care team if symptoms worsen',
+  );
   final _medicationController = TextEditingController();
   final _exerciseController = TextEditingController();
   final _dietController = TextEditingController();
   final _followUpController = TextEditingController();
+  final _frequencyController = TextEditingController(text: 'daily');
+  final _scheduleController = TextEditingController(text: '09:00');
+  final _responsibleController = TextEditingController(text: 'patient');
+  final _completionController = TextEditingController(
+    text: 'Completed as instructed',
+  );
+  final List<RecoveryPhaseInput> _draftPhases = <RecoveryPhaseInput>[];
   String? _selectedPlanId;
   String? _validationError;
 
@@ -4404,10 +5123,19 @@ class _RecoveryPlanEditorState extends ConsumerState<_RecoveryPlanEditor> {
   void dispose() {
     _titleController.dispose();
     _instructionsController.dispose();
+    _phaseNameController.dispose();
+    _startDateController.dispose();
+    _endDateController.dispose();
+    _progressionController.dispose();
+    _holdController.dispose();
     _medicationController.dispose();
     _exerciseController.dispose();
     _dietController.dispose();
     _followUpController.dispose();
+    _frequencyController.dispose();
+    _scheduleController.dispose();
+    _responsibleController.dispose();
+    _completionController.dispose();
     super.dispose();
   }
 
@@ -4515,6 +5243,125 @@ class _RecoveryPlanEditorState extends ConsumerState<_RecoveryPlanEditor> {
                       ),
                     ),
                     const SizedBox(height: DrAiSpacing.xs),
+                    DecoratedBox(
+                      key: const Key('recovery-calendar-phase-editor'),
+                      decoration: BoxDecoration(
+                        color: DrAiColors.white,
+                        border: Border.all(color: DrAiColors.outline),
+                        borderRadius: BorderRadius.circular(DrAiRadii.md),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(DrAiSpacing.sm),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: <Widget>[
+                            Row(
+                              children: <Widget>[
+                                const Icon(
+                                  Icons.calendar_month_outlined,
+                                  color: DrAiColors.brand,
+                                ),
+                                const SizedBox(width: DrAiSpacing.xs),
+                                Text(
+                                  Localizations.localeOf(
+                                            context,
+                                          ).languageCode ==
+                                          'zh'
+                                      ? '日历阶段'
+                                      : 'Calendar phase',
+                                  style: Theme.of(context).textTheme.titleSmall,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: DrAiSpacing.xs),
+                            Row(
+                              children: <Widget>[
+                                Expanded(
+                                  child: TextField(
+                                    key: const Key('recovery-phase-name-field'),
+                                    controller: _phaseNameController,
+                                    decoration: InputDecoration(
+                                      labelText:
+                                          Localizations.localeOf(
+                                                context,
+                                              ).languageCode ==
+                                              'zh'
+                                          ? '阶段名称'
+                                          : 'Phase name',
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: DrAiSpacing.xs),
+                                Expanded(
+                                  child: TextField(
+                                    key: const Key(
+                                      'recovery-phase-start-field',
+                                    ),
+                                    controller: _startDateController,
+                                    decoration: InputDecoration(
+                                      labelText:
+                                          Localizations.localeOf(
+                                                context,
+                                              ).languageCode ==
+                                              'zh'
+                                          ? '开始日期'
+                                          : 'Start date',
+                                      hintText: 'YYYY-MM-DD',
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: DrAiSpacing.xs),
+                                Expanded(
+                                  child: TextField(
+                                    key: const Key('recovery-phase-end-field'),
+                                    controller: _endDateController,
+                                    decoration: InputDecoration(
+                                      labelText:
+                                          Localizations.localeOf(
+                                                context,
+                                              ).languageCode ==
+                                              'zh'
+                                          ? '结束日期'
+                                          : 'End date',
+                                      hintText: 'YYYY-MM-DD',
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: DrAiSpacing.xs),
+                            TextField(
+                              key: const Key('recovery-progression-field'),
+                              controller: _progressionController,
+                              decoration: InputDecoration(
+                                labelText:
+                                    Localizations.localeOf(
+                                          context,
+                                        ).languageCode ==
+                                        'zh'
+                                    ? '进阶条件'
+                                    : 'Progression criteria',
+                              ),
+                            ),
+                            const SizedBox(height: DrAiSpacing.xs),
+                            TextField(
+                              key: const Key('recovery-hold-field'),
+                              controller: _holdController,
+                              decoration: InputDecoration(
+                                labelText:
+                                    Localizations.localeOf(
+                                          context,
+                                        ).languageCode ==
+                                        'zh'
+                                    ? '暂停或升级条件'
+                                    : 'Hold or escalation criteria',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: DrAiSpacing.xs),
                     TextField(
                       key: const Key('recovery-plan-instructions-field'),
                       controller: _instructionsController,
@@ -4552,6 +5399,114 @@ class _RecoveryPlanEditorState extends ConsumerState<_RecoveryPlanEditor> {
                       label: context.l10n.followUpTask,
                       icon: Icons.event_available_outlined,
                     ),
+                    Wrap(
+                      spacing: DrAiSpacing.xs,
+                      runSpacing: DrAiSpacing.xs,
+                      children: <Widget>[
+                        SizedBox(
+                          width: 190,
+                          child: _taskField(
+                            key: const Key('recovery-task-frequency-field'),
+                            controller: _frequencyController,
+                            label:
+                                Localizations.localeOf(context).languageCode ==
+                                    'zh'
+                                ? '频率'
+                                : 'Frequency',
+                            icon: Icons.repeat,
+                          ),
+                        ),
+                        SizedBox(
+                          width: 190,
+                          child: _taskField(
+                            key: const Key('recovery-task-schedule-field'),
+                            controller: _scheduleController,
+                            label:
+                                Localizations.localeOf(context).languageCode ==
+                                    'zh'
+                                ? '时间表'
+                                : 'Schedule',
+                            icon: Icons.schedule,
+                          ),
+                        ),
+                        SizedBox(
+                          width: 190,
+                          child: _taskField(
+                            key: const Key('recovery-task-responsible-field'),
+                            controller: _responsibleController,
+                            label:
+                                Localizations.localeOf(context).languageCode ==
+                                    'zh'
+                                ? '负责人'
+                                : 'Responsible person',
+                            icon: Icons.person_outline,
+                          ),
+                        ),
+                        SizedBox(
+                          width: 260,
+                          child: _taskField(
+                            key: const Key('recovery-task-completion-field'),
+                            controller: _completionController,
+                            label:
+                                Localizations.localeOf(context).languageCode ==
+                                    'zh'
+                                ? '完成标准'
+                                : 'Completion criteria',
+                            icon: Icons.check_circle_outline,
+                          ),
+                        ),
+                      ],
+                    ),
+                    OutlinedButton.icon(
+                      key: const Key('recovery-add-phase-button'),
+                      onPressed: _addCurrentPhase,
+                      icon: const Icon(Icons.add_box_outlined),
+                      label: Text(
+                        Localizations.localeOf(context).languageCode == 'zh'
+                            ? '添加此日历阶段'
+                            : 'Add this calendar phase',
+                      ),
+                    ),
+                    for (var index = 0; index < _draftPhases.length; index++)
+                      Card(
+                        key: Key('recovery-phase-preview-$index'),
+                        child: ListTile(
+                          leading: CircleAvatar(child: Text('${index + 1}')),
+                          title: Text(_draftPhases[index].name),
+                          subtitle: Text(
+                            '${_draftPhases[index].startDate} - '
+                            '${_draftPhases[index].endDate ?? '—'}\n'
+                            '${_draftPhases[index].tasks.length} '
+                            '${Localizations.localeOf(context).languageCode == 'zh' ? '个任务' : 'tasks'}',
+                          ),
+                          trailing: Wrap(
+                            spacing: 0,
+                            children: <Widget>[
+                              IconButton(
+                                tooltip: 'Move earlier',
+                                onPressed: index == 0
+                                    ? null
+                                    : () => _movePhase(index, index - 1),
+                                icon: const Icon(Icons.arrow_upward),
+                              ),
+                              IconButton(
+                                tooltip: 'Move later',
+                                onPressed: index == _draftPhases.length - 1
+                                    ? null
+                                    : () => _movePhase(index, index + 1),
+                                icon: const Icon(Icons.arrow_downward),
+                              ),
+                              IconButton(
+                                tooltip: 'Remove phase',
+                                onPressed: () => setState(
+                                  () => _draftPhases.removeAt(index),
+                                ),
+                                icon: const Icon(Icons.delete_outline),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     if (_validationError != null)
                       _InlineMessage(
                         message: _validationError!,
@@ -4697,36 +5652,115 @@ class _RecoveryPlanEditorState extends ConsumerState<_RecoveryPlanEditor> {
         detail: context.l10n.medicationTaskDetail,
         dueLabel: context.l10n.today,
         notificationTime: '09:00',
+        frequency: _frequencyController.text.trim(),
+        schedule: _scheduleController.text.trim(),
+        responsiblePerson: _responsibleController.text.trim(),
+        completionCriteria: _completionController.text.trim(),
       ),
       RecoveryTaskInput(
         category: 'exercise',
         title: _exerciseController.text.trim(),
         detail: context.l10n.exerciseTaskDetail,
         dueLabel: context.l10n.today,
+        frequency: _frequencyController.text.trim(),
+        schedule: _scheduleController.text.trim(),
+        responsiblePerson: _responsibleController.text.trim(),
+        completionCriteria: _completionController.text.trim(),
       ),
       RecoveryTaskInput(
         category: 'diet',
         title: _dietController.text.trim(),
         detail: context.l10n.dietTaskDetail,
         dueLabel: context.l10n.today,
+        frequency: _frequencyController.text.trim(),
+        schedule: _scheduleController.text.trim(),
+        responsiblePerson: _responsibleController.text.trim(),
+        completionCriteria: _completionController.text.trim(),
       ),
       RecoveryTaskInput(
         category: 'follow_up',
         title: _followUpController.text.trim(),
         detail: context.l10n.followUpTaskDetail,
         dueLabel: context.l10n.today,
+        frequency: _frequencyController.text.trim(),
+        schedule: _scheduleController.text.trim(),
+        responsiblePerson: _responsibleController.text.trim(),
+        completionCriteria: _completionController.text.trim(),
       ),
-    ];
+    ].where((task) => task.title.isNotEmpty).toList();
+  }
+
+  RecoveryPhaseInput _currentPhase() => RecoveryPhaseInput(
+    name: _phaseNameController.text.trim(),
+    startDate: _startDateController.text.trim(),
+    endDate: _endDateController.text.trim(),
+    goals: _instructionsController.text.trim(),
+    instructions: _instructionsController.text.trim(),
+    precautions: _holdController.text.trim(),
+    progressionCriteria: _progressionController.text.trim(),
+    holdEscalationCriteria: _holdController.text.trim(),
+    reviewCheckpoint: _completionController.text.trim(),
+    tasks: _taskInputs(),
+  );
+
+  void _addCurrentPhase() {
+    if (!_validateCurrentPhase()) return;
+    setState(() {
+      _draftPhases.add(_currentPhase());
+      _phaseNameController.text = 'Phase ${_draftPhases.length + 1}';
+      _startDateController.text = _endDateController.text.trim().isEmpty
+          ? _startDateController.text
+          : _endDateController.text;
+      _endDateController.clear();
+      _medicationController.clear();
+      _exerciseController.clear();
+      _dietController.clear();
+      _followUpController.clear();
+      _validationError = null;
+    });
+  }
+
+  void _movePhase(int from, int to) {
+    setState(() {
+      final phase = _draftPhases.removeAt(from);
+      _draftPhases.insert(to, phase);
+    });
+  }
+
+  bool _validateCurrentPhase() {
+    if (_phaseNameController.text.trim().length < 2) {
+      setState(() => _validationError = 'Phase name is required.');
+      return false;
+    }
+    final start = DateTime.tryParse(_startDateController.text.trim());
+    final end = _endDateController.text.trim().isEmpty
+        ? null
+        : DateTime.tryParse(_endDateController.text.trim());
+    if (start == null) {
+      setState(() => _validationError = 'Start date must use YYYY-MM-DD.');
+      return false;
+    }
+    if (end != null && end.isBefore(start)) {
+      setState(
+        () => _validationError = 'End date cannot be before start date.',
+      );
+      return false;
+    }
+    if (_taskInputs().isEmpty) {
+      setState(() => _validationError = 'Add at least one task to this phase.');
+      return false;
+    }
+    return true;
   }
 
   bool _validate() {
     final fields = <String>[
       _titleController.text,
       _instructionsController.text,
-      _medicationController.text,
-      _exerciseController.text,
-      _dietController.text,
-      _followUpController.text,
+      _phaseNameController.text,
+      _startDateController.text,
+      _progressionController.text,
+      _holdController.text,
     ];
     if (fields.any((field) => field.trim().length < 3)) {
       setState(() {
@@ -4734,6 +5768,7 @@ class _RecoveryPlanEditorState extends ConsumerState<_RecoveryPlanEditor> {
       });
       return false;
     }
+    if (_draftPhases.isEmpty && !_validateCurrentPhase()) return false;
     setState(() => _validationError = null);
     return true;
   }
@@ -4749,8 +5784,15 @@ class _RecoveryPlanEditorState extends ConsumerState<_RecoveryPlanEditor> {
           clinicalEventId: widget.clinicalEventId,
           planId: _selectedPlanId,
           title: _titleController.text.trim(),
-          instructions: _instructionsController.text.trim(),
+          instructions:
+              '${_instructionsController.text.trim()}\n\n'
+              '${_phaseNameController.text.trim()} · ${_startDateController.text.trim()}\n'
+              '${_progressionController.text.trim()}\n'
+              '${_holdController.text.trim()}',
           tasks: _taskInputs(),
+          phases: _draftPhases.isEmpty
+              ? <RecoveryPhaseInput>[_currentPhase()]
+              : List<RecoveryPhaseInput>.unmodifiable(_draftPhases),
         );
   }
 
@@ -4830,22 +5872,13 @@ class _ConsultationRequestPanelState
     extends ConsumerState<_ConsultationRequestPanel> {
   final _specialtyController = TextEditingController();
   final _summaryController = TextEditingController();
-  final _totalCostController = TextEditingController();
-  final _payerRequestedController = TextEditingController();
-  final _patientResponsibilityController = TextEditingController();
   String _priority = 'routine';
-  String _pricingState = 'pending_cost';
-  bool _billable = false;
-  ConsultationRequestItem? _editingConsultation;
   String? _validationError;
 
   @override
   void dispose() {
     _specialtyController.dispose();
     _summaryController.dispose();
-    _totalCostController.dispose();
-    _payerRequestedController.dispose();
-    _patientResponsibilityController.dispose();
     super.dispose();
   }
 
@@ -4853,10 +5886,6 @@ class _ConsultationRequestPanelState
   Widget build(BuildContext context) {
     final list = ref.watch(consultationListProvider);
     final createState = ref.watch(consultationRequestControllerProvider);
-    final financialLedger = ref
-        .watch(patientCareCostLedgerProvider(widget.patientId))
-        .asData
-        ?.value;
     return DecoratedBox(
       decoration: BoxDecoration(
         color: DrAiColors.surfaceSubtle,
@@ -4925,15 +5954,12 @@ class _ConsultationRequestPanelState
                   setState(() => _priority = values.first),
             ),
             const SizedBox(height: DrAiSpacing.sm),
-            _ClinicalFinancialSection(
-              billable: _billable,
-              pricingState: _pricingState,
-              totalController: _totalCostController,
-              payerController: _payerRequestedController,
-              patientController: _patientResponsibilityController,
-              onBillableChanged: (value) => setState(() => _billable = value),
-              onPricingStateChanged: (value) =>
-                  setState(() => _pricingState = value),
+            _InlineMessage(
+              key: const Key('specialist-request-not-billable-notice'),
+              message: Localizations.localeOf(context).languageCode == 'zh'
+                  ? '这里只提交专科会诊请求，不代表已完成的问诊，也不在此计费。'
+                  : 'This sends a specialist referral request. It is not a completed consultation and is not priced here.',
+              icon: Icons.info_outline,
             ),
             if (_validationError != null)
               _InlineMessage(
@@ -4967,11 +5993,7 @@ class _ConsultationRequestPanelState
                   ? null
                   : _submit,
               icon: const Icon(Icons.outgoing_mail),
-              label: Text(
-                _editingConsultation == null
-                    ? context.l10n.requestSpecialistReview
-                    : context.l10n.saveConsultationCost,
-              ),
+              label: Text(context.l10n.requestSpecialistReview),
             ),
             const SizedBox(height: DrAiSpacing.sm),
             list.when(
@@ -4987,6 +6009,9 @@ class _ConsultationRequestPanelState
                     .where(
                       (item) =>
                           item.patientId == widget.patientId &&
+                          (item.consultationType == null ||
+                              item.consultationType == 'specialist' ||
+                              item.consultationType == 'specialist_referral') &&
                           (widget.clinicalEventId == null ||
                               item.clinicalEventId == widget.clinicalEventId),
                     )
@@ -5002,46 +6027,13 @@ class _ConsultationRequestPanelState
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
                     for (final item in items)
-                      Builder(
-                        builder: (context) {
-                          final companion = _sourceFinancialCompanion(
-                            financialLedger,
-                            sourceType: 'consultation',
-                            sourceRecordId: item.clinicalServiceId,
-                          );
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: <Widget>[
-                              _InfoTile(
-                                title:
-                                    '${item.specialty} - ${context.l10n.stableValue(item.status)}',
-                                subtitle: context.l10n.priority(
-                                  context.l10n.stableValue(item.priority),
-                                ),
-                                body:
-                                    '${item.questionSummary}\n'
-                                    '${context.l10n.financialStatus}: '
-                                    '${_financialStatusText(context, companion)}',
-                              ),
-                              Align(
-                                alignment: Alignment.centerRight,
-                                child: TextButton.icon(
-                                  key: Key(
-                                    'edit-consultation-cost-${item.consultationId}',
-                                  ),
-                                  onPressed: () => _editConsultationFinancial(
-                                    item,
-                                    financialLedger,
-                                  ),
-                                  icon: const Icon(Icons.price_change_outlined),
-                                  label: Text(
-                                    _financialActionText(context, companion),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          );
-                        },
+                      _InfoTile(
+                        title:
+                            '${item.specialty} - ${context.l10n.stableValue(item.status)}',
+                        subtitle: context.l10n.priority(
+                          context.l10n.stableValue(item.priority),
+                        ),
+                        body: item.questionSummary,
                       ),
                   ],
                 );
@@ -5062,98 +6054,15 @@ class _ConsultationRequestPanelState
       });
       return;
     }
-    final financial = _consultationFinancialDraft();
-    if (_billable && financial == null) return;
     setState(() => _validationError = null);
-    final editing = _editingConsultation;
     final controller = ref.read(consultationRequestControllerProvider.notifier);
-    if (editing != null) {
-      if (financial == null) {
-        setState(() {
-          _validationError = context.l10n.financialAllocationValidation;
-        });
-        return;
-      }
-      controller.updateFinancial(
-        patientId: widget.patientId,
-        consultation: editing,
-        financial: financial,
-      );
-    } else {
-      controller.create(
-        patientId: widget.patientId,
-        clinicalEventId: widget.clinicalEventId,
-        specialty: specialty,
-        questionSummary: summary,
-        priority: _priority,
-        financial: financial,
-      );
-    }
-  }
-
-  ClinicalFinancialDraft? _consultationFinancialDraft() {
-    if (!_billable) return null;
-    if (_pricingState == 'pending_cost') {
-      return const ClinicalFinancialDraft(
-        pricingState: 'pending_cost',
-        totalCostMinor: 0,
-        payerRequestedMinor: 0,
-        patientResponsibilityMinor: 0,
-      );
-    }
-    final total = _moneyMinor(_totalCostController.text);
-    final payer = _moneyMinor(_payerRequestedController.text);
-    final patient = _moneyMinor(_patientResponsibilityController.text);
-    if (total == null ||
-        total <= 0 ||
-        payer == null ||
-        patient == null ||
-        payer + patient != total) {
-      setState(() {
-        _validationError = context.l10n.financialAllocationValidation;
-      });
-      return null;
-    }
-    return ClinicalFinancialDraft(
-      pricingState: _pricingState,
-      totalCostMinor: total,
-      payerRequestedMinor: payer,
-      patientResponsibilityMinor: patient,
+    controller.create(
+      patientId: widget.patientId,
+      clinicalEventId: widget.clinicalEventId,
+      specialty: specialty,
+      questionSummary: summary,
+      priority: _priority,
     );
-  }
-
-  void _editConsultationFinancial(
-    ConsultationRequestItem consultation,
-    CareCostLedgerData? ledger,
-  ) {
-    CareCostItemData? companion;
-    for (final event in ledger?.events ?? const <CareCostEventData>[]) {
-      for (final item in event.items) {
-        if (item.sourceType == 'consultation' &&
-            item.sourceRecordId == consultation.clinicalServiceId) {
-          companion = item;
-          break;
-        }
-      }
-    }
-    setState(() {
-      _specialtyController.text = consultation.specialty;
-      _summaryController.text = consultation.questionSummary;
-      _priority = consultation.priority;
-      _editingConsultation = consultation;
-      _billable = true;
-      _pricingState = companion?.pricingState ?? 'pending_cost';
-      _totalCostController.text = companion == null
-          ? ''
-          : _yuanText(companion.actualCostMinor);
-      _payerRequestedController.text = companion == null
-          ? ''
-          : _yuanText(companion.payerRequestedMinor);
-      _patientResponsibilityController.text = companion == null
-          ? ''
-          : _yuanText(companion.patientResponsibilityMinor);
-      _validationError = null;
-    });
   }
 }
 
@@ -5778,53 +6687,53 @@ class _CarePanel extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         color: DrAiColors.white,
-        borderRadius: BorderRadius.circular(DrAiRadii.lg),
-        border: Border.all(color: DrAiColors.outline),
+        borderRadius: BorderRadius.circular(DrAiRadii.md),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              DrAiSpacing.sm,
-              DrAiSpacing.xs,
-              DrAiSpacing.xs,
-              DrAiSpacing.xs,
-            ),
-            child: Row(
-              children: <Widget>[
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: DrAiColors.brandSoft,
-                    borderRadius: BorderRadius.circular(DrAiRadii.md),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(DrAiSpacing.xs),
-                    child: Icon(icon, color: DrAiColors.brand, size: 20),
-                  ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(DrAiRadii.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            ColoredBox(
+              color: DrAiColors.sectionHeader,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  DrAiSpacing.md,
+                  DrAiSpacing.xs,
+                  DrAiSpacing.xs,
+                  DrAiSpacing.xs,
                 ),
-                const SizedBox(width: DrAiSpacing.xs),
-                Expanded(
-                  child: Text(
-                    title,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: DrAiColors.ink,
-                      fontWeight: FontWeight.w700,
+                child: Row(
+                  children: <Widget>[
+                    Icon(icon, color: DrAiColors.white, size: 20),
+                    const SizedBox(width: DrAiSpacing.xs),
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(
+                              color: DrAiColors.white,
+                              fontWeight: FontWeight.w700,
+                            ),
+                      ),
                     ),
-                  ),
+                    if (trailing != null)
+                      IconTheme(
+                        data: const IconThemeData(color: DrAiColors.white),
+                        child: trailing!,
+                      ),
+                  ],
                 ),
-                ?trailing,
-              ],
+              ),
             ),
-          ),
-          const Divider(height: 1),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(DrAiSpacing.sm),
-              child: child,
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(DrAiSpacing.sm),
+                child: child,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

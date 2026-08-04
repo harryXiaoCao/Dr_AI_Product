@@ -70,3 +70,52 @@ its local tests pass. Before a controlled-staging phase closes:
 Phase 7 met this gate for controlled synthetic staging. External notification
 display, multimodal DeepSeek capability, real-patient, live-payer,
 public-production, and commercial authorization remain separate gates.
+
+## Clinical Event Intelligence Gate
+
+The 2026-08-01 implementation passes its local wholly synthetic gate only when
+all of the following remain true: migration downgrade/re-upgrade and schema
+drift checks pass; every requested line appears exactly once; all six score
+dimensions and deterministic aggregation validate; tier 5 is visibly
+exploratory with zero cost-alignment weight; authorization and revoked-scope
+tests fail closed; provider failure preserves human documentation,
+`pending_cost`, clarification, and review workflows; and patient, doctor, and
+payer mobile/desktop states pass Flutter analysis, tests, and rendered review.
+No result from this gate activates a purpose release or closes clinical,
+privacy, payer, regulatory, or production-deployment authorization.
+
+## Clinical Event Intelligence controlled-synthetic activation evidence
+
+The 2026-08-02 activation gate additionally requires three independent active
+v5 releases with matching source, payload, evaluation-manifest, and result
+checksums; clear purpose kill switches; `ready` health status; a successful
+wholly synthetic primary/critic run; persisted role-and-locale explanations;
+same-key retry/concurrency proof; authorization and leakage attacks; exact
+v5-to-v4 rollback and restoration; and visual inspection of all three roles in
+English/Simplified Chinese at mobile/desktop widths. The machine-readable
+activation result and dated implementation record are the evidence index.
+
+Passing this gate remains local synthetic evidence only and must not be
+reported as clinical, payer, legal, privacy, security, regulatory, commercial,
+or public-production approval.
+
+## Clinical workflow integrity gate (2026-08-02)
+
+The slice passes only when focused tests prove canonical dropdown safety,
+field-preserving recovery validation, source-cost uniqueness, incomplete-cost
+payer rejection, multi-line atomic prescription persistence, finalized and
+published immutability, supersession readback, authorization failures, and
+same-key retry/concurrency. Migration `0058` must downgrade to `0057`, re-upgrade
+to head, and produce no Alembic operations. FastAPI and Flutter suites, Ruff,
+Flutter analysis, relevant rendered English/Chinese mobile/desktop workflows,
+browser/API logs, and `git diff --check` must also be inspected.
+
+The UI gate also requires the Consultation section to remain specialist-request
+only, while ordinary doctor consultations, encounter updates, and diagnoses
+append and read back inside the selected Clinical Event without hidden database
+edits.
+
+Passing is local wholly synthetic engineering evidence. It is not clinical
+validation, official pricing, payer acceptance, privacy/security certification,
+legal/regulatory approval, real-patient authorization, or public-production
+readiness.

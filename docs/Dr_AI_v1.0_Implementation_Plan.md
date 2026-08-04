@@ -2,7 +2,7 @@
 title: "Dr. AI v1.0 Implementation Plan"
 status: "Phase 7 controlled-staging rehearsal complete; external notification targets and image-capable DeepSeek remain independently blocked"
 created: "2026-07-02"
-last_updated: "2026-07-30"
+last_updated: "2026-08-01"
 owner: "Harry Cao"
 release_target: "Production-quality, China-first medical-information and care-cost transparency platform; synthetic controlled staging until later real-world gates close"
 ---
@@ -196,6 +196,64 @@ Every displayed estimate must expose, through role-safe views:
 AI output is not an official price, negotiated rate, coverage rule, clinical
 guideline, or payer conclusion. Provider failure must preserve manual clinical
 documentation, `pending_cost`, payer clarification, and structured fallback.
+
+#### Approved Clinical Event Intelligence Engine expansion
+
+Status: **implemented and locally verified with wholly synthetic data on
+2026-08-01; purpose releases remain disabled and unactivated by default**.
+
+The next coherent slice expands the existing envelope into one immutable shared
+artifact for every item in a doctor-submitted payer request:
+
+1. freeze and checksum the exact Clinical Event snapshot, requested lines,
+   hospital/facility geography, and missing/conflicting facts;
+2. retrieve applicable facility, regional, code, guideline, pathway, future
+   payer-policy, and comparable-case material through server-owned selection;
+3. use the configured high-capability DeepSeek model (currently
+   `deepseek-v4-pro`) to propose typical, alternative, and escalated pathways
+   and assess every requested item;
+4. validate complete item coverage, pathways, codes, score dimensions, ranges,
+   provenance, arithmetic, and prohibited conclusions deterministically;
+5. run at most one independent critic pass, reconcile it server-side, and store
+   a visible model-disagreement indicator;
+6. persist the immutable provider-neutral artifact and predecessor lineage; and
+7. use the configured low-latency explanation model (currently
+   `deepseek-v4-flash`) to render patient, doctor, and payer language from
+   frozen role-filtered facts only.
+
+The model names are configuration, not domain semantics. Before implementation,
+confirm them against the current [official DeepSeek model and pricing
+documentation](https://api-docs.deepseek.com/quick_start/pricing). Structured
+output must follow the current [official JSON-mode
+constraints](https://api-docs.deepseek.com/guides/json_mode), including bounded
+handling of empty or malformed content.
+
+Every requested item must include clinical fit, evidence support,
+timing/sequence, quantity/intensity, documentation completeness, and cost
+alignment on a 0-100 scale; a separately versioned deterministic rule may
+aggregate them into an AI support score. It must also include usefulness,
+supporting and contradicting facts, missing information, alternatives,
+confidence, estimated quantity/cost ranges, and one of five cost-provenance
+tiers. Tier 5 is a visibly wide DeepSeek-only exploratory estimate and must not
+be treated as an authoritative price or weighted like one.
+
+Implementation must add four practical review aids:
+
+- a missing-documentation assistant that names the exact clarification likely
+  to improve reviewability;
+- counterfactual comparison between the requested bundle and plausible
+  alternative pathways;
+- a primary-versus-critic disagreement indicator; and
+- an outcome-learning record linking the frozen snapshot and AI artifact to
+  later clinician response, human payer action, and permitted outcome evidence.
+
+The provider-neutral contract is the migration boundary for a future
+specialized cost-estimation model. DeepSeek output is never promoted directly
+to training truth. Reviewed snapshots, requested items, immutable AI outputs,
+human responses, payer actions, and permitted outcomes form separately labeled
+training/evaluation assets. A future model must first run in shadow mode and
+pass the same purpose-specific validation and release gates; replacement must
+not require rewriting the three-role API or UI contract.
 
 ### Purpose 2: cost and comparison explanation
 
@@ -542,6 +600,17 @@ Completed A-G foundation:
 
 Open completion work:
 
+- [x] Implement the Clinical Event Intelligence Engine expansion as a new
+  versioned purpose contract without rewriting the narrower completed A-G
+  artifacts. Add the immutable snapshot, server-directed retrieval, multiple
+  pathways, universal requested-item assessments, six score dimensions,
+  five-tier cost provenance, bounded critic pass, three role-filtered views,
+  and outcome-learning lineage described above.
+- [x] Add frozen multi-scenario evaluations for missing/conflicting facts,
+  tier-5 exploratory estimates, pathway alternatives, score stability,
+  primary/critic disagreement, three-role consistency, and the prohibition on
+  automatic approval or denial. The synthetic gates and bounded live assurance
+  pass; release activation remains a separate controlled-staging decision.
 - [ ] Implement the DeepSeek Vision purpose as a separate prompt/schema/
   validator/evaluation/release domain.
   **External provider-capability block confirmed 2026-07-27:** the current
@@ -825,3 +894,42 @@ historical log back into this file.
 - Documentation status must distinguish implemented, locally verified,
   controlled-staging verified, and future-gated work.
 - A future scope change must update this plan before implementation begins.
+
+## 2026-08-02 CEI controlled-synthetic closure
+
+The Clinical Event Intelligence vertical slice is locally active through three
+independent v5 governed releases for primary assessment, critic reconciliation,
+and role explanation. The running FastAPI/Flutter workflow was exercised with a
+wholly synthetic two-line payer request, including successful primary/critic
+provider calls, persisted role explanations, exact-line idempotency and
+concurrency checks, provider-unavailable fallback, bilingual responsive role
+views, and an exact v5-to-v4 rollback/restore rehearsal. Machine-readable
+identity, checksum, usage, artifact, and event evidence is in
+`evaluation/clinical_event_intelligence/results/clinical-event-intelligence-activation-20260802.json`.
+
+This closes local synthetic activation only. Real patient, provider, payer,
+clinical, privacy, security, legal, regulatory, commercial, and public
+production authorization remain future gates.
+
+## 2026-08-02 coherent clinical workflow slice
+
+Implemented through migration `0058`, FastAPI, Flutter, regression coverage,
+and local rendered verification:
+
+- ordinary treating-doctor consultation, encounter-update, diagnosis, and
+  general clinical-service authoring under a selected Clinical Event, with
+  consultation readback and unique persisted cost companions; the separate
+  Consultation section remains the specialist-referral request workflow;
+- atomic multi-line prescription finalization, immutable history, replacement
+  lineage, and same-key concurrency handling;
+- ordered recovery calendar phases with typed task events, draft authoring,
+  published immutability, progress separation, and revision lineage;
+- canonical/localized account-dropdown normalization including legacy
+  `female` at narrow width;
+- governed patient-chat `general_model_knowledge` and useful fixed provider
+  failure guidance without weakening deterministic emergency, privacy,
+  authorization, record-write, diagnosis, or medication-change boundaries.
+
+External clinical validation, official pricing, payer acceptance, real-patient
+authorization, privacy/security certification, regulatory/legal approval, and
+public production remain explicitly out of scope.

@@ -10,6 +10,10 @@ from starlette.middleware.cors import CORSMiddleware
 from app.auth import router as auth_router
 from app.care_cost import router as care_cost_router
 from app.chatbot_release_governance import chatbot_generation_readiness
+from app.clinical_event_intelligence_governance import intelligence_readiness
+from app.clinical_event_intelligence_routes import (
+    router as clinical_event_intelligence_router,
+)
 from app.config import get_settings
 from app.dashboard import router as dashboard_router
 from app.database import SessionLocal, engine
@@ -91,6 +95,7 @@ def create_app() -> FastAPI:
             with SessionLocal() as db:
                 compatible_release = explanation_release_ready(db, settings)
                 chatbot_readiness = chatbot_generation_readiness(db, settings)
+                clinical_intelligence_readiness = intelligence_readiness(db, settings)
                 try:
                     candidate_release = active_candidate_release(db, settings)
                 except CandidateReleaseTransitionError as exc:
@@ -134,6 +139,7 @@ def create_app() -> FastAPI:
                 candidate_release.version if candidate_release else None
             ),
             "expected_care_explanation": explanation_readiness,
+            "clinical_event_intelligence": clinical_intelligence_readiness,
             "imaging_observation_draft": "blocked_provider_text_only",
             "notification_worker": (
                 "enabled" if settings.notification_worker_enabled else "disabled"
@@ -143,6 +149,7 @@ def create_app() -> FastAPI:
 
     app.include_router(auth_router)
     app.include_router(care_cost_router)
+    app.include_router(clinical_event_intelligence_router)
     app.include_router(dashboard_router)
     app.include_router(expected_care_review_router)
     app.include_router(expected_care_comparison_router)

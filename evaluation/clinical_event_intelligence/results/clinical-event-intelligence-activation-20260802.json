@@ -1,0 +1,155 @@
+{
+  "artifact": {
+    "artifact_id": "8146e307-f488-4e5b-80a9-be642669379a",
+    "artifact_version": 2,
+    "automatic_action": false,
+    "dimensions_per_line": 6,
+    "human_review_required": true,
+    "line_count": 2,
+    "provenance_tiers": [
+      1,
+      5
+    ],
+    "reconciliation_state": "material_disagreement",
+    "requested_line_codes": [
+      "SYN-CEI-LAB-001",
+      "SYN-CEI-EXPLORATORY-001"
+    ],
+    "run_id": "c7c56f5e-739c-4d0f-aed3-36bb69316f21",
+    "tier_5": {
+      "admitted_price_reference": false,
+      "cost_alignment_weight": 0,
+      "exploratory_model_only": true,
+      "high_minor": 24000,
+      "low_minor": 12000
+    }
+  },
+  "boundary": {
+    "data_class": "wholly_synthetic",
+    "environment_scope": "controlled_synthetic_staging",
+    "not_authorized": [
+      "real_patient_transmission",
+      "live_payer_use",
+      "clinical_use",
+      "legal_or_regulatory_reliance",
+      "public_production",
+      "commercial_claims"
+    ]
+  },
+  "concurrency_and_retry": {
+    "concurrent_artifact_ids_equal": true,
+    "concurrent_replay_flags": [
+      true,
+      false
+    ],
+    "duplicate_artifacts_created": false,
+    "sequential_retry_replayed": true
+  },
+  "evaluation": {
+    "provider_free_result": "clinical-event-intelligence-provider-free-20260801T175010Z.json",
+    "provider_free_result_sha256": "8068807b57e46430bfadf31ea3f7abfbb45a7534eec6ae3d35aacb4777ff237c",
+    "verification_matrix_sha256": "8892b0ed73531f6f38e8905f30a7b1218bd766ac87c35a83291762369b52ca2a"
+  },
+  "fixture": {
+    "clinical_event_id": "affbe6a5-688d-49f1-b518-a9360fe0a41a",
+    "fixture_key": "clinical-event-intelligence-local-synthetic-v1",
+    "patient_external_id": "SYN-CEI-LOCAL-001",
+    "patient_id": "1b49f38b-b69b-406e-8024-5ac018b86ea5",
+    "payer_request_id": "8a788b62-6bc7-4e1f-b036-bb5cda7244f1",
+    "synthetic_assertion_passed_before_provider_egress": true
+  },
+  "provider_attempts": [
+    {
+      "input_tokens": 3926,
+      "latency_ms": 23308,
+      "model": "deepseek-v4-pro",
+      "output_tokens": 2064,
+      "purpose": "primary",
+      "status": "validated"
+    },
+    {
+      "input_tokens": 4889,
+      "latency_ms": 6965,
+      "model": "deepseek-v4-pro",
+      "output_tokens": 458,
+      "purpose": "critic",
+      "status": "received"
+    },
+    {
+      "input_tokens": 2219,
+      "model": "deepseek-v4-flash",
+      "output_tokens": 124,
+      "purpose": "role-explanation-doctor-en",
+      "status": "validated_fact_selection"
+    },
+    {
+      "input_tokens": 1144,
+      "model": "deepseek-v4-flash",
+      "output_tokens": 101,
+      "purpose": "role-explanation-patient-zh-Hans",
+      "status": "validated_fact_selection"
+    },
+    {
+      "input_tokens": 1188,
+      "model": "deepseek-v4-flash",
+      "output_tokens": 121,
+      "purpose": "role-explanation-payer-en",
+      "status": "validated_fact_selection"
+    }
+  ],
+  "provider_failure_evidence": {
+    "automatic_action": false,
+    "clinical_documentation_available": true,
+    "clarification_available": true,
+    "human_review_available": true,
+    "pending_cost_available": true,
+    "provider_unavailable_artifact_version": 1
+  },
+  "release_operations": {
+    "critic": {
+      "activation_event_id": "dfa0652b-d5dd-4aac-9966-2bc037488b95",
+      "payload_checksum_sha256": "c2e26503777c7f0751c52db77bb68f006f3678ed2b7fbb28b4bba597ca33cc3d",
+      "release_id": "fae75bd8-e8fb-49dc-ac3b-27661a43ba23",
+      "restore_event_id": "4fcc4506-4562-4018-a375-62f6d3938f95",
+      "rollback_event_id": "20af98bc-3f85-46bb-83ff-724c031edde1"
+    },
+    "explanation": {
+      "activation_event_id": "90254390-d975-4c5b-b69f-3b3dd1814aa4",
+      "payload_checksum_sha256": "5b16237755158a7cdf0f89e129901700ba5c9b8569109ef113a9ed00e9bbf456",
+      "release_id": "635756a5-613d-4e94-b130-b040ff8830e4",
+      "restore_event_id": "c36ecaa7-cfc7-4c0d-8962-b7e2815d5a7f",
+      "rollback_event_id": "15ebbce0-646a-4d9a-8603-4446ba4e10e9"
+    },
+    "primary": {
+      "activation_event_id": "97aaddef-6ec2-4cdc-9bd2-8f922c6319bf",
+      "payload_checksum_sha256": "02bb96bcd5f85004f8784f47cb47d03612c89d84624908d921ade084bfb3a9f1",
+      "release_id": "5a9de552-cdfc-409c-b00d-4dbc15b4373e",
+      "restore_event_id": "a08f0010-e698-4ea5-954f-97e4f12d0f24",
+      "rollback_event_id": "d1951330-7766-41a7-8111-eb9bc2d3f646"
+    },
+    "rollback_target_version": "v4-controlled-synthetic-20260802",
+    "version": "v5-controlled-synthetic-20260802"
+  },
+  "role_views": {
+    "artifact_identity_shared": true,
+    "debug_console": "one_dwds_injected_client_type_error_application_remained_usable",
+    "doctor": {
+      "locale": "en",
+      "rendered": true
+    },
+    "patient": {
+      "locale": "zh-Hans",
+      "rendered": true
+    },
+    "payer": {
+      "locale": "zh-Hans",
+      "rendered": true
+    }
+  },
+  "sanitization": {
+    "chain_of_thought_stored": false,
+    "credentials_stored": false,
+    "hidden_prompts_stored": false,
+    "raw_provider_responses_stored": false
+  }
+}

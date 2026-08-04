@@ -737,6 +737,7 @@ class MedicationWorkflowController extends StateNotifier<AsyncValue<String?>> {
     required String dosage,
     required String schedule,
     required String notes,
+    List<PrescriptionMedicationDraft>? lines,
   }) async {
     state = const AsyncLoading<String?>();
     try {
@@ -748,6 +749,7 @@ class MedicationWorkflowController extends StateNotifier<AsyncValue<String?>> {
         dosage: dosage,
         schedule: schedule,
         notes: notes,
+        lines: lines,
       );
       state = const AsyncData<String?>('Prescription issued.');
       _ref.invalidate(patientCareBundleProvider(patientId));
@@ -803,6 +805,7 @@ class RecoveryPlanEditorController
     required String title,
     required String instructions,
     required List<RecoveryTaskInput> tasks,
+    required List<RecoveryPhaseInput> phases,
   }) async {
     state = const AsyncLoading<RecoveryPlanData?>();
     try {
@@ -813,6 +816,7 @@ class RecoveryPlanEditorController
               title: title,
               instructions: instructions,
               tasks: tasks,
+              phases: phases,
             )
           : await _repository.updateRecoveryPlan(
               patientId: patientId,
@@ -821,6 +825,7 @@ class RecoveryPlanEditorController
               title: title,
               instructions: instructions,
               tasks: tasks,
+              phases: phases,
             );
       state = AsyncData(result);
       _ref.invalidate(recoveryPlanListProvider(patientId));

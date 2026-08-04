@@ -1,0 +1,71 @@
+{
+  "data_class": "wholly_synthetic",
+  "derivation_allowed": true,
+  "effective_from": "2026-08-02",
+  "effective_to": "2027-08-01",
+  "evaluation_checksums": {
+    "evaluation_manifest_checksum_sha256": "67cfb9712c94dd775869f20f94a5c35457e08974105de451711b7b68696386c6",
+    "live_result_checksum_sha256": "4947c5604a4b209e526c30ab53ebb2b01a3859b2700c86de3b87286d7f3662b9",
+    "provider_free_result_checksum_sha256": "feab12634d515134998be853a45851c27b916c1a5d2c083334254424be937c0a",
+    "verification_matrix_checksum_sha256": "33e982e6cd0e6118d86b7527217684084d8e8e22fe81acc46f06bb225fd3cdfb"
+  },
+  "future_real_world_gates_preserved": true,
+  "machine_gates": {
+    "adversarial_matrix_complete": true,
+    "future_real_world_gates_preserved": true,
+    "live_combined_verification": true,
+    "mandatory_threshold_contract_present": true,
+    "no_evaluation_side_effects": true,
+    "provider_free_combined_verification": true,
+    "provider_model_verified": true,
+    "sanitized_no_raw_provider_content": true,
+    "synthetic_only_evidence": true
+  },
+  "next_review_on": "2027-02-01",
+  "payload_checksum_sha256": "faabe6fe9fe411d1d15462dcf4d9093b308dd6e6992beebb242edd8548a9baa2",
+  "predecessor_version": "v2-controlled-synthetic-20260802",
+  "provider_transmission_allowed": true,
+  "real_world_activation_allowed": false,
+  "redistribution_allowed": false,
+  "release_key": "clinical-event-intelligence-primary",
+  "release_type": "ai_purpose",
+  "review_types": [
+    "clinical",
+    "pricing",
+    "native_simplified_chinese",
+    "privacy",
+    "security",
+    "legal",
+    "payer_workflow",
+    "regulatory"
+  ],
+  "rollback_target": "v2-controlled-synthetic-20260802",
+  "runtime_contract": {
+    "model": "deepseek-v4-pro",
+    "model_configuration_version": "clinical-event-intelligence-deepseek.v1",
+    "output_schema_checksum_sha256": "fd90baaeffa03b659d6266be35ef3209ee948961b3920d489ad17ef163ec6003",
+    "prompt_version": "clinical-event-intelligence-primary-prompt.v1",
+    "provider": "deepseek",
+    "purpose_code": "clinical_event_intelligence_primary",
+    "purpose_contract_version": "clinical-event-intelligence-primary.v1",
+    "schema_version": "clinical-event-intelligence-output.v1",
+    "scoring_aggregation_version": "clinical-event-intelligence-score.v1",
+    "validator_version": "clinical-event-intelligence-validator.v1"
+  },
+  "runtime_contract_checksum_sha256": "a08ef821c76909d5e84759e8aac3095db93a1fd6fe910cc50e26a1ebcc7aba73",
+  "schema_version": "clinical-event-intelligence-output.v1",
+  "scope_key": "controlled_synthetic_staging",
+  "source_checksum_sha256": "428eaf4d2f6d0e2cfa6dc22ed6864c132d1255c9b129544afe9defe758afed6c",
+  "source_checksums": {
+    "clinical_event_intelligence_contracts.py": "58901e67fa067e0be6698fedf2602b75f3d4d2ffe9da1ba9a0bc07531bb6ea2f",
+    "clinical_event_intelligence_provider.py": "4a2e9c2ff4c2cc84870fcae05d005ea609d8cbc3b1c4189c33fa91f2216c5806",
+    "clinical_event_intelligence_reconciliation.py": "a652dbbcc91e8dfa834fc9a84da0fc711582e7b4e78fa078923e43eda8d4a731",
+    "clinical_event_intelligence_retrieval.py": "2692d8a62b9ca1a2b6bb4bbd72c7eb6b108d0ccb85b662ff7c67ed2860fd530a",
+    "clinical_event_intelligence_service.py": "3891e57e2aea2617e51cc6ca9a8aa0f22241496e817f8e1e28697ff21800e3ff",
+    "clinical_event_intelligence_validation.py": "2984f0fdce860613aa03061955e8ba3672eb69d3d46c8150b2f2b3f374148db9",
+    "clinical_event_snapshot.py": "b3bc2d2e7649078e34a1a39070c3cbf4442153426da395ab1a332dc5cac922b1"
+  },
+  "stage_review_status": "product_owner_waived_for_current_stage",
+  "storage_allowed": true,
+  "version": "v3-controlled-synthetic-20260802"
+}

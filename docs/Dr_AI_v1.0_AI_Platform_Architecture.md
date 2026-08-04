@@ -4,7 +4,7 @@ Status: approved implementation architecture
 
 Owner: Harry Cao
 
-Last updated: 2026-07-30
+Last updated: 2026-08-01
 
 Applies to: patient, doctor, and authorized payer-reviewer AI workflows
 Initial model provider: DeepSeek through a provider-neutral server adapter
@@ -17,12 +17,22 @@ fraud, or punitive action. It consolidates the shared AI architecture while
 preserving the stricter workflow-specific contracts for the patient chatbot
 and governed medical knowledge.
 
-The immediate next AI capability is a source-linked, deterministically
-validated, immutable **expected-care baseline** containing plausible care
-categories and low/high cost ranges. A clinician may append an attributable
-position or exception but cannot edit, reject, or hide the baseline. It is not
-a prescribed plan, quote, bill, negotiated rate, coverage determination, or
-prediction of the final amount a patient will owe.
+The implemented, default-off AI capability is a **Clinical Event Intelligence
+Engine**. For every
+requested medication, imaging check, laboratory test, consultation, surgery,
+or other billable item, it produces a versioned, location-aware analysis from
+the exact Clinical Event snapshot. It proposes multiple plausible care
+pathways, compares each requested item with those pathways, estimates quantity
+and cost ranges, calculates transparent multidimensional support scores,
+identifies missing information and alternatives, and presents role-appropriate
+explanations to patients, doctors, and authorized payer reviewers.
+
+DeepSeek is the current production inference provider for this advisory
+purpose and a replaceable placeholder for a future purpose-built cost model.
+It is not the authority for diagnosis, medical necessity, price truth, payer
+approval, denial, or care restriction. A clinician may append an attributable
+position or exception but cannot edit, reject, or hide the immutable AI
+artifact. A payer resolution remains an attributable human action.
 
 This file is an implementation source of truth alongside:
 
@@ -76,6 +86,12 @@ AI may not:
 ## 3. Current Verified State And Planned State
 
 ### 3.1 Implemented foundations
+
+- The Clinical Event Intelligence Engine is implemented end to end through
+  migration `20260801_0055`, purpose-isolated DeepSeek adapters, deterministic
+  validation/reconciliation, role-authorized APIs, responsive bilingual
+  Flutter surfaces, and a wholly synthetic evaluation package. Activation and
+  real-world authorization remain separate gates.
 
 - A provider-neutral, server-side DeepSeek adapter exists for patient chat.
 - Emergency and prohibited-action routing occurs before model calls.
@@ -243,12 +259,16 @@ doctor records it through an authorized clinical workflow.
 
 ### 5.3 Expected-care and cost-envelope assistance
 
-State: schema-constrained candidate generation, immutable baseline publication,
-three-role structured presentation, and deterministic comparison implemented
-with synthetic local verification.
+State: the narrower schema-constrained candidate, immutable baseline,
+three-role presentation, and deterministic comparison are implemented with
+synthetic verification. The broader Clinical Event Intelligence Engine defined
+below is also implemented and locally verified with wholly synthetic data;
+its three purpose releases remain default-off and unactivated.
 
-DeepSeek may draft plausible categories, quantities, and low/high reference
-ranges only from admitted, effective, jurisdiction-compatible releases.
+DeepSeek may draft plausible categories and quantities. Any range presented as
+reference-backed must come only from admitted, effective,
+jurisdiction-compatible releases; a tier-5 model-only range follows the
+separate exploratory contract in Section 6.5 and cannot cite those releases.
 Deterministic validation is mandatory before baseline publication and
 comparison. Clinician response is separate evidence: it is never a prerequisite
 for baseline display or deterministic comparison, and it cannot edit, reject,
@@ -345,6 +365,142 @@ excluded. Patient-wide records that cannot be bound to the exact Clinical Event
 are shown as not used rather than silently transmitted. Synthetic data remains
 mandatory until the real-data and live-use gates close.
 
+### 6.1 Immutable Clinical Event intelligence snapshot
+
+The server freezes one versioned input snapshot before retrieval or inference.
+It contains, when relevant and authorized:
+
+- symptoms, duration, severity, and recorded progression;
+- the doctor's diagnosis, differential, rationale, and confirmed findings;
+- relevant medical history, allergies, contraindications, chronic conditions,
+  current prescriptions, medicines taken, and adherence facts;
+- laboratory and imaging reports, while raw-image recognition remains a
+  separately governed later capability;
+- planned, ordered, administered, delivered, and billed treatments as distinct
+  states;
+- every requested payer item with item type, code, label, quantity, unit,
+  requested amount, and currency;
+- hospital, department, facility level, city, province, jurisdiction, encounter
+  date, and service date; and
+- missing, conflicting, stale, or unverified facts.
+
+Location is resolved deterministically from the Clinical Event, provider
+organization, and facility records. DeepSeek must never infer the patient's or
+hospital's location from IP data or free text. The frozen snapshot, selection
+reasons, schema version, and checksum remain attached to every resulting
+artifact.
+
+### 6.2 Server-directed retrieval
+
+Before the model call, the server retrieves only applicable, admitted material:
+
+- facility or payer prices where the product is authorized to use them;
+- official regional fee schedules and service-code catalogs;
+- clinical guidelines and reasonable care pathways;
+- payer policy when a future production coverage contract permits it; and
+- comparable reviewed or synthetic cases, clearly distinguished from
+  authoritative references.
+
+Retrieval remains server-directed and authorization-scoped. DeepSeek may flag
+an unresolved question, but it cannot browse freely, choose arbitrary patient
+records, expand the case scope, or decide which confidential source becomes
+admitted evidence.
+
+### 6.3 Multiple pathways and requested-item comparison
+
+The engine must not imply that one treatment sequence is the uniquely correct
+answer. It generates, when supported by the facts, at least:
+
+- a typical or first-line pathway;
+- a reasonable alternative pathway; and
+- an escalated pathway for documented severity, failed first-line care, or
+  another explicit trigger.
+
+Predicted pathway items remain separate from doctor-requested items. Each
+requested item is mapped to zero, one, or multiple plausible pathways, with
+unmatched items retained for explanation rather than silently removed.
+
+### 6.4 Multidimensional item assessment
+
+Every requested item receives a non-empty assessment. The item profile contains
+independent 0-100 dimensions for:
+
+- `clinical_fit`: consistency with the event facts and plausible pathways;
+- `evidence_support`: strength and applicability of admitted evidence;
+- `timing_sequence`: appropriateness of timing and sequence;
+- `quantity_intensity`: support for quantity, frequency, duration, or
+  intensity;
+- `documentation_completeness`: whether the current record supports review;
+  and
+- `cost_alignment`: relationship to the best available location- and
+  facility-aware cost range.
+
+The system may also calculate a clearly explained aggregate **AI support
+score**, never an approval score or medical-necessity score. Default display
+bands are:
+
+- 80-100: strongly supported by the current information;
+- 60-79: plausible;
+- 40-59: materially uncertain or clarification recommended; and
+- 0-39: weakly supported by the current information and requires human review.
+
+No band automatically approves, denies, reduces, delays, or removes an item.
+Documentation completeness remains a separate dimension so missing records do
+not masquerade as evidence that the requested care is clinically inappropriate.
+
+### 6.5 Cost provenance and universal coverage
+
+Every billable requested item receives an estimated quantity range and cost
+range. The result records one visible provenance tier:
+
+1. authoritative facility or payer price;
+2. official regional reference;
+3. comparable regional or hospital reference;
+4. analogous item or pathway estimate; or
+5. DeepSeek-only exploratory estimate.
+
+Tier 5 exists so every case receives useful output even when governed price
+data is incomplete. It must use a visibly wide uncertainty range, state that it
+is based on general model knowledge rather than an admitted price source, and
+carry materially less or zero weight in `cost_alignment`. It never becomes an
+official price, negotiated rate, deterministic reference, reimbursement amount,
+or training label merely because it was displayed.
+
+### 6.6 Shared artifact and role-filtered views
+
+All three parties see the same artifact identity, snapshot version, requested
+item set, score dimensions, aggregate support score, estimated quantity and
+cost ranges, provenance tiers, uncertainty, and lifecycle state. Field-level
+authorization then produces different explanations:
+
+- patients see plain-language purpose, usefulness, ranges, uncertainty,
+  missing information, and human review status;
+- doctors see full pathway mappings, supporting and contradicting facts,
+  alternatives, missing documentation, provenance, and attributable
+  agree/disagree/exception actions; and
+- authorized payer reviewers see the itemized requested-versus-estimated
+  comparison, quantity and cost flags, provenance, clarification needs, and
+  separate human-resolution controls.
+
+Reviewer-private notes, confidential rates, unrelated history, hidden prompts,
+and raw reasoning are never promoted into the shared artifact.
+
+### 6.7 Item artifact
+
+Each requested-item assessment preserves:
+
+- requested label/code, quantity, amount, currency, and intended purpose;
+- mapped pathway IDs and the item's expected usefulness in each pathway;
+- all score dimensions, aggregate support score, score version, and concise
+  factor explanations;
+- estimated quantity and cost ranges, provenance tier, source IDs when
+  available, reference date, geography, facility level, and confidence;
+- supporting facts, contradicting facts, missing information, assumptions,
+  and reasonable alternatives;
+- deterministic validation results and model-disagreement state; and
+- patient, doctor, and payer explanation artifacts generated only from the
+  frozen shared facts.
+
 ## 7. Reference And Scenario Foundation
 
 The AI envelope cannot be trustworthy without an authoritative reference
@@ -388,8 +544,10 @@ provider-neutral candidate must conceptually contain:
 - limitations and unresolved conflicts; and
 - no final coverage, allowed, paid, or patient-responsibility decision.
 
-The model may omit an item or return `insufficient_information`. It may not
-fill a missing reference with general model memory.
+The model may not omit a requested item. When authoritative references are
+insufficient, it must still return an assessment, explicit missing information,
+and a tier-5 exploratory cost range. General model knowledge is never presented
+as an admitted reference and cannot satisfy deterministic reference validation.
 
 ## 9. Deterministic Authority And Validation
 
@@ -410,6 +568,13 @@ must verify:
 - missing information and conflicts are not silently erased;
 - the input checksum and release versions are retained; and
 - retries cannot overwrite an earlier immutable candidate or human decision.
+
+The server additionally validates score bounds, required factor explanations,
+coverage of every requested item, pathway/request separation, cost-provenance
+tier, and consistency between the aggregate support score and its versioned
+deterministic aggregation rule. DeepSeek may propose dimension scores and
+evidence mappings; the server owns normalization, aggregation, bands, arithmetic,
+and lifecycle state.
 
 The deterministic engine, not DeepSeek, calculates totals and comparisons. It
 owns duplicate, unusual quantity/duration, price-range, service-mix, missing
@@ -496,23 +661,41 @@ Show:
 
 ### 12.1 Expected-care candidate call
 
-Use one schema-constrained call after deterministic reference retrieval. The
-request contains only the allowed structured inputs and admitted reference
-facts. Apply explicit timeout, token, retry, and monetary budgets.
+Use DeepSeek's higher-capability configured model for pathway generation and
+item assessment after deterministic snapshot construction and retrieval. The
+request contains only allowed structured inputs and admitted reference facts,
+with a separate explicitly labeled general-knowledge boundary for tier-5
+exploratory estimates. Apply explicit timeout, token, retry, and monetary
+budgets.
 
 A retry is allowed only for transport failure or narrowly defined malformed
 structured output. A retry does not broaden evidence, change purpose, or
 create an unbounded repair loop.
 
-### 12.2 Explanation call
+### 12.2 Bounded critic and reconciliation
+
+After schema validation, one independent critic call may inspect the frozen
+snapshot and proposed structured artifact for omitted requested items,
+contradictions, unsupported claims, implausible quantity/cost ranges, and score
+inconsistency. The server deterministically reconciles the primary and critic
+outputs and stores a visible agreement, partial-disagreement, or
+material-disagreement indicator. The critic cannot approve its own output,
+change source admission, or trigger an open-ended debate loop.
+
+### 12.3 Explanation call
 
 An optional later call may generate role-specific language only after the
 candidate, arithmetic, comparison, and access-filtered fact object pass
 validation. It is a different purpose, schema, prompt, and kill switch.
 
-### 12.3 Calls that are prohibited
+Role explanations use a lower-latency configured DeepSeek model and receive
+only the frozen, validated, role-filtered facts. They cannot recalculate scores,
+costs, quantities, or pathway membership.
 
-- unconditional multiple-model loops;
+### 12.4 Calls that are prohibited
+
+- unconditional or unbounded multiple-model loops beyond the single governed
+  critic pass;
 - asking the same model to declare its unsupported output correct;
 - arbitrary tool use or public-web browsing;
 - model-selected patient-record retrieval;
@@ -527,10 +710,12 @@ unavailable.
 
 Required outcomes include:
 
-- missing admitted references: no estimate; identify the missing reference
-  boundary and allow ordinary clinical documentation;
-- insufficient structured input: request the specific missing field or proceed
-  without AI;
+- missing admitted price references: return a visibly labeled tier-5
+  exploratory range with wide uncertainty, identify the missing reference
+  boundary, and preserve ordinary clinical documentation;
+- insufficient structured input: assess every requested item from what is
+  known, explicitly list the missing fields, lower the relevant confidence or
+  documentation dimension, and request clarification without inventing facts;
 - provider timeout/quota/outage: preserve `pending_cost`, manual entry, and
   human workflows;
 - malformed or unsupported model output: reject it and show fixed status copy;
@@ -723,6 +908,23 @@ pending releases remain kill-switched.
   and
 - the controlled-staging package remains synthetic-only and default-off.
 
+### Future specialized cost model transition
+
+The persisted artifact and three-role API remain provider-neutral. DeepSeek is
+the current inference provider, not the domain contract. The platform captures
+the frozen snapshot, requested items, immutable AI artifact, clinician
+response, human payer action, and permitted later outcomes as separately
+provenanced evaluation assets. DeepSeek output is never treated as ground truth
+without independent human or outcome review.
+
+A purpose-built cost model must first run in shadow mode against frozen cases,
+produce the same structured contract, pass deterministic validators and
+purpose-specific release gates, and demonstrate acceptable subgroup,
+jurisdiction, calibration, stability, cost, and latency performance. Promotion,
+rollback, and kill-switch state are independent of DeepSeek. Replacing the
+model must not rewrite historical artifacts, score definitions, authorization,
+or the patient/doctor/payer presentation contract.
+
 ## 17. Definition Of Done
 
 The platform-wide AI foundation is ready for controlled synthetic stakeholder
@@ -731,7 +933,8 @@ use only when:
 - each AI purpose has its own contract, model configuration, validation,
   telemetry, kill switch, evaluation, and fallback;
 - the patient chatbot retains its independent safety and retrieval gates;
-- an expected-care candidate cites only admitted effective references;
+- an expected-care candidate cites only admitted effective references, while
+  any uncited tier-5 model-only range is visibly separated as exploratory;
 - deterministic validation rejects every unsupported code and amount;
 - all money reconciles using integer minor units;
 - baseline display and deterministic comparison do not require clinician
@@ -798,3 +1001,48 @@ purpose readiness/release version, imaging capability category, worker state,
 and channel readiness. Provider prompts/responses, clinical content, imaging
 content, identities, message bodies, device endpoints, receipts, credentials,
 and tokens are excluded.
+
+## 21. Clinical Event Intelligence local-synthetic activation
+
+On 2026-08-02 the three independent Clinical Event Intelligence purposes were
+activated for `controlled_synthetic_staging` through immutable, checksum-bound
+v5 releases. Primary and critic use `deepseek-v4-pro`; role explanation uses
+`deepseek-v4-flash`. Runtime access still requires the purpose enable flag, a
+clear kill switch, an exact active release pointer, matching source/evaluation
+checksums, transmission eligibility, and an effective synthetic-only scope.
+The verified v5-to-v4 rollback and v5 restoration are append-only events; no
+release was edited in place. Exact identities and evidence are recorded in the
+dated CEI implementation record and activation result JSON.
+
+This activation authorizes only wholly synthetic local development. It does not
+authorize real-patient transmission, live payer use, clinical reliance, public
+production, or any legal, privacy, security, regulatory, or commercial claim.
+
+## 22. Clinical workflow integrity boundary (2026-08-02)
+
+`clinical_services` and `consultation_requests` hold clinical truth. A unique
+`care_cost_items` companion holds financial truth for each billable source;
+appointments, notes, messages, uploads, reports, diagnoses, and recovery text
+are never priced. Imaging uploads reference an imaging service as evidence.
+Payer request lines copy an immutable submission snapshot and do not dereference
+mutable source values for historical readback.
+
+Prescription and recovery-plan aggregates use database-backed actor-scoped
+idempotency keys and version/supersession lineage. Finalized prescriptions and
+published recovery plans reject mutation. Recovery task completions are
+separate append-oriented patient progress records. The Flutter client stages
+draft medication lines and calendar phases locally, but only FastAPI performs
+authorization, validation, atomic persistence, pricing synchronization, audit,
+and provider calls.
+
+The client exposes two consultation contexts. The Consultation section remains
+an asynchronous specialist-referral request surface. Ordinary treating-doctor
+consultations, encounter updates, and diagnoses are appended and read back
+under the selected Clinical Event. Only the ordinary consultation may resolve a
+billable consultation service/cost companion; updates and diagnoses remain
+unpriced clinical content.
+
+Patient chat routing is: deterministic safety and authorization, approved
+retrieval, independently governed patient-chat release, then structured fixed
+fallback on provider/release failure. `general_model_knowledge` is visibly
+distinct from retrieved evidence and cannot claim record access or citations.

@@ -1,0 +1,43 @@
+{
+  "suite_id": "clinical-event-intelligence.synthetic-stage.v1",
+  "data_class": "wholly_synthetic",
+  "mode": "live",
+  "generated_at": "2026-08-01T15:03:49.167963+00:00",
+  "no_database_writes": true,
+  "no_release_activation": true,
+  "raw_provider_content_in_sanitized_result": false,
+  "results": [
+    {
+      "case_id": "consultation_tier5_exploratory",
+      "passed": false,
+      "failure_reasons": [
+        "tier5_uncertainty_not_wide"
+      ],
+      "snapshot_checksum_sha256": "6a80fe3764311fa4508c47d1cd158d41e9a9f601dfb692b55aedcca5251603b0",
+      "retrieval_manifest_checksum_sha256": "a3d045beedcce72bcd469c2b042082cc0434bf1ca6f91bbb5b83ce51f4d41db8",
+      "requested_line_count": 1,
+      "reconciliation_state": "unavailable",
+      "explanation": {
+        "attempted": false,
+        "reason": "purpose_specific_adapter_unavailable"
+      },
+      "provider_usage": [
+        {
+          "purpose": "primary",
+          "provider": "deepseek",
+          "model": "deepseek-v4-pro",
+          "input_tokens": 3060,
+          "output_tokens": 1350,
+          "cost_microunits": 2506,
+          "output_checksum_sha256": "f276c748981e624fd94dfe9ca6f375e504cf0f82485c5759d9ab1c17aba7591b"
+        }
+      ],
+      "adversarial": []
+    }
+  ],
+  "summary": {
+    "passed": 0,
+    "total": 1
+  },
+  "passed": false
+}

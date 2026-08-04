@@ -3682,4 +3682,265 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get openAccountForRequests =>
       'Open Account to submit or track support, feedback, and deletion-review requests.';
+
+  @override
+  String get ceiTitle => 'Clinical Event intelligence';
+
+  @override
+  String get ceiPatientTitle => 'Your care and cost intelligence';
+
+  @override
+  String get ceiDoctorTitle => 'Clinical Event intelligence review';
+
+  @override
+  String get ceiPayerTitle => 'Authorized request intelligence';
+
+  @override
+  String get ceiLoading => 'Loading frozen Clinical Event intelligence';
+
+  @override
+  String get ceiUnavailableTitle => 'Intelligence is unavailable';
+
+  @override
+  String get ceiUnavailableBody =>
+      'The request remains usable for ordinary clinical documentation, pending-cost work, clarification, and human review.';
+
+  @override
+  String get ceiEmptyTitle => 'No validated intelligence artifact yet';
+
+  @override
+  String get ceiEmptyPatientBody =>
+      'Your request and care records remain available while the responsible care team reviews the next step.';
+
+  @override
+  String get ceiEmptyDoctorBody =>
+      'Generate a bounded artifact when the governed release is available. Clinical and pending-cost work does not need to wait.';
+
+  @override
+  String get ceiEmptyPayerBody =>
+      'Continue human review or request clarification. No AI artifact is required for a permitted decision.';
+
+  @override
+  String get ceiRefresh => 'Refresh';
+
+  @override
+  String get ceiGenerate => 'Generate intelligence';
+
+  @override
+  String get ceiGenerating => 'Generating intelligence';
+
+  @override
+  String get ceiArtifact => 'Immutable artifact';
+
+  @override
+  String get ceiSnapshot => 'Frozen snapshot';
+
+  @override
+  String get ceiHumanReview => 'Human review';
+
+  @override
+  String get ceiLocation => 'Deterministic location';
+
+  @override
+  String get ceiLocationSource =>
+      'From Clinical Event, provider organization, and facility records—not IP or model inference.';
+
+  @override
+  String get ceiHumanOnlyNotice =>
+      'AI support scores inform people only. They never approve, deny, reduce, delay, remove, or prescribe care.';
+
+  @override
+  String get ceiRequestedItems => 'Requested billable items';
+
+  @override
+  String get ceiRequestedItemsDescription =>
+      'Every requested line appears exactly once and stays separate from predicted pathway items.';
+
+  @override
+  String get ceiRequested => 'Requested';
+
+  @override
+  String get ceiEstimated => 'Estimated range';
+
+  @override
+  String get ceiUsefulness => 'Usefulness';
+
+  @override
+  String get ceiConfidence => 'Confidence';
+
+  @override
+  String get ceiAiSupportScore => 'AI support score';
+
+  @override
+  String get ceiScoreVersion => 'Aggregation rule';
+
+  @override
+  String get ceiClinicalFit => 'Clinical fit';
+
+  @override
+  String get ceiEvidenceSupport => 'Evidence support';
+
+  @override
+  String get ceiTimingSequence => 'Timing / sequence';
+
+  @override
+  String get ceiQuantityIntensity => 'Quantity / intensity';
+
+  @override
+  String get ceiDocumentationCompleteness => 'Documentation completeness';
+
+  @override
+  String get ceiCostAlignment => 'Cost alignment';
+
+  @override
+  String get ceiTier => 'Provenance tier';
+
+  @override
+  String get ceiTier5Title => 'Model-only exploratory estimate';
+
+  @override
+  String get ceiTier5Body =>
+      'No admitted price reference was available. This range is intentionally wide, cannot become authoritative pricing, and receives reduced or zero cost-alignment weight.';
+
+  @override
+  String get ceiSources => 'Admitted sources';
+
+  @override
+  String get ceiNoAdmittedPriceSource => 'No admitted price source';
+
+  @override
+  String get ceiSupportingFacts => 'Supporting facts';
+
+  @override
+  String get ceiContradictingFacts => 'Contradicting facts';
+
+  @override
+  String get ceiMissingInformation => 'Missing information';
+
+  @override
+  String get ceiAlternatives => 'Alternatives';
+
+  @override
+  String get ceiPredictedPathways => 'Plausible predicted pathways';
+
+  @override
+  String get ceiPredictedBoundary =>
+      'Predicted pathway items are not doctor-requested items and do not change the request.';
+
+  @override
+  String get ceiTypicalPathway => 'Typical / first-line';
+
+  @override
+  String get ceiAlternativePathway => 'Reasonable alternative';
+
+  @override
+  String get ceiEscalatedPathway => 'Escalated';
+
+  @override
+  String get ceiMissingDocumentation => 'Missing-documentation assistant';
+
+  @override
+  String get ceiMissingDocumentationEmpty =>
+      'No missing documentation was identified in this frozen artifact.';
+
+  @override
+  String get ceiCounterfactuals => 'Counterfactual comparisons';
+
+  @override
+  String get ceiCounterfactualBoundary =>
+      'Plausible alternatives support discussion; they do not replace the doctor-requested items.';
+
+  @override
+  String get ceiCritic => 'Primary and critic';
+
+  @override
+  String get ceiAgreement => 'Agreement';
+
+  @override
+  String get ceiPartialDisagreement => 'Partial disagreement';
+
+  @override
+  String get ceiMaterialDisagreement => 'Material disagreement';
+
+  @override
+  String get ceiCriticUnavailable => 'Critic unavailable';
+
+  @override
+  String get ceiCriticUnavailableBody =>
+      'The validated primary artifact remains visible; no agreement is implied.';
+
+  @override
+  String get ceiLineage => 'Immutable outcome lineage';
+
+  @override
+  String get ceiFallbackTitle => 'Structured fallback is active';
+
+  @override
+  String get ceiFallbackBody =>
+      'Validated structured facts remain visible without generated role-specific prose.';
+
+  @override
+  String get ceiProviderUnavailableTitle => 'AI provider unavailable';
+
+  @override
+  String get ceiProviderUnavailableBody =>
+      'This frozen artifact remains usable. Clinical documentation, pending-cost, clarification, and human-review workflows continue.';
+
+  @override
+  String get ceiAcknowledge => 'Acknowledge';
+
+  @override
+  String get ceiConcur => 'Concur';
+
+  @override
+  String get ceiDisagree => 'Disagree';
+
+  @override
+  String get ceiException => 'Record exception';
+
+  @override
+  String get ceiResponseRecorded =>
+      'Clinician response appended. The artifact was not changed.';
+
+  @override
+  String get ceiResponseFailed =>
+      'The response could not be appended. Manual clinical documentation remains available.';
+
+  @override
+  String get ceiRationale => 'Attributable rationale';
+
+  @override
+  String get ceiCancel => 'Cancel';
+
+  @override
+  String get ceiAppendResponse => 'Append response';
+
+  @override
+  String get ceiValidated => 'Validated';
+
+  @override
+  String get ceiValidatedWithUncertainty => 'Validated with uncertainty';
+
+  @override
+  String get ceiValidatedWithResults => 'Validated with recorded checks';
+
+  @override
+  String get ceiAwaitingHumanReview => 'Awaiting human review';
+
+  @override
+  String get ceiHumanReviewRequired => 'Human review required';
+
+  @override
+  String get ceiStronglySupported =>
+      'Strongly supported by current information';
+
+  @override
+  String get ceiPlausible => 'Plausible';
+
+  @override
+  String get ceiMateriallyUncertain =>
+      'Materially uncertain; clarification recommended';
+
+  @override
+  String get ceiWeaklySupported => 'Weakly supported; human review required';
 }

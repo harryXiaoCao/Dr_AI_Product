@@ -1,7 +1,7 @@
 # Dr. AI v1.0 Database ERD
 
 Status: implemented-schema map through Phase 6 plus planned production-ready care-and-cost target
-Last updated: 2026-07-30
+Last updated: 2026-08-01
 Implemented source: `services/api/app/models.py` and current Alembic migrations
 Planned source: `Dr_AI_Product_Requirements_Document_v1.0.md` and
 `docs/Dr_AI_v1.0_Implementation_Plan.md`
@@ -1456,6 +1456,44 @@ erDiagram
 - `review_state_transitions` provide immutable workflow history. Audit events
   still record the associated sensitive access/action metadata.
 
+### Implemented Clinical Event Intelligence Persistence
+
+Migration `20260801_0055` and the SQLAlchemy models implement the following
+append-only or immutable entities. Database triggers protect immutable rows,
+closed-run child insertion, exact provider-unavailable line coverage,
+same-run retrieval lineage, facility scope, and tier-5 invariants.
+
+| Entity | Implemented semantics |
+|---|---|
+| `clinical_event_intelligence_snapshots` | One frozen, versioned, checksum-bound event input with server-selected used/not-used/missing/conflicting facts, requested-line set, deterministic location/facility source, and authorization scope. It references records by governed identifiers rather than duplicating unrestricted patient history. |
+| `clinical_event_intelligence_runs` | Idempotent, request-serialized execution header binding purpose/model/prompt/schema/validator/score versions, exact checksums, lifecycle, budgets, and predecessor lineage. |
+| `clinical_event_intelligence_retrieval_sources` | Server-admitted, authorization-scoped source lineage with release/effective-date and checksum binding; the provider cannot choose arbitrary records. |
+| `clinical_event_intelligence_pathways` / `clinical_event_intelligence_pathway_items` | Ordered typical/first-line, reasonable-alternative, or escalated hypotheses and predicted items, kept distinct from requested and delivered items. |
+| `clinical_event_intelligence_provider_attempts` | Content-free primary, critic, and explanation attempt diagnostics with provider-reported token usage, configured-price cost, latency, checksums, and failure code; raw output and chain-of-thought are excluded. |
+| `clinical_event_intelligence_item_assessments` | Exactly one row per immutable payer-request line and artifact, containing all six scores, versioned aggregate, facts, alternatives, quantity/cost ranges, source lineage, validation, and provenance tier. |
+| `clinical_event_intelligence_artifacts` | Provider-neutral immutable shared artifact with snapshot, requested-set, output, configuration, and reconciliation checksums plus lifecycle and disagreement state. |
+| `clinical_event_intelligence_explanations` | Immutable patient, doctor, or payer rendering bound to the same artifact and role-filtered fact-object checksum; deterministic fallback does not require an active model release. |
+| `clinical_event_intelligence_lineage_events` | Append-only clinician response, human payer action, and permitted later-outcome references. Every row marks AI output as not ground truth. |
+
+Cardinality and integrity rules:
+
+- one snapshot may produce multiple predecessor-linked artifact versions, but
+  each artifact binds exactly one snapshot and exact requested-line checksum;
+- every requested line in the snapshot has exactly one assessment in a
+  complete artifact, and no unrelated line may appear;
+- an assessment may map to multiple pathway hypotheses through an explicit
+  join table; pathway items never overwrite requested, delivered, or claim
+  lines;
+- each assessment has exactly one complete score-dimension set under one score
+  contract and at least one cost estimate, using tier 5 when no higher tier is
+  available;
+- patient, doctor, and payer explanation rows share the artifact ID and cannot
+  duplicate or mutate its protected numerical facts; and
+- future specialized-model training views include only permitted reviewed
+  snapshots, artifacts, human responses, and outcome labels. They exclude
+  reviewer-private fields and preserve the distinction between model output
+  and human-reviewed truth.
+
 ## Entity Groups
 
 ### Identity And Access
@@ -1805,3 +1843,42 @@ dump afterward so the append-only staging evidence was recovered at schema
 - `synthetic_identifier` is currently the patient-share code. Product copy may
   call it a patient code, but the database column remains named for historical
   compatibility.
+
+## 2026-08-02 CEI governed-persistence status
+
+The active local-synthetic CEI v5 releases use the shared immutable
+`governed_care_releases` records and one exact active pointer per purpose and
+scope. Installation is content-idempotent; activation, supersession,
+kill-switch, and rollback evidence is append-only and content-bound; advisory
+locks serialize competing operations. Clinical Event snapshots, runs,
+retrieval sources, pathways, line assessments, provider attempts, artifacts,
+role explanations, and lineage remain immutable after closure. The verified
+rollback target is the exact v4 predecessor for each purpose.
+
+## 2026-08-02 clinical workflow integrity entities
+
+```text
+clinical_event 1--* clinical_service 1--0..1 care_cost_item
+clinical_event 1--* consultation_request 1--1 clinical_service
+clinical_event 1--* visit_history
+clinical_event 1--* diagnosis
+clinical_event 1--* prescription 1--* prescription_medication
+prescription 0..1--* prescription (supersedes/version lineage)
+clinical_event 1--* recovery_plan 1--* recovery_phase 1--* recovery_task
+recovery_plan 0..1--* recovery_plan (supersedes/version lineage)
+recovery_task 1--* recovery_task_completion
+care_cost_item 1--* payer_request_line_snapshot
+```
+
+Source uniqueness constraints allow at most one active financial companion for
+each medication, consultation-linked service, or other clinical service.
+Actor/idempotency uniqueness protects consultation, service, prescription, and
+recovery-plan creates. Positive quantity/version and phase order/date checks
+are enforced in PostgreSQL. Financial snapshots remain immutable after payer
+submission; progress completions do not update phase/task authoring fields.
+
+`consultation_type = specialist_referral` identifies the request-only
+Consultation-section workflow. Other consultation types represent ordinary
+treating-doctor records displayed under a Clinical Event. Visit-history updates
+and diagnoses also append to that event, but never receive a financial
+companion.

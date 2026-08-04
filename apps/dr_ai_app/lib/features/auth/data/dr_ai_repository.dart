@@ -6,6 +6,7 @@ import 'package:dr_ai_app/core/api/api_error.dart';
 import 'package:dr_ai_app/features/account/domain/support_request_data.dart';
 import 'package:dr_ai_app/features/auth/domain/auth_models.dart';
 import 'package:dr_ai_app/features/care_cost/domain/care_cost_data.dart';
+import 'package:dr_ai_app/features/clinical_event_intelligence/domain/clinical_event_intelligence_data.dart';
 import 'package:dr_ai_app/features/dashboard/domain/dashboard_data.dart';
 import 'package:dr_ai_app/features/doctor/domain/doctor_profile.dart';
 import 'package:dr_ai_app/features/doctor/domain/medical_resource_fixture.dart';
@@ -207,6 +208,7 @@ abstract interface class DrAiRepository {
     required String dosage,
     required String schedule,
     required String notes,
+    List<PrescriptionMedicationDraft>? lines,
   });
   Future<MedicationReminderItem> saveMedicationReminder({
     required String patientId,
@@ -286,6 +288,7 @@ abstract interface class DrAiRepository {
     required String title,
     required String instructions,
     required List<RecoveryTaskInput> tasks,
+    required List<RecoveryPhaseInput> phases,
   });
   Future<RecoveryPlanData> updateRecoveryPlan({
     required String patientId,
@@ -294,6 +297,7 @@ abstract interface class DrAiRepository {
     required String title,
     required String instructions,
     required List<RecoveryTaskInput> tasks,
+    required List<RecoveryPhaseInput> phases,
   });
   Future<RecoveryPlanData> activateRecoveryPlan({
     required String patientId,
@@ -341,6 +345,38 @@ abstract interface class DrAiRepository {
     required String questionSummary,
     required String priority,
     ClinicalFinancialDraft? financial,
+  });
+  Future<ConsultationRequestItem> createClinicalEventConsultation({
+    required String patientId,
+    required String clinicalEventId,
+    required String specialty,
+    required String consultationType,
+    required String status,
+    required String clinicianProvider,
+    required String serviceDate,
+    required String reasonIndication,
+    required String outcomeSummary,
+    required String followUpRequirement,
+    required int quantity,
+    required String idempotencyKey,
+    ClinicalFinancialDraft? financial,
+  });
+  Future<VisitHistoryItem> createVisitHistory({
+    required String patientId,
+    required String clinicalEventId,
+    required String visitType,
+    required String title,
+    required String summary,
+    required DateTime occurredAt,
+    required String clinicianLabel,
+  });
+  Future<DiagnosisItem> createDiagnosis({
+    required String patientId,
+    required String clinicalEventId,
+    required String label,
+    required String status,
+    required String diagnosedOn,
+    required String notes,
   });
   Future<CareCostItemData> updateConsultationFinancial({
     required String patientId,
@@ -470,6 +506,22 @@ abstract interface class DrAiRepository {
   Future<ExpectedCareExplanationData> loadPayerExpectedCareExplanation({
     required String requestId,
     required String comparisonId,
+  });
+  Future<ClinicalEventIntelligenceData?> loadClinicalEventIntelligence({
+    required AppRole role,
+    required String requestId,
+    required String locale,
+  });
+  Future<ClinicalEventIntelligenceData> generateClinicalEventIntelligence({
+    required String requestId,
+    required String idempotencyKey,
+  });
+  Future<IntelligenceResponseResultData> appendIntelligenceClinicianResponse({
+    required String requestId,
+    required String artifactId,
+    required String action,
+    required String idempotencyKey,
+    String? rationale,
   });
 }
 
@@ -1376,19 +1428,24 @@ class DioDrAiRepository implements DrAiRepository {
     required String dosage,
     required String schedule,
     required String notes,
+    List<PrescriptionMedicationDraft>? lines,
   }) async {
     final data = <String, dynamic>{
-      'status': 'issued',
+      'status': 'finalized',
+      'idempotency_key':
+          'rx-$patientId-${DateTime.now().microsecondsSinceEpoch}',
       'issued_at': DateTime.now().toUtc().toIso8601String(),
       'notes': notes,
-      'medications': <Map<String, dynamic>>[
-        <String, dynamic>{
-          'medication_id': medicationId,
-          'name': name,
-          'dosage': dosage,
-          'schedule': schedule,
-        },
-      ],
+      'medications':
+          lines?.map((line) => line.toJson()).toList() ??
+          <Map<String, dynamic>>[
+            <String, dynamic>{
+              'medication_id': medicationId,
+              'name': name,
+              'dosage': dosage,
+              'schedule': schedule,
+            },
+          ],
     };
     if (clinicalEventId != null) {
       data['clinical_event_id'] = clinicalEventId;
@@ -1505,6 +1562,18 @@ class DioDrAiRepository implements DrAiRepository {
       'service_subtype': serviceSubtype,
       'body_region': bodyRegion,
       'status': status,
+      'service_date': (performedAt ?? scheduledAt ?? DateTime.now())
+          .toIso8601String()
+          .substring(0, 10),
+      'quantity': 1,
+      'unit': 'service',
+      'documentation_state': performedAt == null ? 'pending' : 'available',
+      'provenance': const <String, dynamic>{
+        'entry_surface': 'doctor_patient_management',
+      },
+      if (serviceId == null)
+        'idempotency_key':
+            'service-$clinicalEventId-${DateTime.now().microsecondsSinceEpoch}',
       if (serviceId == null)
         'ordered_at': DateTime.now().toUtc().toIso8601String(),
       if (scheduledAt != null)
@@ -1640,6 +1709,7 @@ class DioDrAiRepository implements DrAiRepository {
     required String title,
     required String instructions,
     required List<RecoveryTaskInput> tasks,
+    required List<RecoveryPhaseInput> phases,
   }) async {
     final response = await _authorizedPost(
       '/api/v1/patients/$patientId/recovery-plans',
@@ -1648,6 +1718,7 @@ class DioDrAiRepository implements DrAiRepository {
         title: title,
         instructions: instructions,
         tasks: tasks,
+        phases: phases,
       ),
     );
     return RecoveryPlanData.fromJson(response);
@@ -1661,6 +1732,7 @@ class DioDrAiRepository implements DrAiRepository {
     required String title,
     required String instructions,
     required List<RecoveryTaskInput> tasks,
+    required List<RecoveryPhaseInput> phases,
   }) async {
     final response = await _authorizedPut(
       '/api/v1/patients/$patientId/recovery-plans/$planId',
@@ -1669,6 +1741,7 @@ class DioDrAiRepository implements DrAiRepository {
         title: title,
         instructions: instructions,
         tasks: tasks,
+        phases: phases,
       ),
     );
     return RecoveryPlanData.fromJson(response);
@@ -1855,6 +1928,16 @@ class DioDrAiRepository implements DrAiRepository {
       'specialty': specialty,
       'question_summary': questionSummary,
       'priority': priority,
+      'consultation_type': 'specialist_referral',
+      'status': 'requested',
+      'clinician_provider': specialty,
+      'service_date': DateTime.now().toIso8601String().substring(0, 10),
+      'reason_indication': questionSummary,
+      'outcome_summary': const <String, dynamic>{},
+      'follow_up_requirement': 'Await specialist response',
+      'quantity': 1,
+      'idempotency_key':
+          'consultation-${clinicalEventId ?? patientId}-${questionSummary.hashCode.abs()}',
     };
     if (clinicalEventId != null) {
       data['clinical_event_id'] = clinicalEventId;
@@ -1864,6 +1947,91 @@ class DioDrAiRepository implements DrAiRepository {
     }
     final response = await _authorizedPost('/api/v1/consultations', data: data);
     return ConsultationRequestItem.fromJson(response);
+  }
+
+  @override
+  Future<ConsultationRequestItem> createClinicalEventConsultation({
+    required String patientId,
+    required String clinicalEventId,
+    required String specialty,
+    required String consultationType,
+    required String status,
+    required String clinicianProvider,
+    required String serviceDate,
+    required String reasonIndication,
+    required String outcomeSummary,
+    required String followUpRequirement,
+    required int quantity,
+    required String idempotencyKey,
+    ClinicalFinancialDraft? financial,
+  }) async {
+    final response = await _authorizedPost(
+      '/api/v1/consultations',
+      data: <String, dynamic>{
+        'patient_id': patientId,
+        'clinical_event_id': clinicalEventId,
+        'specialty': specialty,
+        'question_summary': reasonIndication,
+        'priority': 'routine',
+        'consultation_type': consultationType,
+        'status': status,
+        'clinician_provider': clinicianProvider,
+        'service_date': serviceDate,
+        'reason_indication': reasonIndication,
+        'outcome_summary': <String, dynamic>{'summary': outcomeSummary},
+        'follow_up_requirement': followUpRequirement,
+        'quantity': quantity,
+        'idempotency_key': idempotencyKey,
+        if (financial != null) 'financial': financial.toJson(),
+      },
+    );
+    return ConsultationRequestItem.fromJson(response);
+  }
+
+  @override
+  Future<VisitHistoryItem> createVisitHistory({
+    required String patientId,
+    required String clinicalEventId,
+    required String visitType,
+    required String title,
+    required String summary,
+    required DateTime occurredAt,
+    required String clinicianLabel,
+  }) async {
+    final response = await _authorizedPost(
+      '/api/v1/patients/$patientId/visit-history',
+      data: <String, dynamic>{
+        'clinical_event_id': clinicalEventId,
+        'visit_type': visitType,
+        'title': title,
+        'summary': summary,
+        'occurred_at': occurredAt.toUtc().toIso8601String(),
+        'clinician_label': clinicianLabel,
+      },
+    );
+    return VisitHistoryItem.fromJson(response);
+  }
+
+  @override
+  Future<DiagnosisItem> createDiagnosis({
+    required String patientId,
+    required String clinicalEventId,
+    required String label,
+    required String status,
+    required String diagnosedOn,
+    required String notes,
+  }) async {
+    final response = await _authorizedPost(
+      '/api/v1/patients/$patientId/diagnoses',
+      data: <String, dynamic>{
+        'clinical_event_id': clinicalEventId,
+        'label': label,
+        'status': status,
+        if (diagnosedOn.isNotEmpty) 'diagnosed_on': diagnosedOn,
+        if (notes.isNotEmpty) 'notes': notes,
+      },
+    );
+    return DiagnosisItem.fromJson(response);
   }
 
   @override
@@ -2316,16 +2484,99 @@ class DioDrAiRepository implements DrAiRepository {
     );
   }
 
+  @override
+  Future<ClinicalEventIntelligenceData?> loadClinicalEventIntelligence({
+    required AppRole role,
+    required String requestId,
+    required String locale,
+  }) async {
+    final path = switch (role) {
+      AppRole.doctor => '/api/v1/doctor/payer-requests/$requestId/intelligence',
+      AppRole.patient =>
+        '/api/v1/patient/payer-requests/$requestId/intelligence',
+      AppRole.payer => '/api/v1/payer/requests/$requestId/intelligence',
+      AppRole.unsupported => throw ArgumentError.value(role, 'role'),
+    };
+    final response = await _authorizedGet(
+      path,
+      queryParameters: <String, dynamic>{'locale': locale},
+    );
+    final artifact = response['artifact'];
+    if (artifact == null && response['artifact_id'] == null) return null;
+    return ClinicalEventIntelligenceData.fromJson(
+      Map<String, dynamic>.from(artifact is Map ? artifact : response),
+    );
+  }
+
+  @override
+  Future<ClinicalEventIntelligenceData> generateClinicalEventIntelligence({
+    required String requestId,
+    required String idempotencyKey,
+  }) async {
+    final response = await _authorizedPost(
+      '/api/v1/doctor/payer-requests/$requestId/intelligence',
+      data: const <String, dynamic>{},
+      additionalHeaders: <String, String>{'Idempotency-Key': idempotencyKey},
+    );
+    final artifact = response['artifact'];
+    return ClinicalEventIntelligenceData.fromJson(
+      Map<String, dynamic>.from(artifact is Map ? artifact : response),
+    );
+  }
+
+  @override
+  Future<IntelligenceResponseResultData> appendIntelligenceClinicianResponse({
+    required String requestId,
+    required String artifactId,
+    required String action,
+    required String idempotencyKey,
+    String? rationale,
+  }) async {
+    return IntelligenceResponseResultData.fromJson(
+      await _authorizedPost(
+        '/api/v1/doctor/payer-requests/$requestId/intelligence/'
+        '$artifactId/responses',
+        data: <String, dynamic>{
+          'action': action,
+          if (rationale != null && rationale.trim().isNotEmpty)
+            'rationale': rationale.trim(),
+        },
+        additionalHeaders: <String, String>{'Idempotency-Key': idempotencyKey},
+      ),
+    );
+  }
+
   Map<String, dynamic> _recoveryPlanPayload({
     required String? clinicalEventId,
     required String title,
     required String instructions,
     required List<RecoveryTaskInput> tasks,
+    required List<RecoveryPhaseInput> phases,
   }) {
     final data = <String, dynamic>{
       'title': title,
+      'indication': instructions,
+      'start_date': DateTime.now().toIso8601String().substring(0, 10),
       'instructions': instructions,
-      'tasks': tasks.map((task) => task.toJson()).toList(),
+      'idempotency_key':
+          'recovery-${clinicalEventId ?? 'none'}-${title.hashCode.abs()}',
+      'phases': phases.isNotEmpty
+          ? phases.map((phase) => phase.toJson()).toList()
+          : <Map<String, dynamic>>[
+              <String, dynamic>{
+                'name': title,
+                'start_date': DateTime.now().toIso8601String().substring(0, 10),
+                'goals': instructions,
+                'instructions': instructions,
+                'precautions': '',
+                'progression_criteria':
+                    'Clinician review confirms progression.',
+                'hold_escalation_criteria':
+                    'Pause and contact the care team for worsening symptoms.',
+                'review_checkpoint': 'Review at the end of this phase.',
+                'tasks': tasks.map((task) => task.toJson()).toList(),
+              },
+            ],
     };
     if (clinicalEventId != null) {
       data['clinical_event_id'] = clinicalEventId;

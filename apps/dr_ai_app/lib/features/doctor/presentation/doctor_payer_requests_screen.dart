@@ -403,7 +403,7 @@ class _WorkspaceHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: DrAiColors.white,
+      color: DrAiColors.sectionHeader,
       padding: const EdgeInsets.fromLTRB(
         DrAiSpacing.md,
         DrAiSpacing.md,
@@ -426,7 +426,7 @@ class _WorkspaceHeader extends StatelessWidget {
                           _copy(context, 'Payment Requests', '支付申请'),
                           style: Theme.of(context).textTheme.headlineMedium
                               ?.copyWith(
-                                color: DrAiColors.brandDark,
+                                color: DrAiColors.white,
                                 fontWeight: FontWeight.w900,
                               ),
                         ),
@@ -436,9 +436,7 @@ class _WorkspaceHeader extends StatelessWidget {
                             'Prepare an itemized request and track its human-review status.',
                             '准备明细申请，并跟踪人工审核状态。',
                           ),
-                          style: const TextStyle(
-                            color: DrAiColors.inkSecondary,
-                          ),
+                          style: const TextStyle(color: DrAiColors.white),
                         ),
                       ],
                     ),
@@ -446,12 +444,28 @@ class _WorkspaceHeader extends StatelessWidget {
                   IconButton(
                     tooltip: _copy(context, 'Refresh workspace', '刷新工作台'),
                     onPressed: onRefresh,
+                    color: DrAiColors.white,
                     icon: const Icon(Icons.refresh),
                   ),
                 ],
               ),
               const SizedBox(height: DrAiSpacing.sm),
               SegmentedButton<_WorkspaceView>(
+                style: ButtonStyle(
+                  foregroundColor: WidgetStateProperty.resolveWith(
+                    (states) => states.contains(WidgetState.selected)
+                        ? DrAiColors.sectionHeader
+                        : DrAiColors.white,
+                  ),
+                  backgroundColor: WidgetStateProperty.resolveWith(
+                    (states) => states.contains(WidgetState.selected)
+                        ? DrAiColors.patientAccent
+                        : Colors.transparent,
+                  ),
+                  side: const WidgetStatePropertyAll(
+                    BorderSide(color: DrAiColors.white),
+                  ),
+                ),
                 segments: <ButtonSegment<_WorkspaceView>>[
                   ButtonSegment<_WorkspaceView>(
                     value: _WorkspaceView.create,
@@ -1159,7 +1173,11 @@ class _SelectableCareItem extends StatelessWidget {
                 '${_copy(context, 'Patient', '个人承担')} ${_money(item.currency, item.patientResponsibilityMinor)}',
               ),
               Text(
-                _copy(context, 'AI: Not evaluated', 'AI：尚未评估'),
+                _copy(
+                  context,
+                  'Versioned AI support is shown in the intelligence artifact',
+                  '版本化 AI 支持显示在智能产物中',
+                ),
                 style: const TextStyle(color: DrAiColors.inkSecondary),
               ),
             ],
@@ -1688,13 +1706,18 @@ class _HistoryCard extends ConsumerWidget {
           Align(
             alignment: Alignment.centerRight,
             child: OutlinedButton.icon(
-              key: Key('doctor-expected-care-${request.id}'),
+              key: Key('doctor-intelligence-${request.id}'),
               onPressed: () => context.go(
-                '/doctor/expected-care?patient=${request.patientId}&event=${request.clinicalEventId}',
+                '/doctor/payer-requests/${request.id}/intelligence'
+                '?patient=${request.patientId}&event=${request.clinicalEventId}',
               ),
               icon: const Icon(Icons.fact_check_outlined),
               label: Text(
-                _copy(context, 'Review expected-care candidates', '审核预期诊疗候选范围'),
+                _copy(
+                  context,
+                  'Review Clinical Event intelligence',
+                  '审核临床事件智能',
+                ),
               ),
             ),
           ),

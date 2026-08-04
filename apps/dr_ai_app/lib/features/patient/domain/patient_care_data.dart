@@ -273,6 +273,40 @@ class PrescriptionMedicationItem {
   final String? endDate;
 }
 
+class PrescriptionMedicationDraft {
+  const PrescriptionMedicationDraft({
+    required this.medicationId,
+    required this.name,
+    required this.formulationStrength,
+    required this.route,
+    required this.recordedDirections,
+    required this.quantity,
+    required this.durationDays,
+  });
+
+  final String? medicationId;
+  final String name;
+  final String formulationStrength;
+  final String route;
+  final String recordedDirections;
+  final int quantity;
+  final int durationDays;
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    if (medicationId != null) 'medication_id': medicationId,
+    'name': name,
+    'dosage': formulationStrength,
+    'schedule': recordedDirections,
+    'formulation_strength': formulationStrength,
+    'route': route,
+    'recorded_directions': recordedDirections,
+    'quantity': quantity,
+    'duration_days': durationDays,
+    'pricing_state': 'pending_cost',
+    'currency': 'CNY',
+  };
+}
+
 class PrescriptionItem {
   const PrescriptionItem({
     required this.id,
@@ -777,6 +811,28 @@ class PatientCareBundle {
   final List<MedicationReminderItem> medicationReminders;
   final List<RecoveryPlanData> recoveryPlans;
   final List<DoctorNoteItem> doctorNotes;
+
+  PatientCareBundle copyWith({
+    List<VisitHistoryItem>? visitHistory,
+    List<DiagnosisItem>? diagnoses,
+  }) => PatientCareBundle(
+    patient: patient,
+    clinicalEvents: clinicalEvents,
+    clinicalServices: clinicalServices,
+    clinicalEventUpdates: clinicalEventUpdates,
+    medicalHistoryReviews: medicalHistoryReviews,
+    allergies: allergies,
+    chronicDiseases: chronicDiseases,
+    visitHistory: visitHistory ?? this.visitHistory,
+    diagnoses: diagnoses ?? this.diagnoses,
+    records: records,
+    imagingAssets: imagingAssets,
+    medications: medications,
+    prescriptions: prescriptions,
+    medicationReminders: medicationReminders,
+    recoveryPlans: recoveryPlans,
+    doctorNotes: doctorNotes,
+  );
 }
 
 class ClinicalServiceItem {
@@ -1131,6 +1187,11 @@ class RecoveryTaskInput {
     required this.dueLabel,
     this.notificationTime,
     this.medicationId,
+    this.frequency = 'daily',
+    this.schedule = 'see phase calendar',
+    this.duration = 'phase duration',
+    this.responsiblePerson = 'patient',
+    this.completionCriteria = 'completed as instructed',
   });
 
   Map<String, dynamic> toJson() {
@@ -1141,6 +1202,15 @@ class RecoveryTaskInput {
       'due_label': dueLabel,
       if (notificationTime != null) 'notification_time': notificationTime,
       if (medicationId != null) 'medication_id': medicationId,
+      'frequency': frequency,
+      'schedule': schedule,
+      'duration': duration,
+      'responsible_person': responsiblePerson,
+      'completion_criteria': completionCriteria,
+      'reminder': <String, dynamic>{
+        if (notificationTime != null) 'time': notificationTime,
+        'enabled': notificationTime != null,
+      },
     };
   }
 
@@ -1150,6 +1220,51 @@ class RecoveryTaskInput {
   final String dueLabel;
   final String? notificationTime;
   final String? medicationId;
+  final String frequency;
+  final String schedule;
+  final String duration;
+  final String responsiblePerson;
+  final String completionCriteria;
+}
+
+class RecoveryPhaseInput {
+  const RecoveryPhaseInput({
+    required this.name,
+    required this.startDate,
+    this.endDate,
+    required this.goals,
+    required this.instructions,
+    required this.precautions,
+    required this.progressionCriteria,
+    required this.holdEscalationCriteria,
+    this.reviewCheckpoint,
+    required this.tasks,
+  });
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    'name': name,
+    'start_date': startDate,
+    if (endDate != null && endDate!.isNotEmpty) 'end_date': endDate,
+    'goals': goals,
+    'instructions': instructions,
+    'precautions': precautions,
+    'progression_criteria': progressionCriteria,
+    'hold_escalation_criteria': holdEscalationCriteria,
+    if (reviewCheckpoint != null && reviewCheckpoint!.isNotEmpty)
+      'review_checkpoint': reviewCheckpoint,
+    'tasks': tasks.map((task) => task.toJson()).toList(),
+  };
+
+  final String name;
+  final String startDate;
+  final String? endDate;
+  final String goals;
+  final String instructions;
+  final String precautions;
+  final String progressionCriteria;
+  final String holdEscalationCriteria;
+  final String? reviewCheckpoint;
+  final List<RecoveryTaskInput> tasks;
 }
 
 class RecoveryTaskItem {
@@ -1609,6 +1724,13 @@ class ConsultationRequestItem {
     required this.safetyLabel,
     required this.createdAt,
     required this.updatedAt,
+    this.consultationType,
+    this.clinicianProvider,
+    this.serviceDate,
+    this.reasonIndication,
+    this.outcomeSummary,
+    this.followUpRequirement,
+    this.quantity = 1,
   });
 
   factory ConsultationRequestItem.fromJson(Map<String, dynamic> json) {
@@ -1624,6 +1746,17 @@ class ConsultationRequestItem {
       safetyLabel: json['safety_label'] as String,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
+      consultationType: json['consultation_type'] as String?,
+      clinicianProvider: json['clinician_provider'] as String?,
+      serviceDate: json['service_date'] as String?,
+      reasonIndication: json['reason_indication'] as String?,
+      outcomeSummary: json['outcome_summary'] is Map<String, dynamic>
+          ? Map<String, dynamic>.from(
+              json['outcome_summary'] as Map<String, dynamic>,
+            )
+          : null,
+      followUpRequirement: json['follow_up_requirement'] as String?,
+      quantity: json['quantity'] as int? ?? 1,
     );
   }
 
@@ -1638,6 +1771,13 @@ class ConsultationRequestItem {
   final String safetyLabel;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final String? consultationType;
+  final String? clinicianProvider;
+  final String? serviceDate;
+  final String? reasonIndication;
+  final Map<String, dynamic>? outcomeSummary;
+  final String? followUpRequirement;
+  final int quantity;
 }
 
 class ConsultationListData {

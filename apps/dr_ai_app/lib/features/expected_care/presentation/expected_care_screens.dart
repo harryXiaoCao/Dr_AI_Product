@@ -38,11 +38,18 @@ String _evidenceStateLabel(BuildContext context, String value) {
       '已发布经验证基线',
     ),
     'validated' => _copy(context, 'Deterministically validated', '已通过确定性验证'),
-    'doctor_acknowledged' => _copy(context, 'Clinician acknowledged', '临床医生已确认'),
+    'doctor_acknowledged' => _copy(
+      context,
+      'Clinician acknowledged',
+      '临床医生已确认',
+    ),
     'doctor_concurred' => _copy(context, 'Clinician agreed', '临床医生同意'),
     'doctor_disagreed' => _copy(context, 'Clinician disagreed', '临床医生不同意'),
-    'doctor_exception_recorded' =>
-      _copy(context, 'Clinical exception recorded', '已记录临床例外'),
+    'doctor_exception_recorded' => _copy(
+      context,
+      'Clinical exception recorded',
+      '已记录临床例外',
+    ),
     'concur' => _copy(context, 'Clinician agreed', '临床医生同意'),
     'disagree' => _copy(context, 'Clinician disagreed', '临床医生不同意'),
     'exception' => _copy(context, 'Clinical exception recorded', '已记录临床例外'),
@@ -75,12 +82,11 @@ String _careCategoryLabel(BuildContext context, String value) {
 
 String _careUnitLabel(BuildContext context, String value, int high) {
   return switch (value) {
-    'session' || 'sessions' =>
-      _copy(context, high == 1 ? 'session' : 'sessions', '次'),
-    'visit' || 'visits' =>
-      _copy(context, high == 1 ? 'visit' : 'visits', '次就诊'),
-    'item' || 'items' =>
-      _copy(context, high == 1 ? 'item' : 'items', '项'),
+    'session' ||
+    'sessions' => _copy(context, high == 1 ? 'session' : 'sessions', '次'),
+    'visit' ||
+    'visits' => _copy(context, high == 1 ? 'visit' : 'visits', '次就诊'),
+    'item' || 'items' => _copy(context, high == 1 ? 'item' : 'items', '项'),
     'day' || 'days' => _copy(context, high == 1 ? 'day' : 'days', '天'),
     _ => humanizeProductValue(value),
   };

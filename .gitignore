@@ -50,3 +50,5 @@ evaluation/chatbot/results/
 # Expected-care evaluation may retain raw provider content for research audit.
 evaluation/expected_care/results/raw/
 evaluation/expected_care_candidate/results/raw/
+evaluation/clinical_event_intelligence/results/raw/
+services/api/.local_backups/

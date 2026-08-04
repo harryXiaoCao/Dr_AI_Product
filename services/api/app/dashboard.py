@@ -7,6 +7,7 @@ from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Query, Request, Response, status
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 
 from app.care_cost import sync_clinical_financial
@@ -42,6 +43,7 @@ from app.models import (
     PatientProfile,
     Prescription,
     PrescriptionMedication,
+    RecoveryPhase,
     RecoveryPlan,
     RecoveryTask,
     RecoveryTaskCompletion,
@@ -129,6 +131,7 @@ from app.schemas import (
     PrivateMessageListResponse,
     PrivateMessageRequest,
     PrivateMessageResponse,
+    RecoveryPhaseResponse,
     RecoveryPlanCreateRequest,
     RecoveryPlanListResponse,
     RecoveryPlanProgressResponse,
@@ -191,9 +194,17 @@ ASSESSMENT_NEXT_STEPS = [
     "Review the synthetic case with a qualified clinician.",
     "Do not use this demo result for medication, diagnosis, or care decisions.",
 ]
-RECOVERY_PLAN_STATUSES = {"draft", "active", "completed"}
+RECOVERY_PLAN_STATUSES = {
+    "draft",
+    "active",
+    "published",
+    "paused",
+    "completed",
+    "cancelled",
+    "superseded",
+}
 RECOVERY_PLAN_REVIEW_STATUSES = {"draft", "in_review", "changes_requested", "approved"}
-RECOVERY_TASK_CATEGORIES = {"medication", "exercise", "diet", "follow_up"}
+RECOVERY_TASK_CATEGORIES = {"medication", "exercise", "diet", "follow_up", "tracking", "custom"}
 DEFAULT_CHAT_THREAD_KEY = "patient-education"
 CONSULTATION_STATUSES = {"requested", "accepted", "completed", "cancelled"}
 UNSAFE_PROMPT_PATTERNS = (
@@ -589,18 +600,32 @@ def _prescription_medication_response(
         name=item.name,
         dosage=item.dosage,
         schedule=item.schedule,
+        formulation_strength=item.formulation_strength,
+        route=item.route,
+        recorded_directions=item.recorded_directions,
+        quantity=item.quantity,
+        duration_days=item.duration_days,
+        sort_order=item.sort_order or 0,
+        pricing_state=item.pricing_state or "pending_cost",
+        currency=item.currency or "CNY",
+        unit_amount_minor=item.unit_amount_minor or 0,
+        total_amount_minor=item.total_amount_minor or 0,
         start_date=item.start_date,
         end_date=item.end_date,
     )
 
 
 def _prescription_response(prescription: Prescription) -> PrescriptionResponse:
-    lines = sorted(prescription.medications, key=lambda item: item.name)
+    lines = sorted(prescription.medications, key=lambda item: (item.sort_order or 0, item.id))
     return PrescriptionResponse(
         id=prescription.id,
         patient_id=prescription.patient_id,
         clinical_event_id=prescription.clinical_event_id,
         status=prescription.status,  # type: ignore[arg-type]
+        version=prescription.version,
+        supersedes_prescription_id=prescription.supersedes_prescription_id,
+        finalized_at=prescription.finalized_at,
+        content_checksum_sha256=prescription.content_checksum_sha256,
         issued_at=prescription.issued_at,
         notes=prescription.notes,
         created_at=prescription.created_at,
@@ -704,6 +729,12 @@ def _clinical_service_response(service: ClinicalService) -> ClinicalServiceRespo
         scheduled_at=service.scheduled_at,
         performed_at=service.performed_at,
         indication_summary=service.indication_summary,
+        service_date=service.service_date,
+        facility_name=service.facility_name,
+        quantity=service.quantity,
+        unit=service.unit,
+        documentation_state=service.documentation_state,
+        provenance=service.provenance_json,
         imaging_asset_ids=[asset.id for asset in service.imaging_assets],
         created_at=service.created_at,
         updated_at=service.updated_at,
@@ -816,12 +847,19 @@ def _recovery_task_response(
     return RecoveryTaskResponse(
         task_id=task.id,
         plan_id=task.plan_id,
+        phase_id=task.phase_id,
         category=task.category,  # type: ignore[arg-type]
         title=task.title,
         detail=task.detail,
         due_label=task.due_label,
         notification_time=task.notification_time,
         medication_id=task.medication_id,
+        frequency=task.frequency,
+        schedule=task.schedule,
+        duration=task.duration,
+        responsible_person=task.responsible_person,
+        completion_criteria=task.completion_criteria,
+        reminder=task.reminder_json,
         is_completed=completion is not None,
         completed_at=completion.completed_at if completion is not None else None,
         notification_status=notification_status,
@@ -842,6 +880,10 @@ def _recovery_plan_response(plan: RecoveryPlan) -> RecoveryPlanResponse:
         clinical_event_id=plan.clinical_event_id,
         title=plan.title,
         instructions=plan.instructions,
+        indication=plan.indication,
+        start_date=plan.start_date,
+        version=plan.version,
+        supersedes_plan_id=plan.supersedes_plan_id,
         status=plan.status,  # type: ignore[arg-type]
         review_status=plan.review_status,  # type: ignore[arg-type]
         safety_label=SYNTHETIC_DATA_LABEL,
@@ -852,6 +894,9 @@ def _recovery_plan_response(plan: RecoveryPlan) -> RecoveryPlanResponse:
         approved_at=plan.approved_at,
         activated_at=plan.activated_at,
         completed_at=plan.completed_at,
+        published_at=plan.published_at,
+        paused_at=plan.paused_at,
+        cancelled_at=plan.cancelled_at,
         progress_summary=RecoveryPlanProgressResponse(
             task_count=task_count,
             completed_task_count=completed_task_count,
@@ -859,6 +904,29 @@ def _recovery_plan_response(plan: RecoveryPlan) -> RecoveryPlanResponse:
             completion_percent=completion_percent,
         ),
         tasks=[_recovery_task_response(task, completions) for task in tasks],
+        phases=[
+            RecoveryPhaseResponse(
+                phase_id=phase.id,
+                sort_order=phase.sort_order,
+                name=phase.name,
+                start_date=phase.start_date,
+                end_date=phase.end_date,
+                start_week=phase.start_week,
+                end_week=phase.end_week,
+                goals=phase.goals,
+                instructions=phase.instructions,
+                precautions=phase.precautions,
+                progression_criteria=phase.progression_criteria,
+                hold_escalation_criteria=phase.hold_escalation_criteria,
+                review_checkpoint=phase.review_checkpoint,
+                tasks=[
+                    _recovery_task_response(task, completions)
+                    for task in tasks
+                    if task.phase_id == phase.id
+                ],
+            )
+            for phase in plan.phases
+        ],
     )
 
 
@@ -928,6 +996,13 @@ def _consultation_response(request: ConsultationRequest) -> ConsultationResponse
         specialty=request.specialty,
         question_summary=request.question_summary,
         priority=request.priority,  # type: ignore[arg-type]
+        consultation_type=request.consultation_type,
+        clinician_provider=request.clinician_provider,
+        service_date=request.service_date,
+        reason_indication=request.reason_indication,
+        outcome_summary=request.outcome_summary or {},
+        follow_up_requirement=request.follow_up_requirement,
+        quantity=request.quantity,
         status=request.status,  # type: ignore[arg-type]
         safety_label=SYNTHETIC_DATA_LABEL,
         created_at=request.created_at,
@@ -940,6 +1015,8 @@ def _ensure_consultation_service(
     user: CurrentUser,
     db: DbSession,
 ) -> ClinicalService | None:
+    if request.consultation_type in {None, "specialist", "specialist_referral"}:
+        return None
     if request.clinical_service_id is not None:
         return db.get(ClinicalService, request.clinical_service_id)
     if (
@@ -956,8 +1033,19 @@ def _ensure_consultation_service(
         service_subtype=request.specialty,
         body_region=None,
         ordered_by_doctor_id=user.doctor_profile.id,
-        status="requested",
+        status="completed" if request.status == "completed" else "requested",
         ordered_at=request.created_at or datetime.now(UTC),
+        performed_at=(request.created_at or datetime.now(UTC))
+        if request.status == "completed"
+        else None,
+        service_date=request.service_date,
+        performing_provider_name=request.clinician_provider,
+        indication_summary=request.reason_indication,
+        quantity=request.quantity,
+        unit="consultation",
+        documentation_state="available" if request.outcome_summary else "pending",
+        provenance_json={"source": "consultation_workflow", "consultation_id": str(request.id)},
+        idempotency_key=request.idempotency_key,
     )
     db.add(service)
     db.flush()
@@ -1333,6 +1421,18 @@ def _apply_clinical_service_request(
     service.scheduled_at = request.scheduled_at
     service.performed_at = request.performed_at
     service.indication_summary = request.indication_summary
+    service.service_date = request.service_date
+    service.facility_name = request.facility_name
+    service.quantity = request.quantity
+    service.unit = request.unit
+    service.documentation_state = request.documentation_state
+    service.provenance_json = {
+        **request.provenance,
+        "recorded_by_user_id": str(user.id),
+        "source": "doctor_clinical_event_workspace",
+    }
+    if service.idempotency_key is None:
+        service.idempotency_key = request.idempotency_key
     return event
 
 
@@ -1442,13 +1542,23 @@ def _replace_prescription_medications(
     request: PrescriptionRequest,
 ) -> None:
     prescription.medications.clear()
-    for item in request.medications:
+    for index, item in enumerate(request.medications):
         prescription.medications.append(
             PrescriptionMedication(
                 medication_id=item.medication_id,
                 name=item.name,
                 dosage=item.dosage,
                 schedule=item.schedule,
+                formulation_strength=item.formulation_strength,
+                route=item.route,
+                recorded_directions=item.recorded_directions or item.schedule,
+                quantity=item.quantity,
+                duration_days=item.duration_days,
+                sort_order=index,
+                pricing_state=item.pricing_state,
+                currency=item.currency,
+                unit_amount_minor=item.unit_amount_minor,
+                total_amount_minor=item.total_amount_minor,
                 start_date=item.start_date,
                 end_date=item.end_date,
                 metadata_json={},
@@ -1563,7 +1673,10 @@ def _authorized_recovery_plan(
     profile = _authorized_patient(patient_id, user, db)
     plan = db.scalar(
         select(RecoveryPlan)
-        .options(selectinload(RecoveryPlan.tasks).selectinload(RecoveryTask.completions))
+        .options(
+            selectinload(RecoveryPlan.tasks).selectinload(RecoveryTask.completions),
+            selectinload(RecoveryPlan.phases),
+        )
         .where(RecoveryPlan.id == plan_id, RecoveryPlan.patient_id == profile.id)
     )
     if plan is None:
@@ -1577,20 +1690,6 @@ def _validate_recovery_tasks(
     patient_id: uuid.UUID,
     db: DbSession,
 ) -> None:
-    categories = {task.category for task in tasks}
-    if not {"medication", "exercise", "diet", "follow_up"}.issubset(categories):
-        raise ApiError(
-            422,
-            "validation_failed",
-            "The request could not be validated.",
-            [
-                {
-                    "field": "tasks",
-                    "code": "missing_required_categories",
-                    "message": "Include medication, exercise, diet, and follow-up tasks.",
-                }
-            ],
-        )
     for task in tasks:
         if task.category not in RECOVERY_TASK_CATEGORIES:
             raise ApiError(
@@ -1637,9 +1736,61 @@ def _replace_recovery_tasks(
                 detail=task.detail,
                 due_label=task.due_label,
                 notification_time=task.notification_time,
+                frequency=task.frequency,
+                schedule=task.schedule,
+                duration=task.duration,
+                responsible_person=task.responsible_person,
+                completion_criteria=task.completion_criteria,
+                reminder_json=task.reminder,
                 sort_order=index,
             )
         )
+
+
+def _replace_recovery_phases(plan: RecoveryPlan, request: RecoveryPlanCreateRequest) -> None:
+    plan.phases.clear()
+    plan.tasks.clear()
+    if not request.phases:
+        _replace_recovery_tasks(plan, request.tasks)
+        return
+    task_order = 0
+    for phase_order, phase_input in enumerate(request.phases):
+        phase = RecoveryPhase(
+            sort_order=phase_order,
+            name=phase_input.name,
+            start_date=phase_input.start_date,
+            end_date=phase_input.end_date,
+            start_week=phase_input.start_week,
+            end_week=phase_input.end_week,
+            goals=phase_input.goals,
+            instructions=phase_input.instructions,
+            precautions=phase_input.precautions,
+            progression_criteria=phase_input.progression_criteria,
+            hold_escalation_criteria=phase_input.hold_escalation_criteria,
+            review_checkpoint=phase_input.review_checkpoint,
+        )
+        plan.phases.append(phase)
+        for task_input in phase_input.tasks:
+            plan.tasks.append(
+                RecoveryTask(
+                    phase=phase,
+                    patient_id=plan.patient_id,
+                    medication_id=task_input.medication_id,
+                    category=task_input.category,
+                    title=task_input.title,
+                    detail=task_input.detail,
+                    due_label=task_input.due_label,
+                    notification_time=task_input.notification_time,
+                    frequency=task_input.frequency,
+                    schedule=task_input.schedule,
+                    duration=task_input.duration,
+                    responsible_person=task_input.responsible_person,
+                    completion_criteria=task_input.completion_criteria,
+                    reminder_json=task_input.reminder,
+                    sort_order=task_order,
+                )
+            )
+            task_order += 1
 
 
 def _recovery_plan_audit_metadata(
@@ -1709,6 +1860,7 @@ def _approve_recovery_plan(
     plan.reviewed_at = now
     plan.approved_at = now
     plan.activated_at = now
+    plan.published_at = now
     plan.completed_at = None
     _record_audit_event(
         db,
@@ -2576,16 +2728,63 @@ def create_patient_prescription(
         db=db,
     )
     _validate_prescription_request(request, patient_id=profile.id, db=db)
+    if request.idempotency_key:
+        existing = db.scalar(
+            select(Prescription)
+            .options(selectinload(Prescription.medications))
+            .where(
+                Prescription.prescribed_by_user_id == user.id,
+                Prescription.idempotency_key == request.idempotency_key,
+            )
+        )
+        if existing is not None:
+            return _prescription_response(existing)
+    superseded = None
+    if request.supersedes_prescription_id is not None:
+        _, superseded = _authorized_prescription(
+            patient_id, request.supersedes_prescription_id, user, db
+        )
+        if superseded.status not in {"issued", "finalized"}:
+            raise ApiError(409, "conflict", "Only a finalized prescription can be superseded.")
+    finalizing = request.status in {"issued", "finalized"}
+    checksum = hashlib.sha256(
+        json.dumps(
+            request.model_dump(mode="json", exclude={"idempotency_key"}),
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode()
+    ).hexdigest()
     prescription = Prescription(
         patient_id=profile.id,
         clinical_event_id=event.id if event else None,
         prescribed_by_user_id=user.id,
-        status=request.status,
-        issued_at=request.issued_at,
+        status="finalized" if finalizing else "draft",
+        issued_at=request.issued_at or (datetime.now(UTC) if finalizing else None),
         notes=request.notes,
+        version=(superseded.version + 1) if superseded else 1,
+        supersedes_prescription_id=superseded.id if superseded else None,
+        idempotency_key=request.idempotency_key,
+        finalized_at=datetime.now(UTC) if finalizing else None,
+        content_checksum_sha256=checksum if finalizing else None,
     )
     db.add(prescription)
-    db.flush()
+    try:
+        db.flush()
+    except IntegrityError:
+        db.rollback()
+        if not request.idempotency_key:
+            raise
+        existing = db.scalar(
+            select(Prescription)
+            .options(selectinload(Prescription.medications))
+            .where(
+                Prescription.prescribed_by_user_id == user.id,
+                Prescription.idempotency_key == request.idempotency_key,
+            )
+        )
+        if existing is None:
+            raise
+        return _prescription_response(existing)
     _replace_prescription_medications(prescription, request)
     db.flush()
     _record_audit_event(
@@ -2620,6 +2819,10 @@ def update_patient_prescription(
 ) -> PrescriptionResponse:
     _require_doctor_user(user)
     profile, prescription = _authorized_prescription(patient_id, prescription_id, user, db)
+    if prescription.status != "draft":
+        raise ApiError(
+            409, "conflict", "Finalized prescriptions are immutable; create a replacement."
+        )
     event = _optional_clinical_event(
         request.clinical_event_id,
         patient_id=profile.id,
@@ -2628,10 +2831,20 @@ def update_patient_prescription(
     )
     _validate_prescription_request(request, patient_id=profile.id, db=db)
     prescription.clinical_event_id = event.id if event else None
-    prescription.status = request.status
-    prescription.issued_at = request.issued_at
+    finalizing = request.status in {"issued", "finalized"}
+    prescription.status = "finalized" if finalizing else "draft"
+    prescription.issued_at = request.issued_at or (datetime.now(UTC) if finalizing else None)
     prescription.notes = request.notes
+    prescription.finalized_at = datetime.now(UTC) if finalizing else None
     _replace_prescription_medications(prescription, request)
+    if finalizing:
+        prescription.content_checksum_sha256 = hashlib.sha256(
+            json.dumps(
+                request.model_dump(mode="json", exclude={"idempotency_key"}),
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode()
+        ).hexdigest()
     _record_audit_event(
         db,
         actor_user_id=user.id,
@@ -2660,6 +2873,8 @@ def delete_patient_prescription(
 ) -> Response:
     _require_doctor_user(user)
     profile, prescription = _authorized_prescription(patient_id, prescription_id, user, db)
+    if prescription.status != "draft":
+        raise ApiError(409, "conflict", "Finalized prescriptions cannot be deleted.")
     line_count = len(prescription.medications)
     _record_audit_event(
         db,
@@ -3832,6 +4047,17 @@ def create_patient_clinical_service(
     _require_doctor_user(user)
     profile = _authorized_patient(patient_id, user, db)
     assert user.doctor_profile is not None
+    if request.idempotency_key:
+        existing = db.scalar(
+            select(ClinicalService)
+            .options(selectinload(ClinicalService.imaging_assets))
+            .where(
+                ClinicalService.ordered_by_doctor_id == user.doctor_profile.id,
+                ClinicalService.idempotency_key == request.idempotency_key,
+            )
+        )
+        if existing is not None:
+            return _clinical_service_response(existing)
     service = ClinicalService(
         patient_id=profile.id,
         clinical_event_id=request.clinical_event_id,
@@ -3849,7 +4075,23 @@ def create_patient_clinical_service(
     if service.ordered_at is None:
         service.ordered_at = datetime.now(UTC)
     db.add(service)
-    db.flush()
+    try:
+        db.flush()
+    except IntegrityError:
+        db.rollback()
+        if not request.idempotency_key:
+            raise
+        existing = db.scalar(
+            select(ClinicalService)
+            .options(selectinload(ClinicalService.imaging_assets))
+            .where(
+                ClinicalService.ordered_by_doctor_id == user.doctor_profile.id,
+                ClinicalService.idempotency_key == request.idempotency_key,
+            )
+        )
+        if existing is None:
+            raise
+        return _clinical_service_response(existing)
     financial_item = sync_clinical_financial(
         db,
         user,
@@ -4655,20 +4897,73 @@ def create_recovery_plan(
         user=user,
         db=db,
     )
-    _validate_recovery_tasks(request.tasks, patient_id=profile.id, db=db)
+    tasks = request.tasks or [task for phase in request.phases for task in phase.tasks]
+    if not tasks:
+        raise ApiError(
+            422,
+            "validation_failed",
+            "Add at least one recovery task.",
+            [{"field": "phases", "code": "required", "message": "Add a phase and task."}],
+        )
+    _validate_recovery_tasks(tasks, patient_id=profile.id, db=db)
+    if request.idempotency_key:
+        existing = db.scalar(
+            select(RecoveryPlan)
+            .options(
+                selectinload(RecoveryPlan.tasks).selectinload(RecoveryTask.completions),
+                selectinload(RecoveryPlan.phases),
+            )
+            .where(
+                RecoveryPlan.doctor_id == user.doctor_profile.id,
+                RecoveryPlan.idempotency_key == request.idempotency_key,
+            )
+        )
+        if existing is not None:
+            return _recovery_plan_response(existing)
+    superseded = None
+    if request.supersedes_plan_id is not None:
+        _, superseded = _authorized_recovery_plan(patient_id, request.supersedes_plan_id, user, db)
+        if superseded.status not in {"active", "published", "paused"}:
+            raise ApiError(409, "conflict", "Only a published recovery plan can be revised.")
     plan = RecoveryPlan(
         patient_id=profile.id,
         doctor_id=user.doctor_profile.id,
         clinical_event_id=event.id if event else None,
         title=request.title,
         instructions=request.instructions,
+        indication=request.indication,
+        start_date=request.start_date,
+        version=(superseded.version + 1) if superseded else 1,
+        supersedes_plan_id=superseded.id if superseded else None,
+        idempotency_key=request.idempotency_key,
         status="draft",
         review_status="draft",
         safety_label=SYNTHETIC_DATA_LABEL,
     )
     db.add(plan)
-    db.flush()
-    _replace_recovery_tasks(plan, request.tasks)
+    try:
+        db.flush()
+    except IntegrityError:
+        db.rollback()
+        if not request.idempotency_key:
+            raise
+        existing = db.scalar(
+            select(RecoveryPlan)
+            .options(
+                selectinload(RecoveryPlan.tasks).selectinload(RecoveryTask.completions),
+                selectinload(RecoveryPlan.phases),
+            )
+            .where(
+                RecoveryPlan.doctor_id == user.doctor_profile.id,
+                RecoveryPlan.idempotency_key == request.idempotency_key,
+            )
+        )
+        if existing is None:
+            raise
+        return _recovery_plan_response(existing)
+    _replace_recovery_phases(plan, request)
+    if superseded is not None:
+        superseded.status = "superseded"
     db.flush()
     _record_audit_event(
         db,
@@ -4712,16 +5007,21 @@ def update_recovery_plan(
         user=user,
         db=db,
     )
-    _validate_recovery_tasks(request.tasks, patient_id=profile.id, db=db)
+    tasks = request.tasks or [task for phase in request.phases for task in phase.tasks]
+    if not tasks:
+        raise ApiError(422, "validation_failed", "Add at least one recovery task.")
+    _validate_recovery_tasks(tasks, patient_id=profile.id, db=db)
     plan.clinical_event_id = event.id if event else None
     plan.title = request.title
     plan.instructions = request.instructions
+    plan.indication = request.indication
+    plan.start_date = request.start_date
     if plan.review_status == "changes_requested":
         plan.review_status = "draft"
         plan.submitted_at = None
         plan.reviewed_at = None
         plan.review_actor_user_id = None
-    _replace_recovery_tasks(plan, request.tasks)
+    _replace_recovery_phases(plan, request)
     _record_audit_event(
         db,
         actor_user_id=user.id,
@@ -5320,17 +5620,41 @@ def create_consultation(
             "The request could not be validated.",
             unsafe_details,
         )
-    existing = db.scalar(
-        select(ConsultationRequest).where(
-            ConsultationRequest.patient_id == profile.id,
-            ConsultationRequest.requested_by_user_id == user.id,
-            ConsultationRequest.clinical_event_id == (event.id if event else None),
-            ConsultationRequest.specialty == specialty,
-            ConsultationRequest.question_summary == question_summary,
-            ConsultationRequest.priority == request.priority,
-            ConsultationRequest.status == "requested",
+    if request.consultation_type in {"specialist", "specialist_referral"} and (
+        request.financial is not None or request.status != "requested"
+    ):
+        raise ApiError(
+            422,
+            "validation_failed",
+            "The request could not be validated.",
+            [
+                {
+                    "field": "consultation_type",
+                    "code": "specialist_referral_request_only",
+                    "message": (
+                        "A specialist referral remains request-only; record a "
+                        "delivered consultation under the Clinical Event."
+                    ),
+                }
+            ],
         )
-    )
+    existing_filters = [
+        ConsultationRequest.patient_id == profile.id,
+        ConsultationRequest.requested_by_user_id == user.id,
+    ]
+    if request.idempotency_key:
+        existing_filters.append(ConsultationRequest.idempotency_key == request.idempotency_key)
+    else:
+        existing_filters.extend(
+            [
+                ConsultationRequest.clinical_event_id == (event.id if event else None),
+                ConsultationRequest.specialty == specialty,
+                ConsultationRequest.question_summary == question_summary,
+                ConsultationRequest.priority == request.priority,
+                ConsultationRequest.status == request.status,
+            ]
+        )
+    existing = db.scalar(select(ConsultationRequest).where(*existing_filters))
     if existing is not None:
         service = _ensure_consultation_service(existing, user, db)
         if service is not None:
@@ -5353,13 +5677,35 @@ def create_consultation(
         clinical_event_id=event.id if event else None,
         requested_by_user_id=user.id,
         specialty=specialty,
+        consultation_type=request.consultation_type,
+        clinician_provider=request.clinician_provider,
+        service_date=request.service_date,
+        reason_indication=request.reason_indication,
+        outcome_summary=request.outcome_summary,
+        follow_up_requirement=request.follow_up_requirement,
+        quantity=request.quantity,
+        idempotency_key=request.idempotency_key,
         question_summary=question_summary,
         priority=request.priority,
-        status="requested",
+        status=request.status,
         safety_label=SYNTHETIC_DATA_LABEL,
     )
     db.add(consultation)
-    db.flush()
+    try:
+        db.flush()
+    except IntegrityError:
+        db.rollback()
+        if not request.idempotency_key:
+            raise
+        existing = db.scalar(
+            select(ConsultationRequest).where(
+                ConsultationRequest.requested_by_user_id == user.id,
+                ConsultationRequest.idempotency_key == request.idempotency_key,
+            )
+        )
+        if existing is None:
+            raise
+        return _consultation_response(existing)
     service = _ensure_consultation_service(consultation, user, db)
     financial_item = (
         sync_clinical_financial(

@@ -911,6 +911,117 @@ prohibits external requests. Slice E baseline publication and clinician
 responses never invoke this adapter.
 Explanation generation remains outside this contract.
 
+## Implemented Clinical Event Intelligence Artifact Contract
+
+This provider-neutral contract is implemented by migration `20260801_0055`,
+role-authorized FastAPI routes, and shared responsive Flutter surfaces. The
+three AI purposes remain independently disabled and kill-switched until an
+authorized release is activated; provider-unavailable generation persists a
+safe exact-line fallback without blocking human workflows.
+
+One immutable provider-neutral artifact is bound to the authorized patient,
+Clinical Event, optional payer request, exact requested-line snapshot, input
+checksum, geography/facility context, retrieval-release lineage, purpose
+release, model configuration, validator version, and optional predecessor.
+Conceptually it returns:
+
+```json
+{
+  "artifact_id": "uuid",
+  "artifact_version": 1,
+  "clinical_event_snapshot_version": 1,
+  "requested_item_set_checksum": "sha256",
+  "location": {
+    "jurisdiction_code": "CN",
+    "province_code": "structured",
+    "city_code": "structured",
+    "facility_level": "structured",
+    "source": "clinical_event_and_provider_records"
+  },
+  "facts_used": [],
+  "facts_not_used": [],
+  "missing_or_conflicting_facts": [],
+  "pathways": [
+    {
+      "pathway_id": "opaque",
+      "pathway_type": "typical_first_line|reasonable_alternative|escalated",
+      "trigger_fact_ids": [],
+      "items": []
+    }
+  ],
+  "requested_item_assessments": [
+    {
+      "requested_line_id": "opaque",
+      "usefulness": "bounded summary",
+      "mapped_pathway_ids": [],
+      "scores": {
+        "clinical_fit": 0,
+        "evidence_support": 0,
+        "timing_sequence": 0,
+        "quantity_intensity": 0,
+        "documentation_completeness": 0,
+        "cost_alignment": 0,
+        "ai_support_score": 0,
+        "score_contract_version": "version"
+      },
+      "estimated_quantity": {"low": 0, "high": 0, "unit": "unit"},
+      "estimated_cost": {
+        "low_minor": 0,
+        "high_minor": 0,
+        "currency": "CNY",
+        "provenance_tier": 1,
+        "source_ids": [],
+        "is_model_only_exploratory": false
+      },
+      "supporting_fact_ids": [],
+      "contradicting_fact_ids": [],
+      "missing_information": [],
+      "alternatives": [],
+      "confidence": "bounded category",
+      "brief_comment_fact_ids": []
+    }
+  ],
+  "critic": {
+    "state": "agreement|partial_disagreement|material_disagreement|unavailable",
+    "reconciled_by": "deterministic_server_policy"
+  },
+  "lifecycle_state": "validated|fallback|provider_unavailable|superseded",
+  "created_at": "RFC3339"
+}
+```
+
+Every requested line must appear exactly once in
+`requested_item_assessments`. A tier-5 estimate is mandatory when no better
+cost source exists; it must set `is_model_only_exploratory=true`, carry wide
+uncertainty, and cannot cite an admitted pricing-reference ID. The server owns
+score bounds and aggregation, money arithmetic, provenance admission, complete
+line coverage, role authorization, and lifecycle state.
+
+Patient, doctor, and payer reads serialize the same artifact version through
+separate allow-lists. The patient receives plain-language purpose, ranges,
+uncertainty, and review state; the doctor receives pathways, factors,
+contradictions, missing documentation, alternatives, and attributable response
+actions; the payer receives the exact request comparison, provenance,
+quantity/cost flags, clarification needs, and separate human-resolution state.
+No role-specific explanation may change the scores, ranges, requested lines,
+pathways, or artifact identity.
+
+Authenticated routes (all under `/api/v1`) are:
+
+- doctor: generate, read latest/history/detail, append a clinician response,
+  request a role explanation, or append a permitted outcome under
+  `/doctor/payer-requests/{request_id}/intelligence`;
+- patient: read the same artifact and append a patient-reported outcome under
+  `/patient/payer-requests/{request_id}/intelligence`, with a separate
+  `/{artifact_id}/explanations` endpoint; and
+- payer: read the same artifact and append a human resolution-linked outcome
+  under `/payer/requests/{request_id}/intelligence`, with a separate
+  `/{artifact_id}/explanations` endpoint.
+
+All existence-sensitive scope failures return neutral not-found behavior.
+Mutations require `Idempotency-Key`; a replay returns the immutable original,
+while key reuse with changed content fails closed.
+
 ## Authenticated Expected-Care Baseline Contract
 
 All existence-sensitive authorization failures are neutral `404 not_found`.
@@ -2027,3 +2138,39 @@ External readiness is deliberately false in the current local and controlled
 staging configuration. The API therefore proves in-product persistence and
 fail-closed behavior; it does not claim provider acceptance or user-visible
 delivery.
+
+### Controlled-synthetic CEI release status (2026-08-02)
+
+The local API binds CEI primary, critic, and role-explanation routes to
+independent immutable v5 governed releases in `controlled_synthetic_staging`.
+GET responses select the latest persisted safe role explanation by artifact,
+authorized role, and requested `en` or `zh-Hans` locale; absent or unavailable
+prose retains the structured-fact fallback. Neither response exposes source
+identifiers, confidential rates, reviewer-only notes, prompts, credentials,
+raw provider responses, or chain-of-thought.
+
+The activation is restricted to wholly synthetic local fixtures and does not
+alter the contract's real-world authorization boundary.
+
+### Clinical workflow integrity additions (schema `20260802_0058`)
+
+| Method | Route | Contract |
+|---|---|---|
+| `POST/PUT/GET` | `/api/v1/patients/{patient_id}/clinical-services[...]` | Doctor-authored laboratory, procedure, surgery, implant/device, anesthesia, rehabilitation, imaging, or explicitly labeled other service; one source-linked financial companion |
+| `POST/GET` | `/api/v1/consultations` | Specialist-referral requests and Clinical Event treating-doctor consultation records share persistence but are distinguished by `consultation_type`; ordinary consultations are authored/read in the Clinical Event workspace and may own one distinct consultation clinical service plus optional `pending_cost`, `estimated`, or `final` companion |
+| `POST/GET` | `/api/v1/patients/{patient_id}/visit-history`, `/diagnoses` | Append treating-doctor encounter updates and diagnosis records to the selected Clinical Event; these clinical records are never priced |
+| `POST/PUT/DELETE/GET` | `/api/v1/patients/{patient_id}/prescriptions[...]` | Atomic multi-line draft/finalize workflow; only drafts mutate; finalized correction uses `supersedes_prescription_id` |
+| `POST/PUT/GET` | `/api/v1/patients/{patient_id}/recovery-plans[...]` | Ordered phases and typed tasks; only drafts mutate; published revision uses `supersedes_plan_id` |
+
+The create bodies accept actor-scoped `idempotency_key`. Prescription lines
+include formulation/strength, route, recorded directions, quantity, duration,
+dates, ordering, and permitted pricing state. Recovery phase validation returns
+field-addressable `validation_failed` details. Incomplete financial companions
+remain readable but have `submission_eligible=false`. Patient responses exclude
+reviewer-private notes, confidential rates, prompts, credentials, raw provider
+responses, and chain-of-thought.
+
+The Flutter Consultation section sends only asynchronous specialist-referral
+requests. Normal doctor consultations are saved with a non-referral
+`consultation_type` from the Clinical Event workspace and are rendered beside
+that event's appended encounter updates and diagnosis records.
