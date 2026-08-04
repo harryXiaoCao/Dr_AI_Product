@@ -58,6 +58,41 @@ three-role smoke, governed release transitions, exact predecessor rollback,
 backup restoration, and count-only redaction evidence are recorded in
 [`docs/periodic_dev_docs/Phase_7_Closure_Record_2026-07-30.md`](../../../docs/periodic_dev_docs/Phase_7_Closure_Record_2026-07-30.md).
 
+## 2026-08-04 verified controlled-staging refresh
+
+The latest verified refresh deploys source
+`1cc0c87e90167244984d88de613695f8bc09a8f6` with:
+
+- API digest
+  `sha256:b51c0ecb6204c86214ab75d5ea12f52d3181d6e195c9be7befea0208738d231e`;
+- unchanged retrieval digest
+  `sha256:bc91102572ab164ef58b3b07a1594e9457cd53b0904a3ca83f2cbbc077346b89`;
+- schema `20260802_0058` with no Alembic drift;
+- Flutter web content-manifest SHA-256
+  `982035b38aa5ce8ad776cb5d979f5a3bbd9d4a5ba3d9482f5c8e1fea29890c96`;
+  and
+- owner-only checksum-verified backup
+  `/home/ubuntu/dr-ai/staging/backups/20260804T022356Z-main-c168bdd`.
+
+Both seed passes created zero records. Public health, root, privacy, and
+unauthenticated boundaries passed, as did the authenticated doctor, patient,
+unrelated-patient, and payer smoke. API, Caddy, and retrieval reported zero
+restarts, deployed web hashes matched locally, and the count-only recent-log
+scan found zero sensitive-or-critical matches.
+
+The image contains the checksum-bound Clinical Event Intelligence evaluation
+package and the database contains its `0055`-`0058` persistence schema. This
+refresh does not activate the three CEI purposes: each remains disabled and
+kill-switched, every active release pointer is null, and no CEI provider call
+was made. The immutable release installer correctly rejected registering an
+enabled-runtime artifact under the disabled runtime contract. Activation
+requires a separate explicit authorization and rollback-aware exercise.
+
+This remains wholly synthetic controlled staging. It is not evidence or
+authorization for real-patient transmission, live payer integration, public
+production, commercial use, clinical efficacy, privacy/security approval, or
+legal/regulatory clearance.
+
 ## Phase 6 notification delivery gate
 
 The staging example keeps `DR_AI_NOTIFICATION_EXTERNAL_DELIVERY_ENABLED=false`,
