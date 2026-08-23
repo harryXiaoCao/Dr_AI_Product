@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.database import engine
-from app.models import AuditEvent, PatientProfile, RecoveryPlan
+from app.models import AuditEvent, PatientProfile, RecoveryPlan, User
 from app.seed import seed_database
 from tests.helpers import auth_header, login
 
@@ -66,6 +66,15 @@ def test_doctor_can_create_edit_and_activate_recovery_plan(client: TestClient, s
         settings.seed_doctor_password.get_secret_value(),
     )
     headers = auth_header(doctor["access_token"])
+    reviewer = login(
+        client,
+        "reviewer.doctor@example.com",
+        settings.seed_doctor_password.get_secret_value(),
+    )
+    reviewer_headers = auth_header(reviewer["access_token"])
+    with Session(engine) as db:
+        reviewer_user = db.scalar(select(User).where(User.email == "reviewer.doctor@example.com"))
+        reviewer_doctor_id = reviewer_user.doctor_profile.id
 
     created = client.post(
         f"/api/v1/patients/{assigned_id}/recovery-plans",
@@ -90,6 +99,26 @@ def test_doctor_can_create_edit_and_activate_recovery_plan(client: TestClient, s
     assert edited.status_code == 200
     assert edited.json()["title"] == "Updated synthetic recovery plan"
 
+    activated = client.post(
+        f"/api/v1/patients/{assigned_id}/recovery-plans/{plan_id}/activate",
+        headers=headers,
+    )
+    assert activated.status_code == 409
+    submitted = client.post(
+        f"/api/v1/patients/{assigned_id}/recovery-plans/{plan_id}/submit-review",
+        json={
+            "reviewer_doctor_id": str(reviewer_doctor_id),
+            "expected_version": edited.json()["version"],
+        },
+        headers=headers,
+    )
+    assert submitted.status_code == 200
+    approved = client.post(
+        f"/api/v1/patients/{assigned_id}/recovery-plans/{plan_id}/approve",
+        json={"expected_version": edited.json()["version"]},
+        headers=reviewer_headers,
+    )
+    assert approved.status_code == 200
     activated = client.post(
         f"/api/v1/patients/{assigned_id}/recovery-plans/{plan_id}/activate",
         headers=headers,

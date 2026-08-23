@@ -143,8 +143,11 @@ class CareCostLedgerResponse(BaseModel):
     patient_id: uuid.UUID
     patient_display_name: str
     actual_total_minor: int
+    estimated_total_minor: int
+    final_total_minor: int
     payer_requested_total_minor: int
     patient_responsibility_total_minor: int
+    pending_cost_item_count: int
     currency: str
     events: list[CareCostEventResponse]
 
@@ -187,6 +190,7 @@ class PayerReviewRequest(BaseModel):
     action: ReviewAction
     expected_version: int = Field(ge=1)
     reason_code: str = Field(min_length=2, max_length=80)
+    clarification_message: str | None = Field(default=None, max_length=2000)
     note: str | None = Field(default=None, max_length=4000)
 
 
@@ -194,6 +198,7 @@ class PayerReviewResponse(BaseModel):
     id: uuid.UUID
     action: str
     reason_code: str
+    clarification_message: str | None
     note: str | None
     reviewer_membership_id: uuid.UUID
     reviewer_display_name: str
@@ -273,9 +278,17 @@ class PayerDashboardResponse(BaseModel):
     profile: PayerProfileResponse
     open_requests: int
     clarification_requests: int
+    escalated_requests: int
     completed_reviews: int
     pending_requested_total_minor: int
     currency: str = "CNY"
+
+
+PAYER_OPEN_STATUSES = frozenset(
+    {"submitted", "clarification_requested", "under_review", "escalated"}
+)
+PAYER_COMPLETED_STATUSES = frozenset({"accepted", "rejected", "closed"})
+PAYER_REQUEST_STATUSES = PAYER_OPEN_STATUSES | PAYER_COMPLETED_STATUSES
 
 
 def _not_found() -> ApiError:
@@ -551,13 +564,25 @@ def _ledger(db: DbSession, patient: PatientProfile) -> CareCostLedgerResponse:
                 ],
             )
         )
+    ledger_items = [item for event in event_rows for item in event.items]
     return CareCostLedgerResponse(
         patient_id=patient.id,
         patient_display_name=patient.display_name,
         actual_total_minor=sum(event.actual_total_minor for event in event_rows),
+        estimated_total_minor=sum(
+            item.actual_cost_minor
+            for item in ledger_items
+            if item.pricing_state == "estimated"
+        ),
+        final_total_minor=sum(
+            item.actual_cost_minor for item in ledger_items if item.pricing_state == "final"
+        ),
         payer_requested_total_minor=sum(event.payer_requested_total_minor for event in event_rows),
         patient_responsibility_total_minor=sum(
             event.patient_responsibility_total_minor for event in event_rows
+        ),
+        pending_cost_item_count=sum(
+            item.pricing_state == "pending_cost" for item in ledger_items
         ),
         currency="CNY",
         events=event_rows,
@@ -586,7 +611,10 @@ def _profile_response(membership: PayerMembership) -> PayerProfileResponse:
 
 
 def _request_response(
-    request: PayerRequest, *, include_reviewer_notes: bool
+    request: PayerRequest,
+    *,
+    include_clarification_messages: bool,
+    include_reviewer_notes: bool,
 ) -> PayerRequestResponse:
     return PayerRequestResponse(
         id=request.id,
@@ -645,6 +673,11 @@ def _request_response(
                 id=review.id,
                 action=review.action,
                 reason_code=review.reason_code,
+                clarification_message=(
+                    review.clarification_message
+                    if include_clarification_messages
+                    else None
+                ),
                 note=review.note if include_reviewer_notes else None,
                 reviewer_membership_id=review.payer_membership_id,
                 reviewer_display_name=review.payer_membership.display_name,
@@ -1088,7 +1121,11 @@ def create_payer_request(
     db.commit()
     saved = db.scalar(_request_query().where(PayerRequest.id == payer_request.id))
     assert saved is not None
-    return _request_response(saved, include_reviewer_notes=False)
+    return _request_response(
+        saved,
+        include_clarification_messages=True,
+        include_reviewer_notes=False,
+    )
 
 
 @router.get("/doctor/me/payer-requests", response_model=PayerRequestListResponse)
@@ -1101,7 +1138,14 @@ def doctor_payer_requests(user: CurrentUser, db: DbSession) -> PayerRequestListR
         .order_by(PayerRequest.created_at.desc(), PayerRequest.id)
     ).all()
     return PayerRequestListResponse(
-        items=[_request_response(item, include_reviewer_notes=False) for item in requests]
+        items=[
+            _request_response(
+                item,
+                include_clarification_messages=True,
+                include_reviewer_notes=False,
+            )
+            for item in requests
+        ]
     )
 
 
@@ -1143,7 +1187,11 @@ def append_doctor_payer_response(
                 "conflict",
                 "The idempotency key was already used for different response content.",
             )
-        return _request_response(payer_request, include_reviewer_notes=False)
+        return _request_response(
+            payer_request,
+            include_clarification_messages=True,
+            include_reviewer_notes=False,
+        )
     if body.expected_version != payer_request.version:
         raise _version_conflict(payer_request.version)
     if payer_request.status in {"accepted", "rejected", "closed"}:
@@ -1223,7 +1271,11 @@ def append_doctor_payer_response(
     db.commit()
     saved = db.scalar(_request_query().where(PayerRequest.id == payer_request.id))
     assert saved is not None
-    return _request_response(saved, include_reviewer_notes=False)
+    return _request_response(
+        saved,
+        include_clarification_messages=True,
+        include_reviewer_notes=False,
+    )
 
 
 @router.get("/patient/me/payer-requests", response_model=PayerRequestListResponse)
@@ -1236,7 +1288,14 @@ def own_payer_requests(user: CurrentUser, db: DbSession) -> PayerRequestListResp
         .order_by(PayerRequest.created_at.desc(), PayerRequest.id)
     ).all()
     return PayerRequestListResponse(
-        items=[_request_response(item, include_reviewer_notes=False) for item in requests]
+        items=[
+            _request_response(
+                item,
+                include_clarification_messages=False,
+                include_reviewer_notes=False,
+            )
+            for item in requests
+        ]
     )
 
 
@@ -1293,16 +1352,25 @@ def own_payer_dashboard(user: CurrentUser, db: DbSession) -> PayerDashboardRespo
             PayerRequest.payer_organization_id == membership.payer_organization_id
         )
     ).all()
-    open_statuses = {"submitted", "clarification_requested", "under_review"}
+    unknown_statuses = {item.status for item in requests} - PAYER_REQUEST_STATUSES
+    if unknown_statuses:
+        raise ApiError(
+            500,
+            "internal_error",
+            "The payer workload could not be classified.",
+        )
     return PayerDashboardResponse(
         profile=_profile_response(membership),
-        open_requests=sum(item.status in open_statuses for item in requests),
+        open_requests=sum(item.status in PAYER_OPEN_STATUSES for item in requests),
         clarification_requests=sum(item.status == "clarification_requested" for item in requests),
+        escalated_requests=sum(item.status == "escalated" for item in requests),
         completed_reviews=sum(
-            item.status in {"accepted", "rejected", "closed"} for item in requests
+            item.status in PAYER_COMPLETED_STATUSES for item in requests
         ),
         pending_requested_total_minor=sum(
-            item.requested_total_minor for item in requests if item.status in open_statuses
+            item.requested_total_minor
+            for item in requests
+            if item.status in PAYER_OPEN_STATUSES
         ),
     )
 
@@ -1316,7 +1384,14 @@ def payer_requests(user: CurrentUser, db: DbSession) -> PayerRequestListResponse
         .order_by(PayerRequest.created_at.desc(), PayerRequest.id)
     ).all()
     return PayerRequestListResponse(
-        items=[_request_response(item, include_reviewer_notes=True) for item in requests]
+        items=[
+            _request_response(
+                item,
+                include_clarification_messages=True,
+                include_reviewer_notes=True,
+            )
+            for item in requests
+        ]
     )
 
 
@@ -1333,7 +1408,11 @@ def payer_request_detail(
     )
     if payer_request is None:
         raise _not_found()
-    return _request_response(payer_request, include_reviewer_notes=True)
+    return _request_response(
+        payer_request,
+        include_clarification_messages=True,
+        include_reviewer_notes=True,
+    )
 
 
 @router.post(
@@ -1373,9 +1452,40 @@ def review_payer_request(
                 "conflict",
                 "The idempotency key was already used for different review content.",
             )
-        return _request_response(payer_request, include_reviewer_notes=True)
+        return _request_response(
+            payer_request,
+            include_clarification_messages=True,
+            include_reviewer_notes=True,
+        )
     if body.expected_version != payer_request.version:
         raise _version_conflict(payer_request.version)
+    if body.action == "request_clarification":
+        if body.clarification_message is None or len(body.clarification_message) < 10:
+            raise ApiError(
+                422,
+                "validation_failed",
+                "The request could not be validated.",
+                [
+                    {
+                        "field": "clarification_message",
+                        "code": "clarification_message_required",
+                        "message": "Describe the information needed from the doctor.",
+                    }
+                ],
+            )
+    elif body.clarification_message is not None:
+        raise ApiError(
+            422,
+            "validation_failed",
+            "The request could not be validated.",
+            [
+                {
+                    "field": "clarification_message",
+                    "code": "clarification_message_not_applicable",
+                    "message": "A clarification message is only valid for clarification requests.",
+                }
+            ],
+        )
     next_status = {
         "request_clarification": "clarification_requested",
         "accept": "accepted",
@@ -1401,6 +1511,7 @@ def review_payer_request(
             payer_membership_id=membership.id,
             action=body.action,
             reason_code=body.reason_code,
+            clarification_message=body.clarification_message,
             note=body.note,
             request_checksum=checksum,
             idempotency_key=idempotency_key,
@@ -1472,8 +1583,22 @@ def review_payer_request(
         from_status=from_status,
         to_status=next_status,
         version=payer_request.version,
+        clarification_message_present=body.clarification_message is not None,
+        clarification_message_length_category=(
+            "short"
+            if body.clarification_message is not None
+            and len(body.clarification_message) <= 280
+            else "long"
+            if body.clarification_message is not None
+            else "none"
+        ),
+        reviewer_note_present=body.note is not None,
     )
     db.commit()
     saved = db.scalar(_request_query().where(PayerRequest.id == payer_request.id))
     assert saved is not None
-    return _request_response(saved, include_reviewer_notes=True)
+    return _request_response(
+        saved,
+        include_clarification_messages=True,
+        include_reviewer_notes=True,
+    )

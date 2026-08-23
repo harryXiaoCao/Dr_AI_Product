@@ -15,6 +15,7 @@ from app.models import (
     MedicalImagingAsset,
     Notification,
     PatientProfile,
+    User,
 )
 from app.seed import seed_database
 from tests.helpers import auth_header, login, register
@@ -87,6 +88,18 @@ def _patient_headers(client: TestClient, settings) -> dict[str, str]:
         settings.seed_patient_password.get_secret_value(),
     )
     return auth_header(tokens["access_token"])
+
+
+def _reviewer_context(client: TestClient, settings) -> tuple[dict[str, str], uuid.UUID]:
+    tokens = login(
+        client,
+        "reviewer.doctor@example.com",
+        settings.seed_doctor_password.get_secret_value(),
+    )
+    with Session(engine) as db:
+        reviewer = db.scalar(select(User).where(User.email == "reviewer.doctor@example.com"))
+        reviewer_doctor_id = reviewer.doctor_profile.id
+    return auth_header(tokens["access_token"]), reviewer_doctor_id
 
 
 def test_phase2_tables_are_present_and_seed_keeps_them_empty(settings) -> None:
@@ -194,6 +207,14 @@ def test_registered_accounts_can_connect_and_create_care_from_zero(
     )
     assert repeated.status_code == 200
 
+    pending = client.get("/api/v1/patient/me/contacts", headers=patient_headers).json()["items"][0]
+    approved_connection = client.post(
+        f"/api/v1/patient/me/doctor-relationships/{pending['relationship_id']}/approve",
+        headers=patient_headers,
+        json={"expected_version": pending["request_version"]},
+    )
+    assert approved_connection.status_code == 200
+
     patients_after = client.get("/api/v1/patients", headers=doctor_headers)
     assert patients_after.status_code == 200
     assert [item["patient_id"] for item in patients_after.json()["items"]] == [patient_id]
@@ -244,7 +265,7 @@ def test_registered_accounts_can_connect_and_create_care_from_zero(
 
     with Session(engine) as db:
         relationship_audits = db.scalars(
-            select(AuditEvent).where(AuditEvent.event_type == "care_relationship_connected")
+            select(AuditEvent).where(AuditEvent.event_type == "care_relationship_requested")
         ).all()
         assert len(relationship_audits) == 3
         assert relationship_audits[0].metadata_json["patient_code_supplied"] is True
@@ -864,12 +885,14 @@ def test_active_recovery_plan_replacement_is_scoped_to_clinical_event(
 ) -> None:
     assigned_id, _ = _seed_patient_ids(settings)
     doctor_headers = _doctor_headers(client, settings)
+    reviewer_headers, reviewer_doctor_id = _reviewer_context(client, settings)
     task_payload = [
         {
             "category": "medication",
             "title": "Synthetic medication task",
             "detail": "Demo-only medication task detail.",
             "due_label": "Today",
+            "scheduled_date": datetime.now(UTC).date().isoformat(),
             "notification_time": "09:00",
         },
         {
@@ -891,6 +914,8 @@ def test_active_recovery_plan_replacement_is_scoped_to_clinical_event(
             "due_label": "Today",
         },
     ]
+    for task in task_payload:
+        task["scheduled_date"] = datetime.now(UTC).date().isoformat()
 
     def create_event(title: str) -> str:
         response = client.post(
@@ -924,14 +949,30 @@ def test_active_recovery_plan_replacement_is_scoped_to_clinical_event(
         submitted = client.post(
             f"/api/v1/patients/{assigned_id}/recovery-plans/{plan_id}/submit-review",
             headers=doctor_headers,
+            json={
+                "reviewer_doctor_id": str(reviewer_doctor_id),
+                "expected_version": created.json()["version"],
+            },
         )
         assert submitted.status_code == 200
         approved = client.post(
             f"/api/v1/patients/{assigned_id}/recovery-plans/{plan_id}/approve",
             headers=doctor_headers,
+            json={"expected_version": created.json()["version"]},
+        )
+        assert approved.status_code == 404
+        approved = client.post(
+            f"/api/v1/patients/{assigned_id}/recovery-plans/{plan_id}/approve",
+            headers=reviewer_headers,
+            json={"expected_version": created.json()["version"]},
         )
         assert approved.status_code == 200
-        assert approved.json()["status"] == "active"
+        activated = client.post(
+            f"/api/v1/patients/{assigned_id}/recovery-plans/{plan_id}/activate",
+            headers=doctor_headers,
+        )
+        assert activated.status_code == 200
+        assert activated.json()["status"] == "active"
         return plan_id
 
     event_a = create_event("Synthetic event A")
@@ -1489,6 +1530,7 @@ def test_recovery_plan_review_today_progress_completion_and_safe_boundaries(
     assigned_id, unrelated_id = _seed_patient_ids(settings)
     doctor_headers = _doctor_headers(client, settings)
     patient_headers = _patient_headers(client, settings)
+    reviewer_headers, reviewer_doctor_id = _reviewer_context(client, settings)
 
     task_payload = [
         {
@@ -1496,6 +1538,7 @@ def test_recovery_plan_review_today_progress_completion_and_safe_boundaries(
             "title": "Synthetic reviewed medication task",
             "detail": "Demo-only reviewed medication task detail.",
             "due_label": "Today",
+            "scheduled_date": datetime.now(UTC).date().isoformat(),
             "notification_time": "09:00",
         },
         {
@@ -1517,6 +1560,8 @@ def test_recovery_plan_review_today_progress_completion_and_safe_boundaries(
             "due_label": "Today",
         },
     ]
+    for task in task_payload:
+        task["scheduled_date"] = datetime.now(UTC).date().isoformat()
     plan = client.post(
         f"/api/v1/patients/{assigned_id}/recovery-plans",
         headers=doctor_headers,
@@ -1541,6 +1586,10 @@ def test_recovery_plan_review_today_progress_completion_and_safe_boundaries(
     submitted = client.post(
         f"/api/v1/patients/{assigned_id}/recovery-plans/{plan_id}/submit-review",
         headers=doctor_headers,
+        json={
+            "reviewer_doctor_id": str(reviewer_doctor_id),
+            "expected_version": plan_payload["version"],
+        },
     )
     assert submitted.status_code == 200
     assert submitted.json()["review_status"] == "in_review"
@@ -1561,6 +1610,7 @@ def test_recovery_plan_review_today_progress_completion_and_safe_boundaries(
     patient_approve = client.post(
         f"/api/v1/patients/{assigned_id}/recovery-plans/{plan_id}/approve",
         headers=patient_headers,
+        json={"expected_version": plan_payload["version"]},
     )
     assert patient_approve.status_code == 404
     assert patient_approve.json()["error"]["code"] == "not_found"
@@ -1568,6 +1618,19 @@ def test_recovery_plan_review_today_progress_completion_and_safe_boundaries(
     changes = client.post(
         f"/api/v1/patients/{assigned_id}/recovery-plans/{plan_id}/request-changes",
         headers=doctor_headers,
+        json={
+            "expected_version": plan_payload["version"],
+            "comment": "Synthetic changes requested.",
+        },
+    )
+    assert changes.status_code == 404
+    changes = client.post(
+        f"/api/v1/patients/{assigned_id}/recovery-plans/{plan_id}/request-changes",
+        headers=reviewer_headers,
+        json={
+            "expected_version": plan_payload["version"],
+            "comment": "Synthetic changes requested.",
+        },
     )
     assert changes.status_code == 200
     assert changes.json()["review_status"] == "changes_requested"
@@ -1591,23 +1654,40 @@ def test_recovery_plan_review_today_progress_completion_and_safe_boundaries(
         client.post(
             f"/api/v1/patients/{assigned_id}/recovery-plans/{plan_id}/submit-review",
             headers=doctor_headers,
+            json={
+                "reviewer_doctor_id": str(reviewer_doctor_id),
+                "expected_version": updated.json()["version"],
+            },
         ).status_code
         == 200
     )
     approved = client.post(
         f"/api/v1/patients/{assigned_id}/recovery-plans/{plan_id}/approve",
         headers=doctor_headers,
+        json={"expected_version": updated.json()["version"]},
+    )
+    assert approved.status_code == 404
+    approved = client.post(
+        f"/api/v1/patients/{assigned_id}/recovery-plans/{plan_id}/approve",
+        headers=reviewer_headers,
+        json={"expected_version": updated.json()["version"]},
     )
     assert approved.status_code == 200
     approved_payload = approved.json()
-    assert approved_payload["status"] == "active"
+    assert approved_payload["status"] == "approved"
     assert approved_payload["review_status"] == "approved"
     assert approved_payload["approved_at"] is not None
-    assert approved_payload["activated_at"] is not None
+    assert approved_payload["activated_at"] is None
+    activated = client.post(
+        f"/api/v1/patients/{assigned_id}/recovery-plans/{plan_id}/activate",
+        headers=doctor_headers,
+    )
+    assert activated.status_code == 200
 
     cross_patient_approve = client.post(
         f"/api/v1/patients/{unrelated_id}/recovery-plans/{plan_id}/approve",
         headers=doctor_headers,
+        json={"expected_version": updated.json()["version"]},
     )
     assert cross_patient_approve.status_code == 404
     assert cross_patient_approve.json()["error"]["code"] == "not_found"

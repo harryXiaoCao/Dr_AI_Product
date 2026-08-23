@@ -3,6 +3,8 @@ import 'package:dr_ai_app/core/api/api_error.dart';
 import 'package:dr_ai_app/design_system/dr_ai_tokens.dart';
 import 'package:dr_ai_app/features/auth/application/auth_controller.dart';
 import 'package:dr_ai_app/features/auth/presentation/signup_reference_data.dart';
+import 'package:dr_ai_app/features/care_cost/application/care_cost_providers.dart';
+import 'package:dr_ai_app/features/care_cost/domain/care_cost_data.dart';
 import 'package:dr_ai_app/features/dashboard/domain/dashboard_data.dart';
 import 'package:dr_ai_app/features/patient/application/patient_care_providers.dart';
 import 'package:dr_ai_app/features/patient/domain/patient_care_data.dart';
@@ -18,6 +20,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 class PatientDashboardScreen extends ConsumerWidget {
   const PatientDashboardScreen({super.key});
@@ -403,14 +406,10 @@ class _PatientDashboard extends ConsumerWidget {
         break;
     }
     final dashboardData = _patientDashboardData(context, data.data);
-    final fees = List<Map<String, dynamic>>.from(
-      (dashboardData['fee_items'] as List).map(
-        (item) => Map<String, dynamic>.from(item as Map),
-      ),
-    );
     final hasRecords = (dashboardData['medical_records'] as List).isNotEmpty;
     final hasImages = (dashboardData['imaging_results'] as List).isNotEmpty;
     final today = ref.watch(patientTodayProvider);
+    final ledger = ref.watch(ownCareCostLedgerProvider);
     final textScale = MediaQuery.textScalerOf(context).scale(1);
     final cardScale = textScale.clamp(1.0, 1.6).toDouble();
 
@@ -439,10 +438,13 @@ class _PatientDashboard extends ConsumerWidget {
               ),
               const SizedBox(height: 6),
               SizedBox(
-                height: 300 * cardScale,
+                height: 390 * cardScale,
                 child: _PatientSection(
-                  title: context.l10n.medicalFee,
-                  child: _MedicalFee(items: fees),
+                  title: context.l10n.careCostsSummary,
+                  child: _MedicalFee(
+                    ledger: ledger,
+                    onRetry: () => ref.invalidate(ownCareCostLedgerProvider),
+                  ),
                 ),
               ),
               const SizedBox(height: 6),
@@ -486,9 +488,7 @@ Map<String, dynamic> _patientDashboardData(
   BuildContext context,
   Map<String, dynamic> source,
 ) {
-  if (source.containsKey('recovery_days') &&
-      source.containsKey('doctor') &&
-      source.containsKey('fee_items')) {
+  if (source.containsKey('recovery_days') && source.containsKey('doctor')) {
     return source;
   }
   return <String, dynamic>{
@@ -524,28 +524,6 @@ Map<String, dynamic> _patientDashboardData(
       'title': context.l10n.sharePatientCodeAction,
       'expertise': context.l10n.careAfterConnection,
     },
-    'fee_items': <Map<String, dynamic>>[
-      <String, dynamic>{
-        'label': context.l10n.consultation,
-        'amount': context.l10n.pending,
-        'selected': false,
-      },
-      <String, dynamic>{
-        'label': context.l10n.medicalRecord,
-        'amount': context.l10n.pending,
-        'selected': false,
-      },
-      <String, dynamic>{
-        'label': context.l10n.medication,
-        'amount': context.l10n.pending,
-        'selected': false,
-      },
-      <String, dynamic>{
-        'label': context.l10n.imaging,
-        'amount': context.l10n.pending,
-        'selected': false,
-      },
-    ],
     'medical_records': <Object>[],
     'imaging_results': <Object>[],
     ...source,
@@ -859,11 +837,14 @@ class _AccountListTile extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.subtitle,
+    this.subtitleKey,
+    super.key,
   });
 
   final IconData icon;
   final String title;
   final String subtitle;
+  final Key? subtitleKey;
 
   @override
   Widget build(BuildContext context) {
@@ -891,6 +872,7 @@ class _AccountListTile extends StatelessWidget {
                 ),
                 Text(
                   subtitle,
+                  key: subtitleKey,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -1087,6 +1069,10 @@ class _PatientRecoveryPlanView extends StatelessWidget {
                   children: <Widget>[
                     for (final plan in bundle.recoveryPlans)
                       _AccountListTile(
+                        key: Key('patient-recovery-history-${plan.planId}'),
+                        subtitleKey: Key(
+                          'patient-recovery-history-progress-${plan.planId}',
+                        ),
                         icon: Icons.assignment_outlined,
                         title: plan.title,
                         subtitle:
@@ -1126,12 +1112,29 @@ class _PatientRecoveryTasks extends ConsumerWidget {
         const SizedBox(height: DrAiSpacing.xs),
         Text(
           '${data.progressSummary.completedTaskCount}/${data.progressSummary.taskCount} complete - ${data.progressSummary.completionPercent}%',
+          key: const Key('patient-recovery-active-progress'),
           style: const TextStyle(
             color: DrAiColors.brand,
             fontWeight: FontWeight.w800,
           ),
         ),
         const SizedBox(height: DrAiSpacing.sm),
+        completionState.when(
+          data: (_) => const SizedBox.shrink(),
+          loading: () => const SizedBox.shrink(),
+          error: (error, stackTrace) => Padding(
+            padding: const EdgeInsets.only(bottom: DrAiSpacing.xs),
+            child: Text(
+              _patientCopy(
+                context,
+                'Completion could not sync. The saved state was restored; try again.',
+                '完成状态同步失败。已恢复保存的状态，请重试。',
+              ),
+              key: const Key('patient-recovery-sync-error'),
+              style: const TextStyle(color: DrAiColors.danger, fontSize: 12),
+            ),
+          ),
+        ),
         for (final task in data.tasks)
           _TodayTaskTile(
             task: task,
@@ -2703,31 +2706,46 @@ class _PatientTodayCard extends ConsumerWidget {
             ),
             const SizedBox(height: DrAiSpacing.xs),
             _MedicationReminderTodayList(care: care),
-            if (data.tasks.isEmpty)
-              Padding(
-                padding: EdgeInsets.only(bottom: DrAiSpacing.xs),
-                child: Text(context.l10n.noTodayTasks),
-              ),
             completionState.when(
               data: (_) => const SizedBox.shrink(),
               loading: () => const SizedBox.shrink(),
               error: (error, stackTrace) => Padding(
                 padding: EdgeInsets.only(top: DrAiSpacing.xs),
                 child: Text(
-                  context.l10n.taskSyncFailed,
+                  _patientCopy(
+                    context,
+                    'Completion could not sync. The saved state was restored; try again.',
+                    '完成状态同步失败。已恢复保存的状态，请重试。',
+                  ),
                   style: TextStyle(color: DrAiColors.danger, fontSize: 12),
                 ),
               ),
             ),
-            for (final task in data.tasks)
-              _TodayTaskTile(
-                task: task,
-                locallyCompleted: locallyCompleted.contains(task.taskId),
-                isPending: completionState.isLoading,
-                onChanged: (completed) => ref
-                    .read(recoveryTaskCompletionControllerProvider.notifier)
-                    .setCompleted(task.taskId, completed: completed),
-              ),
+            _TaskScheduleSection(
+              title: context.l10n.overdue,
+              tasks: data.overdueTasks,
+              locallyCompleted: locallyCompleted,
+              isPending: completionState.isLoading,
+            ),
+            _TaskScheduleSection(
+              title: context.l10n.today,
+              tasks: data.tasks,
+              locallyCompleted: locallyCompleted,
+              isPending: completionState.isLoading,
+              emptyLabel: context.l10n.noTodayTasks,
+            ),
+            _TaskScheduleSection(
+              title: context.l10n.upcoming,
+              tasks: data.upcomingTasks,
+              locallyCompleted: locallyCompleted,
+              isPending: completionState.isLoading,
+            ),
+            _TaskScheduleSection(
+              title: context.l10n.unscheduled,
+              tasks: data.unscheduledTasks,
+              locallyCompleted: locallyCompleted,
+              isPending: completionState.isLoading,
+            ),
             const SizedBox(height: DrAiSpacing.xs),
             Text(
               context.l10n.stableValue(data.safetyLabel),
@@ -2736,6 +2754,64 @@ class _PatientTodayCard extends ConsumerWidget {
           ],
         );
       },
+    );
+  }
+}
+
+class _TaskScheduleSection extends ConsumerWidget {
+  const _TaskScheduleSection({
+    required this.title,
+    required this.tasks,
+    required this.locallyCompleted,
+    required this.isPending,
+    this.emptyLabel,
+  });
+
+  final String title;
+  final List<RecoveryTaskItem> tasks;
+  final Set<String> locallyCompleted;
+  final bool isPending;
+  final String? emptyLabel;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (tasks.isEmpty && emptyLabel == null) {
+      return const SizedBox.shrink();
+    }
+    return Semantics(
+      container: true,
+      label: title,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: DrAiSpacing.sm),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Text(
+              title,
+              style: const TextStyle(
+                color: DrAiColors.brandDark,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: DrAiSpacing.xs),
+            if (tasks.isEmpty)
+              Text(
+                emptyLabel ?? context.l10n.noScheduledTasks,
+                style: const TextStyle(color: DrAiColors.mutedInk),
+              )
+            else
+              for (final task in tasks)
+                _TodayTaskTile(
+                  task: task,
+                  locallyCompleted: locallyCompleted.contains(task.taskId),
+                  isPending: isPending,
+                  onChanged: (completed) => ref
+                      .read(recoveryTaskCompletionControllerProvider.notifier)
+                      .setCompleted(task.taskId, completed: completed),
+                ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -3045,7 +3121,7 @@ class _TodayTaskTile extends StatelessWidget {
           subtitle: Text(
             '${_taskLabel(context, task.category)} - ${task.dueLabel}'
             '${task.notificationTime == null ? '' : ' - ${task.notificationTime}'}\n'
-            '${task.detail}',
+            '${task.planTitle.isEmpty ? '' : '${task.planTitle} · '}${task.detail}',
             maxLines: 3,
             overflow: TextOverflow.ellipsis,
           ),
@@ -3408,9 +3484,10 @@ class _PatientSection extends StatelessWidget {
 }
 
 class _MedicalFee extends StatelessWidget {
-  const _MedicalFee({required this.items});
+  const _MedicalFee({required this.ledger, required this.onRetry});
 
-  final List<Map<String, dynamic>> items;
+  final AsyncValue<CareCostLedgerData> ledger;
+  final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) {
@@ -3424,23 +3501,36 @@ class _MedicalFee extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final itemWidth = (constraints.maxWidth - DrAiSpacing.sm) / 2;
-              return Wrap(
-                spacing: DrAiSpacing.sm,
-                runSpacing: DrAiSpacing.sm,
-                children: <Widget>[
-                  for (final item in items)
-                    SizedBox(
-                      width: itemWidth,
-                      child: _FeeSummaryItem(item: item),
+          Expanded(
+            child: ledger.when(
+              loading: () => Semantics(
+                liveRegion: true,
+                label: context.l10n.loadingCareCostsSummary,
+                child: const Center(child: CircularProgressIndicator()),
+              ),
+              error: (error, stackTrace) => Semantics(
+                liveRegion: true,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: <Widget>[
+                    Text(
+                      context.l10n.loadCareCostsSummaryFailed,
+                      textAlign: TextAlign.center,
                     ),
-                ],
-              );
-            },
+                    const SizedBox(height: DrAiSpacing.sm),
+                    OutlinedButton.icon(
+                      key: const Key('retry-dashboard-care-costs'),
+                      onPressed: onRetry,
+                      icon: const Icon(Icons.refresh),
+                      label: Text(context.l10n.retry),
+                    ),
+                  ],
+                ),
+              ),
+              data: (data) => _AuthoritativeLedgerSummary(ledger: data),
+            ),
           ),
-          const Spacer(),
+          const SizedBox(height: DrAiSpacing.sm),
           FilledButton.icon(
             key: const Key('open-care-costs-button'),
             onPressed: () => context.go('/patient/care-costs'),
@@ -3464,58 +3554,137 @@ class _MedicalFee extends StatelessWidget {
 }
 
 class _FeeSummaryItem extends StatelessWidget {
-  const _FeeSummaryItem({required this.item});
+  const _FeeSummaryItem({required this.label, required this.value});
 
-  final Map<String, dynamic> item;
+  final String label;
+  final String value;
 
   @override
   Widget build(BuildContext context) {
-    final active = item['selected'] as bool;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
-      decoration: BoxDecoration(
-        color: active ? const Color(0xFFF2FBF8) : const Color(0xFFF7F8FA),
-        borderRadius: BorderRadius.circular(DrAiRadii.sm),
-      ),
-      child: Row(
-        children: <Widget>[
-          Icon(
-            active ? Icons.receipt_long_outlined : Icons.schedule_outlined,
-            size: 17,
-            color: active ? const Color(0xFF087F5B) : DrAiColors.inkSecondary,
-          ),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  item['label'] as String,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: DrAiColors.ink,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                Text(
-                  item['amount'] as String,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: DrAiColors.inkSecondary,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
+    return Semantics(
+      label: '$label: $value',
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF7F8FA),
+          borderRadius: BorderRadius.circular(DrAiRadii.sm),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              label,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: DrAiColors.inkSecondary,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
             ),
-          ),
-        ],
+            Text(
+              value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: DrAiColors.ink,
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
+}
+
+class _AuthoritativeLedgerSummary extends StatelessWidget {
+  const _AuthoritativeLedgerSummary({required this.ledger});
+
+  final CareCostLedgerData ledger;
+
+  @override
+  Widget build(BuildContext context) {
+    final itemCount = ledger.events.fold<int>(
+      0,
+      (count, event) => count + event.items.length,
+    );
+    if (itemCount == 0) {
+      return Semantics(
+        liveRegion: true,
+        child: Center(
+          child: Text(
+            context.l10n.noCareCostsYet,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: DrAiColors.inkSecondary),
+          ),
+        ),
+      );
+    }
+    final metrics = <(String, String)>[
+      (
+        context.l10n.estimatedAmounts,
+        _dashboardMoney(ledger.currency, ledger.estimatedTotalMinor),
+      ),
+      (
+        context.l10n.finalAmounts,
+        _dashboardMoney(ledger.currency, ledger.finalTotalMinor),
+      ),
+      (
+        context.l10n.requestedFromPayer,
+        _dashboardMoney(ledger.currency, ledger.payerRequestedTotalMinor),
+      ),
+      (
+        context.l10n.expectedPatientResponsibility,
+        _dashboardMoney(
+          ledger.currency,
+          ledger.patientResponsibilityTotalMinor,
+        ),
+      ),
+      (context.l10n.pendingCostItems, '${ledger.pendingCostItemCount}'),
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        Text(
+          context.l10n.authoritativeLedgerSummary,
+          style: const TextStyle(color: DrAiColors.inkSecondary, fontSize: 11),
+        ),
+        const SizedBox(height: DrAiSpacing.xs),
+        Expanded(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final itemWidth = (constraints.maxWidth - DrAiSpacing.sm) / 2;
+              return SingleChildScrollView(
+                child: Wrap(
+                  spacing: DrAiSpacing.sm,
+                  runSpacing: DrAiSpacing.sm,
+                  children: <Widget>[
+                    for (final metric in metrics)
+                      SizedBox(
+                        width: itemWidth,
+                        child: _FeeSummaryItem(
+                          label: metric.$1,
+                          value: metric.$2,
+                        ),
+                      ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+String _dashboardMoney(String currency, int minor) {
+  return NumberFormat.currency(
+    symbol: currency == 'CNY' ? '¥' : '$currency ',
+    decimalDigits: 2,
+  ).format(minor / 100);
 }
 
 DateTime? _parseDate(String value) {

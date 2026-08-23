@@ -135,9 +135,25 @@ def _accounts(
         )
     )
     if relationship is None:
-        db.add(CareRelationship(doctor_id=doctor.id, patient_id=patient.id, is_active=True))
+        now = datetime.now(UTC)
+        db.add(
+            CareRelationship(
+                doctor_id=doctor.id,
+                patient_id=patient.id,
+                is_active=True,
+                status="active",
+                can_review_recovery_plans=True,
+                requested_at=now,
+                responded_at=now,
+                approved_at=now,
+            )
+        )
     else:
         relationship.is_active = True
+        relationship.status = "active"
+        relationship.can_review_recovery_plans = True
+        relationship.responded_at = relationship.responded_at or relationship.created_at
+        relationship.approved_at = relationship.approved_at or relationship.created_at
         relationship.revoked_at = None
     db.flush()
     return doctor_user, doctor, patient, membership

@@ -241,7 +241,16 @@ class CareRelationship(Base):
         ForeignKey("patient_profiles.id", ondelete="CASCADE")
     )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    status: Mapped[str] = mapped_column(String(40), default="pending_patient_approval")
+    request_version: Mapped[int] = mapped_column(Integer, default=1)
+    can_review_recovery_plans: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    requested_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    rejected_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     doctor: Mapped[DoctorProfile] = relationship(back_populates="care_relationships")
@@ -595,6 +604,7 @@ class PayerReview(Base):
     )
     action: Mapped[str] = mapped_column(String(40))
     reason_code: Mapped[str] = mapped_column(String(80))
+    clarification_message: Mapped[str | None] = mapped_column(Text)
     note: Mapped[str | None] = mapped_column(Text)
     request_checksum: Mapped[str] = mapped_column(String(64))
     idempotency_key: Mapped[str] = mapped_column(String(120))
@@ -2135,6 +2145,11 @@ class RecoveryPlan(Base):
     review_actor_user_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL")
     )
+    assigned_reviewer_doctor_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("doctor_profiles.id", ondelete="SET NULL")
+    )
+    submitted_version: Mapped[int | None] = mapped_column(Integer)
+    review_comment: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
@@ -2149,8 +2164,11 @@ class RecoveryPlan(Base):
     cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     patient: Mapped[PatientProfile] = relationship(back_populates="recovery_plans")
-    doctor: Mapped[DoctorProfile] = relationship()
+    doctor: Mapped[DoctorProfile] = relationship(foreign_keys=[doctor_id])
     review_actor: Mapped[User | None] = relationship()
+    assigned_reviewer: Mapped[DoctorProfile | None] = relationship(
+        foreign_keys=[assigned_reviewer_doctor_id]
+    )
     clinical_event: Mapped[ClinicalEvent | None] = relationship(back_populates="recovery_plans")
     tasks: Mapped[list["RecoveryTask"]] = relationship(
         back_populates="plan", cascade="all, delete-orphan", order_by="RecoveryTask.sort_order"
@@ -2158,6 +2176,33 @@ class RecoveryPlan(Base):
     phases: Mapped[list["RecoveryPhase"]] = relationship(
         back_populates="plan", cascade="all, delete-orphan", order_by="RecoveryPhase.sort_order"
     )
+    review_decisions: Mapped[list["RecoveryPlanReviewDecision"]] = relationship(
+        back_populates="plan",
+        cascade="all, delete-orphan",
+        order_by="RecoveryPlanReviewDecision.created_at",
+    )
+
+
+class RecoveryPlanReviewDecision(Base):
+    __tablename__ = "recovery_plan_review_decisions"
+    __table_args__ = (
+        UniqueConstraint("plan_id", "plan_version", "action", name="uq_recovery_review_action"),
+        Index("ix_recovery_review_plan_created", "plan_id", "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    plan_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("recovery_plans.id", ondelete="CASCADE"))
+    plan_version: Mapped[int] = mapped_column(Integer)
+    reviewer_doctor_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("doctor_profiles.id", ondelete="RESTRICT")
+    )
+    reviewer_user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"))
+    action: Mapped[str] = mapped_column(String(40))
+    comment: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    plan: Mapped[RecoveryPlan] = relationship(back_populates="review_decisions")
+    reviewer: Mapped[DoctorProfile] = relationship()
 
 
 class RecoveryPhase(Base):
@@ -2215,6 +2260,9 @@ class RecoveryTask(Base):
     title: Mapped[str] = mapped_column(String(160))
     detail: Mapped[str] = mapped_column(Text)
     due_label: Mapped[str] = mapped_column(String(80))
+    scheduled_date: Mapped[date | None] = mapped_column(Date)
+    scheduled_time: Mapped[str | None] = mapped_column(String(5))
+    time_zone: Mapped[str] = mapped_column(String(64), default="Asia/Shanghai")
     notification_time: Mapped[str | None] = mapped_column(String(20))
     frequency: Mapped[str | None] = mapped_column(String(120))
     schedule: Mapped[str | None] = mapped_column(String(200))
@@ -3756,6 +3804,10 @@ class ChatbotEvent(Base):
     provider_error_code: Mapped[str | None] = mapped_column(String(120))
     provider_attempt_count: Mapped[int | None] = mapped_column(Integer)
     provider_cost_microunits: Mapped[int | None] = mapped_column(Integer)
+    provider_call_count: Mapped[int] = mapped_column(Integer, default=0)
+    provider_stage_metrics_json: Mapped[list[dict[str, object]]] = mapped_column(
+        JSONB, default=list
+    )
     rescue_trigger: Mapped[str | None] = mapped_column(String(80))
     rescue_attempted: Mapped[bool] = mapped_column(Boolean, default=False)
     rescue_outcome: Mapped[str | None] = mapped_column(String(80))

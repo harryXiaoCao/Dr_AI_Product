@@ -27,9 +27,9 @@ CATALOG_PATH = Path("knowledge_base/catalog/authoritative_resources.v1.json")
 def test_catalog_contains_complete_who_indexes_and_verified_nhc_sources() -> None:
     catalog = load_catalog(CATALOG_PATH)
 
-    assert len(catalog.sources) == 298
-    assert len({source.stable_id for source in catalog.sources}) == 298
-    assert len({str(source.canonical_locator) for source in catalog.sources}) == 298
+    assert len(catalog.sources) == 299
+    assert len({source.stable_id for source in catalog.sources}) == 299
+    assert len({str(source.canonical_locator) for source in catalog.sources}) == 299
     assert all(source.lifecycle_state == "rights_pending" for source in catalog.sources)
     assert all(source.catalog_visible for source in catalog.sources)
     assert all(source.catalog_summary and source.search_keywords for source in catalog.sources)
@@ -48,13 +48,13 @@ def test_catalog_contains_complete_who_indexes_and_verified_nhc_sources() -> Non
         if source.original_language == "zh-Hans" and not source.official_translations
     ]
     english_only = [source for source in who if source.original_language == "en"]
-    assert len(who) == 246
+    assert len(who) == 247
     assert len(nhc) == 52
-    assert len(bilingual) == 234
-    assert len(chinese_only) == 5
+    assert len(bilingual) == 237
+    assert len(chinese_only) == 3
     assert len(english_only) == 7
-    assert len(bilingual) + len(chinese_only) == 239
-    assert len(bilingual) + len(english_only) == 241
+    assert len(bilingual) + len(chinese_only) == 240
+    assert len(bilingual) + len(english_only) == 244
     assert all(source.authority_tier == "A" for source in nhc)
     assert all(source.original_language == "zh-Hans" for source in nhc)
     assert all(source.canonical_locator.host == "www.nhc.gov.cn" for source in nhc)
@@ -69,10 +69,10 @@ def test_metadata_import_is_idempotent_and_never_admits_pending_rights() -> None
         second = import_catalog_metadata(db, catalog)
         db.commit()
 
-        assert first == (2, 2, 298)
+        assert first == (2, 2, 299)
         assert second == (0, 0, 0)
-        assert db.scalar(select(func.count()).select_from(KbSource)) == 298
-        assert db.scalar(select(func.count()).select_from(KbSourceVersion)) == 298
+        assert db.scalar(select(func.count()).select_from(KbSource)) == 299
+        assert db.scalar(select(func.count()).select_from(KbSourceVersion)) == 299
         assert (
             db.scalar(select(func.count()).select_from(KbSource).where(KbSource.doctor_eligible))
             == 0

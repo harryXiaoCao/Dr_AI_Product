@@ -110,6 +110,65 @@ void main() {
     },
   );
 
+  test(
+    'payer dashboard parsing supports escalated metric and old payloads',
+    () {
+      Map<String, dynamic> payload({int? escalated}) {
+        final result = <String, dynamic>{
+          'profile': <String, dynamic>{
+            'membership_id': 'membership-id',
+            'display_name': 'Synthetic Reviewer',
+            'title': 'Reviewer',
+            'status': 'active',
+            'scope': 'synthetic_review',
+            'organization': <String, dynamic>{
+              'id': 'organization-id',
+              'name': 'Synthetic Payer',
+              'organization_type': 'public_payer',
+              'jurisdiction_code': 'CN',
+              'verification_status': 'synthetic_only',
+            },
+          },
+          'open_requests': 12,
+          'clarification_requests': 3,
+          'completed_reviews': 9999,
+          'pending_requested_total_minor': 987654321,
+          'currency': 'CNY',
+        };
+        if (escalated != null) {
+          result['escalated_requests'] = escalated;
+        }
+        return result;
+      }
+
+      expect(
+        PayerDashboardData.fromJson(payload(escalated: 7)).escalatedRequests,
+        7,
+      );
+      expect(PayerDashboardData.fromJson(payload()).escalatedRequests, 0);
+    },
+  );
+
+  test('payer review parses clarification separately from private note', () {
+    final review = PayerReviewData.fromJson(<String, dynamic>{
+      'id': 'review-id',
+      'action': 'request_clarification',
+      'reason_code': 'documentation_needed',
+      'clarification_message': 'Synthetic doctor-visible question.',
+      'note': 'Synthetic payer-private note.',
+      'reviewer_membership_id': 'membership-id',
+      'reviewer_display_name': 'Synthetic Reviewer',
+      'reviewer_title': 'Reviewer',
+      'from_status': 'submitted',
+      'to_status': 'clarification_requested',
+      'version': 2,
+      'created_at': '2026-08-13T00:00:00Z',
+    });
+
+    expect(review.clarificationMessage, 'Synthetic doctor-visible question.');
+    expect(review.note, 'Synthetic payer-private note.');
+  });
+
   test('production typography uses bundled bilingual font families', () {
     final bodyStyle = DrAiTheme.light.textTheme.bodyMedium!;
 
@@ -308,6 +367,57 @@ void main() {
         findsOneWidget,
       );
       expect(find.textContaining('reviewer-only'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'doctor history shows clarification but never the payer-private note',
+    (tester) async {
+      setViewport(tester, const Size(1280, 900));
+      final request = FakeDrAiRepository.payerRequestFixture(
+        status: 'clarification_requested',
+        reviewedAt: DateTime(2026, 8, 13),
+        reviews: <PayerReviewData>[
+          PayerReviewData(
+            id: 'clarification-review-id',
+            action: 'request_clarification',
+            reasonCode: 'documentation_needed',
+            clarificationMessage:
+                'Please provide the synthetic dated service record.',
+            note: 'SYNTHETIC PRIVATE REVIEW NOTE 8457',
+            reviewerDisplayName: 'Lin Reviewer',
+            reviewerTitle: 'Medical expenditure reviewer',
+            fromStatus: 'submitted',
+            toStatus: 'clarification_requested',
+            createdAt: DateTime(2026, 8, 13),
+          ),
+        ],
+      );
+      await pumpApp(
+        tester,
+        FakeDrAiRepository(
+          restoredSession: doctorSession,
+          payerRequests: <PayerRequestData>[request],
+        ),
+      );
+
+      await tester.tap(find.text('Payment requests').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Request history'));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const Key('payment-request-history-payer-request-test-id')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Payer clarification request'), findsWidgets);
+      expect(
+        find.text('Please provide the synthetic dated service record.'),
+        findsWidgets,
+      );
+      expect(find.text('SYNTHETIC PRIVATE REVIEW NOTE 8457'), findsNothing);
+      expect(find.text('Add justification or response'), findsOneWidget);
+      expect(tester.takeException(), isNull);
     },
   );
 
@@ -650,7 +760,7 @@ void main() {
 
     expect(find.text('Today'), findsWidgets);
     expect(find.text('My Account'), findsWidgets);
-    expect(find.text('Medical Fee'), findsOneWidget);
+    expect(find.text('Care & Costs summary'), findsOneWidget);
   });
 
   testWidgets('patient account keeps language changes inside profile editing', (
@@ -803,6 +913,67 @@ void main() {
     expect(find.byKey(const Key('group-contact-placeholder')), findsNothing);
   });
 
+  testWidgets('patient controls pending and active doctor relationships', (
+    tester,
+  ) async {
+    setViewport(tester, const Size(412, 1100));
+    const contacts = PatientDoctorContactList(
+      items: <PatientDoctorContact>[
+        PatientDoctorContact(
+          doctorId: 'pending-doctor',
+          displayName: 'Dr. Pending Review',
+          title: 'Synthetic doctor',
+          hospitalName: 'Synthetic Hospital',
+          specialty: null,
+          department: null,
+          avatarUrl: null,
+          relationshipId: 'pending-relationship',
+          relationshipStatus: 'pending_patient_approval',
+        ),
+        PatientDoctorContact(
+          doctorId: 'active-doctor',
+          displayName: 'Dr. Active Connection',
+          title: 'Synthetic doctor',
+          hospitalName: 'Synthetic Hospital',
+          specialty: null,
+          department: null,
+          avatarUrl: null,
+          relationshipId: 'active-relationship',
+        ),
+      ],
+    );
+    await pumpApp(
+      tester,
+      FakeDrAiRepository(
+        restoredSession: patientSession,
+        dashboard: patientDashboard,
+        patientDoctorContacts: contacts,
+      ),
+    );
+
+    await tester.tap(find.text('Contacts'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('approve-doctor-pending-doctor')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('reject-doctor-pending-doctor')),
+      findsOneWidget,
+    );
+    expect(find.text('Pending approval'), findsOneWidget);
+    await tester.dragUntilVisible(
+      find.byKey(const Key('remove-doctor-active-doctor')),
+      find.byKey(const Key('patient-contact-list')),
+      const Offset(0, -220),
+    );
+    expect(
+      find.byKey(const Key('remove-doctor-active-doctor')),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('patient AI chat keeps the conversation in the current session', (
     tester,
   ) async {
@@ -841,6 +1012,36 @@ void main() {
       find.byKey(const Key('patient-ai-grounding-approved_evidence')),
       findsOneWidget,
     );
+  });
+
+  testWidgets('patient AI chat history remains usable at mobile width', (
+    tester,
+  ) async {
+    setViewport(tester, const Size(412, 917));
+    final repository = FakeDrAiRepository(
+      restoredSession: patientSession,
+      loginSession: patientSession,
+      dashboard: patientDashboard,
+    );
+    await pumpApp(tester, repository);
+
+    await tester.tap(find.text('Contacts'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('dr-ai-contact')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('patient-ai-history-toggle')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('patient-ai-thread-sidebar')), findsOneWidget);
+    expect(find.byKey(const Key('patient-ai-input')), findsNothing);
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.byKey(const Key('patient-ai-new-chat-sidebar')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('patient-ai-thread-sidebar')), findsNothing);
+    expect(find.byKey(const Key('patient-ai-input')), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   test(
@@ -908,6 +1109,29 @@ void main() {
         model: 'general-ai',
         createdAt: DateTime(2026, 7, 24),
         groundingMode: 'general_model_knowledge',
+        possibleCauses: const <ChatPossibleCause>[
+          ChatPossibleCause(
+            name: 'Viral irritation',
+            explanation: 'A common possible explanation.',
+            status: 'possible_not_confirmed',
+          ),
+          ChatPossibleCause(
+            name: 'Dry air',
+            explanation: 'Dryness can irritate the throat.',
+            status: 'possible_not_confirmed',
+          ),
+          ChatPossibleCause(
+            name: 'Bacterial infection',
+            explanation: 'An important alternative for assessment.',
+            status: 'possible_not_confirmed',
+          ),
+        ],
+        warningSigns: const <String>[
+          'Difficulty breathing or swallowing saliva',
+        ],
+        nextSteps: const <String>[
+          'Drink fluids and arrange care if symptoms persist.',
+        ],
         limitation:
             'General AI-generated information without a supporting Dr. AI source.',
         nextActionCode: 'contact_connected_doctor',
@@ -937,6 +1161,59 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Reviewed sources'), findsNothing);
+    expect(find.byKey(const Key('patient-ai-possible-causes')), findsOneWidget);
+    expect(find.text('Possible causes'), findsOneWidget);
+    expect(
+      find.text('These are possibilities, not a confirmed diagnosis.'),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('patient-ai-warning-signs')), findsOneWidget);
+    expect(find.byKey(const Key('patient-ai-next-steps')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('patient AI emergency renders only the primary call action', (
+    tester,
+  ) async {
+    setViewport(tester, const Size(412, 917));
+    final repository = FakeDrAiRepository(
+      restoredSession: patientSession,
+      loginSession: patientSession,
+      dashboard: patientDashboard,
+      chatResult: ChatMessageResult(
+        threadId: 'emergency-thread',
+        threadKey: 'patient-rag',
+        messageId: 'emergency-request',
+        assistantMessageId: 'emergency-request',
+        content: 'Call 120 now. Do not drive yourself.',
+        responseChunks: const <String>['Call 120 now. Do not drive yourself.'],
+        safetyLabel: 'emergency',
+        emergencyLabel: 'emergency',
+        isRedFlag: true,
+        model: 'fixed-safety-response',
+        createdAt: DateTime(2026, 8, 13),
+        suggestedActionCodes: const <String>['call_120'],
+        nextActionCode: 'call_120',
+      ),
+    );
+    await pumpApp(tester, repository);
+
+    await tester.tap(find.text('Contacts'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('dr-ai-contact')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('patient-ai-input')),
+      'Synthetic emergency test',
+    );
+    await tester.tap(find.byKey(const Key('patient-ai-send')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('patient-ai-call-120')), findsOneWidget);
+    expect(find.text('Call 120 now'), findsOneWidget);
+    expect(find.text('Contact my doctor'), findsNothing);
+    expect(find.text('Organize my symptoms'), findsNothing);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('legal pages return to the registration page', (tester) async {
@@ -1214,6 +1491,100 @@ void main() {
 
     expect(find.text('Accept request'), findsOneWidget);
     expect(find.text('Reject request'), findsOneWidget);
+  });
+
+  testWidgets(
+    'payer clarification separates doctor-visible content from private notes',
+    (tester) async {
+      setViewport(tester, const Size(1280, 900));
+      final repository = FakeDrAiRepository(restoredSession: payerSession);
+      await pumpApp(tester, repository);
+
+      await tester.tap(find.text('Review queue'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Record human review'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Question or information needed from the doctor'),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Internal payer note (optional — not shared with doctor)'),
+        findsOneWidget,
+      );
+      await tester.tap(find.byKey(const Key('payer-review-submit')));
+      await tester.pumpAndSettle();
+      expect(repository.payerReviewCallCount, 0);
+      expect(
+        find.text('Tell the doctor what information is needed.'),
+        findsOneWidget,
+      );
+      final clarificationInput = tester.widget<EditableText>(
+        find.descendant(
+          of: find.byKey(const Key('payer-clarification-message')),
+          matching: find.byType(EditableText),
+        ),
+      );
+      expect(clarificationInput.focusNode.hasFocus, isTrue);
+
+      await tester.enterText(
+        find.byKey(const Key('payer-clarification-message')),
+        'Please provide the synthetic dated service record.',
+      );
+      await tester.enterText(
+        find.byKey(const Key('payer-private-note')),
+        'SYNTHETIC PRIVATE REVIEW NOTE 8457',
+      );
+      await tester.tap(find.byKey(const Key('payer-review-submit')));
+      await tester.pumpAndSettle();
+
+      expect(repository.payerReviewCallCount, 1);
+      expect(
+        repository.lastPayerClarificationMessage,
+        'Please provide the synthetic dated service record.',
+      );
+      expect(
+        repository.lastPayerPrivateNote,
+        'SYNTHETIC PRIVATE REVIEW NOTE 8457',
+      );
+    },
+  );
+
+  testWidgets(
+    'payer clarification validation and privacy labels render in Chinese',
+    (tester) async {
+      setViewport(tester, const Size(412, 917));
+      FlutterSecureStorage.setMockInitialValues(<String, String>{
+        'dr_ai_interface_locale': 'zh_Hans',
+      });
+      final repository = FakeDrAiRepository(restoredSession: payerSession);
+      await pumpApp(tester, repository);
+
+      await tester.tap(find.text('审核队列'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('记录人工审核'));
+      await tester.pumpAndSettle();
+      expect(find.text('需要医生回答的问题或补充的信息'), findsOneWidget);
+      expect(find.text('支付方内部备注（可选——不与医生共享）'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('payer-review-submit')));
+      await tester.pumpAndSettle();
+      expect(find.text('请说明需要医生补充的信息。'), findsOneWidget);
+      expect(repository.payerReviewCallCount, 0);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('payer dashboard displays escalated workload on mobile', (
+    tester,
+  ) async {
+    setViewport(tester, const Size(412, 917));
+    await pumpApp(tester, FakeDrAiRepository(restoredSession: payerSession));
+
+    expect(find.text('Escalated'), findsOneWidget);
+    expect(find.text('1'), findsWidgets);
+    expect(find.text('Open requests'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('patient payer status opens request-scoped intelligence', (
@@ -1779,6 +2150,11 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.textContaining('in_review'), findsWidgets);
 
+    await tester.drag(
+      find.byKey(const Key('doctor-section-list-recoveryPlans')),
+      const Offset(0, -260),
+    );
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('recovery-plan-activate-button')));
     await tester.pumpAndSettle();
     expect(find.textContaining('active'), findsWidgets);
@@ -1797,6 +2173,183 @@ void main() {
 
     expect(find.byKey(const Key('demo-upload-filename-field')), findsNothing);
     expect(find.byKey(const Key('demo-upload-presign-button')), findsNothing);
+  });
+
+  testWidgets(
+    'recovery title counter validates locally, focuses, and preserves content',
+    (tester) async {
+      setViewport(tester, const Size(1280, 1000));
+      final repository = FakeDrAiRepository(
+        restoredSession: doctorSession,
+        recoveryPlans: const RecoveryPlanListData(items: <RecoveryPlanData>[]),
+      );
+      await pumpApp(tester, repository);
+      await openDoctorPatientWorkflow(tester, section: 'recoveryPlans');
+
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('recovery-plan-title-field')),
+          matching: find.text('0/160'),
+        ),
+        findsOneWidget,
+      );
+      await tester.enterText(
+        find.byKey(const Key('recovery-plan-title-field')),
+        '   ',
+      );
+      tester
+          .widget<FilledButton>(
+            find.byKey(const Key('recovery-plan-save-button')),
+          )
+          .onPressed!();
+      await tester.pumpAndSettle();
+      expect(find.text('Enter a plan title.'), findsOneWidget);
+      expect(repository.recoveryPlanSaveCallCount, 0);
+      final titleInput = tester.widget<EditableText>(
+        find.descendant(
+          of: find.byKey(const Key('recovery-plan-title-field')),
+          matching: find.byType(EditableText),
+        ),
+      );
+      expect(titleInput.focusNode.hasFocus, isTrue);
+      expect(titleInput.controller.text, '   ');
+
+      final validTitle = 'x' * 160;
+      await tester.enterText(
+        find.byKey(const Key('recovery-plan-title-field')),
+        '$validTitle overflow',
+      );
+      await tester.pump();
+      expect(
+        tester
+            .widget<TextFormField>(
+              find.byKey(const Key('recovery-plan-title-field')),
+            )
+            .controller
+            ?.text,
+        validTitle,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('recovery-plan-title-field')),
+          matching: find.text('160/160'),
+        ),
+        findsOneWidget,
+      );
+      await tester.enterText(
+        find.byKey(const Key('recovery-plan-instructions-field')),
+        'Synthetic recovery instructions.',
+      );
+      await tester.enterText(
+        find.byKey(const Key('recovery-exercise-task-field')),
+        'Synthetic mobility task',
+      );
+      tester
+          .widget<FilledButton>(
+            find.byKey(const Key('recovery-plan-save-button')),
+          )
+          .onPressed!();
+      await tester.pumpAndSettle();
+      expect(repository.recoveryPlanSaveCallCount, 1);
+      expect(repository.recoveryPlans.items.first.title, validTitle);
+    },
+  );
+
+  testWidgets('backend recovery title 422 maps to the title field', (
+    tester,
+  ) async {
+    setViewport(tester, const Size(1280, 1000));
+    final repository = FakeDrAiRepository(
+      restoredSession: doctorSession,
+      recoveryPlans: const RecoveryPlanListData(items: <RecoveryPlanData>[]),
+      recoveryPlanSaveError: const ApiError(
+        code: 'validation_failed',
+        message: 'The request could not be validated.',
+        statusCode: 422,
+        details: <ApiErrorDetail>[
+          ApiErrorDetail(field: 'title', code: 'invalid_value'),
+        ],
+      ),
+    );
+    await pumpApp(tester, repository);
+    await openDoctorPatientWorkflow(tester, section: 'recoveryPlans');
+    await tester.enterText(
+      find.byKey(const Key('recovery-plan-title-field')),
+      'Synthetic retained title',
+    );
+    await tester.enterText(
+      find.byKey(const Key('recovery-plan-instructions-field')),
+      'Synthetic retained instructions.',
+    );
+    await tester.enterText(
+      find.byKey(const Key('recovery-exercise-task-field')),
+      'Synthetic mobility task',
+    );
+    tester
+        .widget<FilledButton>(
+          find.byKey(const Key('recovery-plan-save-button')),
+        )
+        .onPressed!();
+    await tester.pumpAndSettle();
+
+    expect(repository.recoveryPlanSaveCallCount, 1);
+    expect(
+      find.text('Check the plan title and keep it within 160 characters.'),
+      findsOneWidget,
+    );
+    final titleInput = tester.widget<EditableText>(
+      find.descendant(
+        of: find.byKey(const Key('recovery-plan-title-field')),
+        matching: find.byType(EditableText),
+      ),
+    );
+    expect(titleInput.focusNode.hasFocus, isTrue);
+    expect(titleInput.controller.text, 'Synthetic retained title');
+    expect(
+      tester
+          .widget<TextField>(
+            find.byKey(const Key('recovery-plan-instructions-field')),
+          )
+          .controller
+          ?.text,
+      'Synthetic retained instructions.',
+    );
+  });
+
+  testWidgets('recovery title required error renders in Chinese', (
+    tester,
+  ) async {
+    setViewport(tester, const Size(1280, 1000));
+    FlutterSecureStorage.setMockInitialValues(<String, String>{
+      'dr_ai_interface_locale': 'zh_Hans',
+    });
+    final repository = FakeDrAiRepository(
+      restoredSession: doctorSession,
+      recoveryPlans: const RecoveryPlanListData(items: <RecoveryPlanData>[]),
+    );
+    await pumpApp(tester, repository);
+    GoRouter.of(
+      tester.element(find.byType(Scaffold).first),
+    ).go('/doctor/patients');
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('patient-row-SYN-PATIENT-001')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(
+      find.byKey(const Key('doctor-section-recoveryPlans')),
+    );
+    await tester.tap(
+      find.byKey(const Key('doctor-section-recoveryPlans')),
+      warnIfMissed: false,
+    );
+    await tester.pumpAndSettle();
+    tester
+        .widget<FilledButton>(
+          find.byKey(const Key('recovery-plan-save-button')),
+        )
+        .onPressed!();
+    await tester.pumpAndSettle();
+    expect(find.text('请输入计划标题。'), findsOneWidget);
+    expect(repository.recoveryPlanSaveCallCount, 0);
   });
 
   testWidgets(
@@ -2123,7 +2676,7 @@ void main() {
       findsOneWidget,
     );
     expect(find.textContaining('are not scheduled in Phase 5'), findsOneWidget);
-    expect(find.text('Medical Fee'), findsOneWidget);
+    expect(find.text('Care & Costs summary'), findsOneWidget);
     expect(find.text('Dashboard'), findsOneWidget);
     GoRouter.of(
       tester.element(find.byKey(const Key('patient-dashboard-list'))),
@@ -2234,10 +2787,68 @@ void main() {
       const Offset(0, 400),
     );
     await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('today-task-medication')));
     await tester.tap(find.byKey(const Key('today-task-medication')));
     await tester.pumpAndSettle();
 
     expect(repository.patientToday.tasks.first.isCompleted, isFalse);
+  });
+
+  testWidgets('patient schedule separates every structured task category', (
+    tester,
+  ) async {
+    setViewport(tester, const Size(1280, 1200));
+    RecoveryTaskItem task(String id, String category, String title) =>
+        RecoveryTaskItem(
+          taskId: id,
+          planId: 'source-plan',
+          planTitle: 'Source recovery plan',
+          category: category,
+          title: title,
+          detail: 'Synthetic structured schedule.',
+          dueLabel: 'Display only',
+          isCompleted: false,
+        );
+    final repository = FakeDrAiRepository(
+      restoredSession: patientSession,
+      dashboard: patientDashboard,
+      patientToday: PatientTodayData(
+        safetyLabel: 'Synthetic demonstration data only.',
+        progressSummary: const RecoveryPlanProgressData(
+          taskCount: 4,
+          completedTaskCount: 0,
+          remainingTaskCount: 4,
+          completionPercent: 0,
+        ),
+        tasks: <RecoveryTaskItem>[task('today', 'today', 'Due today task')],
+        overdueTasks: <RecoveryTaskItem>[
+          task('overdue', 'overdue', 'Overdue task'),
+        ],
+        upcomingTasks: <RecoveryTaskItem>[
+          task('upcoming', 'upcoming', 'Upcoming task'),
+        ],
+        unscheduledTasks: <RecoveryTaskItem>[
+          task('unscheduled', 'unscheduled', 'Unscheduled task'),
+        ],
+      ),
+    );
+    await pumpApp(tester, repository);
+
+    expect(find.text('Today'), findsWidgets);
+    expect(find.text('Overdue'), findsOneWidget);
+    await tester.drag(
+      find.byKey(const Key('patient-today-task-list')),
+      const Offset(0, -500),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Upcoming'), findsOneWidget);
+    await tester.drag(
+      find.byKey(const Key('patient-today-task-list')),
+      const Offset(0, -500),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Unscheduled'), findsOneWidget);
+    expect(find.textContaining('Source recovery plan'), findsWidgets);
   });
 
   testWidgets('patient educational chat streams and clears after success', (

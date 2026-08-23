@@ -205,6 +205,11 @@ CONCEPT_ALIASES: dict[str, tuple[str, ...]] = {
     "sputum": ("咳痰", "痰", "sputum", "phlegm"),
     "breathing_difficulty": (
         "呼吸困难",
+        "呼吸不畅",
+        "呼吸费劲",
+        "呼吸很费劲",
+        "呼吸吃力",
+        "呼吸很吃力",
         "喘不上气",
         "不能呼吸",
         "无法呼吸",
@@ -215,7 +220,12 @@ CONCEPT_ALIASES: dict[str, tuple[str, ...]] = {
         "喘不过气",
         "没正常呼吸",
         "shortness of breath",
+        "short of breath",
         "difficulty breathing",
+        "trouble breathing",
+        "having trouble breathing",
+        "hard to breathe",
+        "breathless",
         "cannot breathe",
         "can't breathe",
     ),
@@ -223,6 +233,9 @@ CONCEPT_ALIASES: dict[str, tuple[str, ...]] = {
         "胸口像被石头压",
         "胸口像石头压",
         "压榨样",
+        "胸部压迫感",
+        "胸口有压迫感",
+        "胸口发紧",
         "胸口压",
         "胸痛",
         "胸闷",
@@ -842,7 +855,9 @@ ACTION_LABELS = {
 }
 
 NEGATION_PATTERN = re.compile(
-    r"(?:没有|并无|无|未见|不是|不再|否认|not|no|without|denies?)\s*$",
+    r"(?:没有|并无|无|未见|不是|不再|否认|not|no|without|denies?"
+    r"|(?:do|does|did)\s+not\s+(?:have|feel|experience)"
+    r"|(?:don't|doesn't|didn't)\s+(?:have|feel|experience))\s*$",
     re.IGNORECASE,
 )
 
@@ -1061,6 +1076,10 @@ def _danger_signals(text: str, presentation: ClinicalPresentation) -> tuple[str,
         or re.search(r"(不能呼吸|无法呼吸|cannot breathe|can't breathe)", text)
     ):
         signals.append("severe_respiratory_distress")
+    # Either concept alone may have non-emergency explanations, but their
+    # affirmed combination requires deterministic emergency escalation.
+    if _has(presentation, "chest_pressure", "breathing_difficulty"):
+        signals.append("chest_pressure_with_breathing_difficulty")
     if (
         _has(presentation, "choking", "cyanosis")
         or re.search(r"(不能说话.{0,12}不能咳嗽|cannot speak.{0,24}cannot cough)", text)
@@ -1206,6 +1225,7 @@ DANGER_PRIORITY = (
     "self_harm_crisis",
     "complete_airway_obstruction",
     "severe_respiratory_distress",
+    "chest_pressure_with_breathing_difficulty",
     "acute_coronary_pattern",
     "stroke_or_tia_pattern",
     "prolonged_or_recurrent_seizure",

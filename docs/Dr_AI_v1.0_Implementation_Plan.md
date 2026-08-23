@@ -165,6 +165,12 @@ files/reports, recovery-plan documents, reminders, and evidence attachments are
 medical-information records, not separately priced line items. Their linked
 delivered services or products may be priced.
 
+The patient dashboard and Care & Costs workspace use the same server-owned CNY
+ledger totals. Dashboard snapshots must not carry parallel static financial
+amounts. Doctor Quick Access opens the event-linked imaging records and manual
+review section; automated image interpretation remains unavailable unless its
+separate governed capability and release gates are satisfied.
+
 The server assembles the minimum relevant fact object from:
 
 - symptoms and clinical context entered by the doctor;
@@ -291,6 +297,15 @@ The Dr. AI chatbot uses DeepSeek for generated answers. Server-controlled
 emergency routing, privacy and authorization checks, bounded context selection,
 governed retrieval, source admission, semantic claim validation, and fixed
 fallback remain authoritative.
+
+The patient-chat refinement uses three independently controlled purposes.
+`patient_chat_semantic_routing` classifies intent and extracts the complete
+negation-aware presentation. `patient_chat_differential_planning` runs only for
+symptom or possible-cause questions and produces 3-5 structured working
+hypotheses plus independent retrieval queries. `patient_chat_generated_answer`
+remains the existing final grounded/general answer purpose. The two new local-
+synthetic purposes default disabled and kill-switched, and their schema versions
+are excluded from the existing answer-release checksum.
 
 The chatbot may provide bounded medical information and help a user understand
 their own role-authorized records. It must not become an autonomous diagnosis,
@@ -500,6 +515,11 @@ Payer:
 - [x] Organization-scoped queue, exact request read, itemized facts,
   clarification, accept/reject/escalate/close, and role-scoped expected-care
   views.
+- [x] Separate immutable doctor-visible clarification questions from optional
+  payer-private notes, with conditional validation, role-safe serialization,
+  and content-free audit/notification/AI boundaries.
+- [x] Keep escalated requests in open workload and pending minor-unit totals,
+  with a distinct escalated metric and no completed-review double count.
 - [x] Complete evidence, doctor-justification, comparison, explanation, and
   transition history as visibly distinct sections.
 - [x] Preserve exact request binding across refresh, retry, and concurrent
@@ -537,6 +557,11 @@ remain open**
 
 - [x] Server-side DeepSeek chat adapter and bounded purpose contract.
 - [x] Deterministic emergency and prohibited-medication-change routing.
+- [x] Implement disabled-by-default semantic-routing and symptom-differential
+  purposes with independent versions/readiness; preserve zero/one/two/three
+  call execution according to the selected route.
+- [x] Preserve original-question, normalized-presentation, symptom-management,
+  warning-sign, and per-cause retrieval; deduplicate and rerank the union.
 - [x] Governed retrieval, provenance, rights/review metadata, context
   minimization, planner bounds, claim support, and fixed fallback foundations.
 - [x] Immutable evaluation artifacts retain both passing and failing runs.

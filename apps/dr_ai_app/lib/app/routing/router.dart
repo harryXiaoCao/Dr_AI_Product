@@ -13,6 +13,7 @@ import 'package:dr_ai_app/features/doctor/presentation/doctor_resource_reader_sc
 import 'package:dr_ai_app/features/doctor/presentation/doctor_resources_screen.dart';
 import 'package:dr_ai_app/features/doctor/presentation/patient_management_screen.dart';
 import 'package:dr_ai_app/features/expected_care/presentation/expected_care_screens.dart';
+import 'package:dr_ai_app/features/foundation/presentation/session_loading_screen.dart';
 import 'package:dr_ai_app/features/foundation/presentation/unauthorized_screen.dart';
 import 'package:dr_ai_app/features/notifications/presentation/notification_inbox_screen.dart';
 import 'package:dr_ai_app/features/patient/presentation/patient_contacts_screen.dart';
@@ -21,69 +22,153 @@ import 'package:dr_ai_app/l10n/l10n.dart';
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
-String? _pendingNotificationPath;
+class RouterSessionState extends ChangeNotifier {
+  RouterSessionState.hydrating() : _isHydrating = true, _role = null;
 
-bool _isSafePendingNotificationPath(String path) {
-  return RegExp(
-    r'^/(doctor|patient|payer)/notifications'
-    r'(?:/[0-9a-fA-F-]{36}/open)?$',
-  ).hasMatch(path);
+  RouterSessionState.hydrated(AppRole? role)
+    : _isHydrating = false,
+      _role = role;
+
+  bool _isHydrating;
+  AppRole? _role;
+  String? _pendingProtectedLocation;
+  bool _suppressProtectedCapture = false;
+
+  bool get isHydrating => _isHydrating;
+  AppRole? get role => _role;
+
+  void setHydrating() {
+    if (_isHydrating) return;
+    _isHydrating = true;
+    notifyListeners();
+  }
+
+  void setSignedIn(AppRole role) {
+    _isHydrating = false;
+    _role = role;
+    _suppressProtectedCapture = false;
+    notifyListeners();
+  }
+
+  void setSignedOut({bool clearPending = false}) {
+    _isHydrating = false;
+    _role = null;
+    if (clearPending) {
+      _pendingProtectedLocation = null;
+      _suppressProtectedCapture = true;
+    }
+    notifyListeners();
+  }
+
+  void rememberProtectedLocation(Uri uri) {
+    if (_suppressProtectedCapture) return;
+    final location = safeProtectedLocation(uri);
+    if (location != null) _pendingProtectedLocation = location;
+  }
+
+  String? takePendingProtectedLocation() {
+    final pending = _pendingProtectedLocation;
+    _pendingProtectedLocation = null;
+    return pending;
+  }
 }
 
-GoRouter createRouter(AppRole? role, {String? initialLocation}) {
-  final homePath = switch (role) {
+String initialAppLocation(Uri browserUri) {
+  if (browserUri.fragment.startsWith('/')) {
+    final hashLocation = Uri.tryParse(browserUri.fragment);
+    if (hashLocation != null) return hashLocation.toString();
+  }
+  final path = browserUri.path.isEmpty ? '/' : browserUri.path;
+  return Uri(
+    path: path,
+    query: browserUri.query.isEmpty ? null : browserUri.query,
+  ).toString();
+}
+
+String? safeProtectedLocation(Uri uri) {
+  if (uri.hasScheme || uri.hasAuthority || !uri.path.startsWith('/')) {
+    return null;
+  }
+  return _protectedRoleForPath(uri.path) == null ? null : uri.toString();
+}
+
+AppRole? _protectedRoleForPath(String path) {
+  for (final role in <AppRole>[
+    AppRole.doctor,
+    AppRole.patient,
+    AppRole.payer,
+  ]) {
+    final prefix = '/${role.wireValue}';
+    if (path == prefix || path.startsWith('$prefix/')) return role;
+  }
+  return null;
+}
+
+GoRouter createRouter(
+  AppRole? initialRole, {
+  String? initialLocation,
+  RouterSessionState? sessionState,
+}) {
+  final session = sessionState ?? RouterSessionState.hydrated(initialRole);
+  String homePath(AppRole? role) => switch (role) {
     AppRole.doctor => '/doctor',
     AppRole.patient => '/patient',
     AppRole.payer => '/payer',
     AppRole.unsupported => '/unauthorized',
     null => '/login',
   };
+  String destinationAfterAuthentication(AppRole role) {
+    final pending = session.takePendingProtectedLocation();
+    if (pending == null) return homePath(role);
+    final pendingRole = _protectedRoleForPath(Uri.parse(pending).path);
+    return pendingRole == role ? pending : '/unauthorized';
+  }
+
   return GoRouter(
     initialLocation: initialLocation,
+    refreshListenable: session,
     redirect: (BuildContext context, GoRouterState state) {
       final path = state.uri.path;
-      if (path == '/') {
-        return role == null ? '/login' : homePath;
-      }
-      if (path == '/beta-support') {
-        return '/privacy';
-      }
+      final role = session.role;
+      final requestedRole = _protectedRoleForPath(path);
       final publicLegalPath =
           path == '/privacy' || path == '/terms' || path == '/privacy-policy';
+      if (path == '/beta-support') return '/privacy';
+      if (session.isHydrating) {
+        if (requestedRole != null) session.rememberProtectedLocation(state.uri);
+        return publicLegalPath ? null : '/session-loading';
+      }
+      if (path == '/session-loading') {
+        return role == null ? '/login' : destinationAfterAuthentication(role);
+      }
+      if (path == '/') {
+        return role == null ? '/login' : homePath(role);
+      }
       if (role == null) {
-        if (_isSafePendingNotificationPath(path)) {
-          _pendingNotificationPath = path;
-        }
+        if (requestedRole != null) session.rememberProtectedLocation(state.uri);
         return path == '/login' || path == '/register' || publicLegalPath
             ? null
             : '/login';
       }
       if (path == '/login' || path == '/register') {
-        final pending = _pendingNotificationPath;
-        _pendingNotificationPath = null;
-        if (pending != null &&
-            pending.startsWith('/${role.wireValue}/notifications')) {
-          return pending;
-        }
-        return homePath;
+        return destinationAfterAuthentication(role);
       }
       if (role == AppRole.unsupported) {
         return path == '/unauthorized' || publicLegalPath
             ? null
             : '/unauthorized';
       }
-      if (path.startsWith('/doctor') && role != AppRole.doctor) {
-        return '/unauthorized';
-      }
-      if (path.startsWith('/patient') && role != AppRole.patient) {
-        return '/unauthorized';
-      }
-      if (path.startsWith('/payer') && role != AppRole.payer) {
+      if (requestedRole != null && requestedRole != role) {
         return '/unauthorized';
       }
       return null;
     },
     routes: <RouteBase>[
+      GoRoute(
+        path: '/session-loading',
+        pageBuilder: (context, state) =>
+            _drAiPage(state, const SessionLoadingRouteScreen()),
+      ),
       GoRoute(
         path: '/login',
         pageBuilder: (context, state) => _drAiPage(state, const LoginScreen()),
@@ -100,8 +185,14 @@ GoRouter createRouter(AppRole? role, {String? initialLocation}) {
         routes: <RouteBase>[
           GoRoute(
             path: 'patients',
-            pageBuilder: (context, state) =>
-                _drAiPage(state, const PatientManagementScreen()),
+            pageBuilder: (context, state) => _drAiPage(
+              state,
+              PatientManagementScreen(
+                initialPatientId: state.uri.queryParameters['patient'],
+                initialClinicalEventId: state.uri.queryParameters['event'],
+                initialSection: state.uri.queryParameters['section'],
+              ),
+            ),
           ),
           GoRoute(
             path: 'resources',
@@ -361,7 +452,7 @@ GoRouter createRouter(AppRole? role, {String? initialLocation}) {
       GoRoute(
         path: '/unauthorized',
         pageBuilder: (context, state) =>
-            _drAiPage(state, UnauthorizedScreen(role: role)),
+            _drAiPage(state, UnauthorizedScreen(role: session.role)),
       ),
     ],
   );

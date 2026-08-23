@@ -53,8 +53,11 @@ experiences:
 
 The patient chatbot is a bounded AI workflow, not an open-ended medical agent.
 A server-owned orchestrator selects and executes every authorized read,
-retrieval, retry, fallback, and navigation decision. DeepSeek may return a
-schema-constrained query-rewrite candidate or grounded answer, but it cannot
+retrieval, retry, fallback, and navigation decision. After deterministic
+critical-safety and prohibited-request gates, an independently controlled
+DeepSeek semantic-router call may return a schema-constrained intent, monotonic
+urgency candidate, and retrieval plan. DeepSeek may also return a grounded
+answer, but it cannot
 choose or execute retrieval, patient-context, record, message, booking,
 diagnosis, prescription, treatment, or other product operations. Any future
 external action requires a separately designed human-confirmed workflow.
@@ -75,7 +78,10 @@ trauma, requested action, danger signals, negated concepts, and concepts used
 only hypothetically rather than reported as present. Deterministic combination
 rules run before all retrieval or model calls and choose brief 120 plus
 scene-safety copy for candidate emergencies. For messages allowed to continue,
-a separate declarative rule table assigns candidate same-day, clinician-contact,
+a disabled-by-default semantic router may broaden ordinary-language coverage
+and upgrade an otherwise unmatched high-confidence presentation to the same
+server-owned emergency path. It cannot downgrade a deterministic result or
+author emergency copy. A separate declarative rule table assigns candidate same-day, clinician-contact,
 or routine-education timing from the controlled presentation rather than from a
 disease name or contract case ID. The answer adapter receives that server-owned
 route and an allowed next-action set; output validation rejects a model attempt
@@ -83,8 +89,10 @@ to downgrade same-day care or introduce an emergency action. This local
 implementation and its metrics do not constitute clinical approval of the
 critical set, care-timing policy, fixed fallback wording, or first-aid wording.
 
-The controlled safety assessment is the single authority for selecting the
-emergency route. The former patient-entry-point override for overdose and
+The server orchestrator is the single authority for selecting the emergency
+route. Deterministic controlled safety remains authoritative for every matched
+critical presentation; a valid semantic-router candidate can only upgrade, not
+downgrade, that result. The former patient-entry-point override for overdose and
 self-harm wording has been removed; those presentations now enter the same
 controlled concept, negation, hypothetical-mention, danger-signal, and guidance
 selection path as every other emergency candidate. This preserves immediate
@@ -111,7 +119,9 @@ generated views are not evidence and their text is not written to telemetry.
 This plan inherits every requirement in
 `Phase_3_Chatbot_Intended_Use_and_Safety_Boundary.md`. In particular:
 
-- emergency red flags are handled before retrieval or model generation;
+- a small deterministic emergency backstop runs before provider calls; the
+  separately governed semantic router may upgrade ordinary-language emergencies
+  to the same server-owned response before later stages;
 - the patient chatbot is for education, symptom orientation, care
   understanding, question preparation, and safe escalation—not confirmed
   diagnosis or treatment;
@@ -217,10 +227,13 @@ Flutter patient chat or doctor Resources
   -> FastAPI API gateway
       -> authentication, RBAC, rate limit, input validation
       -> deterministic emergency and prohibited-request gate
+      -> optional schema-constrained semantic routing
+         -> candidate intent and monotonic urgency upgrade
+         -> bounded retrieval plan; no records, evidence, or tools
       -> server-owned query and context planner
           -> minimum selected patient-context read (patient chat only)
           -> original-query approved medical-knowledge retrieval
-          -> optional schema-constrained retrieval-rescue rewrite
+          -> optional server-validated retrieval retry using the routing plan
              when the query is ambiguous or initial retrieval is weak
           -> server validation and fused approved retrieval
       -> evidence sufficiency and conflict gate
@@ -234,10 +247,12 @@ Flutter patient chat or doctor Resources
 
 The orchestrator is a server-side finite-state workflow. The server—not the
 backbone model—controls all retrieval, context selection, evidence admission,
-and product actions. A schema-constrained DeepSeek query-rewrite call is an
-optional retrieval aid, not a tool-selection authority: its output is treated
-as an untrusted candidate, checked against the original meaning, and used at
-most once alongside the preserved original query.
+and product actions. The feature-flagged semantic-router call is an optional
+classification and retrieval aid, not a tool-selection authority: its output
+is treated as an untrusted candidate, checked against the original meaning,
+and used at most once alongside the preserved original query. When it succeeds,
+the retrieval-rescue stage reuses that plan instead of making a duplicate
+rewrite-only call.
 
 #### 4.1.1 Normative implementation workflow
 
@@ -277,15 +292,23 @@ flowchart TB
 
     Safety -- "Emergency detected" --> Emergency
     Safety -- "Prohibited medication change or diagnostic certainty" --> Refusal
-    Safety -- "Permitted request" --> Router
+    Safety -- "Permitted request" --> SemanticGate
 
     subgraph Orchestrator["Server-owned bounded workflow"]
+        SemanticGate["Semantic-router feature and<br/>compatible-release gate"]
+        SemanticRouter["Schema-constrained semantic router<br/>Intent + monotonic urgency + retrieval plan"]
         Router["Intent and workflow router"]
         ContextPolicy["Context authorization and selection<br/>Minimum question-relevant fields"]
         Planner["Constrained query and retrieval planner<br/>Original query preserved"]
         RetrievalBroker["Authorized retrieval broker<br/>Audience, rights and request budget"]
     end
 
+    SemanticGate -- "Disabled" --> Router
+    SemanticGate -- "Enabled and governed" --> SemanticRouter
+    SemanticRouter -- "High-confidence emergency candidate" --> Emergency
+    SemanticRouter -- "Failure" --> Fallback
+    SemanticRouter -- "Allowed route" --> Router
+    SemanticRouter -. "Validated plan; no duplicate planner call" .-> Planner
     Router --> ContextPolicy --> Planner --> RetrievalBroker
 
     subgraph ServerReads["Server-controlled read operations"]
@@ -322,12 +345,12 @@ flowchart TB
     RetrievalAssessment -- "No rescue budget or still weak" --> Evidence
 
     subgraph RetrievalRescue["Optional retrieval-rescue branch"]
-        RescueRewrite["Schema-constrained DeepSeek rewrite candidate<br/>Ambiguous or weak retrieval only; at most once"]
+        RescueRewrite["Schema-constrained DeepSeek rewrite candidate<br/>Only when no semantic plan exists; at most once"]
         RewriteValidation["Server meaning and policy validation<br/>Reject drift; preserve original query"]
         QueryFusion["Fuse original and rewritten retrieval<br/>Deduplicate and preserve source diversity"]
     end
 
-    RetrievalAssessment -- "Ambiguous or weak and retry available" --> RescueRewrite
+    RetrievalAssessment -- "Ambiguous or weak, no plan, and retry available" --> RescueRewrite
     RescueRewrite --> RewriteValidation
     RewriteValidation -- "Valid bounded rewrite" --> QueryFusion --> Hybrid
     RewriteValidation -- "Meaning drift or invalid" --> Fallback
@@ -390,6 +413,7 @@ product and safety review before the architecture change is implemented.
 |---|---|---|
 | API gateway | Authenticate, authorize, validate, rate-limit, issue request ID | Trust client role or expose provider credentials |
 | Pre-model safety engine | Match emergency red flags, medication-change requests, diagnosis-seeking requests, prompt attacks, and unsupported inputs; route eligible diagnosis-seeking prompts to symptom orientation | Delegate emergency detection only to an LLM or treat every diagnosis-seeking phrase as a refusal |
+| Optional semantic router | After deterministic gates, return schema-constrained intent, high-confidence emergency candidate, monotonic urgency candidate, and bounded retrieval plan; require the default-off flag and compatible release | Downgrade deterministic safety, author emergency copy, select records/evidence/tools, diagnose, or continue after failure |
 | Intent/workflow router | Select a bounded server-owned workflow and permitted operations | Delegate workflow control to the model or broaden the intended use |
 | Query/context planner | Preserve the original question, select only relevant authorized context, and construct bounded retrieval parameters | Treat a rewrite as diagnosis, silently replace the original meaning, or expose the full record |
 | Retrieval broker | Apply corpus, audience, jurisdiction, date, language, and rights filters; run hybrid retrieval and reranking | Search the public web during a patient answer |
@@ -432,47 +456,47 @@ treatment operation.
 
 1. **Receive:** authenticate, enforce rate/size/type limits, normalize safely.
 2. **Safety route:** run deterministic emergency and prohibited-request rules.
-3. **Classify:** choose education, doctor-authored clarification, medication
-   education, symptom orientation, question preparation, safe refusal, or
-   unsupported input.
-4. **Authorize context:** resolve only the user-selected care resource and
+3. **Semantic route (optional):** request one strict JSON object containing
+   intent, urgency, full negation-aware symptom presentation, danger signals,
+   and whether differential planning is required.
+4. **Classify:** combine deterministic and accepted semantic candidates to
+   choose education, medication education, symptom orientation, question
+   preparation, safe refusal, or unsupported input.
+5. **Authorize context:** resolve only the user-selected care resource and
    approved fields; continue without context if none is needed.
-5. **Plan retrieval:** preserve the original question and create a constrained
-   search object containing topic, language, China jurisdiction preference,
-   audience, freshness requirement, and excluded content types.
-6. **Retrieve:** search the original query using hybrid retrieval, metadata
-   filtering, reranking, deduplication, and source-diversity selection.
-7. **Optional retrieval rescue:** only when a server-defined ambiguity or weak-
-   retrieval trigger fires, request one schema-constrained DeepSeek rewrite
-   candidate. Give the planner only prior user wording admitted by the same
-   deterministic continuity policy used before safety. Validate the candidate
-   against the safety-approved controlled presentation; the candidate may alter
-   only literal search wording, while the trusted presentation continues to
-   generate retrieval views and enforce centrality. Reject drift and never
-   discard the original query.
-8. **Evidence gate:** use `approved_evidence` only if evidence is current,
+6. **Differential plan:** only for symptom/possible-cause intent, produce 3-5
+   structured working hypotheses, distinguishing questions, warning signs, and
+   independent retrieval queries. These are not diagnoses.
+7. **Retrieve:** always search the literal question; for symptoms also search
+   normalized presentation, management, warning-sign, and each cause query.
+   Deduplicate, source-diversify, and reciprocal-rank the union.
+8. **Legacy rescue:** when semantic routing is disabled, the existing bounded
+   rewrite rescue may still run; it never replaces literal-query retrieval.
+9. **Evidence gate:** use `approved_evidence` only if evidence is current,
    rights-admitted, audience-approved, and sufficient. Otherwise ask one
    genuinely needed clarifying question, use the independently enabled
    citation-free `general_model_knowledge` path, or return a fixed response.
-9. **Generate:** call `deepseek-v4-flash` through the adapter with a bounded
+10. **Generate:** call `deepseek-v4-flash` through the adapter with a bounded
    context window and a required JSON schema. This call produces an answer and
    response-action codes; it does not choose or execute server operations.
-10. **Validate:** require every material factual claim both to cite a retrieved
+11. **Validate:** require every material factual claim both to cite a retrieved
    passage ID and to be semantically supported by that passage; detect
    contradiction, unsupported numeric, interval, causal, symptom, or treatment
    specifics, unsupported medication instructions, diagnostic certainty, false
    attribution, and missing escalation. Symptom-orientation output must include
    material uncertainty and a next action.
-11. **Deliver:** show a concise but sufficiently explanatory 3-5 section
+12. **Deliver:** show a concise but sufficiently explanatory 3-5 section
     answer, numbered source cards, source dates, a distinct uncertainty note
     when relevant, limitations, and one next action.
-12. **Observe:** store metadata-only safety, retrieval, model, latency, token,
+13. **Observe:** store metadata-only routing, safety, retrieval, model, latency, token,
     cost, and fallback fields.
 
-The workflow gets at most one retrieval-rescue rewrite and one corresponding
-retrieval retry. Ordinary well-formed questions remain a retrieval-then-
-generation path. Repeated failure returns fixed copy rather than allowing open-
-ended model loops.
+The enabled workflow uses zero calls for deterministic emergency, one for a
+semantic emergency, two for ordinary general education, and three for symptom
+questions, plus at most one bounded final-schema repair attempt.
+When routing is disabled, ordinary well-formed questions retain the existing
+retrieval-then-generation path. Repeated failure returns fixed copy rather than
+allowing open-ended model loops.
 
 ### 4.5 Structured generation contract
 
@@ -1047,20 +1071,25 @@ fixture catalog only; backend retrieval remains deferred to later slices.
 
 ### Slice 3: Knowledge ingestion foundation
 
-Status: foundation implemented locally on 2026-07-14; source-promotion gate
-remains open. The governed database schema,
+Status: foundation implemented locally on 2026-07-14 and expanded with the
+licensed WHO corpus on 2026-08-13; the clinical source-promotion gate remains
+open. The governed database schema,
 metadata-only ingestion path, immutable artifact adapter, deterministic index
 release/activation/rollback controls, and doctor-only catalog API are
-implemented. The 298-entry real-source catalog preserves all 239 official WHO
-Chinese fact sheets and all 241 official WHO English fact sheets: 234 exact
-slug matches are bilingual records, while five Chinese and seven English
-unmatched pages remain monolingual. It also includes 52 Chinese-only,
+implemented. The refreshed 299-entry real-source catalog preserves all 240
+official WHO Chinese fact sheets and all 244 official WHO English fact sheets:
+237 exact slug matches are bilingual records, while three Chinese and seven
+English unmatched pages remain monolingual. It also includes 52 Chinese-only,
 authority-tier-A 国家卫生健康委员会 guidelines and clinical protocols and replaces
-the fictional Doctor Resources data. Because commercial reuse rights and medical
-review are not yet recorded, the pilot stores titles and official locators
-only and is deliberately excluded from retrieval indexes. Slice 3 cannot be
-declared fully closed until legal/product and medical/native-Chinese reviewers
-approve at least one rights-cleared pilot source version.
+the fictional Doctor Resources data. WHO permission request `202609681`
+authorizes the education-only, non-profit, non-commercial Product use described
+in the submitted form. The 247 WHO records now contain 484 official-language
+documents and 3,981 checksum-bound passages; translation, standalone
+redistribution, public-LLM release, advertising/promotional association, WHO
+branding/logo, endorsement claims, and unapproved substantive modification
+remain prohibited. Every passage remains excluded from retrieval indexes until
+medical, language, Mainland-applicability, audience, and release review. NHC
+remains link-only and rights-pending.
 
 - **Module ownership:** knowledge-base database models, source ingestion and
   review pipeline, artifact storage, and index-release management.
@@ -1087,11 +1116,12 @@ versioned provider boundary. A production release must configure an approved
 self-hosted multilingual medical embedding service and a clinically evaluated
 reranker in the selected production region. Hong Kong is acceptable for the
 current stage; final approval still requires measured Mainland-user network
-performance and documented residency/privacy/legal controls. No real WHO or
-国家卫生健康委员会 passage is active
-yet: their rights and doctor-review gates remain open, so the current 298-source
-catalog stays official-link metadata only. This blocks real-corpus promotion,
-not further retrieval implementation or later removal/replacement of a source.
+performance and documented residency/privacy/legal controls. WHO original text
+is now stored and displayable under request `202609681`, but no WHO or 国家卫生健康委员会
+passage is active in a retrieval release: WHO clinical/language/audience review
+remains open, while NHC rights and doctor-review gates remain open. This blocks
+real-corpus promotion, not further retrieval implementation or later removal or
+replacement of a source.
 
 Doctor Resources also connects display-approved catalog records to the
 doctor-only `/doctor/resources/{sourceId}/read` route. The reader fetches the
@@ -1760,11 +1790,12 @@ as JSON; earlier artifacts were not overwritten.
 - **Module ownership:** ambiguity/weak-retrieval trigger, structured query-
   understanding contract, rewrite validation, result fusion, retry budget,
   latency/cost measurement, and retrieval-rescue evaluation.
-- Keep the normal path as original-query retrieval followed by one grounded-
-  answer call. Permit one small schema-constrained DeepSeek query-planner call
-  only for a short reference, colloquial or ambiguous wording, or a measured
-  weak initial retrieval result.
-- Require the planner output to contain bounded concepts, synonyms, language,
+- When the semantic router is disabled, keep the normal path as original-query
+  retrieval followed by one grounded-answer call, with one small planner call
+  only for a short reference, colloquial or ambiguous wording, or measured weak
+  retrieval. When the governed semantic router is enabled, reuse its bounded
+  plan and do not make the standalone planner call again.
+- Require the standalone planner output to contain bounded concepts, synonyms, language,
   jurisdiction, excluded-content classes, one or two candidate queries, and a
   clarification-needed flag. It cannot classify safety, diagnose, choose final
   evidence, read patient records, or execute an operation.

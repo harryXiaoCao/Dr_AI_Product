@@ -1,0 +1,65 @@
+{
+  "schema_version": "1.0",
+  "permission_request_id": "202609681",
+  "licensor": "World Health Organization",
+  "licensed_material": "The complete WHO Fact Sheets collection listed in the official index, including official Chinese-language versions where available",
+  "licensed_use": {
+    "product": "Dr. AI authenticated web/mobile personal health-education application",
+    "purpose": "Education-only, non-profit and non-commercial",
+    "territory": "Worldwide",
+    "media": [
+      "website",
+      "software_application"
+    ],
+    "permitted": [
+      "complete_webpage_text_reproduction",
+      "access_controlled_product_storage",
+      "format_and_style_normalization",
+      "embeddings",
+      "rag_and_ai_operation",
+      "deepseek_api_text_processing",
+      "attributed_verbatim_excerpt_display",
+      "distribution_only_as_part_of_the_product",
+      "published_validated_updates"
+    ],
+    "prohibited": [
+      "translation",
+      "standalone_distribution",
+      "public_llm_release",
+      "unrestricted_third_party_reuse",
+      "advertising",
+      "commercial_or_promotional_association",
+      "who_logo_or_emblem_use",
+      "who_endorsement_or_affiliation_claims",
+      "company_or_product_branding_on_licensed_material",
+      "substantive_modification_without_written_authorization",
+      "transfer_or_sublicensing_of_the_licensed_material"
+    ],
+    "excluded": [
+      "images",
+      "logos",
+      "third_party_material_credited_by_who"
+    ]
+  },
+  "attribution": {
+    "required": [
+      "world_health_organization_as_source",
+      "original_title",
+      "publication_or_update_date",
+      "official_source_url",
+      "product_not_developed_or_published_by_who",
+      "no_who_endorsement_or_affiliation",
+      "verbatim_excerpt_source_reference"
+    ],
+    "ai_generated_text": "Do not attribute AI-generated text to WHO; WHO may be listed only as a general source. State that WHO is not responsible for AI-generated content and that diagnosis and treatment remain the responsibility of health professionals."
+  },
+  "termination": {
+    "automatic_on_breach": true,
+    "who_may_terminate_by_written_notice": true,
+    "maximum_days_to_cease_further_distribution": 90
+  },
+  "evidence": {
+    "raw_artifacts_not_checked_into_repository": true,
+    "checksums_recorded_in": "knowledge_base/catalog/who_fact_sheets.official.v1.json"
+  }
+}

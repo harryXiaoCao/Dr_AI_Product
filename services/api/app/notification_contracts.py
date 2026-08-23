@@ -23,6 +23,7 @@ NotificationEventType = Literal[
     "payer_final_outcome",
     "payer_request_closed",
     "cost_variance_warning",
+    "care_relationship_approval_requested",
 ]
 NotificationSeverity = Literal["information", "action", "warning"]
 NotificationRole = Literal["patient", "doctor", "payer"]
@@ -30,6 +31,13 @@ NotificationChannel = Literal["in_app", "apns", "android_emas", "web_push"]
 PrivacyClass = Literal["generic", "private_in_app"]
 
 EVENT_CONTRACTS: dict[str, dict[str, object]] = {
+    "care_relationship_approval_requested": {
+        "roles": {"patient"},
+        "source_category": "care_relationship",
+        "severity": "action",
+        "deep_link": "patient_contacts",
+        "expiry_hours": 720,
+    },
     "medication_reminder": {
         "roles": {"patient"},
         "source_category": "medication_reminder",
@@ -175,6 +183,7 @@ EVENT_CONTRACTS: dict[str, dict[str, object]] = {
 }
 
 DEEP_LINK_CODES = {
+    "patient_contacts",
     "patient_medications",
     "patient_recovery",
     "payer_request",
@@ -189,6 +198,10 @@ DEEP_LINK_CODES = {
 }
 
 _COPY: dict[str, dict[str, tuple[str, str]]] = {
+    "care_relationship_approval_requested": {
+        "en": ("Doctor connection request", "Open Dr. AI to review a doctor connection request."),
+        "zh-Hans": ("医生连接请求", "打开 Dr. AI 查看医生连接请求。"),
+    },
     "medication_reminder": {
         "en": ("Care reminder", "Open Dr. AI to review your scheduled care reminder."),
         "zh-Hans": ("护理提醒", "打开 Dr. AI 查看您的计划护理提醒。"),

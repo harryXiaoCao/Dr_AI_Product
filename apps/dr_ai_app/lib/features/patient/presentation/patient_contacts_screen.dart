@@ -92,7 +92,7 @@ class _ContactList extends StatelessWidget {
         const SizedBox(height: DrAiSpacing.lg),
         Row(
           children: <Widget>[
-            Expanded(child: _SectionLabel(context.l10n.myDoctors)),
+            Expanded(child: _SectionLabel(context.l10n.connectedDoctors)),
             Text(
               '${doctors.length}',
               key: const Key('doctor-contact-count'),
@@ -180,45 +180,91 @@ class _ContactTile extends StatelessWidget {
   }
 }
 
-class _DoctorContactTile extends StatelessWidget {
+class _DoctorContactTile extends ConsumerWidget {
   const _DoctorContactTile({required this.doctor});
 
   final PatientDoctorContact doctor;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final avatar = avatarImageProvider(doctor.avatarUrl);
     final clinicalRole = <String?>[
       doctor.specialty,
       doctor.department,
     ].whereType<String>().where((value) => value.trim().isNotEmpty).join(' · ');
-    return _ContactCard(
-      key: Key('doctor-contact-${doctor.doctorId}'),
-      leading: CircleAvatar(
-        radius: 24,
-        backgroundColor: const Color(0xFFE8ECFB),
-        backgroundImage: avatar,
-        child: avatar == null
-            ? Text(
-                _initials(doctor.displayName),
-                style: const TextStyle(
-                  color: DrAiColors.brand,
-                  fontWeight: FontWeight.w800,
+    final pending = doctor.relationshipStatus == 'pending_patient_approval';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        _ContactCard(
+          key: Key('doctor-contact-${doctor.doctorId}'),
+          leading: CircleAvatar(
+            radius: 24,
+            backgroundColor: const Color(0xFFE8ECFB),
+            backgroundImage: avatar,
+            child: avatar == null
+                ? Text(
+                    _initials(doctor.displayName),
+                    style: const TextStyle(
+                      color: DrAiColors.brand,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  )
+                : null,
+          ),
+          title: doctor.displayName,
+          subtitle: clinicalRole.isEmpty
+              ? '${doctor.title} · ${doctor.hospitalName}'
+              : '$clinicalRole\n${doctor.hospitalName}',
+          badge: pending
+              ? context.l10n.pendingPatientApproval
+              : context.l10n.connected,
+          onTap: pending
+              ? null
+              : () => context.push(
+                  Uri(
+                    path: '/patient/contact/private',
+                    queryParameters: <String, String>{
+                      'id': doctor.doctorId,
+                      'name': doctor.displayName,
+                    },
+                  ).toString(),
                 ),
-              )
-            : null,
-      ),
-      title: doctor.displayName,
-      subtitle: clinicalRole.isEmpty
-          ? '${doctor.title} · ${doctor.hospitalName}'
-          : '$clinicalRole\n${doctor.hospitalName}',
-      badge: context.l10n.connected,
-      onTap: () => context.push(
-        Uri(
-          path: '/patient/contact/private',
-          queryParameters: {'id': doctor.doctorId, 'name': doctor.displayName},
-        ).toString(),
-      ),
+        ),
+        Align(
+          alignment: Alignment.centerRight,
+          child: Wrap(
+            spacing: DrAiSpacing.xs,
+            children: pending
+                ? <Widget>[
+                    OutlinedButton(
+                      key: Key('reject-doctor-${doctor.doctorId}'),
+                      onPressed: () => ref
+                          .read(doctorRelationshipActionProvider.notifier)
+                          .act(doctor, 'reject'),
+                      child: Text(context.l10n.reject),
+                    ),
+                    FilledButton(
+                      key: Key('approve-doctor-${doctor.doctorId}'),
+                      onPressed: () => ref
+                          .read(doctorRelationshipActionProvider.notifier)
+                          .act(doctor, 'approve'),
+                      child: Text(context.l10n.approve),
+                    ),
+                  ]
+                : <Widget>[
+                    TextButton.icon(
+                      key: Key('remove-doctor-${doctor.doctorId}'),
+                      onPressed: () => ref
+                          .read(doctorRelationshipActionProvider.notifier)
+                          .act(doctor, 'revoke'),
+                      icon: const Icon(Icons.person_remove_outlined),
+                      label: Text(context.l10n.removeConnectedDoctor),
+                    ),
+                  ],
+          ),
+        ),
+      ],
     );
   }
 }

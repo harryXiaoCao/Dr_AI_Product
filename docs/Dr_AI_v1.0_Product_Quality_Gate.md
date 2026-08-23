@@ -45,6 +45,17 @@ Created: 2026-07-09
    but never replaces, deterministic emergency, authorization, privacy, record,
    and action boundaries.
 
+9. **Gate routing, differential planning, and final generation independently.**
+   The optional first DeepSeek call must use a strict routing/presentation schema,
+   preserve the literal question, never downgrade deterministic urgency, never
+   select records/evidence/tools, and fail closed before retrieval or answer
+   generation. Symptom-only requests use a separately versioned 3-5-cause
+   differential plan; general education skips it. Emergency upgrades return
+   server-owned fixed guidance. Per-stage latency, tokens, cost, failures, call
+   count, bilingual emergency
+   recall, non-emergency false positives, continuity, injection resistance, and
+   content-free telemetry require independent evidence before activation.
+
 ## Controlled-Staging Operational Gate
 
 A product-quality implementation is not operationally complete merely because
@@ -83,6 +94,15 @@ tests fail closed; provider failure preserves human documentation,
 payer mobile/desktop states pass Flutter analysis, tests, and rendered review.
 No result from this gate activates a purpose release or closes clinical,
 privacy, payer, regulatory, or production-deployment authorization.
+
+Payer-workflow changes additionally require field-specific clarification
+validation, immutable/idempotent persistence, doctor-versus-patient-versus-
+payer visibility tests, absence of both free-text fields from audit,
+notification, telemetry, and provider/CEI payloads, and exact reconciliation of
+all seven request states across open, escalated, clarification, completed, and
+pending-minor-unit dashboard metrics. Recovery-plan title changes require a
+visible 160-character counter, local no-call validation, focus/live-region
+behavior, safe server-422 mapping, bilingual copy, and retained form content.
 
 ## Clinical Event Intelligence controlled-synthetic activation evidence
 

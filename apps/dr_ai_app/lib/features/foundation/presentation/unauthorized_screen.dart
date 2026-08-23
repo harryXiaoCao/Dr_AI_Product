@@ -18,23 +18,37 @@ class UnauthorizedScreen extends StatelessWidget {
       AppRole.unsupported || null => null,
     };
     return Scaffold(
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(DrAiSpacing.lg),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              const Icon(Icons.lock_outline, size: 48),
-              const SizedBox(height: DrAiSpacing.md),
-              Text(context.l10n.unauthorized, textAlign: TextAlign.center),
-              const SizedBox(height: DrAiSpacing.md),
-              FilledButton(
-                onPressed: dashboardPath == null
-                    ? null
-                    : () => context.go(dashboardPath),
-                child: Text(context.l10n.returnToDashboard),
-              ),
-            ],
+      body: Semantics(
+        key: const Key('unauthorized-screen'),
+        container: true,
+        namesRoute: true,
+        label: context.l10n.unauthorized,
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(DrAiSpacing.lg),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                const Icon(Icons.lock_outline, size: 48),
+                const SizedBox(height: DrAiSpacing.md),
+                Semantics(
+                  header: true,
+                  child: Text(
+                    context.l10n.unauthorized,
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                const SizedBox(height: DrAiSpacing.md),
+                FilledButton(
+                  key: const Key('unauthorized-return-button'),
+                  autofocus: true,
+                  onPressed: dashboardPath == null
+                      ? null
+                      : () => context.go(dashboardPath),
+                  child: Text(context.l10n.returnToDashboard),
+                ),
+              ],
+            ),
           ),
         ),
       ),

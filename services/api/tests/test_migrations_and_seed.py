@@ -1,3 +1,4 @@
+import json
 import uuid
 
 from alembic import command
@@ -70,6 +71,10 @@ def test_empty_database_migrates_to_head() -> None:
         column["name"] for column in inspect(engine).get_columns("payer_request_lines")
     }
     assert {"code_system", "service_code", "quantity", "unit"} <= payer_line_columns
+    payer_review_columns = {
+        column["name"] for column in inspect(engine).get_columns("payer_reviews")
+    }
+    assert "clarification_message" in payer_review_columns
 
     snapshot_columns = {
         column["name"]: column
@@ -204,9 +209,9 @@ def test_synthetic_seed_is_idempotent(settings) -> None:
         first = seed_database(db, settings)
         second = seed_database(db, settings)
 
-        assert first.users_created == 3
-        assert first.relationships_created == 2
-        assert first.dashboards_created == 3
+        assert first.users_created == 4
+        assert first.relationships_created == 3
+        assert first.dashboards_created == 4
         assert first.records_created == 2
         assert first.medications_created == 2
         assert first.notes_created == 1
@@ -220,9 +225,22 @@ def test_synthetic_seed_is_idempotent(settings) -> None:
         assert second.notes_created == 0
         assert second.recovery_plans_created == 0
         assert second.recovery_tasks_created == 0
-        assert db.scalar(select(func.count()).select_from(User)) == 3
-        assert db.scalar(select(func.count()).select_from(CareRelationship)) == 2
-        assert db.scalar(select(func.count()).select_from(DashboardSnapshot)) == 3
+        assert db.scalar(select(func.count()).select_from(User)) == 4
+        assert db.scalar(select(func.count()).select_from(CareRelationship)) == 3
+        assert db.scalar(select(func.count()).select_from(DashboardSnapshot)) == 4
+        snapshots = db.scalars(select(DashboardSnapshot)).all()
+        assert all("fee_items" not in snapshot.payload for snapshot in snapshots)
+        assert all(
+            "demo credits" not in json.dumps(snapshot.payload).lower()
+            for snapshot in snapshots
+        )
+        doctor_quick_access = next(
+            snapshot.payload["quick_access"]
+            for snapshot in snapshots
+            if "quick_access" in snapshot.payload
+        )
+        assert "Imaging records and manual review" in doctor_quick_access
+        assert not any("AI" in label for label in doctor_quick_access)
         assert db.scalar(select(func.count()).select_from(MedicalRecord)) == 2
         assert db.scalar(select(func.count()).select_from(Medication)) == 2
         assert db.scalar(select(func.count()).select_from(DoctorNote)) == 1
@@ -241,6 +259,7 @@ def test_seed_contains_only_clearly_synthetic_identifiers(settings) -> None:
 
     assert emails == {
         "doctor.demo@example.com",
+        "reviewer.doctor@example.com",
         "patient.demo@example.com",
         "unrelated.patient@example.com",
     }

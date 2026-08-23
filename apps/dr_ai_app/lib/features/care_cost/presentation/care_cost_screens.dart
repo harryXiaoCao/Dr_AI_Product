@@ -180,8 +180,16 @@ class _LedgerTotals extends StatelessWidget {
         runSpacing: DrAiSpacing.md,
         children: <Widget>[
           _Metric(
-            label: _copy(context, 'Recorded total or estimate', '已记录总额或估算'),
+            label: _copy(context, 'Recorded total', '已记录总额'),
             value: _money(ledger.currency, ledger.actualTotalMinor),
+          ),
+          _Metric(
+            label: _copy(context, 'Estimated amounts', '估算金额'),
+            value: _money(ledger.currency, ledger.estimatedTotalMinor),
+          ),
+          _Metric(
+            label: _copy(context, 'Final amounts', '最终金额'),
+            value: _money(ledger.currency, ledger.finalTotalMinor),
           ),
           _Metric(
             label: _copy(context, 'Requested from payer', '向支付方申请'),
@@ -193,6 +201,10 @@ class _LedgerTotals extends StatelessWidget {
               ledger.currency,
               ledger.patientResponsibilityTotalMinor,
             ),
+          ),
+          _Metric(
+            label: _copy(context, 'Costs still pending', '费用待补充'),
+            value: '${ledger.pendingCostItemCount}',
           ),
         ],
       ),
@@ -470,6 +482,10 @@ class PayerDashboardScreen extends ConsumerWidget {
                   _Metric(
                     label: _copy(context, 'Clarifications', '待补充说明'),
                     value: '${data.clarificationRequests}',
+                  ),
+                  _Metric(
+                    label: _copy(context, 'Escalated', '已升级待处理'),
+                    value: '${data.escalatedRequests}',
                   ),
                   _Metric(
                     label: _copy(context, 'Completed reviews', '已完成审核'),
@@ -838,7 +854,9 @@ class _PayerRequestDetail extends StatelessWidget {
                     '${entry.$2.reviewerDisplayName} · ${entry.$2.reviewerTitle} · '
                     '${formatProductHistoryTime(context, entry.$2.createdAt)}\n'
                     '${_copy(context, 'Recorded reason', '记录原因')}: '
-                    '${humanizeProductValue(entry.$2.reasonCode)}',
+                    '${humanizeProductValue(entry.$2.reasonCode)}'
+                    '${entry.$2.clarificationMessage == null ? '' : '\n${_copy(context, 'Question for the doctor', '向医生提出的问题')}: ${entry.$2.clarificationMessage}'}'
+                    '${entry.$2.note == null ? '' : '\n${_copy(context, 'Private internal payer note', '支付方内部私密备注')}: ${entry.$2.note}'}',
                   ),
                   trailing: Text(
                     _copy(
@@ -895,12 +913,18 @@ Future<void> _showReviewDialog(
   WidgetRef ref,
   PayerRequestData request,
 ) async {
+  final formKey = GlobalKey<FormState>();
+  final clarificationFocusNode = FocusNode();
+  final clarification = TextEditingController();
   final note = TextEditingController();
   var action = 'request_clarification';
-  var reason = Localizations.localeOf(context).languageCode == 'zh'
-      ? '需要补充材料'
-      : 'Documentation needed';
+  final reason = TextEditingController(
+    text: Localizations.localeOf(context).languageCode == 'zh'
+        ? '需要补充材料'
+        : 'Documentation needed',
+  );
   String? error;
+  var submitting = false;
   await showDialog<void>(
     context: context,
     builder: (dialogContext) => StatefulBuilder(
@@ -908,65 +932,139 @@ Future<void> _showReviewDialog(
         title: Text(_copy(context, 'Record human review', '记录人工审核')),
         content: SizedBox(
           width: 520,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              DropdownButtonFormField<String>(
-                key: const Key('payer-review-action'),
-                initialValue: action,
-                decoration: InputDecoration(
-                  labelText: _copy(context, 'Action', '操作'),
-                ),
-                items:
-                    const <String>[
-                          'request_clarification',
-                          'accept',
-                          'reject',
-                          'escalate',
-                          'close',
-                        ]
-                        .map(
-                          (value) => DropdownMenuItem(
-                            value: value,
-                            child: Text(_payerReviewActionText(context, value)),
-                          ),
-                        )
-                        .toList(),
-                onChanged: (value) => action = value ?? action,
-              ),
-              const SizedBox(height: DrAiSpacing.sm),
-              TextFormField(
-                initialValue: reason,
-                decoration: InputDecoration(
-                  labelText: _copy(
-                    context,
-                    'Reason for this decision',
-                    '作出此决定的原因',
+          child: SingleChildScrollView(
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  DropdownButtonFormField<String>(
+                    key: const Key('payer-review-action'),
+                    initialValue: action,
+                    decoration: InputDecoration(
+                      labelText: _copy(context, 'Action', '操作'),
+                    ),
+                    items:
+                        const <String>[
+                              'request_clarification',
+                              'accept',
+                              'reject',
+                              'escalate',
+                              'close',
+                            ]
+                            .map(
+                              (value) => DropdownMenuItem(
+                                value: value,
+                                child: Text(
+                                  _payerReviewActionText(context, value),
+                                ),
+                              ),
+                            )
+                            .toList(),
+                    onChanged: submitting
+                        ? null
+                        : (value) => setState(() {
+                            action = value ?? action;
+                            error = null;
+                          }),
                   ),
-                  helperText: _copy(
-                    context,
-                    'Use a short structured reason; reviewer-only details belong below.',
-                    '请填写简短的结构化原因；仅审核员可见的细节请写在下方。',
+                  const SizedBox(height: DrAiSpacing.sm),
+                  TextFormField(
+                    controller: reason,
+                    maxLength: 80,
+                    decoration: InputDecoration(
+                      labelText: _copy(
+                        context,
+                        'Reason for this decision',
+                        '作出此决定的原因',
+                      ),
+                      helperText: _copy(
+                        context,
+                        'Use a short structured reason; reviewer-only details belong below.',
+                        '请填写简短的结构化原因；仅审核员可见的细节请写在下方。',
+                      ),
+                    ),
+                    validator: (value) => (value?.trim().length ?? 0) < 2
+                        ? _copy(
+                            context,
+                            'Enter a short reason for this action.',
+                            '请填写此操作的简短原因。',
+                          )
+                        : null,
                   ),
-                ),
-                onChanged: (value) => reason = value.trim(),
-              ),
-              const SizedBox(height: DrAiSpacing.sm),
-              TextFormField(
-                controller: note,
-                minLines: 3,
-                maxLines: 6,
-                decoration: InputDecoration(
-                  labelText: _copy(
-                    context,
-                    'Reviewer-only note (optional)',
-                    '审核员内部备注（可选）',
+                  const SizedBox(height: DrAiSpacing.sm),
+                  if (action == 'request_clarification') ...<Widget>[
+                    TextFormField(
+                      key: const Key('payer-clarification-message'),
+                      controller: clarification,
+                      focusNode: clarificationFocusNode,
+                      minLines: 3,
+                      maxLines: 6,
+                      maxLength: 2000,
+                      decoration: InputDecoration(
+                        labelText: _copy(
+                          context,
+                          'Question or information needed from the doctor',
+                          '需要医生回答的问题或补充的信息',
+                        ),
+                        helperText: _copy(
+                          context,
+                          'Required, 10–2000 characters. The assigned doctor and authorized payer reviewers can see this.',
+                          '必填，10–2000 个字符。负责医生和获授权的支付方审核员可见。',
+                        ),
+                        alignLabelWithHint: true,
+                      ),
+                      validator: (value) {
+                        final length = value?.trim().length ?? 0;
+                        if (length == 0) {
+                          return _copy(
+                            context,
+                            'Tell the doctor what information is needed.',
+                            '请说明需要医生补充的信息。',
+                          );
+                        }
+                        if (length < 10) {
+                          return _copy(
+                            context,
+                            'Use at least 10 characters.',
+                            '请至少填写 10 个字符。',
+                          );
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: DrAiSpacing.sm),
+                  ],
+                  TextFormField(
+                    key: const Key('payer-private-note'),
+                    controller: note,
+                    minLines: 3,
+                    maxLines: 6,
+                    maxLength: 4000,
+                    decoration: InputDecoration(
+                      labelText: _copy(
+                        context,
+                        'Internal payer note (optional — not shared with doctor)',
+                        '支付方内部备注（可选——不与医生共享）',
+                      ),
+                      helperText: _copy(
+                        context,
+                        'Visible only to authorized payer reviewers.',
+                        '仅获授权的支付方审核员可见。',
+                      ),
+                    ),
                   ),
-                ),
+                  if (error != null)
+                    Semantics(
+                      liveRegion: true,
+                      child: Text(
+                        error!,
+                        style: const TextStyle(color: DrAiColors.danger),
+                      ),
+                    ),
+                ],
               ),
-              if (error != null)
-                Text(error!, style: const TextStyle(color: DrAiColors.danger)),
-            ],
+            ),
           ),
         ),
         actions: <Widget>[
@@ -975,32 +1073,76 @@ Future<void> _showReviewDialog(
             child: Text(_copy(context, 'Cancel', '取消')),
           ),
           FilledButton(
-            onPressed: () async {
-              try {
-                await ref
-                    .read(repositoryProvider)
-                    .reviewPayerRequest(
-                      requestId: request.id,
-                      action: action,
-                      reasonCode: reason,
-                      expectedVersion: request.version,
-                      idempotencyKey:
-                          'payer-review-${request.id}-${DateTime.now().microsecondsSinceEpoch}',
-                      note: note.text.trim().isEmpty ? null : note.text.trim(),
-                    );
-                ref.invalidate(payerRequestsProvider);
-                ref.invalidate(payerDashboardProvider);
-                if (dialogContext.mounted) Navigator.pop(dialogContext);
-              } on ApiError catch (apiError) {
-                setState(() => error = apiError.message);
-              }
-            },
+            key: const Key('payer-review-submit'),
+            onPressed: submitting
+                ? null
+                : () async {
+                    if (!(formKey.currentState?.validate() ?? false)) {
+                      if (action == 'request_clarification' &&
+                          clarification.text.trim().length < 10) {
+                        clarificationFocusNode.requestFocus();
+                      }
+                      return;
+                    }
+                    setState(() {
+                      submitting = true;
+                      error = null;
+                    });
+                    try {
+                      await ref
+                          .read(repositoryProvider)
+                          .reviewPayerRequest(
+                            requestId: request.id,
+                            action: action,
+                            reasonCode: reason.text.trim(),
+                            expectedVersion: request.version,
+                            idempotencyKey:
+                                'payer-review-${request.id}-${DateTime.now().microsecondsSinceEpoch}',
+                            clarificationMessage:
+                                action == 'request_clarification'
+                                ? clarification.text.trim()
+                                : null,
+                            note: note.text.trim().isEmpty
+                                ? null
+                                : note.text.trim(),
+                          );
+                      ref.invalidate(payerRequestsProvider);
+                      ref.invalidate(payerDashboardProvider);
+                      if (dialogContext.mounted) Navigator.pop(dialogContext);
+                    } on ApiError catch (apiError) {
+                      setState(() {
+                        submitting = false;
+                        error = apiError.statusCode == 409
+                            ? _copy(
+                                context,
+                                'This request changed. Close this dialog, refresh, and review the latest version; your entries are preserved here.',
+                                '此申请已更新。请关闭对话框并刷新后审核最新版本；当前填写内容仍保留在此处。',
+                              )
+                            : _copy(
+                                context,
+                                'Check the highlighted fields and try again.',
+                                '请检查标出的字段后重试。',
+                              );
+                      });
+                      if (apiError.details.any(
+                            (detail) => detail.field == 'clarification_message',
+                          ) &&
+                          action == 'request_clarification') {
+                        clarificationFocusNode.requestFocus();
+                      }
+                    }
+                  },
             child: Text(_copy(context, 'Save review', '保存审核')),
           ),
         ],
       ),
     ),
   );
+  // Let the route reverse-transition finish before releasing field controllers.
+  await Future<void>.delayed(kThemeAnimationDuration);
+  clarificationFocusNode.dispose();
+  clarification.dispose();
+  reason.dispose();
   note.dispose();
 }
 

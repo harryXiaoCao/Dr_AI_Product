@@ -1620,6 +1620,9 @@ class _HistoryCard extends ConsumerWidget {
       (total, line) => total + line.patientResponsibilityMinor,
     );
     final latestReview = request.reviews.isEmpty ? null : request.reviews.last;
+    final latestClarification = request.reviews.reversed
+        .where((review) => review.clarificationMessage != null)
+        .firstOrNull;
     return Material(
       key: Key('payment-request-history-${request.id}'),
       color: DrAiColors.white,
@@ -1669,6 +1672,49 @@ class _HistoryCard extends ConsumerWidget {
           if (request.reviewedAt != null ||
               request.status != 'submitted') ...<Widget>[
             _ReviewOutcomeBanner(request: request, latestReview: latestReview),
+            const SizedBox(height: DrAiSpacing.md),
+          ],
+          if (request.status == 'clarification_requested' &&
+              latestClarification != null) ...<Widget>[
+            Semantics(
+              liveRegion: true,
+              label: _copy(context, 'Payer clarification request', '支付方补充说明请求'),
+              child: Container(
+                key: Key('doctor-payer-clarification-${request.id}'),
+                width: double.infinity,
+                padding: const EdgeInsets.all(DrAiSpacing.md),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  border: Border.all(color: Colors.orange.shade300),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      _copy(
+                        context,
+                        'Payer clarification request',
+                        '支付方补充说明请求',
+                      ),
+                      style: const TextStyle(fontWeight: FontWeight.w900),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(latestClarification.clarificationMessage!),
+                    const SizedBox(height: 6),
+                    Text(
+                      '${latestClarification.reviewerDisplayName} · '
+                      '${latestClarification.reviewerTitle} · '
+                      '${formatProductHistoryTime(context, latestClarification.createdAt)}',
+                      style: const TextStyle(
+                        color: DrAiColors.inkSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
             const SizedBox(height: DrAiSpacing.md),
           ],
           Align(
@@ -1792,7 +1838,8 @@ class _HistoryCard extends ConsumerWidget {
                   '${entry.$2.reviewerDisplayName} · ${entry.$2.reviewerTitle} · '
                   '${formatProductHistoryTime(context, entry.$2.createdAt)}\n'
                   '${_copy(context, 'Recorded reason', '记录原因')}: '
-                  '${humanizeProductValue(entry.$2.reasonCode)}',
+                  '${humanizeProductValue(entry.$2.reasonCode)}'
+                  '${entry.$2.clarificationMessage == null ? '' : '\n${_copy(context, 'Payer clarification request', '支付方补充说明请求')}: ${entry.$2.clarificationMessage}'}',
                 ),
                 trailing: Text(
                   _copy(

@@ -276,13 +276,11 @@ final doctorDashboard = DashboardData(
       'rating': 4,
     },
     'quick_access': <String>[
-      'AI Supported CT Image Diagnose',
-      'AI Supported X-ray Image Diagnose',
-      'AI Supported MRI Image Diagnose',
-      'Check Patient Medical Records',
-      'Check Patient Recovery Plans',
-      'Check Imaging Results',
-      'Book Medical Equipment',
+      'Imaging records and manual review',
+      'Patient medical records',
+      'Patient recovery plans',
+      'Medical resources (read-only)',
+      'Payer requests',
     ],
     'recent_activity': <String, dynamic>{
       'title': 'Synthetic Patient - Demonstration follow-up',
@@ -332,28 +330,6 @@ final patientDashboard = DashboardData(
       'title': 'Head of Synthetic Community Hospital',
       'expertise': 'Synthetic care coordination',
     },
-    'fee_items': <Map<String, dynamic>>[
-      <String, dynamic>{
-        'label': 'Consultation',
-        'amount': '10 demo credits',
-        'selected': true,
-      },
-      <String, dynamic>{
-        'label': 'Blood Test',
-        'amount': '50 demo credits',
-        'selected': true,
-      },
-      <String, dynamic>{
-        'label': 'Medication',
-        'amount': '120 demo credits',
-        'selected': true,
-      },
-      <String, dynamic>{
-        'label': 'Ambulance Service',
-        'amount': '50 demo credits',
-        'selected': false,
-      },
-    ],
     'medical_records': <Object>[],
     'imaging_results': <Object>[],
   },
@@ -925,6 +901,12 @@ final demoPatientToday = PatientTodayData(
   tasks: demoRecoveryPlan.tasks,
 );
 
+PatientCareBundle patientCareBundleWithRecoveryPlans(
+  List<RecoveryPlanData> plans,
+) {
+  return _copyCareBundle(demoPatientCareBundle, recoveryPlans: plans);
+}
+
 final demoChatResult = ChatMessageResult(
   threadId: 'chat-thread-test-id',
   threadKey: 'patient-education',
@@ -983,6 +965,7 @@ final demoConsultation = ConsultationRequestItem(
 class FakeDrAiRepository implements DrAiRepository {
   FakeDrAiRepository({
     this.restoredSession,
+    this.restoreCompleter,
     this.loginSession = doctorSession,
     DashboardData? dashboard,
     this.loginError,
@@ -1001,6 +984,7 @@ class FakeDrAiRepository implements DrAiRepository {
     List<MedicalResourceFixture>? medicalResources,
     Map<String, MedicalResourceDetail>? medicalResourceDetails,
     List<PayerRequestData>? payerRequests,
+    CareCostLedgerData? careCostLedger,
     PayerProfileData? payerProfile,
     List<SupportRequestData>? supportRequests,
     NotificationInboxData? notificationInbox,
@@ -1014,10 +998,13 @@ class FakeDrAiRepository implements DrAiRepository {
     this.imagingError,
     this.assessmentError,
     this.recoveryPlanError,
+    this.recoveryPlanSaveError,
     this.patientTodayError,
     this.completionError,
     this.chatError,
     this.consultationError,
+    this.careCostError,
+    this.careCostCompleter,
     this.payerProfileUpdateError,
     this.supportRequestLoadError,
     this.supportRequestCreateError,
@@ -1057,6 +1044,7 @@ class FakeDrAiRepository implements DrAiRepository {
        _payerRequests = List<PayerRequestData>.from(
          payerRequests ?? <PayerRequestData>[payerRequestFixture()],
        ),
+       careCostLedger = careCostLedger ?? _defaultCareCostLedger(),
        _payerProfile = payerProfile ?? demoPayerProfile,
        supportRequests = List<SupportRequestData>.from(
          supportRequests ?? const <SupportRequestData>[],
@@ -1071,6 +1059,7 @@ class FakeDrAiRepository implements DrAiRepository {
            : intelligenceArtifact ?? clinicalEventIntelligenceFixture;
 
   AuthSession? restoredSession;
+  Completer<AuthSession?>? restoreCompleter;
   AuthSession loginSession;
   DashboardData dashboard;
   ApiError? loginError;
@@ -1083,6 +1072,7 @@ class FakeDrAiRepository implements DrAiRepository {
   AssessmentListData assessments;
   RecoveryPlanListData recoveryPlans;
   List<RecoveryPhaseInput> lastRecoveryPhases = <RecoveryPhaseInput>[];
+  int recoveryPlanSaveCallCount = 0;
   PatientTodayData patientToday;
   ChatMessageResult chatResult;
   List<PatientChatThreadSummary> chatThreads;
@@ -1090,6 +1080,7 @@ class FakeDrAiRepository implements DrAiRepository {
   List<MedicalResourceFixture> medicalResources;
   Map<String, MedicalResourceDetail> medicalResourceDetails;
   final List<PayerRequestData> _payerRequests;
+  CareCostLedgerData careCostLedger;
   PayerProfileData _payerProfile;
   List<SupportRequestData> supportRequests;
   NotificationInboxData notificationInbox;
@@ -1103,10 +1094,13 @@ class FakeDrAiRepository implements DrAiRepository {
   ApiError? imagingError;
   ApiError? assessmentError;
   ApiError? recoveryPlanError;
+  ApiError? recoveryPlanSaveError;
   ApiError? patientTodayError;
   ApiError? completionError;
   ApiError? chatError;
   ApiError? consultationError;
+  ApiError? careCostError;
+  Completer<CareCostLedgerData>? careCostCompleter;
   ApiError? payerProfileUpdateError;
   ApiError? supportRequestLoadError;
   ApiError? supportRequestCreateError;
@@ -1155,6 +1149,9 @@ class FakeDrAiRepository implements DrAiRepository {
   String? lastChatMessage;
   bool payerRequestCreated = false;
   List<String> lastPayerRequestItemIds = const <String>[];
+  int payerReviewCallCount = 0;
+  String? lastPayerClarificationMessage;
+  String? lastPayerPrivateNote;
   bool payerProfileUpdated = false;
   int payerProfileUpdateCount = 0;
   int payerProfileLoadCount = 0;
@@ -1550,7 +1547,10 @@ class FakeDrAiRepository implements DrAiRepository {
   );
 
   @override
-  Future<AuthSession?> restore() async => restoredSession;
+  Future<AuthSession?> restore() async {
+    if (restoreCompleter != null) return restoreCompleter!.future;
+    return restoredSession;
+  }
 
   @override
   Future<List<SupportRequestData>> loadSupportRequests() async {
@@ -2180,6 +2180,13 @@ class FakeDrAiRepository implements DrAiRepository {
   Future<PatientDoctorContactList> loadOwnPatientContacts() async {
     return patientDoctorContacts;
   }
+
+  @override
+  Future<void> actOnDoctorRelationship({
+    required String relationshipId,
+    required int expectedVersion,
+    required String action,
+  }) async {}
 
   @override
   Future<PatientProfile> updateOwnPatientProfile({
@@ -2825,6 +2832,10 @@ class FakeDrAiRepository implements DrAiRepository {
     required List<RecoveryTaskInput> tasks,
     required List<RecoveryPhaseInput> phases,
   }) async {
+    recoveryPlanSaveCallCount += 1;
+    if (recoveryPlanSaveError != null) {
+      throw recoveryPlanSaveError!;
+    }
     if (recoveryPlanError != null) {
       throw recoveryPlanError!;
     }
@@ -2854,6 +2865,10 @@ class FakeDrAiRepository implements DrAiRepository {
     required List<RecoveryTaskInput> tasks,
     required List<RecoveryPhaseInput> phases,
   }) async {
+    recoveryPlanSaveCallCount += 1;
+    if (recoveryPlanSaveError != null) {
+      throw recoveryPlanSaveError!;
+    }
     if (recoveryPlanError != null) {
       throw recoveryPlanError!;
     }
@@ -2925,6 +2940,7 @@ class FakeDrAiRepository implements DrAiRepository {
   Future<RecoveryPlanData> submitRecoveryPlanForReview({
     required String patientId,
     required String planId,
+    required int expectedVersion,
   }) async {
     final current = _currentRecoveryPlan(planId);
     final submitted = _copyPlan(
@@ -2940,6 +2956,8 @@ class FakeDrAiRepository implements DrAiRepository {
   Future<RecoveryPlanData> requestRecoveryPlanChanges({
     required String patientId,
     required String planId,
+    required int expectedVersion,
+    required String comment,
   }) async {
     final current = _currentRecoveryPlan(planId);
     final changed = _copyPlan(
@@ -2955,6 +2973,8 @@ class FakeDrAiRepository implements DrAiRepository {
   Future<RecoveryPlanData> approveRecoveryPlan({
     required String patientId,
     required String planId,
+    required int expectedVersion,
+    String? comment,
   }) async {
     return activateRecoveryPlan(patientId: patientId, planId: planId);
   }
@@ -3011,6 +3031,7 @@ class FakeDrAiRepository implements DrAiRepository {
       progressSummary: _progressForTasks(updatedTasks),
       tasks: updatedTasks,
     );
+    _syncPatientCareRecoveryPlan(updatedTasks);
     return updatedTasks.firstWhere((task) => task.taskId == taskId);
   }
 
@@ -3043,7 +3064,44 @@ class FakeDrAiRepository implements DrAiRepository {
       progressSummary: _progressForTasks(updatedTasks),
       tasks: updatedTasks,
     );
+    _syncPatientCareRecoveryPlan(updatedTasks);
     return updatedTasks.firstWhere((task) => task.taskId == taskId);
+  }
+
+  void _syncPatientCareRecoveryPlan(List<RecoveryTaskItem> tasks) {
+    final activePlan = patientToday.activePlan;
+    if (activePlan == null) return;
+    final updatedPlan = RecoveryPlanData(
+      planId: activePlan.planId,
+      patientId: activePlan.patientId,
+      clinicalEventId: activePlan.clinicalEventId,
+      title: activePlan.title,
+      instructions: activePlan.instructions,
+      status: activePlan.status,
+      reviewStatus: activePlan.reviewStatus,
+      safetyLabel: activePlan.safetyLabel,
+      createdAt: activePlan.createdAt,
+      updatedAt: activePlan.updatedAt,
+      submittedAt: activePlan.submittedAt,
+      reviewedAt: activePlan.reviewedAt,
+      approvedAt: activePlan.approvedAt,
+      activatedAt: activePlan.activatedAt,
+      completedAt: activePlan.completedAt,
+      progressSummary: _progressForTasks(tasks),
+      tasks: tasks,
+    );
+    patientToday = PatientTodayData(
+      safetyLabel: patientToday.safetyLabel,
+      activePlan: updatedPlan,
+      progressSummary: updatedPlan.progressSummary,
+      tasks: tasks,
+    );
+    patientCareBundle = _copyCareBundle(
+      patientCareBundle,
+      recoveryPlans: patientCareBundle.recoveryPlans
+          .map((plan) => plan.planId == updatedPlan.planId ? updatedPlan : plan)
+          .toList(),
+    );
   }
 
   @override
@@ -3334,11 +3392,16 @@ class FakeDrAiRepository implements DrAiRepository {
   }
 
   @override
-  Future<CareCostLedgerData> loadOwnCareCosts() async => _fakeLedger();
+  Future<CareCostLedgerData> loadOwnCareCosts() async {
+    if (careCostError != null) throw careCostError!;
+    if (careCostCompleter != null) return careCostCompleter!.future;
+    return careCostLedger;
+  }
 
   @override
   Future<CareCostLedgerData> loadPatientCareCosts(String patientId) async {
-    return _fakeLedger(patientId: patientId);
+    if (careCostError != null) throw careCostError!;
+    return _copyLedgerPatient(careCostLedger, patientId);
   }
 
   @override
@@ -3426,6 +3489,7 @@ class FakeDrAiRepository implements DrAiRepository {
       profile: await loadPayerProfile(),
       openRequests: 1,
       clarificationRequests: 0,
+      escalatedRequests: 1,
       completedReviews: 2,
       pendingRequestedTotalMinor: 50000,
       currency: 'CNY',
@@ -3461,7 +3525,7 @@ class FakeDrAiRepository implements DrAiRepository {
 
   @override
   Future<List<PayerRequestData>> loadPayerRequests() async {
-    return <PayerRequestData>[_fakePayerRequest()];
+    return List<PayerRequestData>.unmodifiable(_payerRequests);
   }
 
   @override
@@ -3471,8 +3535,12 @@ class FakeDrAiRepository implements DrAiRepository {
     required String reasonCode,
     required int expectedVersion,
     required String idempotencyKey,
+    String? clarificationMessage,
     String? note,
   }) async {
+    payerReviewCallCount += 1;
+    lastPayerClarificationMessage = clarificationMessage;
+    lastPayerPrivateNote = note;
     final status = switch (action) {
       'accept' => 'accepted',
       'reject' => 'rejected',
@@ -3497,9 +3565,7 @@ class FakeDrAiRepository implements DrAiRepository {
     return _fakePayerRequest();
   }
 
-  CareCostLedgerData _fakeLedger({
-    String patientId = 'patient-profile-test-id',
-  }) {
+  static CareCostLedgerData _defaultCareCostLedger() {
     final item = CareCostItemData(
       id: 'care-cost-item-test-id',
       clinicalEventId: 'clinical-event-test-id',
@@ -3521,11 +3587,14 @@ class FakeDrAiRepository implements DrAiRepository {
       updatedAt: DateTime(2026, 7, 23),
     );
     return CareCostLedgerData(
-      patientId: patientId,
+      patientId: 'patient-profile-test-id',
       patientDisplayName: 'Riley Demo Patient',
       actualTotalMinor: 68000,
+      estimatedTotalMinor: 0,
+      finalTotalMinor: 68000,
       payerRequestedTotalMinor: 50000,
       patientResponsibilityTotalMinor: 18000,
+      pendingCostItemCount: 0,
       currency: 'CNY',
       events: <CareCostEventData>[
         CareCostEventData(
@@ -3539,6 +3608,24 @@ class FakeDrAiRepository implements DrAiRepository {
           items: <CareCostItemData>[item],
         ),
       ],
+    );
+  }
+
+  static CareCostLedgerData _copyLedgerPatient(
+    CareCostLedgerData ledger,
+    String patientId,
+  ) {
+    return CareCostLedgerData(
+      patientId: patientId,
+      patientDisplayName: ledger.patientDisplayName,
+      actualTotalMinor: ledger.actualTotalMinor,
+      estimatedTotalMinor: ledger.estimatedTotalMinor,
+      finalTotalMinor: ledger.finalTotalMinor,
+      payerRequestedTotalMinor: ledger.payerRequestedTotalMinor,
+      patientResponsibilityTotalMinor: ledger.patientResponsibilityTotalMinor,
+      pendingCostItemCount: ledger.pendingCostItemCount,
+      currency: ledger.currency,
+      events: ledger.events,
     );
   }
 

@@ -80,6 +80,9 @@ class _PatientAiChatScreenState extends ConsumerState<PatientAiChatScreen> {
         _messages.clear();
         _error = null;
         _failedSendText = null;
+        if (MediaQuery.sizeOf(context).width < 600) {
+          _historyOpen = false;
+        }
       });
       await _refreshThreads();
     } catch (_) {
@@ -101,6 +104,9 @@ class _PatientAiChatScreenState extends ConsumerState<PatientAiChatScreen> {
       setState(() {
         _threadId = thread.threadId;
         _failedSendText = null;
+        if (MediaQuery.sizeOf(context).width < 600) {
+          _historyOpen = false;
+        }
         _messages
           ..clear()
           ..addAll(history.messages.map(_AiSessionMessage.fromHistory));
@@ -305,29 +311,39 @@ class _PatientAiChatScreenState extends ConsumerState<PatientAiChatScreen> {
                           borderRadius: BorderRadius.circular(DrAiRadii.lg),
                         ),
                         clipBehavior: Clip.antiAlias,
-                        child: Row(
-                          children: <Widget>[
-                            AnimatedContainer(
-                              duration: const Duration(milliseconds: 220),
-                              curve: Curves.easeOutCubic,
-                              width: _historyOpen ? 264 : 0,
-                              child: _historyOpen
-                                  ? _AiThreadSidebar(
-                                      threads: _threads,
-                                      selectedThreadId: _threadId,
-                                      loading: _loadingHistory,
-                                      loadFailed: _historyLoadFailed,
-                                      onNewChat: _startNewChat,
-                                      onThreadSelected: _openThread,
-                                      onArchive: _archiveThread,
-                                      onReopen: _reopenThread,
-                                      onDelete: _deleteThread,
-                                      onRetry: _refreshThreads,
-                                    )
-                                  : const SizedBox.shrink(),
-                            ),
-                            Expanded(child: _buildConversation()),
-                          ],
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            final sidebar = _AiThreadSidebar(
+                              threads: _threads,
+                              selectedThreadId: _threadId,
+                              loading: _loadingHistory,
+                              loadFailed: _historyLoadFailed,
+                              onNewChat: _startNewChat,
+                              onThreadSelected: _openThread,
+                              onArchive: _archiveThread,
+                              onReopen: _reopenThread,
+                              onDelete: _deleteThread,
+                              onRetry: _refreshThreads,
+                            );
+                            if (constraints.maxWidth < 600) {
+                              return _historyOpen
+                                  ? sidebar
+                                  : _buildConversation();
+                            }
+                            return Row(
+                              children: <Widget>[
+                                AnimatedContainer(
+                                  duration: const Duration(milliseconds: 220),
+                                  curve: Curves.easeOutCubic,
+                                  width: _historyOpen ? 264 : 0,
+                                  child: _historyOpen
+                                      ? sidebar
+                                      : const SizedBox.shrink(),
+                                ),
+                                Expanded(child: _buildConversation()),
+                              ],
+                            );
+                          },
                         ),
                       ),
                     ),
@@ -477,6 +493,7 @@ class _AiThreadSidebar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
+      key: const Key('patient-ai-thread-sidebar'),
       decoration: const BoxDecoration(
         color: Color(0xFFF7F8FC),
         border: Border(right: BorderSide(color: DrAiColors.outline)),
@@ -489,6 +506,7 @@ class _AiThreadSidebar extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
+                key: const Key('patient-ai-new-chat-sidebar'),
                 onPressed: onNewChat,
                 icon: const Icon(Icons.add_rounded),
                 label: Text(context.l10n.aiNewChat),
@@ -751,6 +769,84 @@ class _AiMessageBubble extends StatelessWidget {
               const SizedBox(height: DrAiSpacing.sm),
               _GroundingModeBanner(result: result),
             ],
+            if (result != null && result.possibleCauses.isNotEmpty) ...<Widget>[
+              const SizedBox(height: DrAiSpacing.sm),
+              Container(
+                key: const Key('patient-ai-possible-causes'),
+                width: double.infinity,
+                padding: const EdgeInsets.all(DrAiSpacing.xs),
+                decoration: BoxDecoration(
+                  color: DrAiColors.accentIndigo.withValues(alpha: 0.07),
+                  borderRadius: BorderRadius.circular(DrAiRadii.md),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      context.l10n.aiPossibleCauses,
+                      style: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    Text(
+                      context.l10n.aiPossibleCausesNotDiagnosis,
+                      style: const TextStyle(
+                        color: DrAiColors.inkSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
+                    for (final cause in result.possibleCauses)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Text(
+                          '• ${cause.name}: ${cause.explanation}',
+                          style: const TextStyle(height: 1.4),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+            if (result != null && result.warningSigns.isNotEmpty) ...<Widget>[
+              const SizedBox(height: DrAiSpacing.sm),
+              Container(
+                key: const Key('patient-ai-warning-signs'),
+                width: double.infinity,
+                padding: const EdgeInsets.all(DrAiSpacing.xs),
+                decoration: BoxDecoration(
+                  color: DrAiColors.danger.withValues(alpha: 0.07),
+                  borderRadius: BorderRadius.circular(DrAiRadii.md),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      context.l10n.aiWarningSigns,
+                      style: const TextStyle(
+                        color: DrAiColors.danger,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    for (final sign in result.warningSigns)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text('• $sign'),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+            if (result != null && result.nextSteps.isNotEmpty) ...<Widget>[
+              const SizedBox(height: DrAiSpacing.sm),
+              Text(
+                context.l10n.aiNextSteps,
+                key: const Key('patient-ai-next-steps'),
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+              for (final step in result.nextSteps)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text('• $step'),
+                ),
+            ],
             if (result != null && result.uncertainties.isNotEmpty) ...<Widget>[
               const SizedBox(height: DrAiSpacing.sm),
               Container(
@@ -914,6 +1010,23 @@ class _AiMessageBubble extends StatelessWidget {
                 ),
               ),
             ],
+            if (result?.suggestedActionCodes.contains('call_120') ??
+                false) ...<Widget>[
+              const SizedBox(height: DrAiSpacing.sm),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  key: const Key('patient-ai-call-120'),
+                  onPressed: _callEmergencyServices,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: DrAiColors.danger,
+                    foregroundColor: Colors.white,
+                  ),
+                  icon: const Icon(Icons.call_rounded),
+                  label: Text(context.l10n.aiCall120Now),
+                ),
+              ),
+            ],
             if (result != null &&
                 result.suggestedActionCodes.isNotEmpty) ...<Widget>[
               const SizedBox(height: DrAiSpacing.xs),
@@ -966,6 +1079,10 @@ class _AiMessageBubble extends StatelessWidget {
     final uri = _safeOfficialUri(locator);
     if (uri == null) return;
     await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  static Future<void> _callEmergencyServices() async {
+    await launchUrl(Uri(scheme: 'tel', path: '120'));
   }
 
   IconData _actionIcon(String action) {

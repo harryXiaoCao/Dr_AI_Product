@@ -7,7 +7,7 @@ from enum import StrEnum
 
 from sqlalchemy.orm import Session
 
-from app.ai_chat import DeepSeekChatAdapter, DeepSeekChatError
+from app.ai_chat import DeepSeekChatAdapter, DeepSeekChatError, DeepSeekQueryPlanResult
 from app.chatbot_contracts import EvidenceDecision, PatientEvidenceRequest, RetrievalQueryPlan
 from app.clinical_presentation import ClinicalPresentation, extract_clinical_presentation
 from app.config import Settings
@@ -25,6 +25,7 @@ from app.knowledge_retrieval import (
 
 
 class RescueTrigger(StrEnum):
+    semantic_router = "semantic_router"
     short_reference = "short_reference"
     colloquial = "colloquial"
     ambiguous = "ambiguous"
@@ -32,6 +33,8 @@ class RescueTrigger(StrEnum):
 
 
 class RescueOutcome(StrEnum):
+    semantic_routed = "semantic_routed"
+    emergency_upgraded = "emergency_upgraded"
     not_triggered = "not_triggered"
     disabled = "disabled"
     improved = "improved"
@@ -492,10 +495,12 @@ def attempt_retrieval_rescue(
     trusted_context_message: str,
     settings: Settings,
     adapter: DeepSeekChatAdapter,
+    preplanned: DeepSeekQueryPlanResult | None = None,
+    planning_metadata: RescueMetadata | None = None,
 ) -> RescueResult:
     trigger = choose_trigger(original_message, initial, settings)
     if trigger is None:
-        return RescueResult(initial, RescueMetadata())
+        return RescueResult(initial, planning_metadata or RescueMetadata())
     if not settings.retrieval_rescue_enabled:
         return RescueResult(
             initial, RescueMetadata(trigger=trigger, outcome=RescueOutcome.disabled)
@@ -509,17 +514,17 @@ def attempt_retrieval_rescue(
     )
     rewritten_queries = [rewritten] if rewritten is not None else []
     common: dict[str, object] = {
-        "trigger": trigger,
+        "trigger": (RescueTrigger.semantic_router if planning_metadata is not None else trigger),
         "attempted": True,
-        "latency_ms": 0,
+        "latency_ms": planning_metadata.latency_ms if planning_metadata else 0,
         "cost_microunits": 0 if rewritten is not None else None,
-        "planner_latency_ms": 0,
+        "planner_latency_ms": planning_metadata.planner_latency_ms if planning_metadata else 0,
         "retry_latency_ms": 0,
         "searched_query_variant_count": 1,
     }
     if rewritten is None:
         try:
-            planned = adapter.plan_retrieval_query(
+            planned = preplanned or adapter.plan_retrieval_query(
                 message=original_message,
                 language=language,
                 excluded_content_classes=request.excluded_content_types,
@@ -542,7 +547,11 @@ def attempt_retrieval_rescue(
                     latency_ms=max(0, round((time.perf_counter() - started) * 1000)),
                 ),
             )
-        planner_latency_ms = max(0, round((time.perf_counter() - started) * 1000))
+        planner_latency_ms = (
+            planning_metadata.planner_latency_ms
+            if preplanned is not None and planning_metadata is not None
+            else max(0, round((time.perf_counter() - started) * 1000))
+        )
         cost = _cost_microunits(settings, planned.input_tokens, planned.output_tokens)
         common.update(
             planner_model=planned.model,
@@ -550,7 +559,7 @@ def attempt_retrieval_rescue(
             output_tokens=planned.output_tokens,
             cache_hit_tokens=planned.cache_hit_tokens,
             cache_miss_tokens=planned.cache_miss_tokens,
-            latency_ms=planner_latency_ms,
+            latency_ms=(planning_metadata.latency_ms if planning_metadata else planner_latency_ms),
             planner_latency_ms=planner_latency_ms,
             cost_microunits=cost,
         )

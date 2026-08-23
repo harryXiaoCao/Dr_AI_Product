@@ -11,19 +11,25 @@ from sqlalchemy.orm import Session
 from app.ai_chat import (
     DeepSeekChatAdapter,
     DeepSeekChatError,
+    DeepSeekDifferentialPlanResult,
     DeepSeekGeneralResult,
     DeepSeekQueryPlanResult,
+    DeepSeekSemanticRouteResult,
     DeepSeekStructuredResult,
 )
 from app.chatbot_contracts import (
+    DifferentialCause,
+    DifferentialPlan,
     EvidenceDecision,
     GeneralModelOutput,
     ModelAnswerSection,
     PatientChatRequest,
     PatientEvidenceRequest,
+    PatientSemanticRoute,
     RetrievalQueryPlan,
     SafetyCode,
     StructuredModelOutput,
+    SymptomPresentation,
 )
 from app.clinical_presentation import extract_clinical_presentation
 from app.config import Settings
@@ -47,6 +53,7 @@ from app.patient_chat import (
 )
 from app.patient_context import select_patient_context
 from app.retrieval_rescue import (
+    RescueMetadata,
     RescueOutcome,
     RescueTrigger,
     _fuse,
@@ -93,9 +100,11 @@ class FakeGroundedAdapter:
         evidence,
         patient_context,
         conversation,
+        semantic_route=None,
+        differential_plan=None,
         settings,
     ):
-        del message, settings
+        del message, settings, semantic_route, differential_plan
         self.calls += 1
         self.patient_context = patient_context
         self.conversations.append(conversation)
@@ -287,6 +296,64 @@ def test_query_planner_malformed_output_has_no_repair_call(settings, monkeypatch
     assert exc_info.value.diagnostic_code == "planner_malformed_output"
 
 
+def test_semantic_router_returns_bounded_classification_and_plan(settings, monkeypatch) -> None:
+    monkeypatch.setattr(settings, "deepseek_api_key", SecretStr("test-key-not-sent"))
+
+    def fake_request(self, request_body, request_settings):
+        del self, request_settings
+        assert request_body["max_tokens"] == 360
+        return {
+            "model": "deepseek-v4-flash",
+            "choices": [
+                {
+                    "message": {
+                        "content": json.dumps(
+                            {
+                                "intent": "symptom_guidance",
+                                "urgency_candidate": "emergency_120",
+                                "confidence": "high",
+                                "emergency_candidate": True,
+                                "needs_differential": True,
+                                "danger_signals": ["chest pressure with breathing difficulty"],
+                                "presentation": {
+                                    "symptoms": [
+                                        "chest pressure",
+                                        "breathing difficulty",
+                                    ],
+                                    "associated_symptoms": [],
+                                    "negated_symptoms": [],
+                                    "relevant_context": [],
+                                    "normalized_summary": (
+                                        "acute chest pressure with breathing difficulty"
+                                    ),
+                                },
+                            }
+                        )
+                    }
+                }
+            ],
+            "usage": {"prompt_tokens": 80, "completion_tokens": 40},
+        }
+
+    monkeypatch.setattr(DeepSeekChatAdapter, "_request", fake_request)
+    result = DeepSeekChatAdapter().route_patient_message(
+        message="It feels like an elephant is sitting on my chest and I cannot catch my breath.",
+        language="en",
+        excluded_content_classes=["raw_clinical_record"],
+        recent_user_messages=[],
+        settings=settings,
+    )
+
+    assert result.output.emergency_candidate is True
+    assert result.output.urgency_candidate == "emergency_120"
+    assert result.output.presentation.symptoms == [
+        "chest pressure",
+        "breathing difficulty",
+    ]
+    assert result.input_tokens == 80
+    assert result.output_tokens == 40
+
+
 def _query_plan(candidate: str) -> RetrievalQueryPlan:
     return RetrievalQueryPlan(
         normalized_intent="症状教育检索",
@@ -409,6 +476,54 @@ def test_retrieval_rescue_separates_latency_and_cost_outcomes(
     )
 
     assert result.metadata.outcome == expected_outcome
+
+
+def test_retrieval_rescue_reuses_semantic_plan_without_second_planner_call(settings) -> None:
+    class PlannerMustNotRun:
+        def plan_retrieval_query(self, **kwargs):
+            pytest.fail(f"duplicate planner call: {sorted(kwargs)}")
+
+    preplanned = DeepSeekQueryPlanResult(
+        output=_query_plan("请停止降糖药并改变剂量"),
+        model="deepseek-v4-flash",
+        input_tokens=40,
+        output_tokens=20,
+        cache_hit_tokens=None,
+        cache_miss_tokens=40,
+    )
+    initial = _rescue_retrieval(
+        _rescue_candidate("diabetes", "source-diabetes", coverage=1.0, score=-0.1)
+    )
+
+    result = attempt_retrieval_rescue(
+        None,
+        original_message="请问糖尿病怎么办，一般谁会得糖尿病",
+        language="zh-Hans",
+        request=PatientEvidenceRequest(
+            query="请问糖尿病怎么办，一般谁会得糖尿病", language="zh-Hans"
+        ),
+        initial=initial,
+        recent_user_messages=[],
+        trusted_presentation=extract_clinical_presentation("请问糖尿病怎么办，一般谁会得糖尿病"),
+        trusted_context_message="请问糖尿病怎么办，一般谁会得糖尿病",
+        settings=settings,
+        adapter=PlannerMustNotRun(),
+        preplanned=preplanned,
+        planning_metadata=RescueMetadata(
+            trigger=RescueTrigger.semantic_router,
+            attempted=True,
+            outcome=RescueOutcome.semantic_routed,
+            planner_model="deepseek-v4-flash",
+            input_tokens=40,
+            output_tokens=20,
+            planner_latency_ms=25,
+            latency_ms=25,
+        ),
+    )
+
+    assert result.metadata.trigger == RescueTrigger.semantic_router
+    assert result.metadata.outcome == RescueOutcome.meaning_drift
+    assert result.retrieval is initial
 
 
 def _rescue_candidate(
@@ -670,6 +785,517 @@ def test_emergency_routes_before_retrieval_or_model(
     assert "120" in response.json()["answer_sections"][0]
     assert response.json()["sources"] == []
     assert adapter.calls == 0
+
+
+@pytest.mark.parametrize(
+    ("message", "language", "immediate_guidance"),
+    [
+        (
+            "I have severe chest pain and trouble breathing right now.",
+            "en",
+            "Call 120 now",
+        ),
+        (
+            "I have chest pressure and difficulty breathing.",
+            "en",
+            "Call 120 now",
+        ),
+        (
+            "I am short of breath and have severe chest pain.",
+            "en",
+            "Call 120 now",
+        ),
+        ("I have chest pain and cannot breathe.", "en", "Call 120 now"),
+        ("我胸口发紧，而且呼吸很费劲。", "zh-Hans", "请立即拨打120"),
+        ("我胸痛，同时呼吸不畅。", "zh-Hans", "请立即拨打120"),
+        ("我胸痛而且无法呼吸", "zh-Hans", "请立即拨打120"),
+    ],
+)
+def test_chest_breathing_emergencies_bypass_all_downstream_work(
+    client: TestClient,
+    settings,
+    monkeypatch,
+    message: str,
+    language: str,
+    immediate_guidance: str,
+) -> None:
+    with Session(engine) as db:
+        seed_database(db, settings)
+        db.commit()
+
+    def fail_downstream(*args, **kwargs):
+        del args, kwargs
+        pytest.fail("emergency handling invoked retrieval, rescue, or a provider")
+
+    monkeypatch.setattr("app.patient_chat.retrieve", fail_downstream)
+    monkeypatch.setattr("app.patient_chat.attempt_retrieval_rescue", fail_downstream)
+    monkeypatch.setattr(
+        "app.patient_chat.deepseek_chat_adapter",
+        SimpleNamespace(
+            complete_grounded=fail_downstream,
+            complete_general_knowledge=fail_downstream,
+        ),
+    )
+
+    response = client.post(
+        "/api/v1/patient/chat/messages",
+        headers=_patient_headers(client, settings),
+        json={
+            "message": message,
+            "language": language,
+            "session_id": "chest-breathing-emergency-test",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["safety_code"] == "emergency"
+    assert payload["grounding_mode"] == "fixed_safety_response"
+    assert payload["fallback_code"] == "emergency"
+    assert payload["urgency_route"] == "emergency_120"
+    assert payload["emergency"] is True
+    assert payload["next_action_code"] == "call_120"
+    assert payload["suggested_action_codes"] == ["call_120"]
+    assert payload["answer_sections"][0].startswith(immediate_guidance)
+    assert (
+        "drive yourself" in payload["answer_sections"][0].lower()
+        or "自行开车" in payload["answer_sections"][0]
+    )
+    assert "generated answer failed safety checks" not in payload["answer_sections"][0].lower()
+    assert payload["sources"] == []
+    assert payload["model_version"] is None
+
+    with Session(engine) as db:
+        event = db.scalar(
+            select(ChatbotEvent).where(ChatbotEvent.request_id == payload["request_id"])
+        )
+        assert event is not None
+        assert event.safety_code == "emergency"
+        assert event.grounding_mode == "fixed_safety_response"
+        assert event.fallback_code == "emergency"
+        assert event.retrieved_source_ids_json == []
+        assert event.retrieved_passage_ids_json == []
+        assert event.model_version is None
+        assert event.provider_input_tokens is None
+        assert event.provider_output_tokens is None
+        assert event.rescue_attempted is False
+        for column in ChatbotEvent.__table__.columns:
+            assert message not in str(getattr(event, column.name))
+
+
+def test_semantic_router_can_upgrade_unmatched_language_before_retrieval(
+    client: TestClient, settings, monkeypatch
+) -> None:
+    with Session(engine) as db:
+        seed_database(db, settings)
+        db.commit()
+    monkeypatch.setattr(settings, "chatbot_semantic_routing_purpose_enabled", True)
+    monkeypatch.setattr(settings, "chatbot_semantic_routing_kill_switch", False)
+    message = "It feels like an elephant is sitting on my chest and I cannot catch my breath."
+
+    class FakeSemanticRouter:
+        def route_patient_message(self, **kwargs):
+            assert kwargs["message"] == message
+            return DeepSeekSemanticRouteResult(
+                output=PatientSemanticRoute(
+                    intent="symptom_guidance",
+                    urgency_candidate="emergency_120",
+                    confidence="high",
+                    emergency_candidate=True,
+                    needs_differential=True,
+                    danger_signals=["chest pressure with breathing difficulty"],
+                ),
+                model="deepseek-v4-flash",
+                input_tokens=70,
+                output_tokens=30,
+                cache_hit_tokens=None,
+                cache_miss_tokens=70,
+            )
+
+    monkeypatch.setattr("app.patient_chat.deepseek_semantic_router_adapter", FakeSemanticRouter())
+    monkeypatch.setattr(
+        "app.patient_chat.retrieve",
+        lambda *args, **kwargs: pytest.fail("retrieval ran after semantic emergency upgrade"),
+    )
+    monkeypatch.setattr(
+        "app.patient_chat.deepseek_chat_adapter",
+        SimpleNamespace(
+            complete_grounded=lambda **kwargs: pytest.fail("answer generation ran"),
+            complete_general_knowledge=lambda **kwargs: pytest.fail("general generation ran"),
+        ),
+    )
+
+    response = client.post(
+        "/api/v1/patient/chat/messages",
+        headers=_patient_headers(client, settings),
+        json={"message": message, "language": "en", "session_id": "semantic-route-test"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["safety_code"] == "emergency"
+    assert payload["grounding_mode"] == "fixed_safety_response"
+    assert payload["urgency_route"] == "emergency_120"
+    assert payload["suggested_action_codes"] == ["call_120"]
+    assert payload["answer_sections"][0].startswith("Call 120 now")
+
+    with Session(engine) as db:
+        event = db.scalar(
+            select(ChatbotEvent).where(ChatbotEvent.request_id == payload["request_id"])
+        )
+        assert event is not None
+        assert event.provider_call_count == 1
+        assert event.provider_stage_metrics_json == [
+            {
+                "stage": "semantic_routing",
+                "model": "deepseek-v4-flash",
+                "latency_ms": event.provider_stage_metrics_json[0]["latency_ms"],
+                "input_tokens": 70,
+                "output_tokens": 30,
+                "cost_microunits": 18,
+                "outcome": "emergency_upgraded",
+            }
+        ]
+        assert event.retrieved_source_ids_json == []
+        assert event.model_version is None
+
+
+def test_deterministic_emergency_precedes_enabled_semantic_router(
+    client: TestClient, settings, monkeypatch
+) -> None:
+    with Session(engine) as db:
+        seed_database(db, settings)
+        db.commit()
+    monkeypatch.setattr(settings, "chatbot_semantic_routing_purpose_enabled", True)
+    monkeypatch.setattr(settings, "chatbot_semantic_routing_kill_switch", False)
+    monkeypatch.setattr(
+        "app.patient_chat.deepseek_semantic_router_adapter",
+        SimpleNamespace(
+            route_patient_message=lambda **kwargs: pytest.fail(
+                f"semantic router received deterministic emergency: {sorted(kwargs)}"
+            )
+        ),
+    )
+
+    response = client.post(
+        "/api/v1/patient/chat/messages",
+        headers=_patient_headers(client, settings),
+        json={
+            "message": "I have severe chest pain and trouble breathing right now.",
+            "language": "en",
+            "session_id": "deterministic-before-semantic-test",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["safety_code"] == "emergency"
+    assert response.json()["suggested_action_codes"] == ["call_120"]
+
+
+def test_semantic_router_failure_falls_forward_to_useful_final_generation(
+    client: TestClient, settings, monkeypatch
+) -> None:
+    with Session(engine) as db:
+        seed_database(db, settings)
+        db.commit()
+    monkeypatch.setattr(settings, "chatbot_semantic_routing_purpose_enabled", True)
+    monkeypatch.setattr(settings, "chatbot_semantic_routing_kill_switch", False)
+    message = "What does blood pressure mean?"
+
+    def fail_router(**kwargs):
+        assert kwargs["message"] == message
+        raise DeepSeekChatError(
+            "malformed", diagnostic_code="router_malformed_output", attempt_count=1
+        )
+
+    monkeypatch.setattr(
+        "app.patient_chat.deepseek_semantic_router_adapter",
+        SimpleNamespace(route_patient_message=fail_router),
+    )
+    adapter = FakeGeneralAdapter()
+    monkeypatch.setattr("app.patient_chat.deepseek_chat_adapter", adapter)
+
+    response = client.post(
+        "/api/v1/patient/chat/messages",
+        headers=_patient_headers(client, settings),
+        json={"message": message, "language": "en", "session_id": "router-failure-test"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["grounding_mode"] == "general_model_knowledge"
+    assert payload["fallback_code"] is None
+    assert adapter.calls == 1
+
+    with Session(engine) as db:
+        event = db.scalar(
+            select(ChatbotEvent).where(ChatbotEvent.request_id == payload["request_id"])
+        )
+        assert event is not None
+        assert event.provider_call_count == 2
+        assert [item["stage"] for item in event.provider_stage_metrics_json] == [
+            "semantic_routing",
+            "final_generation",
+        ]
+        assert event.provider_stage_metrics_json[0]["outcome"] == "malformed"
+        assert event.provider_stage_metrics_json[1]["outcome"] == "ok"
+        for column in ChatbotEvent.__table__.columns:
+            assert message not in str(getattr(event, column.name))
+
+
+def test_semantic_route_canonicalizes_redundant_provider_decisions() -> None:
+    symptom_route = PatientSemanticRoute(
+        intent="general_health_education",
+        urgency_candidate="routine_education",
+        confidence="high",
+        needs_differential=True,
+    )
+    emergency_route = PatientSemanticRoute(
+        intent="symptom_guidance",
+        urgency_candidate="clinician_contact",
+        confidence="high",
+        emergency_candidate=True,
+        danger_signals=["severe breathing difficulty"],
+    )
+
+    assert symptom_route.intent == "symptom_guidance"
+    assert symptom_route.needs_differential is True
+    assert emergency_route.urgency_candidate == "emergency_120"
+    assert emergency_route.emergency_candidate is True
+
+
+def test_semantic_router_gate_is_independent_from_answer_release(
+    client: TestClient, settings, monkeypatch
+) -> None:
+    with Session(engine) as db:
+        seed_database(db, settings)
+        db.commit()
+    monkeypatch.setattr(settings, "chatbot_semantic_routing_purpose_enabled", True)
+    monkeypatch.setattr(settings, "chatbot_semantic_routing_kill_switch", False)
+    monkeypatch.setattr(settings, "chatbot_release_governance_bypass_for_tests", False)
+    monkeypatch.setattr(settings, "chatbot_purpose_enabled", False)
+    calls = 0
+
+    def route(**kwargs):
+        nonlocal calls
+        calls += 1
+        assert kwargs["message"] == "What does blood pressure mean?"
+        return DeepSeekSemanticRouteResult(
+            output=PatientSemanticRoute(
+                intent="general_health_education",
+                urgency_candidate="routine_education",
+                confidence="high",
+            ),
+            model="deepseek-v4-flash",
+            input_tokens=20,
+            output_tokens=10,
+            cache_hit_tokens=None,
+            cache_miss_tokens=20,
+        )
+
+    monkeypatch.setattr(
+        "app.patient_chat.deepseek_semantic_router_adapter",
+        SimpleNamespace(route_patient_message=route),
+    )
+
+    response = client.post(
+        "/api/v1/patient/chat/messages",
+        headers=_patient_headers(client, settings),
+        json={
+            "message": "What does blood pressure mean?",
+            "language": "en",
+            "session_id": "router-release-gate-test",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["grounding_mode"] == "fixed_safety_response"
+    assert calls == 1
+
+
+@pytest.mark.parametrize(
+    ("message", "language", "normalized"),
+    [
+        ("My throat hurts, what should I do?", "en", "sore throat"),
+        ("My throat hurts.", "en", "sore throat"),
+        ("我喉咙痛。", "zh-Hans", "喉咙痛"),
+    ],
+)
+def test_symptom_architecture_routes_plans_retrieves_and_generates_useful_answer(
+    client: TestClient,
+    settings,
+    monkeypatch,
+    message: str,
+    language: str,
+    normalized: str,
+) -> None:
+    with Session(engine) as db:
+        seed_database(db, settings)
+        db.commit()
+    monkeypatch.setattr(settings, "chatbot_semantic_routing_purpose_enabled", True)
+    monkeypatch.setattr(settings, "chatbot_semantic_routing_kill_switch", False)
+    monkeypatch.setattr(settings, "chatbot_differential_planning_purpose_enabled", True)
+    monkeypatch.setattr(settings, "chatbot_differential_planning_kill_switch", False)
+
+    plan = DifferentialPlan(
+        causes=[
+            DifferentialCause(
+                name="Viral irritation",
+                category="common infection",
+                rationale="A common possible cause of throat pain.",
+                distinguishing_questions=["Any cough or fever?"],
+                warning_signs=["Difficulty breathing or swallowing saliva"],
+                retrieval_query="viral sore throat patient guidance",
+            ),
+            DifferentialCause(
+                name="Bacterial infection",
+                category="important alternative",
+                rationale="Another possible cause that may need assessment.",
+                distinguishing_questions=["Any high fever or neck swelling?"],
+                warning_signs=["Rapidly increasing neck swelling"],
+                retrieval_query="bacterial sore throat warning signs",
+            ),
+            DifferentialCause(
+                name="Dryness or irritant exposure",
+                category="non-infectious",
+                rationale="Dry air or smoke can irritate the throat.",
+                distinguishing_questions=["Any smoke or dry-air exposure?"],
+                warning_signs=[],
+                retrieval_query="throat irritation dry air smoke",
+            ),
+        ],
+        general_management_query="sore throat self care patient",
+        warning_sign_query="sore throat emergency warning signs",
+    )
+
+    class StagedAdapter:
+        def route_patient_message(self, **kwargs):
+            assert kwargs["message"] == message
+            return DeepSeekSemanticRouteResult(
+                output=PatientSemanticRoute(
+                    intent="symptom_guidance",
+                    urgency_candidate="clinician_contact",
+                    confidence="high",
+                    needs_differential=True,
+                    presentation=SymptomPresentation(
+                        symptoms=[normalized], normalized_summary=normalized
+                    ),
+                ),
+                model="deepseek-v4-flash",
+                input_tokens=40,
+                output_tokens=30,
+                cache_hit_tokens=None,
+                cache_miss_tokens=40,
+            )
+
+        def plan_symptom_differential(self, **kwargs):
+            assert kwargs["presentation"].needs_differential is True
+            return DeepSeekDifferentialPlanResult(
+                output=plan,
+                model="deepseek-v4-flash",
+                input_tokens=60,
+                output_tokens=90,
+                cache_hit_tokens=None,
+                cache_miss_tokens=60,
+            )
+
+    queries = []
+
+    def unavailable(db, request, *, audience, presentation):
+        del db, audience, presentation
+        queries.append(request.query)
+        raise ApiError(503, "retrieval_unavailable", "synthetic no-evidence case")
+
+    final_adapter = FakeGeneralAdapter()
+    monkeypatch.setattr("app.patient_chat.deepseek_semantic_router_adapter", StagedAdapter())
+    monkeypatch.setattr("app.patient_chat.deepseek_chat_adapter", final_adapter)
+    monkeypatch.setattr("app.patient_chat.retrieve", unavailable)
+
+    response = client.post(
+        "/api/v1/patient/chat/messages",
+        headers=_patient_headers(client, settings),
+        json={"message": message, "language": language, "session_id": f"staged-{language}"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["grounding_mode"] == "general_model_knowledge"
+    assert payload["fallback_code"] is None
+    assert len(payload["possible_causes"]) == 3
+    assert all(item["status"] == "possible_not_confirmed" for item in payload["possible_causes"])
+    assert payload["warning_signs"]
+    assert "not enough patient-approved evidence" not in " ".join(
+        payload["answer_sections"]
+    ).lower()
+    assert queries[0] == message
+    assert normalized in queries
+    assert plan.general_management_query in queries
+    assert plan.warning_sign_query in queries
+    assert all(cause.retrieval_query in queries for cause in plan.causes)
+    assert final_adapter.payloads[0]["differential_plan"] == plan
+    with Session(engine) as db:
+        event = db.scalar(
+            select(ChatbotEvent).where(ChatbotEvent.request_id == payload["request_id"])
+        )
+        assert event is not None
+        assert event.provider_call_count == 3
+        assert [item["stage"] for item in event.provider_stage_metrics_json] == [
+            "semantic_routing",
+            "differential_planning",
+            "final_generation",
+        ]
+        serialized = str(event.provider_stage_metrics_json)
+        assert message not in serialized
+        assert "Viral irritation" not in serialized
+
+
+def test_general_education_skips_differential_planning(
+    client: TestClient, settings, monkeypatch
+) -> None:
+    with Session(engine) as db:
+        seed_database(db, settings)
+        db.commit()
+    monkeypatch.setattr(settings, "chatbot_semantic_routing_purpose_enabled", True)
+    monkeypatch.setattr(settings, "chatbot_semantic_routing_kill_switch", False)
+    monkeypatch.setattr(settings, "chatbot_differential_planning_purpose_enabled", True)
+    monkeypatch.setattr(settings, "chatbot_differential_planning_kill_switch", False)
+
+    class GeneralRouter:
+        def route_patient_message(self, **kwargs):
+            return DeepSeekSemanticRouteResult(
+                output=PatientSemanticRoute(
+                    intent="general_health_education",
+                    urgency_candidate="routine_education",
+                    confidence="high",
+                ),
+                model="deepseek-v4-flash",
+                input_tokens=20,
+                output_tokens=10,
+                cache_hit_tokens=None,
+                cache_miss_tokens=20,
+            )
+
+        def plan_symptom_differential(self, **kwargs):
+            pytest.fail(f"general education invoked differential planning: {sorted(kwargs)}")
+
+    monkeypatch.setattr("app.patient_chat.deepseek_semantic_router_adapter", GeneralRouter())
+    monkeypatch.setattr("app.patient_chat.deepseek_chat_adapter", FakeGeneralAdapter())
+    monkeypatch.setattr(
+        "app.patient_chat.retrieve",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            ApiError(503, "retrieval_unavailable", "synthetic")
+        ),
+    )
+    response = _post(client, settings, "What does blood pressure mean?")
+    assert response.status_code == 200
+    with Session(engine) as db:
+        event = db.scalar(select(ChatbotEvent).order_by(ChatbotEvent.occurred_at.desc()))
+        assert event is not None
+        assert event.provider_call_count == 2
+        assert [item["stage"] for item in event.provider_stage_metrics_json] == [
+            "semantic_routing",
+            "final_generation",
+        ]
 
 
 @pytest.mark.parametrize(

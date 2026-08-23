@@ -128,6 +128,60 @@ abstract class AppLocalizations {
   /// **'Contacts'**
   String get contacts;
 
+  /// No description provided for @connectedDoctors.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected Doctors'**
+  String get connectedDoctors;
+
+  /// No description provided for @pendingPatientApproval.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending approval'**
+  String get pendingPatientApproval;
+
+  /// No description provided for @approve.
+  ///
+  /// In en, this message translates to:
+  /// **'Approve'**
+  String get approve;
+
+  /// No description provided for @reject.
+  ///
+  /// In en, this message translates to:
+  /// **'Reject'**
+  String get reject;
+
+  /// No description provided for @removeConnectedDoctor.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove connected doctor'**
+  String get removeConnectedDoctor;
+
+  /// No description provided for @activatePlan.
+  ///
+  /// In en, this message translates to:
+  /// **'Activate approved plan'**
+  String get activatePlan;
+
+  /// No description provided for @authorLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Author'**
+  String get authorLabel;
+
+  /// No description provided for @reviewerLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Reviewer'**
+  String get reviewerLabel;
+
+  /// No description provided for @notAssigned.
+  ///
+  /// In en, this message translates to:
+  /// **'Not assigned — independent review is not established'**
+  String get notAssigned;
+
   /// No description provided for @recoveryPlan.
   ///
   /// In en, this message translates to:
@@ -620,11 +674,89 @@ abstract class AppLocalizations {
   /// **'Today'**
   String get today;
 
-  /// No description provided for @medicalFee.
+  /// No description provided for @overdue.
   ///
   /// In en, this message translates to:
-  /// **'Medical Fee'**
-  String get medicalFee;
+  /// **'Overdue'**
+  String get overdue;
+
+  /// No description provided for @upcoming.
+  ///
+  /// In en, this message translates to:
+  /// **'Upcoming'**
+  String get upcoming;
+
+  /// No description provided for @unscheduled.
+  ///
+  /// In en, this message translates to:
+  /// **'Unscheduled'**
+  String get unscheduled;
+
+  /// No description provided for @noScheduledTasks.
+  ///
+  /// In en, this message translates to:
+  /// **'No tasks in this section.'**
+  String get noScheduledTasks;
+
+  /// No description provided for @careCostsSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Care & Costs summary'**
+  String get careCostsSummary;
+
+  /// No description provided for @loadingCareCostsSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading Care & Costs summary'**
+  String get loadingCareCostsSummary;
+
+  /// No description provided for @loadCareCostsSummaryFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Care & Costs are temporarily unavailable.'**
+  String get loadCareCostsSummaryFailed;
+
+  /// No description provided for @noCareCostsYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No billable services or products have been recorded yet.'**
+  String get noCareCostsYet;
+
+  /// No description provided for @authoritativeLedgerSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'CNY amounts from the same server ledger as Care & Costs. Uploaded images are evidence, not separate charges.'**
+  String get authoritativeLedgerSummary;
+
+  /// No description provided for @estimatedAmounts.
+  ///
+  /// In en, this message translates to:
+  /// **'Estimated amounts'**
+  String get estimatedAmounts;
+
+  /// No description provided for @finalAmounts.
+  ///
+  /// In en, this message translates to:
+  /// **'Final amounts'**
+  String get finalAmounts;
+
+  /// No description provided for @requestedFromPayer.
+  ///
+  /// In en, this message translates to:
+  /// **'Requested from payer'**
+  String get requestedFromPayer;
+
+  /// No description provided for @expectedPatientResponsibility.
+  ///
+  /// In en, this message translates to:
+  /// **'Expected patient responsibility'**
+  String get expectedPatientResponsibility;
+
+  /// No description provided for @pendingCostItems.
+  ///
+  /// In en, this message translates to:
+  /// **'Costs still pending'**
+  String get pendingCostItems;
 
   /// No description provided for @askDrAi.
   ///
@@ -2618,48 +2750,6 @@ abstract class AppLocalizations {
   /// **'Connect patients by code to start care episodes'**
   String get connectPatientsEpisodes;
 
-  /// No description provided for @ctImageReview.
-  ///
-  /// In en, this message translates to:
-  /// **'AI-supported CT image review'**
-  String get ctImageReview;
-
-  /// No description provided for @xrayImageReview.
-  ///
-  /// In en, this message translates to:
-  /// **'AI-supported X-ray image review'**
-  String get xrayImageReview;
-
-  /// No description provided for @mriImageReview.
-  ///
-  /// In en, this message translates to:
-  /// **'AI-supported MRI image review'**
-  String get mriImageReview;
-
-  /// No description provided for @checkMedicalRecords.
-  ///
-  /// In en, this message translates to:
-  /// **'Check Patient Medical Records'**
-  String get checkMedicalRecords;
-
-  /// No description provided for @checkRecoveryPlans.
-  ///
-  /// In en, this message translates to:
-  /// **'Check Patient Recovery Plans'**
-  String get checkRecoveryPlans;
-
-  /// No description provided for @checkImagingResults.
-  ///
-  /// In en, this message translates to:
-  /// **'Check Imaging Results'**
-  String get checkImagingResults;
-
-  /// No description provided for @bookEquipment.
-  ///
-  /// In en, this message translates to:
-  /// **'Book Medical Equipment'**
-  String get bookEquipment;
-
   /// No description provided for @noPatientActivity.
   ///
   /// In en, this message translates to:
@@ -2701,6 +2791,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Quick Access'**
   String get quickAccess;
+
+  /// No description provided for @imagingRecordsManualReview.
+  ///
+  /// In en, this message translates to:
+  /// **'Imaging records & manual review'**
+  String get imagingRecordsManualReview;
+
+  /// No description provided for @imagingRecordsManualReviewDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a patient to view event-linked imaging evidence and doctor-entered review status.'**
+  String get imagingRecordsManualReviewDescription;
+
+  /// No description provided for @patientMedicalRecords.
+  ///
+  /// In en, this message translates to:
+  /// **'Patient medical records'**
+  String get patientMedicalRecords;
+
+  /// No description provided for @patientMedicalRecordsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a patient to review their authorized clinical history and records.'**
+  String get patientMedicalRecordsDescription;
+
+  /// No description provided for @patientRecoveryPlans.
+  ///
+  /// In en, this message translates to:
+  /// **'Patient recovery plans'**
+  String get patientRecoveryPlans;
+
+  /// No description provided for @patientRecoveryPlansDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a patient to open the recovery-plan workspace.'**
+  String get patientRecoveryPlansDescription;
+
+  /// No description provided for @medicalResourcesReadOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Medical resources (read-only)'**
+  String get medicalResourcesReadOnly;
+
+  /// No description provided for @medicalResourcesReadOnlyDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'View the current informational resource overview; booking is not enabled.'**
+  String get medicalResourcesReadOnlyDescription;
+
+  /// No description provided for @payerRequests.
+  ///
+  /// In en, this message translates to:
+  /// **'Payer requests'**
+  String get payerRequests;
+
+  /// No description provided for @payerRequestsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Open the doctor workspace for human-reviewed payer requests.'**
+  String get payerRequestsDescription;
 
   /// No description provided for @teamManagement.
   ///
@@ -3937,6 +4087,54 @@ abstract class AppLocalizations {
   /// **'Plan title'**
   String get planTitle;
 
+  /// No description provided for @planTitleLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'Required, 3–160 characters.'**
+  String get planTitleLimit;
+
+  /// No description provided for @planTitleRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a plan title.'**
+  String get planTitleRequired;
+
+  /// No description provided for @planTitleTooShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Use at least 3 characters for the plan title.'**
+  String get planTitleTooShort;
+
+  /// No description provided for @planTitleTooLong.
+  ///
+  /// In en, this message translates to:
+  /// **'Use no more than 160 characters for the plan title.'**
+  String get planTitleTooLong;
+
+  /// No description provided for @planTitleInvalidServer.
+  ///
+  /// In en, this message translates to:
+  /// **'Check the plan title and keep it within 160 characters.'**
+  String get planTitleInvalidServer;
+
+  /// No description provided for @recoveryTaskTitleLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'3–160 characters when provided.'**
+  String get recoveryTaskTitleLimit;
+
+  /// No description provided for @recoveryTaskTitleTooShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Use at least 3 characters for this task title.'**
+  String get recoveryTaskTitleTooShort;
+
+  /// No description provided for @recoveryTaskTitleTooLong.
+  ///
+  /// In en, this message translates to:
+  /// **'Use no more than 160 characters for this task title.'**
+  String get recoveryTaskTitleTooLong;
+
   /// No description provided for @instructions.
   ///
   /// In en, this message translates to:
@@ -3990,6 +4188,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Request changes'**
   String get requestChanges;
+
+  /// No description provided for @reviewComment.
+  ///
+  /// In en, this message translates to:
+  /// **'Review comment'**
+  String get reviewComment;
+
+  /// No description provided for @reviewCommentHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Required when requesting changes; optional when approving.'**
+  String get reviewCommentHelp;
+
+  /// No description provided for @reviewCommentRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a review comment before requesting changes.'**
+  String get reviewCommentRequired;
 
   /// No description provided for @approvePatient.
   ///
@@ -4926,6 +5142,12 @@ abstract class AppLocalizations {
   /// **'Contact my doctor'**
   String get aiContactDoctor;
 
+  /// No description provided for @aiCall120Now.
+  ///
+  /// In en, this message translates to:
+  /// **'Call 120 now'**
+  String get aiCall120Now;
+
   /// No description provided for @privateCareConversation.
   ///
   /// In en, this message translates to:
@@ -5007,7 +5229,7 @@ abstract class AppLocalizations {
   /// No description provided for @resourceCatalogPreviewBody.
   ///
   /// In en, this message translates to:
-  /// **'These are 200 real WHO fact sheets paired across official Chinese and English pages. Full text is not stored or used for AI retrieval while commercial rights and medical review remain pending.'**
+  /// **'247 WHO fact sheets cover 240 official Chinese and 244 official English pages. Licensed text is stored under request 202609681 but remains outside doctor and patient retrieval pending review.'**
   String get resourceCatalogPreviewBody;
 
   /// No description provided for @resourceSearchHint.
@@ -7072,6 +7294,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Weakly supported; human review required'**
   String get ceiWeaklySupported;
+
+  /// No description provided for @aiPossibleCauses.
+  ///
+  /// In en, this message translates to:
+  /// **'Possible causes'**
+  String get aiPossibleCauses;
+
+  /// No description provided for @aiPossibleCausesNotDiagnosis.
+  ///
+  /// In en, this message translates to:
+  /// **'These are possibilities, not a confirmed diagnosis.'**
+  String get aiPossibleCausesNotDiagnosis;
+
+  /// No description provided for @aiWarningSigns.
+  ///
+  /// In en, this message translates to:
+  /// **'Important warning signs'**
+  String get aiWarningSigns;
+
+  /// No description provided for @aiNextSteps.
+  ///
+  /// In en, this message translates to:
+  /// **'Practical next steps'**
+  String get aiNextSteps;
 }
 
 class _AppLocalizationsDelegate

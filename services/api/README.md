@@ -117,6 +117,9 @@ Resolved-topic sufficiency, duplicate and source-diversity controls, and
 conflict checks are re-evaluated before rescue can report improvement.
 Resolution or sufficiency failure returns no eligible evidence for a contextual
 query instead of exposing an unrelated original-only result.
+When the default-off semantic router is governed and enabled, its validated
+retrieval plan occupies this one-call budget and the rescue stage does not call
+the standalone query planner again.
 The candidate rescue suite has file-backed product-owner, clinical, and native
 Simplified Chinese approval dated 2026-07-18. Validation is no-cost; the live
 run still requires the approved provider configuration and active release:
@@ -248,11 +251,20 @@ Doctors can run simulated assessments for assigned patients. Patients cannot
 run assessments. Cross-patient and wrong-role probes remain neutral
 `404 not_found`.
 
-The patient-chat endpoint keeps conversation content in the client session and
-follows the Phase 3 bounded RAG workflow. It routes emergencies and prohibited
-requests before retrieval or generation, retrieves only from the active
-patient-approved immutable release, calls DeepSeek only after sufficient
-evidence, validates structured output and passage citations, and records only
+The patient-chat endpoint follows the Phase 3 bounded RAG workflow. A small
+deterministic emergency backstop plus privacy, prompt-injection, authorization,
+and medication-change gates run first. The independently versioned semantic
+router classifies allowed wording and extracts the full presentation. Symptom
+intent invokes the independently versioned 3-5-cause differential planner; a
+general question skips it. Both new purposes are disabled and kill-switched by
+default and are excluded from the existing generated-answer checksum. A high-confidence emergency candidate
+returns server-owned fixed guidance immediately, before retrieval or answer
+generation. The router cannot downgrade deterministic safety, select patient
+records/evidence/tools, or author emergency instructions. Symptom retrieval
+preserves the literal question and combines normalized-presentation,
+management, warning-sign, and separate cause queries before deterministic
+deduplication/reranking. The endpoint retrieves only from the active patient-approved immutable
+release, validates structured output and passage citations, and records only
 content-free `chatbot_events`. Colloquial Chinese and English symptom
 paraphrases are normalized into bounded clinical concepts for routing and
 retrieval. Patient evidence requires the same primary symptom concept to be
@@ -339,9 +351,20 @@ category, source transition, and plan/task IDs; they do not copy plan titles,
 patient-owned plan instructions, task titles, or task details into audit
 metadata.
 
-Educational chat accepts patient question-preparation prompts only. Red-flag
-phrases bypass DeepSeek and return the fixed emergency guidance. Unsafe prompts
-and DeepSeek timeout/malformed/quota failures return bounded fallback messages;
+Payer clarification transitions persist a distinct 10-2000-character
+`clarification_message` for the submitting doctor and authorized payer
+organization. The optional `note` remains payer-reviewer-only; patients receive
+neither field. Neither free-text value is copied to notifications, audit
+metadata, CEI/provider payloads, logs, or telemetry. Payer dashboard open and
+pending-amount metrics include `escalated`; `escalated_requests` exposes that
+open subset, while completed metrics remain limited to accepted, rejected, and
+closed requests.
+
+Educational chat accepts patient question-preparation prompts only. Deterministic
+red-flag matches bypass DeepSeek and return fixed emergency guidance; an enabled,
+governed semantic router may only upgrade an otherwise permitted message to that
+same fixed route. Unsafe prompts and DeepSeek timeout/malformed/quota failures
+return bounded fallback messages;
 malformed structured output receives one schema-guided repair attempt first.
 Local/test
 environments and unset DeepSeek keys use the safe fallback path. Chat audit and
@@ -429,3 +452,12 @@ uses bearer access tokens and a locally stored refresh token.
 migration and synthetic seeding as explicit one-off release tasks before
 starting the service. Tencent staging instructions live in
 `../../deploy/tencent/staging/`.
+
+## Workflow-integrity migration policy
+
+Migration `20260816_0061` explicitly preserves existing synthetic access:
+active relationships backfill to `active` with recovery-review authority;
+inactive relationships backfill to `revoked`. Legacy `due_label` values are
+not parsed, so those tasks remain unscheduled until structured dates are saved.
+Existing active plans remain readable but are not called independently reviewed
+without a distinct reviewer. Every new activation requires valid approval.

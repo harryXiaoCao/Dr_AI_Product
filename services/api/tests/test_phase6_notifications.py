@@ -413,6 +413,11 @@ def test_three_role_inboxes_and_deep_links_recheck_exact_authorization(
             doctor_id=doctor.doctor_profile.id,
             patient_id=patient.patient_profile.id,
             is_active=True,
+            status="active",
+            can_review_recovery_plans=True,
+            requested_at=datetime.now(UTC),
+            responded_at=datetime.now(UTC),
+            approved_at=datetime.now(UTC),
         )
         clinical_event = ClinicalEvent(
             patient_id=patient.patient_profile.id,

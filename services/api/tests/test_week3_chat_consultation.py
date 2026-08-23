@@ -1,4 +1,5 @@
 import uuid
+from datetime import date
 
 import pytest
 from fastapi.testclient import TestClient
@@ -51,7 +52,7 @@ def _login_doctor(client: TestClient, settings) -> dict[str, str]:
 
 
 def _recovery_plan_payload() -> dict[str, object]:
-    return {
+    payload = {
         "title": "Synthetic Day 15 Recovery Plan",
         "instructions": "Demo-only recovery plan for Day 15 gate verification.",
         "tasks": [
@@ -82,6 +83,9 @@ def _recovery_plan_payload() -> dict[str, object]:
             },
         ],
     }
+    for task in payload["tasks"]:
+        task["scheduled_date"] = date.today().isoformat()
+    return payload
 
 
 def test_chat_message_success_uses_fake_deepseek_and_stream_shape(
@@ -380,6 +384,32 @@ def test_day15_full_doctor_led_loop_across_doctor_and_patient_accounts(
         headers=doctor_headers,
     )
     assert plan.status_code == 200
+    reviewer_headers = auth_header(
+        login(
+            client,
+            "reviewer.doctor@example.com",
+            settings.seed_doctor_password.get_secret_value(),
+        )["access_token"]
+    )
+    contacts = client.get("/api/v1/patient/me/contacts", headers=patient_headers).json()["items"]
+    reviewer_doctor_id = next(
+        item["doctor_id"] for item in contacts if "Rowan" in item["display_name"]
+    )
+    submitted = client.post(
+        f"/api/v1/patients/{assigned_id}/recovery-plans/{plan.json()['plan_id']}/submit-review",
+        headers=doctor_headers,
+        json={
+            "reviewer_doctor_id": reviewer_doctor_id,
+            "expected_version": plan.json()["version"],
+        },
+    )
+    assert submitted.status_code == 200
+    approved = client.post(
+        f"/api/v1/patients/{assigned_id}/recovery-plans/{plan.json()['plan_id']}/approve",
+        headers=reviewer_headers,
+        json={"expected_version": plan.json()["version"]},
+    )
+    assert approved.status_code == 200
     activated = client.post(
         f"/api/v1/patients/{assigned_id}/recovery-plans/{plan.json()['plan_id']}/activate",
         headers=doctor_headers,

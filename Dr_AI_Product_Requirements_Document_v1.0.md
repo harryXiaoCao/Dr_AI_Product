@@ -435,7 +435,9 @@ separate records with independent provenance and timestamps.
 2. Patient completes medication, exercise, diet, and follow-up tasks.
 3. Patient reads active recovery-plan progress.
 4. Patient submits updates to the relevant Clinical Event without editing doctor-owned diagnosis fields.
-5. Patient asks educational questions with red-flag emergency escalation before any model call.
+5. Patient asks educational questions; deterministic red flags escalate before
+   any provider call, and a governed semantic emergency candidate escalates
+   before retrieval or answer generation.
 
 ### 10.4 Doctor Event Management
 
@@ -607,6 +609,9 @@ Acceptance criteria:
 Requirements:
 
 - Doctors can create, edit, submit, approve, activate, and complete recovery plans.
+- Recovery-plan and recovery-task titles expose and enforce the server's
+  trimmed 3-160-character contract before submission with field-level,
+  bilingual, focusable validation.
 - Each active Clinical Event should have at most one active recovery plan.
 - Plans include medication, exercise, diet, follow-up, and recovery tasks.
 - Patients can complete and uncomplete Today tasks.
@@ -675,8 +680,19 @@ Requirements:
   evidence is unavailable; it exposes no citations or source cards and must
   say that no supporting Dr. AI source was found. It may be incorrect and is
   not evidence-grounded.
-- Emergency red-flag escalation must run before model calls.
-- The chat must not provide diagnosis, emergency triage replacement, or medication-change instructions.
+- A compact high-confidence deterministic emergency backstop and prohibited-
+  request gate runs before model calls. The independently governed semantic
+  router then classifies intent, extracts the complete negation-aware symptom
+  presentation, decides whether differential planning is needed, and may
+  propose a server-validated emergency upgrade.
+  It may upgrade an unmatched presentation to `emergency_120` but may never
+  downgrade deterministic safety, select records/evidence/tools, or generate
+  emergency instructions; emergency output remains fixed server-owned copy.
+- Symptom answers may explain 3-5 plausible causes or diagnostic categories as
+  possibilities, never as a confirmed diagnosis. They include distinguishing
+  questions, warning signs, practical next steps, and care timing.
+- The chat must not provide confirmed diagnosis, emergency triage replacement,
+  or medication-change instructions.
 - General-model output must not use patient-record fields as evidence, confirm
   or rule out diagnosis, reassure that an emergency is absent, or give
   patient-specific medication starts, stops, substitutions, or doses. A mixed
@@ -697,6 +713,9 @@ Acceptance criteria:
   conspicuous no-supporting-source label and never show an empty or fabricated
   Sources section; fixed server responses remain visually distinct.
 - Raw prompts, secrets, and raw model output are not written to logs.
+- Router or differential failure is recorded by stage and falls forward to a
+  useful lower-information path when safe; it never silently invents a stage
+  result. Final-generation failure returns bounded useful server-owned copy.
 
 ### 11.10 Specialist Consultation
 
@@ -775,6 +794,12 @@ Requirements:
 - Let authorized payer reviewers request information, accept or reject a
   request with a reason, escalate to another human, or close a review with an
   audit event.
+- Store a clarification question separately from an optional payer-private
+  internal note. The assigned doctor sees the immutable question and reviewer/
+  time metadata; patients see neither clarification text nor internal notes;
+  authorized payer reviewers may see both distinctly.
+- Count escalated requests and their requested minor-unit amount as unresolved
+  open workload, expose the escalated subset, and never count it as completed.
 - Give patients a separate plain-language cost view. Do not expose confidential
   reviewer notes, hidden models, negotiated rates without permission, or
   suspected-fraud labels.
@@ -945,6 +970,8 @@ Primary entities:
 - PatientProfile
 - DoctorProfile
 - CareRelationship
+  - Patient-controlled pending, active, rejected, and revoked lifecycle.
+  - Code entry does not grant access; reactivation requires new consent.
 - ClinicalEvent
 - ClinicalEventUpdate
 - ClinicalService
@@ -963,7 +990,11 @@ Primary entities:
 - MedicalImagingAsset
 - SimulatedAssessment / future AssessmentRun
 - RecoveryPlan
+  - Distinct author and authorized reviewer with version-checked approval and
+    separate activation.
 - RecoveryTask
+  - Structured date, time, and time zone stay separate from display labels;
+    Today aggregates all active plans into deterministic schedule categories.
 - ChatThread
 - ChatMessage
 - ConsultationRequest
@@ -1040,7 +1071,9 @@ AI agents planned:
 AI safety principles:
 
 - AI is assistive, not autonomous.
-- Emergency escalation comes before model calls.
+- High-confidence deterministic emergencies come before model calls; otherwise
+  semantic routing may upgrade to the same server-owned 120 response before
+  retrieval or final generation.
 - Doctor review is mandatory for diagnosis and treatment-impacting outputs.
 - Model provenance, limitations, and simulated/validated status must be visible.
 - AI workflows must be audited without storing raw sensitive content in logs.

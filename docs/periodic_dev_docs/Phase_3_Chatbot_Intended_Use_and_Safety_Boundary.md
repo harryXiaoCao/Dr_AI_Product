@@ -170,15 +170,21 @@ to start or stop a medicine, or an instruction that overrides the prescriber.
 
 ### 4.6 Safety Escalation
 
-- Detect defined emergency red flags before any generative model call.
+- Detect a small set of high-confidence emergency presentations before any
+  provider call as an outage backstop; allow the semantic router to upgrade
+  other clear emergencies before retrieval or final generation.
 - Represent the reported presentation deterministically, including symptoms,
   anatomy, onset, duration, trajectory, severity, associated signs,
   measurements, population, pregnancy, exposures, trauma, danger signals, and
   negation, hypothetical/not-present mentions, and the user's requested action
   before deciding whether ordinary chat may continue.
-- Use that controlled presentation assessment as the sole authority for an
-  emergency route. A second keyword or regular-expression override must not
-  bypass its negation, hypothetical-mention, severity, or context handling.
+- Use that controlled presentation assessment as the authority for every
+  deterministic emergency route. An optional post-gate semantic router may
+  propose only a high-confidence emergency upgrade for language outside the
+  reviewed presentation rules; the server validates that candidate and returns
+  the same fixed route. Neither mechanism may bypass negation, hypothetical-
+  mention, severity, or context handling, and a model can never downgrade a
+  deterministic route.
 - After the safety decision, retrieval may use bounded deterministic views of
   that presentation. The literal question remains authoritative; generated
   views must not invent a symptom or diagnosis, and view-only evidence is
@@ -196,29 +202,33 @@ to start or stop a medicine, or an instruction that overrides the prescriber.
   local tests must not be represented as that approval.
 - Direct non-emergency but concerning questions to the connected doctor or an
   appropriate local clinician.
-- For allowed non-emergency messages, assign care timing from a separately
+- For allowed non-emergency messages, first assign care timing from a separately
   reviewable deterministic combination rule over the controlled presentation:
   same-day in-person assessment, clinician contact, or routine education. A
-  model must not choose, weaken, or upgrade this route.
+  schema-constrained semantic router may propose a more urgent route but may
+  never weaken the deterministic result.
 - In a patient-owned thread, bounded prior user wording may supply missing
   context only for an actual follow-up or a controlled context-dependent
   presentation such as reduced fetal movement after a pregnancy statement.
   Prior assistant text is never medical evidence, and the current user's
   literal query remains the retrieval/reranking authority.
-- A post-safety model planner receives only prior user wording admitted by that
-  continuity decision. Its rewrite may normalize literal search wording but
-  cannot add, remove, or override controlled presentation fields; retry views,
-  presentation-central evidence admission, and urgency remain server-owned.
+- A post-safety semantic router receives only prior user wording admitted by
+  that continuity decision. It may return bounded intent, urgency-candidate,
+  confidence, reported-concept, danger-signal, and retrieval-plan fields. Its
+  plan may normalize literal search wording but cannot add, remove, or override
+  controlled presentation fields; retry views and presentation-central evidence
+  admission remain server-owned.
 - Colloquial question endings such as `要紧吗` and `怎么办` are not sufficient
   to declare a query ambiguous. If the controlled representation already
   contains a standalone symptom, pregnancy, exposure, trauma, or explicit
   condition topic, planner failure must retain the initial governed result.
   Evidence may be withheld for context-dependent ambiguity only when that
   standalone topic is absent.
-- Send the model only the server-assigned non-emergency route and its bounded
-  allowed next actions. Reject an output that downgrades a same-day action or
-  introduces `call_120`; only the pre-model emergency layer may select that
-  action. When evidence or the provider is unavailable, fixed fallback copy may
+- Send the answer model only the server-assigned route and its bounded allowed
+  next actions. Reject an answer output that downgrades a same-day action or
+  introduces `call_120`; only the deterministic safety layer or a validated
+  semantic-router emergency upgrade may select that action. When evidence or
+  the provider is unavailable, fixed fallback copy may
   retain the candidate care-timing instruction without adding a diagnosis or
   unsupported medical explanation.
 
@@ -411,17 +421,20 @@ Every message follows this order:
 3. Build the controlled clinical-presentation representation and run
    deterministic emergency combinations, negation-aware danger checks, and
    prohibited-request checks before retrieval or generation. The resulting
-   controlled safety assessment is the only component permitted to select the
-   emergency route; parallel keyword overrides are prohibited.
+   controlled safety assessment is authoritative for every matched emergency
+   route; parallel keyword overrides are prohibited.
 4. Return fixed reviewed guidance if an emergency rule triggers.
-5. For an allowed non-emergency message, assign the server-owned same-day,
-   clinician-contact, or routine-education route before retrieval.
-6. Retrieve the immutable original question first. Trigger the bounded planner
-   only for server-detected weak retrieval, colloquial wording, ambiguity, or
-   an unresolved follow-up reference. Search each accepted planned query
-   independently and fuse deterministically; never concatenate planner terms
-   into one embedding.
-7. If adequate evidence exists, call the grounded answer schema with only
+5. For an allowed message, call the independently governed semantic router. It
+   classifies intent, extracts symptoms, duration, severity, progression,
+   associated symptoms, negation and context, selects whether differential
+   planning is needed, and may propose only a monotonic urgency upgrade.
+6. If routing selects emergency, return fixed reviewed guidance immediately.
+   For symptom/possible-cause questions, call the independently governed
+   differential planner for 3-5 working hypotheses, distinguishing questions,
+   warning signs, and separate cause queries. Retrieve the literal question,
+   normalized presentation, general management, warning signs, and every cause
+   query independently, then deduplicate and rerank their union.
+7. If adequate evidence exists, call the final grounded answer schema with only
    approved passages and minimum authorized patient context. Otherwise ask a
    genuinely needed clarification or, when independently enabled, call the
    citation-free general-model-knowledge schema without patient-record context.
@@ -434,8 +447,8 @@ Every message follows this order:
 9. Show a bounded answer, explicit grounding label, mode-appropriate source
    treatment, limitations, and one clear next action.
 10. Record metadata-only safety and operational events.
-11. Use fixed fallback copy for timeout, quota, malformed response, provider
-    outage, or failed safety validation.
+11. Router/differential/retrieval failures fall forward to useful lower-
+    information stages when safe. Final failure uses bounded useful fixed copy.
 
 The Flutter client must never call an LLM provider directly.
 
@@ -473,7 +486,9 @@ This intended-use decision is implemented correctly only when:
 
 - all chatbot requirements and tests classify scenarios according to this
   document;
-- emergency red flags return fixed guidance before any model call;
+- deterministic emergency red flags return fixed guidance before any provider
+  call, and validated semantic emergency candidates return the same guidance
+  before retrieval or answer-model generation;
 - diagnosis-seeking requests receive bounded symptom orientation when evidence
   supports it, while medication-change requests and diagnostic certainty are
   refused safely;

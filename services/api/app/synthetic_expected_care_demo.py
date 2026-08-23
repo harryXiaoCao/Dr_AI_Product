@@ -998,14 +998,18 @@ def bootstrap_synthetic_expected_care_demo(
             action="request_clarification",
             expected_version=1,
             reason_code="synthetic_manual_clarification",
+            clarification_message=(
+                "Please explain how the wholly synthetic service bundle supports "
+                "this submitted request."
+            ),
             note=(
-                "Wholly synthetic reviewer requests human clarification; no "
-                "automated adverse decision."
+                "Wholly synthetic payer-private workflow marker; no automated "
+                "adverse decision."
             ),
         ),
         payer_user,
         db,
-        idempotency_key="phase4-combined-payer-clarification-v2",
+        idempotency_key="phase4-combined-payer-clarification-v3",
     )
     append_doctor_payer_response(
         combined_payer_request.id,

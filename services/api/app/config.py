@@ -127,6 +127,20 @@ class Settings(BaseSettings):
     chatbot_general_model_knowledge_enabled: bool = True
     chatbot_grounded_answer_schema_version: str = "grounded-answer-v2-2026-07-24"
     chatbot_general_answer_schema_version: str = "general-knowledge-v1-2026-07-24"
+    chatbot_semantic_routing_purpose_enabled: bool = False
+    chatbot_semantic_routing_kill_switch: bool = True
+    chatbot_semantic_routing_schema_version: str = "patient-semantic-route-v1-2026-08-13"
+    chatbot_semantic_router_max_latency_ms: int = Field(default=2500, ge=100, le=10000)
+    chatbot_semantic_router_max_cost_microunits: int = Field(default=1000, ge=1, le=100000)
+    chatbot_differential_planning_purpose_enabled: bool = False
+    chatbot_differential_planning_kill_switch: bool = True
+    chatbot_differential_planning_schema_version: str = (
+        "patient-differential-plan-v1-2026-08-13"
+    )
+    chatbot_differential_planning_max_latency_ms: int = Field(default=8000, ge=100, le=10000)
+    chatbot_differential_planning_max_cost_microunits: int = Field(
+        default=1600, ge=1, le=100000
+    )
     retrieval_rescue_enabled: bool = True
     retrieval_rescue_max_latency_ms: int = Field(default=2500, ge=100, le=10000)
     retrieval_rescue_max_cost_microunits: int = Field(default=1000, ge=1, le=100000)

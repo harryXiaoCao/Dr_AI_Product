@@ -96,6 +96,11 @@ abstract interface class DrAiRepository {
   Future<PatientCareBundle> loadPatientCareBundle(String patientId);
   Future<PatientCareBundle> loadOwnPatientCare();
   Future<PatientDoctorContactList> loadOwnPatientContacts();
+  Future<void> actOnDoctorRelationship({
+    required String relationshipId,
+    required int expectedVersion,
+    required String action,
+  });
   Future<DoctorPatientContactList> loadOwnDoctorContacts();
   Future<PrivateMessageList> loadPrivateMessages(String contactId);
   Future<PrivateMessage> sendPrivateMessage(String contactId, String message);
@@ -306,14 +311,19 @@ abstract interface class DrAiRepository {
   Future<RecoveryPlanData> submitRecoveryPlanForReview({
     required String patientId,
     required String planId,
+    required int expectedVersion,
   });
   Future<RecoveryPlanData> requestRecoveryPlanChanges({
     required String patientId,
     required String planId,
+    required int expectedVersion,
+    required String comment,
   });
   Future<RecoveryPlanData> approveRecoveryPlan({
     required String patientId,
     required String planId,
+    required int expectedVersion,
+    String? comment,
   });
   Future<RecoveryPlanData> completeRecoveryPlan({
     required String patientId,
@@ -427,6 +437,7 @@ abstract interface class DrAiRepository {
     required String reasonCode,
     required int expectedVersion,
     required String idempotencyKey,
+    String? clarificationMessage,
     String? note,
   });
   Future<PayerRequestData> appendDoctorPayerResponse({
@@ -1091,6 +1102,18 @@ class DioDrAiRepository implements DrAiRepository {
   Future<PatientDoctorContactList> loadOwnPatientContacts() async {
     final response = await _authorizedGet('/api/v1/patient/me/contacts');
     return PatientDoctorContactList.fromJson(response);
+  }
+
+  @override
+  Future<void> actOnDoctorRelationship({
+    required String relationshipId,
+    required int expectedVersion,
+    required String action,
+  }) async {
+    await _authorizedPost(
+      '/api/v1/patient/me/doctor-relationships/$relationshipId/$action',
+      data: <String, dynamic>{'expected_version': expectedVersion},
+    );
   }
 
   @override
@@ -1763,10 +1786,11 @@ class DioDrAiRepository implements DrAiRepository {
   Future<RecoveryPlanData> submitRecoveryPlanForReview({
     required String patientId,
     required String planId,
+    required int expectedVersion,
   }) async {
     final response = await _authorizedPost(
       '/api/v1/patients/$patientId/recovery-plans/$planId/submit-review',
-      data: const <String, dynamic>{},
+      data: <String, dynamic>{'expected_version': expectedVersion},
     );
     return RecoveryPlanData.fromJson(response);
   }
@@ -1775,10 +1799,15 @@ class DioDrAiRepository implements DrAiRepository {
   Future<RecoveryPlanData> requestRecoveryPlanChanges({
     required String patientId,
     required String planId,
+    required int expectedVersion,
+    required String comment,
   }) async {
     final response = await _authorizedPost(
       '/api/v1/patients/$patientId/recovery-plans/$planId/request-changes',
-      data: const <String, dynamic>{},
+      data: <String, dynamic>{
+        'expected_version': expectedVersion,
+        'comment': comment,
+      },
     );
     return RecoveryPlanData.fromJson(response);
   }
@@ -1787,10 +1816,16 @@ class DioDrAiRepository implements DrAiRepository {
   Future<RecoveryPlanData> approveRecoveryPlan({
     required String patientId,
     required String planId,
+    required int expectedVersion,
+    String? comment,
   }) async {
     final response = await _authorizedPost(
       '/api/v1/patients/$patientId/recovery-plans/$planId/approve',
-      data: const <String, dynamic>{},
+      data: <String, dynamic>{
+        'expected_version': expectedVersion,
+        if (comment != null && comment.trim().isNotEmpty)
+          'comment': comment.trim(),
+      },
     );
     return RecoveryPlanData.fromJson(response);
   }
@@ -2195,6 +2230,7 @@ class DioDrAiRepository implements DrAiRepository {
     required String reasonCode,
     required int expectedVersion,
     required String idempotencyKey,
+    String? clarificationMessage,
     String? note,
   }) async {
     final response = await _authorizedPost(
@@ -2203,6 +2239,7 @@ class DioDrAiRepository implements DrAiRepository {
         'action': action,
         'expected_version': expectedVersion,
         'reason_code': reasonCode,
+        'clarification_message': clarificationMessage,
         'note': note,
       },
       additionalHeaders: <String, String>{'Idempotency-Key': idempotencyKey},
@@ -2954,6 +2991,13 @@ class DioDrAiRepository implements DrAiRepository {
               'The request could not be completed.',
           requestId: envelope['request_id'] as String?,
           statusCode: error.response?.statusCode,
+          details: (envelope['details'] as List<dynamic>? ?? const <dynamic>[])
+              .whereType<Map<Object?, Object?>>()
+              .map(
+                (item) =>
+                    ApiErrorDetail.fromJson(Map<String, dynamic>.from(item)),
+              )
+              .toList(growable: false),
         );
       }
     }

@@ -348,6 +348,52 @@ class GeneralModelOutput(BaseModel):
     declined_portion: str | None = Field(default=None, max_length=500)
 
 
+class SymptomPresentation(BaseModel):
+    """Semantic, negation-aware presentation extracted from the complete message."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    symptoms: list[str] = Field(default_factory=list, max_length=12)
+    duration: str | None = Field(default=None, max_length=120)
+    severity: str | None = Field(default=None, max_length=120)
+    progression: str | None = Field(default=None, max_length=120)
+    associated_symptoms: list[str] = Field(default_factory=list, max_length=12)
+    negated_symptoms: list[str] = Field(default_factory=list, max_length=12)
+    relevant_context: list[str] = Field(default_factory=list, max_length=12)
+    normalized_summary: str | None = Field(default=None, max_length=500)
+
+
+class DifferentialCause(BaseModel):
+    """One working hypothesis used for retrieval and patient explanation."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    name: str = Field(min_length=1, max_length=120)
+    category: str = Field(min_length=1, max_length=120)
+    rationale: str = Field(min_length=1, max_length=400)
+    distinguishing_questions: list[str] = Field(default_factory=list, max_length=4)
+    warning_signs: list[str] = Field(default_factory=list, max_length=4)
+    retrieval_query: str = Field(min_length=2, max_length=300)
+
+
+class DifferentialPlan(BaseModel):
+    """Bounded possible-cause plan; entries are never confirmed diagnoses."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    causes: list[DifferentialCause] = Field(min_length=3, max_length=5)
+    general_management_query: str = Field(min_length=2, max_length=300)
+    warning_sign_query: str = Field(min_length=2, max_length=300)
+
+
+class PatientChatPossibleCause(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    name: str = Field(min_length=1, max_length=120)
+    explanation: str = Field(min_length=1, max_length=500)
+    status: Literal["possible_not_confirmed"] = "possible_not_confirmed"
+
+
 class PatientChatRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
@@ -398,6 +444,54 @@ class RetrievalQueryPlan(BaseModel):
         return self
 
 
+class PatientSemanticRoute(BaseModel):
+    """Bounded first-call routing output; the server remains authoritative."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    intent: Literal[
+        "general_health_education",
+        "symptom_guidance",
+        "medication_education",
+        "care_record_clarification",
+        "question_preparation",
+        "unrelated_unsupported",
+    ]
+    urgency_candidate: Literal[
+        "emergency_120",
+        "urgent_same_day",
+        "clinician_contact",
+        "routine_education",
+    ]
+    confidence: Literal["low", "medium", "high"]
+    emergency_candidate: bool = False
+    presentation: SymptomPresentation = Field(default_factory=SymptomPresentation)
+    needs_differential: bool = False
+    danger_signals: list[str] = Field(default_factory=list, max_length=8)
+
+    @field_validator("danger_signals")
+    @classmethod
+    def bounded_routing_terms(cls, values: list[str]) -> list[str]:
+        if any(not value or len(value) > 80 for value in values):
+            raise ValueError("Routing concepts must be short non-empty strings.")
+        return list(dict.fromkeys(values))
+
+    @model_validator(mode="after")
+    def emergency_fields_agree(self) -> "PatientSemanticRoute":
+        # The provider occasionally expresses one decision through only one of
+        # these redundant fields. Canonicalize it instead of spending a repair
+        # call or discarding an otherwise valid semantic route.
+        if self.emergency_candidate or self.urgency_candidate == "emergency_120":
+            self.emergency_candidate = True
+            self.urgency_candidate = "emergency_120"
+        if self.emergency_candidate and (self.confidence != "high" or not self.danger_signals):
+            raise ValueError("Emergency upgrades require high confidence and a danger signal.")
+        if self.needs_differential or self.intent == "symptom_guidance":
+            self.intent = "symptom_guidance"
+            self.needs_differential = True
+        return self
+
+
 class PatientChatSourceCard(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -429,6 +523,9 @@ class PatientChatResponse(BaseModel):
     sources: list[PatientChatSourceCard] = Field(default_factory=list, max_length=8)
     context_used: list[PatientChatContextCard] = Field(default_factory=list, max_length=6)
     uncertainties: list[str] = Field(default_factory=list, max_length=8)
+    possible_causes: list[PatientChatPossibleCause] = Field(default_factory=list, max_length=5)
+    warning_signs: list[str] = Field(default_factory=list, max_length=8)
+    next_steps: list[str] = Field(default_factory=list, max_length=8)
     limitation: str
     next_action_code: NextActionCode
     safety_code: SafetyCode
@@ -599,6 +696,20 @@ ChatbotToolCall = Annotated[
 ]
 
 
+class ChatbotProviderStageMetric(BaseModel):
+    """Content-free metrics for one provider stage."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    stage: Literal["semantic_routing", "differential_planning", "final_generation"]
+    model: str | None = Field(default=None, max_length=160)
+    latency_ms: int = Field(ge=0)
+    input_tokens: int | None = Field(default=None, ge=0)
+    output_tokens: int | None = Field(default=None, ge=0)
+    cost_microunits: int | None = Field(default=None, ge=0)
+    outcome: str = Field(min_length=1, max_length=120)
+
+
 class ChatbotTelemetryEvent(BaseModel):
     """Content-free operational event. Unknown/raw-content fields fail validation."""
 
@@ -616,7 +727,7 @@ class ChatbotTelemetryEvent(BaseModel):
     evidence_decision: EvidenceDecision | None = None
     grounding_mode: GroundingMode = GroundingMode.fixed_safety_response
     original_retrieval_adequate: bool | None = None
-    searched_query_variant_count: int = Field(default=0, ge=0, le=3)
+    searched_query_variant_count: int = Field(default=0, ge=0, le=12)
     retrieval_decision: str | None = Field(default=None, max_length=80)
     general_knowledge_eligible: bool = False
     general_knowledge_outcome: str | None = Field(default=None, max_length=80)
@@ -633,6 +744,10 @@ class ChatbotTelemetryEvent(BaseModel):
     provider_error_code: str | None = Field(default=None, max_length=120)
     provider_attempt_count: int | None = Field(default=None, ge=1, le=2)
     provider_cost_microunits: int | None = Field(default=None, ge=0)
+    provider_call_count: int = Field(default=0, ge=0, le=4)
+    provider_stage_metrics: list[ChatbotProviderStageMetric] = Field(
+        default_factory=list, max_length=4
+    )
     rescue_trigger: (
         Literal["short_reference", "colloquial", "ambiguous", "weak_initial_retrieval"] | None
     ) = None

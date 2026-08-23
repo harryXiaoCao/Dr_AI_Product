@@ -1185,6 +1185,9 @@ class RecoveryTaskInput {
     required this.title,
     required this.detail,
     required this.dueLabel,
+    this.scheduledDate,
+    this.scheduledTime,
+    this.timeZone = 'Asia/Shanghai',
     this.notificationTime,
     this.medicationId,
     this.frequency = 'daily',
@@ -1200,6 +1203,9 @@ class RecoveryTaskInput {
       'title': title,
       'detail': detail,
       'due_label': dueLabel,
+      if (scheduledDate != null) 'scheduled_date': scheduledDate,
+      if (scheduledTime != null) 'scheduled_time': scheduledTime,
+      'time_zone': timeZone,
       if (notificationTime != null) 'notification_time': notificationTime,
       if (medicationId != null) 'medication_id': medicationId,
       'frequency': frequency,
@@ -1218,6 +1224,9 @@ class RecoveryTaskInput {
   final String title;
   final String detail;
   final String dueLabel;
+  final String? scheduledDate;
+  final String? scheduledTime;
+  final String timeZone;
   final String? notificationTime;
   final String? medicationId;
   final String frequency;
@@ -1276,6 +1285,12 @@ class RecoveryTaskItem {
     required this.detail,
     required this.dueLabel,
     required this.isCompleted,
+    this.planTitle = '',
+    this.clinicalEventId,
+    this.scheduledDate,
+    this.scheduledTime,
+    this.timeZone = 'Asia/Shanghai',
+    this.scheduleCategory,
     this.notificationTime,
     this.medicationId,
     this.completedAt,
@@ -1291,6 +1306,12 @@ class RecoveryTaskItem {
       title: json['title'] as String,
       detail: json['detail'] as String,
       dueLabel: json['due_label'] as String,
+      scheduledDate: json['scheduled_date'] as String?,
+      scheduledTime: json['scheduled_time'] as String?,
+      timeZone: json['time_zone'] as String? ?? 'Asia/Shanghai',
+      scheduleCategory: json['schedule_category'] as String?,
+      planTitle: json['plan_title'] as String? ?? '',
+      clinicalEventId: json['clinical_event_id'] as String?,
       notificationTime: json['notification_time'] as String?,
       medicationId: json['medication_id'] as String?,
       isCompleted: json['is_completed'] as bool,
@@ -1305,6 +1326,12 @@ class RecoveryTaskItem {
   final String title;
   final String detail;
   final String dueLabel;
+  final String? scheduledDate;
+  final String? scheduledTime;
+  final String timeZone;
+  final String? scheduleCategory;
+  final String planTitle;
+  final String? clinicalEventId;
   final String? notificationTime;
   final String? medicationId;
   final bool isCompleted;
@@ -1321,6 +1348,10 @@ class RecoveryPlanData {
     required this.instructions,
     required this.status,
     required this.reviewStatus,
+    this.version = 1,
+    this.authorDoctorId = '',
+    this.assignedReviewerDoctorId,
+    this.reviewComment,
     required this.safetyLabel,
     required this.createdAt,
     required this.updatedAt,
@@ -1347,6 +1378,10 @@ class RecoveryPlanData {
       instructions: json['instructions'] as String,
       status: json['status'] as String,
       reviewStatus: json['review_status'] as String? ?? 'draft',
+      version: json['version'] as int? ?? 1,
+      authorDoctorId: json['author_doctor_id'] as String? ?? '',
+      assignedReviewerDoctorId: json['assigned_reviewer_doctor_id'] as String?,
+      reviewComment: json['review_comment'] as String?,
       safetyLabel: json['safety_label'] as String,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
@@ -1374,6 +1409,10 @@ class RecoveryPlanData {
   final String instructions;
   final String status;
   final String reviewStatus;
+  final int version;
+  final String authorDoctorId;
+  final String? assignedReviewerDoctorId;
+  final String? reviewComment;
   final String safetyLabel;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -1429,6 +1468,9 @@ class PatientTodayData {
   const PatientTodayData({
     required this.safetyLabel,
     required this.tasks,
+    this.overdueTasks = const <RecoveryTaskItem>[],
+    this.upcomingTasks = const <RecoveryTaskItem>[],
+    this.unscheduledTasks = const <RecoveryTaskItem>[],
     required this.progressSummary,
     this.activePlan,
   });
@@ -1437,6 +1479,13 @@ class PatientTodayData {
     final data = Map<String, dynamic>.from(json['data'] as Map);
     final planJson = data['active_recovery_plan'] as Map<String, dynamic>?;
     final taskItems = data['today_tasks'] as List?;
+    final categories = data['task_categories'] as Map<String, dynamic>?;
+    List<RecoveryTaskItem> parseCategory(String key) =>
+        ((categories?[key] as List?) ?? const <Object>[])
+            .map(
+              (item) => RecoveryTaskItem.fromJson(item as Map<String, dynamic>),
+            )
+            .toList();
     return PatientTodayData(
       safetyLabel:
           data['safety_label'] as String? ??
@@ -1447,20 +1496,46 @@ class PatientTodayData {
             const <String, dynamic>{},
       ),
       tasks: taskItems == null
-          ? const <RecoveryTaskItem>[]
+          ? parseCategory('today')
           : taskItems
                 .map(
                   (item) =>
                       RecoveryTaskItem.fromJson(item as Map<String, dynamic>),
                 )
                 .toList(),
+      overdueTasks: parseCategory('overdue'),
+      upcomingTasks: parseCategory('upcoming'),
+      unscheduledTasks: parseCategory('unscheduled'),
     );
   }
 
   final String safetyLabel;
   final RecoveryPlanData? activePlan;
   final List<RecoveryTaskItem> tasks;
+  final List<RecoveryTaskItem> overdueTasks;
+  final List<RecoveryTaskItem> upcomingTasks;
+  final List<RecoveryTaskItem> unscheduledTasks;
   final RecoveryPlanProgressData progressSummary;
+}
+
+class ChatPossibleCause {
+  const ChatPossibleCause({
+    required this.name,
+    required this.explanation,
+    required this.status,
+  });
+
+  factory ChatPossibleCause.fromJson(Map<String, dynamic> json) {
+    return ChatPossibleCause(
+      name: json['name'] as String,
+      explanation: json['explanation'] as String,
+      status: json['status'] as String,
+    );
+  }
+
+  final String name;
+  final String explanation;
+  final String status;
 }
 
 class ChatMessageResult {
@@ -1481,6 +1556,9 @@ class ChatMessageResult {
     this.sources = const <ChatSourceCard>[],
     this.contextUsed = const <ChatContextCard>[],
     this.uncertainties = const <String>[],
+    this.possibleCauses = const <ChatPossibleCause>[],
+    this.warningSigns = const <String>[],
+    this.nextSteps = const <String>[],
     this.limitation,
     this.nextActionCode = 'none',
     this.suggestedActionCodes = const <String>[],
@@ -1520,6 +1598,15 @@ class ChatMessageResult {
             .toList(),
         uncertainties: ((json['uncertainties'] as List?) ?? <Object>[])
             .cast<String>(),
+        possibleCauses: ((json['possible_causes'] as List?) ?? <Object>[])
+            .map(
+              (item) =>
+                  ChatPossibleCause.fromJson(item as Map<String, dynamic>),
+            )
+            .toList(),
+        warningSigns: ((json['warning_signs'] as List?) ?? <Object>[])
+            .cast<String>(),
+        nextSteps: ((json['next_steps'] as List?) ?? <Object>[]).cast<String>(),
         limitation: json['limitation'] as String,
         nextActionCode: json['next_action_code'] as String,
         suggestedActionCodes:
@@ -1561,6 +1648,9 @@ class ChatMessageResult {
   final List<ChatSourceCard> sources;
   final List<ChatContextCard> contextUsed;
   final List<String> uncertainties;
+  final List<ChatPossibleCause> possibleCauses;
+  final List<String> warningSigns;
+  final List<String> nextSteps;
   final String? limitation;
   final String nextActionCode;
   final List<String> suggestedActionCodes;
@@ -1806,6 +1896,9 @@ class PatientDoctorContact {
     required this.specialty,
     required this.department,
     required this.avatarUrl,
+    this.relationshipId = '',
+    this.relationshipStatus = 'active',
+    this.requestVersion = 1,
   });
 
   factory PatientDoctorContact.fromJson(Map<String, dynamic> json) {
@@ -1817,6 +1910,9 @@ class PatientDoctorContact {
       specialty: json['specialty'] as String?,
       department: json['department'] as String?,
       avatarUrl: json['avatar_url'] as String?,
+      relationshipId: json['relationship_id'] as String? ?? '',
+      relationshipStatus: json['relationship_status'] as String? ?? 'active',
+      requestVersion: json['request_version'] as int? ?? 1,
     );
   }
 
@@ -1827,6 +1923,9 @@ class PatientDoctorContact {
   final String? specialty;
   final String? department;
   final String? avatarUrl;
+  final String relationshipId;
+  final String relationshipStatus;
+  final int requestVersion;
 }
 
 class PatientDoctorContactList {

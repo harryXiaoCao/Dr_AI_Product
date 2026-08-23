@@ -93,8 +93,14 @@ AI may not:
   Flutter surfaces, and a wholly synthetic evaluation package. Activation and
   real-world authorization remain separate gates.
 
-- A provider-neutral, server-side DeepSeek adapter exists for patient chat.
-- Emergency and prohibited-action routing occurs before model calls.
+- Provider-neutral, server-side DeepSeek adapters implement independently gated
+  semantic routing, symptom differential planning, and final patient-chat
+  generation.
+- Authentication, authorization, privacy, prompt-injection, medication-change,
+  and a small high-confidence deterministic emergency backstop run before model
+  calls. Otherwise semantic routing may upgrade the request to the same
+  server-owned emergency response after one call and before retrieval or final
+  generation.
 - Patient chat separates `approved_evidence`, `general_model_knowledge`, and
   `fixed_safety_response`.
 - Governed knowledge has source rights, review, release, retrieval, citation,
@@ -1046,3 +1052,51 @@ Patient chat routing is: deterministic safety and authorization, approved
 retrieval, independently governed patient-chat release, then structured fixed
 fallback on provider/release failure. `general_model_knowledge` is visibly
 distinct from retrieved evidence and cannot claim record access or citations.
+
+## 23. Consent, independent review, and scheduled-task integrity (2026-08-16)
+
+`care_relationships` is patient controlled: pending approval, active, rejected,
+or revoked. Code entry owns no clinical authorization. Existing active rows
+backfill to active with review authority; inactive rows backfill to revoked.
+Audits and privacy-safe notifications contain no record text, codes, or secrets.
+
+`recovery_plans.doctor_id` is the author. A second, independently authorized
+doctor is the assigned reviewer. The submitted version is frozen, decisions
+are append-only, and activation rechecks approval and live reviewer authority.
+
+Recovery task display labels remain separate from structured schedule date,
+time, and IANA zone. Today computes local-date categories across all active
+plans, while one persisted completion record feeds every recovery read model.
+
+```mermaid
+erDiagram
+    DOCTOR_PROFILE ||--o{ CARE_RELATIONSHIP : requests
+    PATIENT_PROFILE ||--o{ CARE_RELATIONSHIP : controls
+    DOCTOR_PROFILE ||--o{ RECOVERY_PLAN : authors
+    DOCTOR_PROFILE ||--o{ RECOVERY_PLAN : reviews
+    RECOVERY_PLAN ||--o{ RECOVERY_PLAN_REVIEW_DECISION : records
+    RECOVERY_PLAN ||--o{ RECOVERY_TASK : schedules
+    RECOVERY_TASK ||--o{ RECOVERY_TASK_COMPLETION : completes
+
+    CARE_RELATIONSHIP {
+        string status
+        int request_version
+        bool can_review_recovery_plans
+        datetime requested_at
+        datetime approved_at
+        datetime revoked_at
+    }
+    RECOVERY_PLAN {
+        uuid doctor_id
+        uuid assigned_reviewer_doctor_id
+        int version
+        int submitted_version
+        string review_status
+    }
+    RECOVERY_TASK {
+        date scheduled_date
+        string scheduled_time
+        string time_zone
+        string due_label
+    }
+```

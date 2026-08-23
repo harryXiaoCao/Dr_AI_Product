@@ -11,11 +11,21 @@ import 'package:dr_ai_app/shared/widgets/dashboard_states.dart';
 import 'package:dr_ai_app/shared/widgets/responsive_app_shell.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
 class PatientManagementScreen extends ConsumerStatefulWidget {
-  const PatientManagementScreen({super.key});
+  const PatientManagementScreen({
+    this.initialPatientId,
+    this.initialClinicalEventId,
+    this.initialSection,
+    super.key,
+  });
+
+  final String? initialPatientId;
+  final String? initialClinicalEventId;
+  final String? initialSection;
 
   @override
   ConsumerState<PatientManagementScreen> createState() =>
@@ -25,11 +35,47 @@ class PatientManagementScreen extends ConsumerStatefulWidget {
 class _PatientManagementScreenState
     extends ConsumerState<PatientManagementScreen> {
   final _searchController = TextEditingController();
-  String? _selectedPatientId;
-  String? _selectedClinicalEventId;
-  _DoctorPatientSection _selectedSection = _DoctorPatientSection.overview;
+  late String? _selectedPatientId = widget.initialPatientId;
+  late String? _selectedClinicalEventId = widget.initialClinicalEventId;
+  late _DoctorPatientSection _selectedSection = _sectionFromRoute(
+    widget.initialSection,
+  );
   bool _patientPaneCollapsed = false;
   bool _sectionRailCollapsed = false;
+
+  @override
+  void didUpdateWidget(covariant PatientManagementScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialPatientId != widget.initialPatientId ||
+        oldWidget.initialClinicalEventId != widget.initialClinicalEventId ||
+        oldWidget.initialSection != widget.initialSection) {
+      _selectedPatientId = widget.initialPatientId;
+      _selectedClinicalEventId = widget.initialClinicalEventId;
+      _selectedSection = _sectionFromRoute(widget.initialSection);
+    }
+  }
+
+  void _replaceWorkspaceLocation({
+    String? patientId,
+    String? clinicalEventId,
+    _DoctorPatientSection? section,
+  }) {
+    final nextPatientId = patientId ?? _selectedPatientId;
+    final nextEventId = clinicalEventId ?? _selectedClinicalEventId;
+    final nextSection = section ?? _selectedSection;
+    context.go(
+      Uri(
+        path: '/doctor/patients',
+        queryParameters: <String, String>{
+          'section': nextSection.name,
+          if (nextPatientId != null && nextPatientId.isNotEmpty)
+            'patient': nextPatientId,
+          if (nextEventId != null && nextEventId.isNotEmpty)
+            'event': nextEventId,
+        },
+      ).toString(),
+    );
+  }
 
   @override
   void dispose() {
@@ -62,11 +108,16 @@ class _PatientManagementScreenState
                     : null,
                 onSearchChanged: (value) =>
                     ref.read(patientSearchQueryProvider.notifier).state = value,
-                onSelect: (patientId) => setState(() {
-                  _selectedPatientId = patientId;
-                  _selectedClinicalEventId = null;
-                  _selectedSection = _DoctorPatientSection.overview;
-                }),
+                onSelect: (patientId) {
+                  setState(() {
+                    _selectedPatientId = patientId;
+                    _selectedClinicalEventId = null;
+                  });
+                  _replaceWorkspaceLocation(
+                    patientId: patientId,
+                    clinicalEventId: '',
+                  );
+                },
                 onRetry: () => ref.invalidate(patientListProvider),
               );
               final detail = _PatientDetailPane(
@@ -74,10 +125,14 @@ class _PatientManagementScreenState
                 selectedSection: _selectedSection,
                 selectedClinicalEventId: _selectedClinicalEventId,
                 compact: !wide,
-                onSectionChanged: (section) =>
-                    setState(() => _selectedSection = section),
-                onClinicalEventChanged: (eventId) =>
-                    setState(() => _selectedClinicalEventId = eventId),
+                onSectionChanged: (section) {
+                  setState(() => _selectedSection = section);
+                  _replaceWorkspaceLocation(section: section);
+                },
+                onClinicalEventChanged: (eventId) {
+                  setState(() => _selectedClinicalEventId = eventId);
+                  _replaceWorkspaceLocation(clinicalEventId: eventId ?? '');
+                },
                 sectionRailCollapsed: _sectionRailCollapsed,
                 onToggleSectionRail: () => setState(
                   () => _sectionRailCollapsed = !_sectionRailCollapsed,
@@ -130,9 +185,12 @@ class _PatientManagementScreenState
                 setState(() {
                   _selectedPatientId = patientId;
                   _selectedClinicalEventId = null;
-                  _selectedSection = _DoctorPatientSection.overview;
                 });
                 Navigator.of(sheetContext).pop();
+                _replaceWorkspaceLocation(
+                  patientId: patientId,
+                  clinicalEventId: '',
+                );
               },
               onRetry: () => ref.invalidate(patientListProvider),
             ),
@@ -156,6 +214,13 @@ enum _DoctorPatientSection {
   const _DoctorPatientSection({required this.icon});
 
   final IconData icon;
+}
+
+_DoctorPatientSection _sectionFromRoute(String? value) {
+  return _DoctorPatientSection.values.firstWhere(
+    (section) => section.name == value,
+    orElse: () => _DoctorPatientSection.overview,
+  );
 }
 
 extension _LocalizedDoctorPatientSection on _DoctorPatientSection {
@@ -5092,6 +5157,8 @@ class _RecoveryPlanEditor extends ConsumerStatefulWidget {
 }
 
 class _RecoveryPlanEditorState extends ConsumerState<_RecoveryPlanEditor> {
+  final _formKey = GlobalKey<FormState>();
+  final _titleFocusNode = FocusNode();
   final _titleController = TextEditingController();
   final _instructionsController = TextEditingController();
   final _phaseNameController = TextEditingController(text: 'Phase 1');
@@ -5115,12 +5182,15 @@ class _RecoveryPlanEditorState extends ConsumerState<_RecoveryPlanEditor> {
   final _completionController = TextEditingController(
     text: 'Completed as instructed',
   );
+  final _reviewCommentController = TextEditingController();
   final List<RecoveryPhaseInput> _draftPhases = <RecoveryPhaseInput>[];
   String? _selectedPlanId;
   String? _validationError;
+  String? _titleServerError;
 
   @override
   void dispose() {
+    _titleFocusNode.dispose();
     _titleController.dispose();
     _instructionsController.dispose();
     _phaseNameController.dispose();
@@ -5136,6 +5206,7 @@ class _RecoveryPlanEditorState extends ConsumerState<_RecoveryPlanEditor> {
     _scheduleController.dispose();
     _responsibleController.dispose();
     _completionController.dispose();
+    _reviewCommentController.dispose();
     super.dispose();
   }
 
@@ -5185,403 +5256,459 @@ class _RecoveryPlanEditorState extends ConsumerState<_RecoveryPlanEditor> {
                 final selectedPlan = eventPlans
                     .where((plan) => plan.planId == _selectedPlanId)
                     .firstOrNull;
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: <Widget>[
-                    if (eventPlans.isEmpty)
-                      _InlineMessage(
-                        message: context.l10n.noEventRecoveryPlan,
-                        icon: Icons.info_outline,
-                      )
-                    else
-                      Wrap(
-                        spacing: DrAiSpacing.xs,
-                        runSpacing: DrAiSpacing.xs,
-                        children: <Widget>[
-                          for (final plan in eventPlans)
-                            ChoiceChip(
-                              label: Text(
-                                '${plan.title} - ${context.l10n.stableValue(plan.status)} / ${context.l10n.stableValue(plan.reviewStatus)}',
+                return Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      if (eventPlans.isEmpty)
+                        _InlineMessage(
+                          message: context.l10n.noEventRecoveryPlan,
+                          icon: Icons.info_outline,
+                        )
+                      else
+                        Wrap(
+                          spacing: DrAiSpacing.xs,
+                          runSpacing: DrAiSpacing.xs,
+                          children: <Widget>[
+                            for (final plan in eventPlans)
+                              ChoiceChip(
+                                label: Text(
+                                  '${plan.title} - ${context.l10n.stableValue(plan.status)} / ${context.l10n.stableValue(plan.reviewStatus)}',
+                                ),
+                                selected: plan.planId == _selectedPlanId,
+                                onSelected: (_) => _loadPlan(plan),
                               ),
-                              selected: plan.planId == _selectedPlanId,
-                              onSelected: (_) => _loadPlan(plan),
-                            ),
-                        ],
-                      ),
-                    if (selectedPlan != null) ...<Widget>[
+                          ],
+                        ),
+                      if (selectedPlan != null) ...<Widget>[
+                        const SizedBox(height: DrAiSpacing.xs),
+                        _InlineMessage(
+                          key: const Key('recovery-plan-review-status'),
+                          message: context.l10n.planStatusReview(
+                            context.l10n.stableValue(selectedPlan.status),
+                            context.l10n.stableValue(selectedPlan.reviewStatus),
+                            selectedPlan.progressSummary.completedTaskCount,
+                            selectedPlan.progressSummary.taskCount,
+                          ),
+                          icon: Icons.fact_check_outlined,
+                        ),
+                      ],
                       const SizedBox(height: DrAiSpacing.xs),
                       _InlineMessage(
-                        key: const Key('recovery-plan-review-status'),
-                        message: context.l10n.planStatusReview(
-                          context.l10n.stableValue(selectedPlan.status),
-                          context.l10n.stableValue(selectedPlan.reviewStatus),
-                          selectedPlan.progressSummary.completedTaskCount,
-                          selectedPlan.progressSummary.taskCount,
+                        key: const Key('recovery-plan-active-event-guardrail'),
+                        message: activeEventPlans.isEmpty
+                            ? context.l10n.noActiveEventPlan
+                            : activeEventPlans.length == 1
+                            ? context.l10n.oneActiveEventPlan
+                            : context.l10n.multipleActivePlans,
+                        icon: Icons.assignment_turned_in_outlined,
+                      ),
+                      const SizedBox(height: DrAiSpacing.sm),
+                      TextFormField(
+                        key: const Key('recovery-plan-title-field'),
+                        controller: _titleController,
+                        focusNode: _titleFocusNode,
+                        maxLength: 160,
+                        onChanged: (_) {
+                          if (_titleServerError != null) {
+                            setState(() => _titleServerError = null);
+                            ref
+                                .read(
+                                  recoveryPlanEditorControllerProvider.notifier,
+                                )
+                                .clearError();
+                          }
+                        },
+                        validator: _validateTitle,
+                        decoration: InputDecoration(
+                          labelText: context.l10n.planTitle,
+                          helperText: context.l10n.planTitleLimit,
+                          prefixIcon: const Icon(Icons.assignment_outlined),
                         ),
-                        icon: Icons.fact_check_outlined,
                       ),
-                    ],
-                    const SizedBox(height: DrAiSpacing.xs),
-                    _InlineMessage(
-                      key: const Key('recovery-plan-active-event-guardrail'),
-                      message: activeEventPlans.isEmpty
-                          ? context.l10n.noActiveEventPlan
-                          : activeEventPlans.length == 1
-                          ? context.l10n.oneActiveEventPlan
-                          : context.l10n.multipleActivePlans,
-                      icon: Icons.assignment_turned_in_outlined,
-                    ),
-                    const SizedBox(height: DrAiSpacing.sm),
-                    TextField(
-                      key: const Key('recovery-plan-title-field'),
-                      controller: _titleController,
-                      maxLength: 160,
-                      decoration: InputDecoration(
-                        counterText: '',
-                        labelText: context.l10n.planTitle,
-                        prefixIcon: const Icon(Icons.assignment_outlined),
-                      ),
-                    ),
-                    const SizedBox(height: DrAiSpacing.xs),
-                    DecoratedBox(
-                      key: const Key('recovery-calendar-phase-editor'),
-                      decoration: BoxDecoration(
-                        color: DrAiColors.white,
-                        border: Border.all(color: DrAiColors.outline),
-                        borderRadius: BorderRadius.circular(DrAiRadii.md),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(DrAiSpacing.sm),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: <Widget>[
-                            Row(
-                              children: <Widget>[
-                                const Icon(
-                                  Icons.calendar_month_outlined,
-                                  color: DrAiColors.brand,
-                                ),
-                                const SizedBox(width: DrAiSpacing.xs),
-                                Text(
-                                  Localizations.localeOf(
+                      const SizedBox(height: DrAiSpacing.xs),
+                      DecoratedBox(
+                        key: const Key('recovery-calendar-phase-editor'),
+                        decoration: BoxDecoration(
+                          color: DrAiColors.white,
+                          border: Border.all(color: DrAiColors.outline),
+                          borderRadius: BorderRadius.circular(DrAiRadii.md),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(DrAiSpacing.sm),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: <Widget>[
+                              Row(
+                                children: <Widget>[
+                                  const Icon(
+                                    Icons.calendar_month_outlined,
+                                    color: DrAiColors.brand,
+                                  ),
+                                  const SizedBox(width: DrAiSpacing.xs),
+                                  Text(
+                                    Localizations.localeOf(
+                                              context,
+                                            ).languageCode ==
+                                            'zh'
+                                        ? '日历阶段'
+                                        : 'Calendar phase',
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.titleSmall,
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: DrAiSpacing.xs),
+                              Row(
+                                children: <Widget>[
+                                  Expanded(
+                                    child: TextField(
+                                      key: const Key(
+                                        'recovery-phase-name-field',
+                                      ),
+                                      controller: _phaseNameController,
+                                      decoration: InputDecoration(
+                                        labelText:
+                                            Localizations.localeOf(
+                                                  context,
+                                                ).languageCode ==
+                                                'zh'
+                                            ? '阶段名称'
+                                            : 'Phase name',
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: DrAiSpacing.xs),
+                                  Expanded(
+                                    child: TextField(
+                                      key: const Key(
+                                        'recovery-phase-start-field',
+                                      ),
+                                      controller: _startDateController,
+                                      decoration: InputDecoration(
+                                        labelText:
+                                            Localizations.localeOf(
+                                                  context,
+                                                ).languageCode ==
+                                                'zh'
+                                            ? '开始日期'
+                                            : 'Start date',
+                                        hintText: 'YYYY-MM-DD',
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: DrAiSpacing.xs),
+                                  Expanded(
+                                    child: TextField(
+                                      key: const Key(
+                                        'recovery-phase-end-field',
+                                      ),
+                                      controller: _endDateController,
+                                      decoration: InputDecoration(
+                                        labelText:
+                                            Localizations.localeOf(
+                                                  context,
+                                                ).languageCode ==
+                                                'zh'
+                                            ? '结束日期'
+                                            : 'End date',
+                                        hintText: 'YYYY-MM-DD',
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: DrAiSpacing.xs),
+                              TextField(
+                                key: const Key('recovery-progression-field'),
+                                controller: _progressionController,
+                                decoration: InputDecoration(
+                                  labelText:
+                                      Localizations.localeOf(
                                             context,
                                           ).languageCode ==
                                           'zh'
-                                      ? '日历阶段'
-                                      : 'Calendar phase',
-                                  style: Theme.of(context).textTheme.titleSmall,
+                                      ? '进阶条件'
+                                      : 'Progression criteria',
                                 ),
-                              ],
-                            ),
-                            const SizedBox(height: DrAiSpacing.xs),
-                            Row(
-                              children: <Widget>[
-                                Expanded(
-                                  child: TextField(
-                                    key: const Key('recovery-phase-name-field'),
-                                    controller: _phaseNameController,
-                                    decoration: InputDecoration(
-                                      labelText:
-                                          Localizations.localeOf(
-                                                context,
-                                              ).languageCode ==
-                                              'zh'
-                                          ? '阶段名称'
-                                          : 'Phase name',
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: DrAiSpacing.xs),
-                                Expanded(
-                                  child: TextField(
-                                    key: const Key(
-                                      'recovery-phase-start-field',
-                                    ),
-                                    controller: _startDateController,
-                                    decoration: InputDecoration(
-                                      labelText:
-                                          Localizations.localeOf(
-                                                context,
-                                              ).languageCode ==
-                                              'zh'
-                                          ? '开始日期'
-                                          : 'Start date',
-                                      hintText: 'YYYY-MM-DD',
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: DrAiSpacing.xs),
-                                Expanded(
-                                  child: TextField(
-                                    key: const Key('recovery-phase-end-field'),
-                                    controller: _endDateController,
-                                    decoration: InputDecoration(
-                                      labelText:
-                                          Localizations.localeOf(
-                                                context,
-                                              ).languageCode ==
-                                              'zh'
-                                          ? '结束日期'
-                                          : 'End date',
-                                      hintText: 'YYYY-MM-DD',
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: DrAiSpacing.xs),
-                            TextField(
-                              key: const Key('recovery-progression-field'),
-                              controller: _progressionController,
-                              decoration: InputDecoration(
-                                labelText:
-                                    Localizations.localeOf(
-                                          context,
-                                        ).languageCode ==
-                                        'zh'
-                                    ? '进阶条件'
-                                    : 'Progression criteria',
                               ),
-                            ),
-                            const SizedBox(height: DrAiSpacing.xs),
-                            TextField(
-                              key: const Key('recovery-hold-field'),
-                              controller: _holdController,
-                              decoration: InputDecoration(
-                                labelText:
-                                    Localizations.localeOf(
-                                          context,
-                                        ).languageCode ==
-                                        'zh'
-                                    ? '暂停或升级条件'
-                                    : 'Hold or escalation criteria',
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: DrAiSpacing.xs),
-                    TextField(
-                      key: const Key('recovery-plan-instructions-field'),
-                      controller: _instructionsController,
-                      maxLength: 1200,
-                      minLines: 2,
-                      maxLines: 4,
-                      decoration: InputDecoration(
-                        counterText: '',
-                        labelText: context.l10n.instructions,
-                        prefixIcon: const Icon(Icons.notes_outlined),
-                      ),
-                    ),
-                    const SizedBox(height: DrAiSpacing.xs),
-                    _taskField(
-                      key: const Key('recovery-medication-task-field'),
-                      controller: _medicationController,
-                      label: context.l10n.medicationTask,
-                      icon: Icons.medication_outlined,
-                    ),
-                    _taskField(
-                      key: const Key('recovery-exercise-task-field'),
-                      controller: _exerciseController,
-                      label: context.l10n.exerciseTask,
-                      icon: Icons.directions_walk_outlined,
-                    ),
-                    _taskField(
-                      key: const Key('recovery-diet-task-field'),
-                      controller: _dietController,
-                      label: context.l10n.dietTask,
-                      icon: Icons.restaurant_outlined,
-                    ),
-                    _taskField(
-                      key: const Key('recovery-follow-up-task-field'),
-                      controller: _followUpController,
-                      label: context.l10n.followUpTask,
-                      icon: Icons.event_available_outlined,
-                    ),
-                    Wrap(
-                      spacing: DrAiSpacing.xs,
-                      runSpacing: DrAiSpacing.xs,
-                      children: <Widget>[
-                        SizedBox(
-                          width: 190,
-                          child: _taskField(
-                            key: const Key('recovery-task-frequency-field'),
-                            controller: _frequencyController,
-                            label:
-                                Localizations.localeOf(context).languageCode ==
-                                    'zh'
-                                ? '频率'
-                                : 'Frequency',
-                            icon: Icons.repeat,
-                          ),
-                        ),
-                        SizedBox(
-                          width: 190,
-                          child: _taskField(
-                            key: const Key('recovery-task-schedule-field'),
-                            controller: _scheduleController,
-                            label:
-                                Localizations.localeOf(context).languageCode ==
-                                    'zh'
-                                ? '时间表'
-                                : 'Schedule',
-                            icon: Icons.schedule,
-                          ),
-                        ),
-                        SizedBox(
-                          width: 190,
-                          child: _taskField(
-                            key: const Key('recovery-task-responsible-field'),
-                            controller: _responsibleController,
-                            label:
-                                Localizations.localeOf(context).languageCode ==
-                                    'zh'
-                                ? '负责人'
-                                : 'Responsible person',
-                            icon: Icons.person_outline,
-                          ),
-                        ),
-                        SizedBox(
-                          width: 260,
-                          child: _taskField(
-                            key: const Key('recovery-task-completion-field'),
-                            controller: _completionController,
-                            label:
-                                Localizations.localeOf(context).languageCode ==
-                                    'zh'
-                                ? '完成标准'
-                                : 'Completion criteria',
-                            icon: Icons.check_circle_outline,
-                          ),
-                        ),
-                      ],
-                    ),
-                    OutlinedButton.icon(
-                      key: const Key('recovery-add-phase-button'),
-                      onPressed: _addCurrentPhase,
-                      icon: const Icon(Icons.add_box_outlined),
-                      label: Text(
-                        Localizations.localeOf(context).languageCode == 'zh'
-                            ? '添加此日历阶段'
-                            : 'Add this calendar phase',
-                      ),
-                    ),
-                    for (var index = 0; index < _draftPhases.length; index++)
-                      Card(
-                        key: Key('recovery-phase-preview-$index'),
-                        child: ListTile(
-                          leading: CircleAvatar(child: Text('${index + 1}')),
-                          title: Text(_draftPhases[index].name),
-                          subtitle: Text(
-                            '${_draftPhases[index].startDate} - '
-                            '${_draftPhases[index].endDate ?? '—'}\n'
-                            '${_draftPhases[index].tasks.length} '
-                            '${Localizations.localeOf(context).languageCode == 'zh' ? '个任务' : 'tasks'}',
-                          ),
-                          trailing: Wrap(
-                            spacing: 0,
-                            children: <Widget>[
-                              IconButton(
-                                tooltip: 'Move earlier',
-                                onPressed: index == 0
-                                    ? null
-                                    : () => _movePhase(index, index - 1),
-                                icon: const Icon(Icons.arrow_upward),
-                              ),
-                              IconButton(
-                                tooltip: 'Move later',
-                                onPressed: index == _draftPhases.length - 1
-                                    ? null
-                                    : () => _movePhase(index, index + 1),
-                                icon: const Icon(Icons.arrow_downward),
-                              ),
-                              IconButton(
-                                tooltip: 'Remove phase',
-                                onPressed: () => setState(
-                                  () => _draftPhases.removeAt(index),
+                              const SizedBox(height: DrAiSpacing.xs),
+                              TextField(
+                                key: const Key('recovery-hold-field'),
+                                controller: _holdController,
+                                decoration: InputDecoration(
+                                  labelText:
+                                      Localizations.localeOf(
+                                            context,
+                                          ).languageCode ==
+                                          'zh'
+                                      ? '暂停或升级条件'
+                                      : 'Hold or escalation criteria',
                                 ),
-                                icon: const Icon(Icons.delete_outline),
                               ),
                             ],
                           ),
                         ),
                       ),
-                    if (_validationError != null)
-                      _InlineMessage(
-                        message: _validationError!,
-                        icon: Icons.error_outline,
-                      ),
-                    editorState.when(
-                      loading: () => const Padding(
-                        padding: EdgeInsets.only(top: DrAiSpacing.xs),
-                        child: LinearProgressIndicator(),
-                      ),
-                      error: (error, stackTrace) => _InlineMessage(
-                        message: _safeErrorMessage(context, error),
-                      ),
-                      data: (plan) {
-                        if (plan == null) {
-                          return const SizedBox.shrink();
-                        }
-                        return _InlineMessage(
-                          message:
-                              '${plan.title} ${context.l10n.stableValue(plan.status)}. '
-                              '${context.l10n.reviewStatus(context.l10n.stableValue(plan.reviewStatus))}',
-                          icon: Icons.check_circle_outline,
-                        );
-                      },
-                    ),
-                    const SizedBox(height: DrAiSpacing.xs),
-                    Wrap(
-                      spacing: DrAiSpacing.xs,
-                      runSpacing: DrAiSpacing.xs,
-                      children: <Widget>[
-                        FilledButton.icon(
-                          key: const Key('recovery-plan-save-button'),
-                          onPressed:
-                              editorState.isLoading ||
-                                  widget.clinicalEventId == null
-                              ? null
-                              : _save,
-                          icon: const Icon(Icons.save_outlined),
-                          label: Text(context.l10n.saveDraft),
+                      const SizedBox(height: DrAiSpacing.xs),
+                      TextField(
+                        key: const Key('recovery-plan-instructions-field'),
+                        controller: _instructionsController,
+                        maxLength: 1200,
+                        minLines: 2,
+                        maxLines: 4,
+                        decoration: InputDecoration(
+                          counterText: '',
+                          labelText: context.l10n.instructions,
+                          prefixIcon: const Icon(Icons.notes_outlined),
                         ),
-                        OutlinedButton.icon(
-                          key: const Key('recovery-plan-submit-review-button'),
-                          onPressed: editorState.isLoading
-                              ? null
-                              : _submitReview,
-                          icon: const Icon(Icons.outgoing_mail),
-                          label: Text(context.l10n.submitReview),
-                        ),
-                        OutlinedButton.icon(
-                          key: const Key(
-                            'recovery-plan-request-changes-button',
+                      ),
+                      const SizedBox(height: DrAiSpacing.xs),
+                      _taskField(
+                        key: const Key('recovery-medication-task-field'),
+                        controller: _medicationController,
+                        label: context.l10n.medicationTask,
+                        icon: Icons.medication_outlined,
+                      ),
+                      _taskField(
+                        key: const Key('recovery-exercise-task-field'),
+                        controller: _exerciseController,
+                        label: context.l10n.exerciseTask,
+                        icon: Icons.directions_walk_outlined,
+                      ),
+                      _taskField(
+                        key: const Key('recovery-diet-task-field'),
+                        controller: _dietController,
+                        label: context.l10n.dietTask,
+                        icon: Icons.restaurant_outlined,
+                      ),
+                      _taskField(
+                        key: const Key('recovery-follow-up-task-field'),
+                        controller: _followUpController,
+                        label: context.l10n.followUpTask,
+                        icon: Icons.event_available_outlined,
+                      ),
+                      Wrap(
+                        spacing: DrAiSpacing.xs,
+                        runSpacing: DrAiSpacing.xs,
+                        children: <Widget>[
+                          SizedBox(
+                            width: 190,
+                            child: _taskField(
+                              key: const Key('recovery-task-frequency-field'),
+                              controller: _frequencyController,
+                              label:
+                                  Localizations.localeOf(
+                                        context,
+                                      ).languageCode ==
+                                      'zh'
+                                  ? '频率'
+                                  : 'Frequency',
+                              icon: Icons.repeat,
+                            ),
                           ),
-                          onPressed: editorState.isLoading
-                              ? null
-                              : _requestChanges,
-                          icon: const Icon(Icons.edit_note_outlined),
-                          label: Text(context.l10n.requestChanges),
+                          SizedBox(
+                            width: 190,
+                            child: _taskField(
+                              key: const Key('recovery-task-schedule-field'),
+                              controller: _scheduleController,
+                              label:
+                                  Localizations.localeOf(
+                                        context,
+                                      ).languageCode ==
+                                      'zh'
+                                  ? '时间表'
+                                  : 'Schedule',
+                              icon: Icons.schedule,
+                            ),
+                          ),
+                          SizedBox(
+                            width: 190,
+                            child: _taskField(
+                              key: const Key('recovery-task-responsible-field'),
+                              controller: _responsibleController,
+                              label:
+                                  Localizations.localeOf(
+                                        context,
+                                      ).languageCode ==
+                                      'zh'
+                                  ? '负责人'
+                                  : 'Responsible person',
+                              icon: Icons.person_outline,
+                            ),
+                          ),
+                          SizedBox(
+                            width: 260,
+                            child: _taskField(
+                              key: const Key('recovery-task-completion-field'),
+                              controller: _completionController,
+                              label:
+                                  Localizations.localeOf(
+                                        context,
+                                      ).languageCode ==
+                                      'zh'
+                                  ? '完成标准'
+                                  : 'Completion criteria',
+                              icon: Icons.check_circle_outline,
+                            ),
+                          ),
+                        ],
+                      ),
+                      OutlinedButton.icon(
+                        key: const Key('recovery-add-phase-button'),
+                        onPressed: _addCurrentPhase,
+                        icon: const Icon(Icons.add_box_outlined),
+                        label: Text(
+                          Localizations.localeOf(context).languageCode == 'zh'
+                              ? '添加此日历阶段'
+                              : 'Add this calendar phase',
                         ),
-                        OutlinedButton.icon(
-                          key: const Key('recovery-plan-activate-button'),
-                          onPressed: editorState.isLoading ? null : _approve,
-                          icon: const Icon(Icons.task_alt_outlined),
-                          label: Text(context.l10n.approvePatient),
+                      ),
+                      for (var index = 0; index < _draftPhases.length; index++)
+                        Card(
+                          key: Key('recovery-phase-preview-$index'),
+                          child: ListTile(
+                            leading: CircleAvatar(child: Text('${index + 1}')),
+                            title: Text(_draftPhases[index].name),
+                            subtitle: Text(
+                              '${_draftPhases[index].startDate} - '
+                              '${_draftPhases[index].endDate ?? '—'}\n'
+                              '${_draftPhases[index].tasks.length} '
+                              '${Localizations.localeOf(context).languageCode == 'zh' ? '个任务' : 'tasks'}',
+                            ),
+                            trailing: Wrap(
+                              spacing: 0,
+                              children: <Widget>[
+                                IconButton(
+                                  tooltip: 'Move earlier',
+                                  onPressed: index == 0
+                                      ? null
+                                      : () => _movePhase(index, index - 1),
+                                  icon: const Icon(Icons.arrow_upward),
+                                ),
+                                IconButton(
+                                  tooltip: 'Move later',
+                                  onPressed: index == _draftPhases.length - 1
+                                      ? null
+                                      : () => _movePhase(index, index + 1),
+                                  icon: const Icon(Icons.arrow_downward),
+                                ),
+                                IconButton(
+                                  tooltip: 'Remove phase',
+                                  onPressed: () => setState(
+                                    () => _draftPhases.removeAt(index),
+                                  ),
+                                  icon: const Icon(Icons.delete_outline),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
-                        OutlinedButton.icon(
-                          key: const Key('recovery-plan-complete-button'),
-                          onPressed: editorState.isLoading
-                              ? null
-                              : _completePlan,
-                          icon: const Icon(Icons.done_all_outlined),
-                          label: Text(context.l10n.completePlan),
+                      if (_validationError != null)
+                        Semantics(
+                          liveRegion: true,
+                          child: _InlineMessage(
+                            message: _validationError!,
+                            icon: Icons.error_outline,
+                          ),
                         ),
-                      ],
-                    ),
-                  ],
+                      editorState.when(
+                        loading: () => const Padding(
+                          padding: EdgeInsets.only(top: DrAiSpacing.xs),
+                          child: LinearProgressIndicator(),
+                        ),
+                        error: (error, stackTrace) => _titleServerError != null
+                            ? const SizedBox.shrink()
+                            : _InlineMessage(
+                                message: _safeErrorMessage(context, error),
+                              ),
+                        data: (plan) {
+                          if (plan == null) {
+                            return const SizedBox.shrink();
+                          }
+                          return _InlineMessage(
+                            message:
+                                '${plan.title} ${context.l10n.stableValue(plan.status)}. '
+                                '${context.l10n.reviewStatus(context.l10n.stableValue(plan.reviewStatus))}\n'
+                                '${context.l10n.authorLabel}: ${plan.authorDoctorId}. '
+                                '${context.l10n.reviewerLabel}: '
+                                '${plan.assignedReviewerDoctorId ?? context.l10n.notAssigned}',
+                            icon: Icons.check_circle_outline,
+                          );
+                        },
+                      ),
+                      const SizedBox(height: DrAiSpacing.xs),
+                      TextFormField(
+                        key: const Key('recovery-plan-review-comment-field'),
+                        controller: _reviewCommentController,
+                        minLines: 1,
+                        maxLines: 3,
+                        decoration: InputDecoration(
+                          labelText: context.l10n.reviewComment,
+                          helperText: context.l10n.reviewCommentHelp,
+                        ),
+                      ),
+                      const SizedBox(height: DrAiSpacing.xs),
+                      Wrap(
+                        spacing: DrAiSpacing.xs,
+                        runSpacing: DrAiSpacing.xs,
+                        children: <Widget>[
+                          FilledButton.icon(
+                            key: const Key('recovery-plan-save-button'),
+                            onPressed:
+                                editorState.isLoading ||
+                                    widget.clinicalEventId == null
+                                ? null
+                                : _save,
+                            icon: const Icon(Icons.save_outlined),
+                            label: Text(context.l10n.saveDraft),
+                          ),
+                          OutlinedButton.icon(
+                            key: const Key(
+                              'recovery-plan-submit-review-button',
+                            ),
+                            onPressed: editorState.isLoading
+                                ? null
+                                : _submitReview,
+                            icon: const Icon(Icons.outgoing_mail),
+                            label: Text(context.l10n.submitReview),
+                          ),
+                          OutlinedButton.icon(
+                            key: const Key(
+                              'recovery-plan-request-changes-button',
+                            ),
+                            onPressed: editorState.isLoading
+                                ? null
+                                : _requestChanges,
+                            icon: const Icon(Icons.edit_note_outlined),
+                            label: Text(context.l10n.requestChanges),
+                          ),
+                          OutlinedButton.icon(
+                            key: const Key('recovery-plan-approve-button'),
+                            onPressed: editorState.isLoading ? null : _approve,
+                            icon: const Icon(Icons.task_alt_outlined),
+                            label: Text(context.l10n.approvePatient),
+                          ),
+                          OutlinedButton.icon(
+                            key: const Key('recovery-plan-activate-button'),
+                            onPressed: editorState.isLoading ? null : _activate,
+                            icon: const Icon(Icons.play_circle_outline),
+                            label: Text(context.l10n.activatePlan),
+                          ),
+                          OutlinedButton.icon(
+                            key: const Key('recovery-plan-complete-button'),
+                            onPressed: editorState.isLoading
+                                ? null
+                                : _completePlan,
+                            icon: const Icon(Icons.done_all_outlined),
+                            label: Text(context.l10n.completePlan),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 );
               },
             ),
@@ -5599,13 +5726,22 @@ class _RecoveryPlanEditorState extends ConsumerState<_RecoveryPlanEditor> {
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: DrAiSpacing.xs),
-      child: TextField(
+      child: TextFormField(
         key: key,
         controller: controller,
         maxLength: 160,
+        validator: (value) {
+          final trimmed = value?.trim() ?? '';
+          if (trimmed.isEmpty) return null;
+          if (trimmed.length < 3) return context.l10n.recoveryTaskTitleTooShort;
+          if (trimmed.length > 160) {
+            return context.l10n.recoveryTaskTitleTooLong;
+          }
+          return null;
+        },
         decoration: InputDecoration(
-          counterText: '',
           labelText: label,
+          helperText: context.l10n.recoveryTaskTitleLimit,
           prefixIcon: Icon(icon),
         ),
       ),
@@ -5651,6 +5787,10 @@ class _RecoveryPlanEditorState extends ConsumerState<_RecoveryPlanEditor> {
         title: _medicationController.text.trim(),
         detail: context.l10n.medicationTaskDetail,
         dueLabel: context.l10n.today,
+        scheduledDate: _startDateController.text.trim().isEmpty
+            ? null
+            : _startDateController.text.trim(),
+        scheduledTime: '09:00',
         notificationTime: '09:00',
         frequency: _frequencyController.text.trim(),
         schedule: _scheduleController.text.trim(),
@@ -5662,6 +5802,9 @@ class _RecoveryPlanEditorState extends ConsumerState<_RecoveryPlanEditor> {
         title: _exerciseController.text.trim(),
         detail: context.l10n.exerciseTaskDetail,
         dueLabel: context.l10n.today,
+        scheduledDate: _startDateController.text.trim().isEmpty
+            ? null
+            : _startDateController.text.trim(),
         frequency: _frequencyController.text.trim(),
         schedule: _scheduleController.text.trim(),
         responsiblePerson: _responsibleController.text.trim(),
@@ -5672,6 +5815,9 @@ class _RecoveryPlanEditorState extends ConsumerState<_RecoveryPlanEditor> {
         title: _dietController.text.trim(),
         detail: context.l10n.dietTaskDetail,
         dueLabel: context.l10n.today,
+        scheduledDate: _startDateController.text.trim().isEmpty
+            ? null
+            : _startDateController.text.trim(),
         frequency: _frequencyController.text.trim(),
         schedule: _scheduleController.text.trim(),
         responsiblePerson: _responsibleController.text.trim(),
@@ -5682,6 +5828,9 @@ class _RecoveryPlanEditorState extends ConsumerState<_RecoveryPlanEditor> {
         title: _followUpController.text.trim(),
         detail: context.l10n.followUpTaskDetail,
         dueLabel: context.l10n.today,
+        scheduledDate: _startDateController.text.trim().isEmpty
+            ? null
+            : _startDateController.text.trim(),
         frequency: _frequencyController.text.trim(),
         schedule: _scheduleController.text.trim(),
         responsiblePerson: _responsibleController.text.trim(),
@@ -5754,8 +5903,14 @@ class _RecoveryPlanEditorState extends ConsumerState<_RecoveryPlanEditor> {
   }
 
   bool _validate() {
+    final titleAndTasksValid = _formKey.currentState?.validate() ?? false;
+    if (!titleAndTasksValid) {
+      if (_validateTitle(_titleController.text) != null) {
+        _focusTitle();
+      }
+      return false;
+    }
     final fields = <String>[
-      _titleController.text,
       _instructionsController.text,
       _phaseNameController.text,
       _startDateController.text,
@@ -5773,11 +5928,29 @@ class _RecoveryPlanEditorState extends ConsumerState<_RecoveryPlanEditor> {
     return true;
   }
 
-  void _save() {
+  String? _validateTitle(String? value) {
+    if (_titleServerError != null) return _titleServerError;
+    final trimmed = value?.trim() ?? '';
+    if (trimmed.isEmpty) return context.l10n.planTitleRequired;
+    if (trimmed.length < 3) return context.l10n.planTitleTooShort;
+    if (trimmed.length > 160) return context.l10n.planTitleTooLong;
+    return null;
+  }
+
+  void _focusTitle() {
+    _titleFocusNode.requestFocus();
+    Scrollable.ensureVisible(
+      _titleFocusNode.context!,
+      alignment: 0.25,
+      duration: const Duration(milliseconds: 200),
+    );
+  }
+
+  Future<void> _save() async {
     if (!_validate()) {
       return;
     }
-    ref
+    await ref
         .read(recoveryPlanEditorControllerProvider.notifier)
         .saveDraft(
           patientId: widget.patientId,
@@ -5794,11 +5967,38 @@ class _RecoveryPlanEditorState extends ConsumerState<_RecoveryPlanEditor> {
               ? <RecoveryPhaseInput>[_currentPhase()]
               : List<RecoveryPhaseInput>.unmodifiable(_draftPhases),
         );
+    final result = ref.read(recoveryPlanEditorControllerProvider);
+    final error = result.hasError ? result.error : null;
+    if (error is ApiError &&
+        error.statusCode == 422 &&
+        error.details.any(
+          (detail) =>
+              detail.field == 'title' || detail.field.endsWith('.title'),
+        )) {
+      if (!mounted) return;
+      setState(() {
+        _titleServerError = context.l10n.planTitleInvalidServer;
+        _validationError = null;
+      });
+      _formKey.currentState?.validate();
+      _focusTitle();
+    }
   }
 
   String? _latestPlanId() {
     final latest = ref.read(recoveryPlanEditorControllerProvider);
     return (latest.hasValue ? latest.value?.planId : null) ?? _selectedPlanId;
+  }
+
+  RecoveryPlanData? _latestPlan() {
+    final latest = ref.read(recoveryPlanEditorControllerProvider);
+    if (latest.hasValue && latest.value != null) return latest.value;
+    final plans = ref.read(recoveryPlanListProvider(widget.patientId));
+    if (!plans.hasValue) return null;
+    for (final plan in plans.value?.items ?? const <RecoveryPlanData>[]) {
+      if (plan.planId == _selectedPlanId) return plan;
+    }
+    return null;
   }
 
   bool _requireSelectedPlan(String actionLabel) {
@@ -5813,21 +6013,38 @@ class _RecoveryPlanEditorState extends ConsumerState<_RecoveryPlanEditor> {
   }
 
   void _submitReview() {
+    if (!_validate()) {
+      return;
+    }
     if (!_requireSelectedPlan(context.l10n.submitReview)) {
       return;
     }
     ref
         .read(recoveryPlanEditorControllerProvider.notifier)
-        .submitForReview(patientId: widget.patientId, planId: _latestPlanId()!);
+        .submitForReview(
+          patientId: widget.patientId,
+          planId: _latestPlanId()!,
+          expectedVersion: _latestPlan()?.version ?? 1,
+        );
   }
 
   void _requestChanges() {
     if (!_requireSelectedPlan(context.l10n.requestChanges)) {
       return;
     }
+    final comment = _reviewCommentController.text.trim();
+    if (comment.isEmpty) {
+      setState(() => _validationError = context.l10n.reviewCommentRequired);
+      return;
+    }
     ref
         .read(recoveryPlanEditorControllerProvider.notifier)
-        .requestChanges(patientId: widget.patientId, planId: _latestPlanId()!);
+        .requestChanges(
+          patientId: widget.patientId,
+          planId: _latestPlanId()!,
+          expectedVersion: _latestPlan()?.version ?? 1,
+          comment: comment,
+        );
   }
 
   void _approve() {
@@ -5841,7 +6058,23 @@ class _RecoveryPlanEditorState extends ConsumerState<_RecoveryPlanEditor> {
     setState(() => _validationError = null);
     ref
         .read(recoveryPlanEditorControllerProvider.notifier)
-        .approve(patientId: widget.patientId, planId: planId);
+        .approve(
+          patientId: widget.patientId,
+          planId: planId,
+          expectedVersion: _latestPlan()?.version ?? 1,
+          comment: _reviewCommentController.text.trim(),
+        );
+  }
+
+  void _activate() {
+    final planId = _latestPlanId();
+    if (planId == null) {
+      setState(() => _validationError = context.l10n.submitPlanFirst);
+      return;
+    }
+    ref
+        .read(recoveryPlanEditorControllerProvider.notifier)
+        .activate(patientId: widget.patientId, planId: planId);
   }
 
   void _completePlan() {

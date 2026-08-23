@@ -90,6 +90,13 @@ def _connected_case(
         json={"patient_code": care["patient"]["synthetic_identifier"]},
     )
     assert connected.status_code == 200
+    pending = client.get("/api/v1/patient/me/contacts", headers=patient_headers).json()["items"][0]
+    approved = client.post(
+        f"/api/v1/patient/me/doctor-relationships/{pending['relationship_id']}/approve",
+        headers=patient_headers,
+        json={"expected_version": pending["request_version"]},
+    )
+    assert approved.status_code == 200
     event = client.post(
         f"/api/v1/patients/{patient_id}/clinical-events",
         headers=doctor_headers,

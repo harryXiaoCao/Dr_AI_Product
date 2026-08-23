@@ -169,8 +169,11 @@ class CareCostLedgerData {
     required this.patientId,
     required this.patientDisplayName,
     required this.actualTotalMinor,
+    required this.estimatedTotalMinor,
+    required this.finalTotalMinor,
     required this.payerRequestedTotalMinor,
     required this.patientResponsibilityTotalMinor,
+    required this.pendingCostItemCount,
     required this.currency,
     required this.events,
   });
@@ -180,9 +183,12 @@ class CareCostLedgerData {
       patientId: json['patient_id'] as String,
       patientDisplayName: json['patient_display_name'] as String,
       actualTotalMinor: json['actual_total_minor'] as int,
+      estimatedTotalMinor: json['estimated_total_minor'] as int,
+      finalTotalMinor: json['final_total_minor'] as int,
       payerRequestedTotalMinor: json['payer_requested_total_minor'] as int,
       patientResponsibilityTotalMinor:
           json['patient_responsibility_total_minor'] as int,
+      pendingCostItemCount: json['pending_cost_item_count'] as int,
       currency: json['currency'] as String,
       events: (json['events'] as List<dynamic>)
           .map(
@@ -197,8 +203,11 @@ class CareCostLedgerData {
   final String patientId;
   final String patientDisplayName;
   final int actualTotalMinor;
+  final int estimatedTotalMinor;
+  final int finalTotalMinor;
   final int payerRequestedTotalMinor;
   final int patientResponsibilityTotalMinor;
+  final int pendingCostItemCount;
   final String currency;
   final List<CareCostEventData> events;
 }
@@ -279,6 +288,7 @@ class PayerReviewData {
     this.fromStatus = '',
     this.toStatus = '',
     this.version = 1,
+    this.clarificationMessage,
     this.note,
   });
 
@@ -287,6 +297,7 @@ class PayerReviewData {
       id: json['id'] as String,
       action: json['action'] as String,
       reasonCode: json['reason_code'] as String,
+      clarificationMessage: json['clarification_message'] as String?,
       note: json['note'] as String?,
       reviewerMembershipId: json['reviewer_membership_id'] as String? ?? '',
       reviewerDisplayName: json['reviewer_display_name'] as String? ?? '',
@@ -301,6 +312,7 @@ class PayerReviewData {
   final String id;
   final String action;
   final String reasonCode;
+  final String? clarificationMessage;
   final String? note;
   final String reviewerMembershipId;
   final String reviewerDisplayName;
@@ -478,6 +490,7 @@ class PayerDashboardData {
     required this.profile,
     required this.openRequests,
     required this.clarificationRequests,
+    this.escalatedRequests = 0,
     required this.completedReviews,
     required this.pendingRequestedTotalMinor,
     required this.currency,
@@ -490,6 +503,7 @@ class PayerDashboardData {
       ),
       openRequests: json['open_requests'] as int,
       clarificationRequests: json['clarification_requests'] as int,
+      escalatedRequests: json['escalated_requests'] as int? ?? 0,
       completedReviews: json['completed_reviews'] as int,
       pendingRequestedTotalMinor: json['pending_requested_total_minor'] as int,
       currency: json['currency'] as String,
@@ -499,6 +513,7 @@ class PayerDashboardData {
   final PayerProfileData profile;
   final int openRequests;
   final int clarificationRequests;
+  final int escalatedRequests;
   final int completedReviews;
   final int pendingRequestedTotalMinor;
   final String currency;

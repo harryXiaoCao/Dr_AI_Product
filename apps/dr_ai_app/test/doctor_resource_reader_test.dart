@@ -72,6 +72,51 @@ final bilingualDetail = MedicalResourceDetail(
   ],
 );
 
+final whoDetail = MedicalResourceDetail(
+  resource: MedicalResourceFixture(
+    id: 'KBS-WHO-ZH-22F9C005D13537AE',
+    stableReference: 'KBS-WHO-ZH-22F9C005D13537AE',
+    title: '高血压',
+    titleEn: 'Hypertension',
+    catalogSummary: 'WHO 官方事实清单原文。',
+    searchKeywords: const <String>['高血压', 'Hypertension'],
+    officialLocator:
+        'https://www.who.int/zh/news-room/fact-sheets/detail/hypertension',
+    englishOfficialLocator:
+        'https://www.who.int/news-room/fact-sheets/detail/hypertension',
+    documentType: MedicalDocumentType.factSheet,
+    organization: MedicalOrganization.worldHealthOrganization,
+    jurisdiction: MedicalJurisdiction.international,
+    language: MedicalResourceLanguage.bilingualChineseEnglish,
+    topic: MedicalResourceTopic.chronicDisease,
+    catalogVerifiedAt: DateTime(2026, 8, 13),
+    licenseName: 'WHO non-exclusive permission, request 202609681',
+    attributionRequirements: 'Credit WHO without implying endorsement.',
+    rightsStatus: MedicalRightsStatus.storedTextApproved,
+  ),
+  publisherName: '世界卫生组织',
+  originalLanguage: 'zh-Hans',
+  medicalReviewStatus: 'pending',
+  sections: const <MedicalResourceSection>[
+    MedicalResourceSection(heading: '概述', originalText: '高血压是血管内压力过高。'),
+  ],
+  translations: const <MedicalResourceTranslation>[
+    MedicalResourceTranslation(
+      language: 'en',
+      title: 'Hypertension',
+      translationType: 'official_publisher_version',
+      reviewStatus: 'official_text_medical_review_pending',
+      sections: <MedicalResourceSection>[
+        MedicalResourceSection(
+          heading: 'Overview',
+          originalText:
+              'Hypertension is when blood vessel pressure is too high.',
+        ),
+      ],
+    ),
+  ],
+);
+
 final hpaDetail = MedicalResourceDetail(
   resource: MedicalResourceFixture(
     id: 'KBV-HPA-TEST-1',
@@ -187,6 +232,23 @@ void main() {
       );
     },
   );
+
+  testWidgets('doctor reader switches between official WHO language versions', (
+    tester,
+  ) async {
+    await pumpReader(tester, resourceDetail: whoDetail);
+
+    expect(find.text('Official English version'), findsWidgets);
+    expect(find.text('Hypertension'), findsOneWidget);
+    expect(find.text('Overview'), findsOneWidget);
+    expect(find.textContaining('unofficial AI-generated'), findsNothing);
+
+    await tester.tap(find.text('Official Chinese original').first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('高血压'), findsOneWidget);
+    expect(find.text('概述'), findsOneWidget);
+  });
 
   testWidgets(
     'reader refuses a direct link when display-approved text is absent',

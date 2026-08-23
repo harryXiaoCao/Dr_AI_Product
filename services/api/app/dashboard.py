@@ -4,6 +4,7 @@ import re
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from fastapi import APIRouter, Query, Request, Response, status
 from sqlalchemy import func, select
@@ -45,6 +46,7 @@ from app.models import (
     PrescriptionMedication,
     RecoveryPhase,
     RecoveryPlan,
+    RecoveryPlanReviewDecision,
     RecoveryTask,
     RecoveryTaskCompletion,
     SimulatedAssessment,
@@ -58,6 +60,8 @@ from app.schemas import (
     AssessmentListResponse,
     AssessmentRequest,
     AssessmentResponse,
+    CareRelationshipActionRequest,
+    CareRelationshipResponse,
     ChatMessageRequest,
     ChatMessageResponse,
     ChronicDiseaseListResponse,
@@ -136,6 +140,8 @@ from app.schemas import (
     RecoveryPlanListResponse,
     RecoveryPlanProgressResponse,
     RecoveryPlanResponse,
+    RecoveryPlanReviewActionRequest,
+    RecoveryPlanSubmitReviewRequest,
     RecoveryPlanUpdateRequest,
     RecoveryTaskInput,
     RecoveryTaskResponse,
@@ -196,6 +202,7 @@ ASSESSMENT_NEXT_STEPS = [
 ]
 RECOVERY_PLAN_STATUSES = {
     "draft",
+    "approved",
     "active",
     "published",
     "paused",
@@ -228,12 +235,14 @@ def _patient_overview(profile: PatientProfile) -> str:
     )
 
 
-def _patient_response(profile: PatientProfile) -> PatientProfileResponse:
+def _patient_response(
+    profile: PatientProfile, *, relationship_label: str = "Care relationship active"
+) -> PatientProfileResponse:
     return PatientProfileResponse(
         patient_id=profile.id,
         display_name=profile.display_name,
         synthetic_identifier=profile.synthetic_identifier,
-        relationship_label="Care relationship active",
+        relationship_label=relationship_label,
         overview=_patient_overview(profile),
         demographics=_demographics_response(profile),
     )
@@ -835,6 +844,8 @@ def _completion_map(tasks: list[RecoveryTask]) -> dict[uuid.UUID, RecoveryTaskCo
 def _recovery_task_response(
     task: RecoveryTask,
     completions: dict[uuid.UUID, RecoveryTaskCompletion],
+    *,
+    schedule_category: str | None = None,
 ) -> RecoveryTaskResponse:
     completion = completions.get(task.id)
     notification_status = None
@@ -852,6 +863,12 @@ def _recovery_task_response(
         title=task.title,
         detail=task.detail,
         due_label=task.due_label,
+        scheduled_date=task.scheduled_date,
+        scheduled_time=task.scheduled_time,
+        time_zone=task.time_zone,
+        schedule_category=schedule_category,
+        plan_title=task.plan.title,
+        clinical_event_id=task.plan.clinical_event_id,
         notification_time=task.notification_time,
         medication_id=task.medication_id,
         frequency=task.frequency,
@@ -886,6 +903,10 @@ def _recovery_plan_response(plan: RecoveryPlan) -> RecoveryPlanResponse:
         supersedes_plan_id=plan.supersedes_plan_id,
         status=plan.status,  # type: ignore[arg-type]
         review_status=plan.review_status,  # type: ignore[arg-type]
+        author_doctor_id=plan.doctor_id,
+        assigned_reviewer_doctor_id=plan.assigned_reviewer_doctor_id,
+        submitted_version=plan.submitted_version,
+        review_comment=plan.review_comment,
         safety_label=SYNTHETIC_DATA_LABEL,
         created_at=plan.created_at,
         updated_at=plan.updated_at,
@@ -1669,9 +1690,11 @@ def _authorized_recovery_plan(
     plan_id: uuid.UUID,
     user: CurrentUser,
     db: DbSession,
+    *,
+    lock: bool = False,
 ) -> tuple[PatientProfile, RecoveryPlan]:
     profile = _authorized_patient(patient_id, user, db)
-    plan = db.scalar(
+    plan_query = (
         select(RecoveryPlan)
         .options(
             selectinload(RecoveryPlan.tasks).selectinload(RecoveryTask.completions),
@@ -1679,6 +1702,9 @@ def _authorized_recovery_plan(
         )
         .where(RecoveryPlan.id == plan_id, RecoveryPlan.patient_id == profile.id)
     )
+    if lock:
+        plan_query = plan_query.with_for_update()
+    plan = db.scalar(plan_query)
     if plan is None:
         raise _neutral_not_found()
     return profile, plan
@@ -1691,6 +1717,21 @@ def _validate_recovery_tasks(
     db: DbSession,
 ) -> None:
     for task in tasks:
+        try:
+            ZoneInfo(task.time_zone)
+        except ZoneInfoNotFoundError as exc:
+            raise ApiError(
+                422,
+                "validation_failed",
+                "The recovery task time zone is not recognized.",
+                [
+                    {
+                        "field": "tasks.time_zone",
+                        "code": "invalid_time_zone",
+                        "message": "Use an IANA time-zone name.",
+                    }
+                ],
+            ) from exc
         if task.category not in RECOVERY_TASK_CATEGORIES:
             raise ApiError(
                 422,
@@ -1735,6 +1776,9 @@ def _replace_recovery_tasks(
                 title=task.title,
                 detail=task.detail,
                 due_label=task.due_label,
+                scheduled_date=task.scheduled_date,
+                scheduled_time=task.scheduled_time,
+                time_zone=task.time_zone,
                 notification_time=task.notification_time,
                 frequency=task.frequency,
                 schedule=task.schedule,
@@ -1780,6 +1824,9 @@ def _replace_recovery_phases(plan: RecoveryPlan, request: RecoveryPlanCreateRequ
                     title=task_input.title,
                     detail=task_input.detail,
                     due_label=task_input.due_label,
+                    scheduled_date=task_input.scheduled_date,
+                    scheduled_time=task_input.scheduled_time,
+                    time_zone=task_input.time_zone,
                     notification_time=task_input.notification_time,
                     frequency=task_input.frequency,
                     schedule=task_input.schedule,
@@ -1810,6 +1857,12 @@ def _recovery_plan_audit_metadata(
         "replaced_active_count": replaced_active_count,
         "source": source,
         "clinical_event_id": str(plan.clinical_event_id) if plan.clinical_event_id else None,
+        "plan_version": plan.version,
+        "submitted_version": plan.submitted_version,
+        "author_doctor_id": str(plan.doctor_id),
+        "assigned_reviewer_doctor_id": (
+            str(plan.assigned_reviewer_doctor_id) if plan.assigned_reviewer_doctor_id else None
+        ),
     }
 
 
@@ -1844,38 +1897,31 @@ def _complete_other_active_recovery_plans(
     return len(active_plans)
 
 
-def _approve_recovery_plan(
+def _require_recovery_reviewer(
     plan: RecoveryPlan,
     profile: PatientProfile,
     user: CurrentUser,
     db: DbSession,
-    *,
-    source: str,
-) -> int:
-    replaced_active_count = _complete_other_active_recovery_plans(profile, plan, db)
-    now = datetime.now(UTC)
-    plan.status = "active"
-    plan.review_status = "approved"
-    plan.review_actor_user_id = user.id
-    plan.reviewed_at = now
-    plan.approved_at = now
-    plan.activated_at = now
-    plan.published_at = now
-    plan.completed_at = None
-    _record_audit_event(
-        db,
-        actor_user_id=user.id,
-        patient_id=profile.id,
-        event_type="recovery_plan_approved",
-        resource_type="recovery_plan",
-        resource_id=plan.id,
-        metadata=_recovery_plan_audit_metadata(
-            plan,
-            source=source,
-            replaced_active_count=replaced_active_count,
-        ),
+) -> None:
+    if user.role != UserRole.doctor or user.doctor_profile is None:
+        raise _neutral_not_found()
+    if plan.assigned_reviewer_doctor_id != user.doctor_profile.id:
+        raise _neutral_not_found()
+    if plan.doctor_id == user.doctor_profile.id:
+        raise ApiError(
+            422, "validation_failed", "A recovery plan author cannot review their own plan."
+        )
+    authority = db.scalar(
+        select(CareRelationship.id).where(
+            CareRelationship.patient_id == profile.id,
+            CareRelationship.doctor_id == user.doctor_profile.id,
+            CareRelationship.status == "active",
+            CareRelationship.is_active.is_(True),
+            CareRelationship.can_review_recovery_plans.is_(True),
+        )
     )
-    return replaced_active_count
+    if authority is None:
+        raise _neutral_not_found()
 
 
 def _validate_demo_asset_presign_request(request: DemoAssetPresignRequest) -> str:
@@ -2022,29 +2068,188 @@ def own_patient_contacts(
 ) -> PatientDoctorContactListResponse:
     if user.role != UserRole.patient or user.patient_profile is None:
         raise _neutral_not_found()
-    doctors = db.scalars(
-        select(DoctorProfile)
-        .join(CareRelationship)
+    relationships = db.scalars(
+        select(CareRelationship)
+        .options(selectinload(CareRelationship.doctor))
         .where(
             CareRelationship.patient_id == user.patient_profile.id,
-            CareRelationship.is_active.is_(True),
+            CareRelationship.status.in_({"pending_patient_approval", "active"}),
         )
-        .order_by(DoctorProfile.display_name, DoctorProfile.id)
+        .order_by(CareRelationship.status.desc(), CareRelationship.requested_at.desc())
     ).all()
     return PatientDoctorContactListResponse(
         items=[
             PatientDoctorContactResponse(
-                doctor_id=doctor.id,
-                display_name=doctor.display_name,
-                title=doctor.title,
-                hospital_name=doctor.hospital_name,
-                specialty=doctor.specialty,
-                department=doctor.department,
-                avatar_url=doctor.avatar_url,
+                relationship_id=relationship.id,
+                doctor_id=relationship.doctor.id,
+                display_name=relationship.doctor.display_name,
+                title=relationship.doctor.title,
+                hospital_name=relationship.doctor.hospital_name,
+                specialty=relationship.doctor.specialty,
+                department=relationship.doctor.department,
+                avatar_url=relationship.doctor.avatar_url,
+                relationship_status=relationship.status,
+                request_version=relationship.request_version,
+                requested_at=relationship.requested_at,
+                approved_at=relationship.approved_at,
+                revoked_at=relationship.revoked_at,
             )
-            for doctor in doctors
+            for relationship in relationships
         ]
     )
+
+
+def _care_relationship_response(relationship: CareRelationship) -> CareRelationshipResponse:
+    return CareRelationshipResponse(
+        relationship_id=relationship.id,
+        doctor_id=relationship.doctor_id,
+        patient_id=relationship.patient_id,
+        status=relationship.status,
+        request_version=relationship.request_version,
+        requested_at=relationship.requested_at,
+        responded_at=relationship.responded_at,
+        approved_at=relationship.approved_at,
+        rejected_at=relationship.rejected_at,
+        revoked_at=relationship.revoked_at,
+    )
+
+
+def _own_patient_relationship(
+    relationship_id: uuid.UUID, user: CurrentUser, db: DbSession
+) -> CareRelationship:
+    if user.role != UserRole.patient or user.patient_profile is None:
+        raise _neutral_not_found()
+    relationship = db.scalar(
+        select(CareRelationship)
+        .where(
+            CareRelationship.id == relationship_id,
+            CareRelationship.patient_id == user.patient_profile.id,
+        )
+        .with_for_update()
+    )
+    if relationship is None:
+        raise _neutral_not_found()
+    return relationship
+
+
+def _check_relationship_version(relationship: CareRelationship, expected_version: int) -> None:
+    if relationship.request_version != expected_version:
+        raise ApiError(
+            409, "conflict", "This doctor connection request has changed. Refresh and try again."
+        )
+
+
+@router.post(
+    "/patient/me/doctor-relationships/{relationship_id}/approve",
+    response_model=CareRelationshipResponse,
+)
+def approve_doctor_relationship(
+    relationship_id: uuid.UUID,
+    request: CareRelationshipActionRequest,
+    user: CurrentUser,
+    db: DbSession,
+) -> CareRelationshipResponse:
+    relationship = _own_patient_relationship(relationship_id, user, db)
+    _check_relationship_version(relationship, request.expected_version)
+    if relationship.status == "active":
+        return _care_relationship_response(relationship)
+    if relationship.status != "pending_patient_approval":
+        raise ApiError(409, "conflict", "Only a pending doctor request can be approved.")
+    now = datetime.now(UTC)
+    relationship.status = "active"
+    relationship.is_active = True
+    relationship.can_review_recovery_plans = True
+    relationship.responded_at = now
+    relationship.approved_at = now
+    relationship.rejected_at = None
+    relationship.revoked_at = None
+    relationship.request_version += 1
+    _record_audit_event(
+        db,
+        actor_user_id=user.id,
+        patient_id=relationship.patient_id,
+        event_type="care_relationship_approved",
+        resource_type="care_relationship",
+        resource_id=relationship.id,
+        metadata={"request_version": relationship.request_version},
+    )
+    db.commit()
+    db.refresh(relationship)
+    return _care_relationship_response(relationship)
+
+
+@router.post(
+    "/patient/me/doctor-relationships/{relationship_id}/reject",
+    response_model=CareRelationshipResponse,
+)
+def reject_doctor_relationship(
+    relationship_id: uuid.UUID,
+    request: CareRelationshipActionRequest,
+    user: CurrentUser,
+    db: DbSession,
+) -> CareRelationshipResponse:
+    relationship = _own_patient_relationship(relationship_id, user, db)
+    _check_relationship_version(relationship, request.expected_version)
+    if relationship.status == "rejected":
+        return _care_relationship_response(relationship)
+    if relationship.status != "pending_patient_approval":
+        raise ApiError(409, "conflict", "Only a pending doctor request can be rejected.")
+    now = datetime.now(UTC)
+    relationship.status = "rejected"
+    relationship.is_active = False
+    relationship.can_review_recovery_plans = False
+    relationship.responded_at = now
+    relationship.rejected_at = now
+    relationship.request_version += 1
+    _record_audit_event(
+        db,
+        actor_user_id=user.id,
+        patient_id=relationship.patient_id,
+        event_type="care_relationship_rejected",
+        resource_type="care_relationship",
+        resource_id=relationship.id,
+        metadata={"request_version": relationship.request_version},
+    )
+    db.commit()
+    db.refresh(relationship)
+    return _care_relationship_response(relationship)
+
+
+@router.post(
+    "/patient/me/doctor-relationships/{relationship_id}/revoke",
+    response_model=CareRelationshipResponse,
+)
+def revoke_doctor_relationship(
+    relationship_id: uuid.UUID,
+    request: CareRelationshipActionRequest,
+    user: CurrentUser,
+    db: DbSession,
+) -> CareRelationshipResponse:
+    relationship = _own_patient_relationship(relationship_id, user, db)
+    _check_relationship_version(relationship, request.expected_version)
+    if relationship.status == "revoked":
+        return _care_relationship_response(relationship)
+    if relationship.status != "active":
+        raise ApiError(409, "conflict", "Only an active doctor connection can be removed.")
+    now = datetime.now(UTC)
+    relationship.status = "revoked"
+    relationship.is_active = False
+    relationship.can_review_recovery_plans = False
+    relationship.responded_at = now
+    relationship.revoked_at = now
+    relationship.request_version += 1
+    _record_audit_event(
+        db,
+        actor_user_id=user.id,
+        patient_id=relationship.patient_id,
+        event_type="care_relationship_revoked",
+        resource_type="care_relationship",
+        resource_id=relationship.id,
+        metadata={"request_version": relationship.request_version},
+    )
+    db.commit()
+    db.refresh(relationship)
+    return _care_relationship_response(relationship)
 
 
 @router.get("/doctor/me/contacts", response_model=DoctorPatientContactListResponse)
@@ -2241,42 +2446,100 @@ def connect_patient_by_code(
     if profile is None:
         raise _neutral_not_found()
     relationship = db.scalar(
-        select(CareRelationship).where(
+        select(CareRelationship)
+        .where(
             CareRelationship.doctor_id == user.doctor_profile.id,
             CareRelationship.patient_id == profile.id,
         )
+        .with_for_update()
     )
     created = relationship is None
-    reactivated = False
+    new_request = False
+    now = datetime.now(UTC)
     if relationship is None:
         relationship = CareRelationship(
             doctor_id=user.doctor_profile.id,
             patient_id=profile.id,
-            is_active=True,
+            is_active=False,
+            status="pending_patient_approval",
+            request_version=1,
+            can_review_recovery_plans=False,
+            requested_at=now,
         )
         db.add(relationship)
-        db.flush()
-    elif not relationship.is_active:
-        relationship.is_active = True
+        try:
+            db.flush()
+            new_request = True
+        except IntegrityError:
+            # The unique doctor/patient key is the final arbiter when two
+            # first-time requests race before either can observe the other.
+            db.rollback()
+            relationship = db.scalar(
+                select(CareRelationship)
+                .where(
+                    CareRelationship.doctor_id == user.doctor_profile.id,
+                    CareRelationship.patient_id == profile.id,
+                )
+                .with_for_update()
+            )
+            if relationship is None:
+                raise
+            created = False
+            new_request = False
+    elif relationship.status in {"rejected", "revoked"}:
+        relationship.status = "pending_patient_approval"
+        relationship.is_active = False
+        relationship.can_review_recovery_plans = False
+        relationship.requested_at = now
+        relationship.responded_at = None
+        relationship.approved_at = None
+        relationship.rejected_at = None
         relationship.revoked_at = None
-        reactivated = True
+        relationship.request_version += 1
+        new_request = True
+    elif relationship.status == "pending_patient_approval":
+        new_request = False
+    elif relationship.status != "active":
+        raise ApiError(409, "conflict", "This doctor connection request is unavailable.")
+    patient_user = db.get(User, profile.user_id)
+    assert patient_user is not None
+    if new_request:
+        create_notification(
+            db,
+            recipient=patient_user,
+            event_type="care_relationship_approval_requested",
+            source_resource_id=relationship.id,
+            scheduled_for=now,
+            patient_id=profile.id,
+            locale="zh-Hans" if profile.preferred_language in {"zh", "zh-Hans", "zh-CN"} else "en",
+            occurrence_key=f"request-version:{relationship.request_version}",
+        )
     _record_audit_event(
         db,
         actor_user_id=user.id,
         patient_id=profile.id,
-        event_type="care_relationship_connected",
+        event_type="care_relationship_requested",
         resource_type="care_relationship",
         resource_id=relationship.id,
         metadata={
             "actor_role": user.role.value,
             "created": created,
-            "reactivated": reactivated,
+            "new_request": new_request,
+            "request_version": relationship.request_version,
+            "status": relationship.status,
             "patient_code_supplied": True,
         },
     )
     db.commit()
     db.refresh(profile)
-    return _patient_response(profile)
+    return _patient_response(
+        profile,
+        relationship_label=(
+            "Care relationship active"
+            if relationship.status == "active"
+            else "Pending patient approval"
+        ),
+    )
 
 
 @router.post("/patients/connect/preview", response_model=PatientMatchPreviewResponse)
@@ -4992,7 +5255,7 @@ def update_recovery_plan(
 ) -> RecoveryPlanResponse:
     if user.role != UserRole.doctor or user.doctor_profile is None:
         raise _neutral_not_found()
-    profile, plan = _authorized_recovery_plan(patient_id, plan_id, user, db)
+    profile, plan = _authorized_recovery_plan(patient_id, plan_id, user, db, lock=True)
     if plan.doctor_id != user.doctor_profile.id:
         raise _neutral_not_found()
     if (
@@ -5016,6 +5279,7 @@ def update_recovery_plan(
     plan.instructions = request.instructions
     plan.indication = request.indication
     plan.start_date = request.start_date
+    plan.version += 1
     if plan.review_status == "changes_requested":
         plan.review_status = "draft"
         plan.submitted_at = None
@@ -5043,12 +5307,13 @@ def update_recovery_plan(
 def submit_recovery_plan_for_review(
     patient_id: uuid.UUID,
     plan_id: uuid.UUID,
+    request: RecoveryPlanSubmitReviewRequest,
     user: CurrentUser,
     db: DbSession,
 ) -> RecoveryPlanResponse:
     if user.role != UserRole.doctor or user.doctor_profile is None:
         raise _neutral_not_found()
-    profile, plan = _authorized_recovery_plan(patient_id, plan_id, user, db)
+    profile, plan = _authorized_recovery_plan(patient_id, plan_id, user, db, lock=True)
     if plan.doctor_id != user.doctor_profile.id:
         raise _neutral_not_found()
     if plan.status != "draft" or plan.review_status not in {"draft", "changes_requested"}:
@@ -5057,8 +5322,50 @@ def submit_recovery_plan_for_review(
             "conflict",
             "This recovery plan cannot be submitted in its current state.",
         )
+    if plan.version != request.expected_version:
+        raise ApiError(
+            409, "conflict", "This recovery plan version is stale. Refresh and resubmit."
+        )
+    reviewer_doctor_id = request.reviewer_doctor_id
+    if reviewer_doctor_id is None:
+        eligible_reviewers = db.scalars(
+            select(CareRelationship.doctor_id).where(
+                CareRelationship.patient_id == profile.id,
+                CareRelationship.doctor_id != plan.doctor_id,
+                CareRelationship.status == "active",
+                CareRelationship.is_active.is_(True),
+                CareRelationship.can_review_recovery_plans.is_(True),
+            )
+        ).all()
+        if len(eligible_reviewers) != 1:
+            raise ApiError(
+                422,
+                "validation_failed",
+                "Assign one distinct authorized reviewer before submission.",
+            )
+        reviewer_doctor_id = eligible_reviewers[0]
+    if reviewer_doctor_id == plan.doctor_id:
+        raise ApiError(
+            422, "validation_failed", "A recovery plan author cannot review their own plan."
+        )
+    reviewer_authority = db.scalar(
+        select(CareRelationship.id).where(
+            CareRelationship.patient_id == profile.id,
+            CareRelationship.doctor_id == reviewer_doctor_id,
+            CareRelationship.status == "active",
+            CareRelationship.is_active.is_(True),
+            CareRelationship.can_review_recovery_plans.is_(True),
+        )
+    )
+    if reviewer_authority is None:
+        raise ApiError(
+            422, "validation_failed", "Assign a distinct authorized reviewer before submission."
+        )
     plan.review_status = "in_review"
     plan.submitted_at = datetime.now(UTC)
+    plan.submitted_version = plan.version
+    plan.assigned_reviewer_doctor_id = reviewer_doctor_id
+    plan.review_comment = None
     plan.reviewed_at = None
     plan.review_actor_user_id = None
     _record_audit_event(
@@ -5082,23 +5389,40 @@ def submit_recovery_plan_for_review(
 def request_recovery_plan_changes(
     patient_id: uuid.UUID,
     plan_id: uuid.UUID,
+    request: RecoveryPlanReviewActionRequest,
     user: CurrentUser,
     db: DbSession,
 ) -> RecoveryPlanResponse:
     if user.role != UserRole.doctor or user.doctor_profile is None:
         raise _neutral_not_found()
-    profile, plan = _authorized_recovery_plan(patient_id, plan_id, user, db)
-    if plan.doctor_id != user.doctor_profile.id:
-        raise _neutral_not_found()
+    profile, plan = _authorized_recovery_plan(patient_id, plan_id, user, db, lock=True)
+    _require_recovery_reviewer(plan, profile, user, db)
     if plan.status != "draft" or plan.review_status != "in_review":
         raise ApiError(
             409,
             "conflict",
             "Only a submitted recovery plan can receive requested changes.",
         )
+    if plan.version != request.expected_version or plan.submitted_version != plan.version:
+        raise ApiError(409, "conflict", "The submitted recovery plan version is stale.")
+    if not request.comment:
+        raise ApiError(
+            422, "validation_failed", "A review comment is required when requesting changes."
+        )
     plan.review_status = "changes_requested"
     plan.review_actor_user_id = user.id
     plan.reviewed_at = datetime.now(UTC)
+    plan.review_comment = request.comment
+    db.add(
+        RecoveryPlanReviewDecision(
+            plan_id=plan.id,
+            plan_version=plan.version,
+            reviewer_doctor_id=user.doctor_profile.id,
+            reviewer_user_id=user.id,
+            action="changes_requested",
+            comment=request.comment,
+        )
+    )
     _record_audit_event(
         db,
         actor_user_id=user.id,
@@ -5120,21 +5444,48 @@ def request_recovery_plan_changes(
 def approve_recovery_plan(
     patient_id: uuid.UUID,
     plan_id: uuid.UUID,
+    request: RecoveryPlanReviewActionRequest,
     user: CurrentUser,
     db: DbSession,
 ) -> RecoveryPlanResponse:
     if user.role != UserRole.doctor or user.doctor_profile is None:
         raise _neutral_not_found()
-    profile, plan = _authorized_recovery_plan(patient_id, plan_id, user, db)
-    if plan.doctor_id != user.doctor_profile.id:
-        raise _neutral_not_found()
+    profile, plan = _authorized_recovery_plan(patient_id, plan_id, user, db, lock=True)
+    _require_recovery_reviewer(plan, profile, user, db)
     if plan.status != "draft" or plan.review_status != "in_review":
         raise ApiError(
             409,
             "conflict",
             "Only a submitted recovery plan can be approved.",
         )
-    _approve_recovery_plan(plan, profile, user, db, source="doctor_approve")
+    if plan.version != request.expected_version or plan.submitted_version != plan.version:
+        raise ApiError(409, "conflict", "The submitted recovery plan version is stale.")
+    now = datetime.now(UTC)
+    plan.status = "approved"
+    plan.review_status = "approved"
+    plan.review_actor_user_id = user.id
+    plan.reviewed_at = now
+    plan.approved_at = now
+    plan.review_comment = request.comment
+    db.add(
+        RecoveryPlanReviewDecision(
+            plan_id=plan.id,
+            plan_version=plan.version,
+            reviewer_doctor_id=user.doctor_profile.id,
+            reviewer_user_id=user.id,
+            action="approved",
+            comment=request.comment,
+        )
+    )
+    _record_audit_event(
+        db,
+        actor_user_id=user.id,
+        patient_id=profile.id,
+        event_type="recovery_plan_approved",
+        resource_type="recovery_plan",
+        resource_id=plan.id,
+        metadata=_recovery_plan_audit_metadata(plan, source="assigned_reviewer_approve"),
+    )
     db.commit()
     db.refresh(plan)
     return _recovery_plan_response(plan)
@@ -5152,25 +5503,36 @@ def activate_recovery_plan(
 ) -> RecoveryPlanResponse:
     if user.role != UserRole.doctor or user.doctor_profile is None:
         raise _neutral_not_found()
-    profile, plan = _authorized_recovery_plan(patient_id, plan_id, user, db)
+    profile, plan = _authorized_recovery_plan(patient_id, plan_id, user, db, lock=True)
     if plan.doctor_id != user.doctor_profile.id:
         raise _neutral_not_found()
     if plan.status == "active":
         return _recovery_plan_response(plan)
-    if plan.status != "draft" or plan.review_status not in {
-        "draft",
-        "in_review",
-        "changes_requested",
-    }:
+    if plan.status != "approved" or plan.review_status != "approved":
         raise ApiError(
             409,
             "conflict",
             "This recovery plan cannot be activated in its current state.",
         )
-    if plan.review_status in {"draft", "changes_requested"}:
-        plan.submitted_at = datetime.now(UTC)
-    _approve_recovery_plan(plan, profile, user, db, source="legacy_activate")
-    activation_time = plan.activated_at or datetime.now(UTC)
+    if plan.review_actor_user_id is None or plan.assigned_reviewer_doctor_id is None:
+        raise ApiError(409, "conflict", "Independent approval is required before activation.")
+    reviewer_authority = db.scalar(
+        select(CareRelationship.id).where(
+            CareRelationship.patient_id == profile.id,
+            CareRelationship.doctor_id == plan.assigned_reviewer_doctor_id,
+            CareRelationship.status == "active",
+            CareRelationship.is_active.is_(True),
+            CareRelationship.can_review_recovery_plans.is_(True),
+        )
+    )
+    if reviewer_authority is None:
+        raise ApiError(409, "conflict", "The assigned reviewer's authority is no longer active.")
+    replaced_active_count = _complete_other_active_recovery_plans(profile, plan, db)
+    activation_time = datetime.now(UTC)
+    plan.status = "active"
+    plan.activated_at = activation_time
+    plan.published_at = activation_time
+    plan.completed_at = None
     patient_user = db.get(User, profile.user_id)
     assert patient_user is not None
     for task in plan.tasks:
@@ -5194,7 +5556,9 @@ def activate_recovery_plan(
         event_type="recovery_plan_activated",
         resource_type="recovery_plan",
         resource_id=plan.id,
-        metadata=_recovery_plan_audit_metadata(plan, source="legacy_activate"),
+        metadata=_recovery_plan_audit_metadata(
+            plan, source="approved_activation", replaced_active_count=replaced_active_count
+        ),
     )
     db.commit()
     db.refresh(plan)
@@ -5260,21 +5624,79 @@ def patient_today(user: CurrentUser, db: DbSession) -> DashboardResponse:
     snapshot = db.scalar(select(DashboardSnapshot).where(DashboardSnapshot.user_id == user.id))
     payload = dict(snapshot.payload) if snapshot is not None else {}
     if user.patient_profile is not None:
-        active_plan = db.scalar(
+        active_plans = db.scalars(
             select(RecoveryPlan)
             .options(selectinload(RecoveryPlan.tasks).selectinload(RecoveryTask.completions))
             .where(
                 RecoveryPlan.patient_id == user.patient_profile.id,
                 RecoveryPlan.status == "active",
             )
-            .order_by(RecoveryPlan.activated_at.desc())
+            .order_by(RecoveryPlan.activated_at.desc(), RecoveryPlan.id)
+        ).all()
+        now = datetime.now(UTC)
+        categories: dict[str, list[dict[str, object]]] = {
+            "overdue": [],
+            "today": [],
+            "upcoming": [],
+            "unscheduled": [],
+        }
+        all_tasks: list[RecoveryTask] = []
+        for plan in active_plans:
+            all_tasks.extend(plan.tasks)
+            completions = _completion_map(list(plan.tasks))
+            for task in plan.tasks:
+                category = _recovery_task_schedule_category(task, now)
+                response = _recovery_task_response(
+                    task,
+                    completions,
+                    schedule_category=category,
+                )
+                categories[category].append(response.model_dump(mode="json"))
+        for items in categories.values():
+            items.sort(
+                key=lambda item: (
+                    item.get("scheduled_date") or "9999-12-31",
+                    item.get("scheduled_time") or "99:99",
+                    str(item["plan_id"]),
+                    str(item["task_id"]),
+                )
+            )
+        completed_count = len(_completion_map(all_tasks))
+        task_count = len(all_tasks)
+        payload["active_recovery_plans"] = [
+            _recovery_plan_response(plan).model_dump(mode="json") for plan in active_plans
+        ]
+        payload["active_recovery_plan"] = (
+            _recovery_plan_response(active_plans[0]).model_dump(mode="json")
+            if active_plans
+            else None
         )
-        if active_plan is not None:
-            plan_response = _recovery_plan_response(active_plan)
-            payload["active_recovery_plan"] = plan_response.model_dump(mode="json")
-            payload["today_tasks"] = [task.model_dump(mode="json") for task in plan_response.tasks]
-            payload["today_progress"] = plan_response.progress_summary.model_dump(mode="json")
+        payload["task_categories"] = categories
+        payload["today_tasks"] = categories["today"]
+        payload["today_progress"] = RecoveryPlanProgressResponse(
+            task_count=task_count,
+            completed_task_count=completed_count,
+            remaining_task_count=task_count - completed_count,
+            completion_percent=(round(completed_count * 100 / task_count) if task_count else 0),
+        ).model_dump(mode="json")
     return DashboardResponse(role=user.role, data=payload)
+
+
+def _recovery_task_schedule_category(task: RecoveryTask, now: datetime) -> str:
+    """Classify from structured date fields only, at midnight in the task's IANA zone."""
+
+    if task.scheduled_date is None:
+        return "unscheduled"
+    try:
+        local_date = now.astimezone(ZoneInfo(task.time_zone)).date()
+    except ZoneInfoNotFoundError:
+        # Invalid zones are rejected on write; legacy corruption remains fail-closed/unscheduled.
+        return "unscheduled"
+    if task.scheduled_date < local_date:
+        return "overdue"
+    if task.scheduled_date == local_date:
+        return "today"
+    return "upcoming"
 
 
 @router.post(

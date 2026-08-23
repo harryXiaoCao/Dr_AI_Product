@@ -6,14 +6,19 @@ from sqlalchemy import update
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.chatbot_release_governance import (
+    DIFFERENTIAL_PLANNING_PURPOSE_CODE,
     MANDATORY_MACHINE_GATES,
     PURPOSE_CODE,
+    SEMANTIC_ROUTING_PURPOSE_CODE,
     ChatbotReleaseTransitionError,
     activate_release,
     build_release,
+    chatbot_contract_checksum,
     chatbot_generation_readiness,
+    differential_planning_readiness,
     record_kill_switch,
     rollback_release,
+    semantic_routing_readiness,
     supersede_release,
 )
 from app.config import Settings
@@ -64,6 +69,12 @@ def test_chatbot_provider_is_deepseek_only_and_governance_defaults_fail_closed()
     assert defaults.chatbot_provider == "deepseek"
     assert defaults.chatbot_purpose_enabled is False
     assert defaults.chatbot_kill_switch is True
+    assert defaults.chatbot_semantic_routing_purpose_enabled is False
+    assert defaults.chatbot_semantic_routing_kill_switch is True
+    assert defaults.chatbot_differential_planning_purpose_enabled is False
+    assert defaults.chatbot_differential_planning_kill_switch is True
+    assert SEMANTIC_ROUTING_PURPOSE_CODE != PURPOSE_CODE
+    assert DIFFERENTIAL_PLANNING_PURPOSE_CODE != PURPOSE_CODE
     with pytest.raises(ValidationError):
         Settings(
             _env_file=None,
@@ -79,6 +90,22 @@ def test_chatbot_provider_is_deepseek_only_and_governance_defaults_fail_closed()
     )
     with SessionLocal() as db:
         assert chatbot_generation_readiness(db, staging).ready is False
+
+
+def test_new_patient_chat_purposes_are_independent_from_answer_release(settings) -> None:
+    answer_checksum = chatbot_contract_checksum(settings)
+    local = settings.model_copy(
+        update={
+            "chatbot_semantic_routing_purpose_enabled": True,
+            "chatbot_semantic_routing_kill_switch": False,
+            "chatbot_differential_planning_purpose_enabled": True,
+            "chatbot_differential_planning_kill_switch": False,
+        }
+    )
+
+    assert chatbot_contract_checksum(local) == answer_checksum
+    assert semantic_routing_readiness(local).ready is True
+    assert differential_planning_readiness(local).ready is True
 
 
 def test_checksum_bound_activation_supersession_kill_switch_and_exact_rollback(
@@ -234,7 +261,7 @@ def test_kill_switch_real_route_keeps_emergency_fallback_and_health_available(
             "language": "en",
         },
     )
-    assert emergency.status_code == 200
+    assert emergency.status_code == 200, emergency.text
     assert emergency.json()["fallback_code"] == "emergency"
     assert emergency.json()["next_action_code"] == "call_120"
 

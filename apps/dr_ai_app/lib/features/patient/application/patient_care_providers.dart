@@ -53,6 +53,40 @@ final patientDoctorContactsProvider =
       return ref.read(repositoryProvider).loadOwnPatientContacts();
     });
 
+final doctorRelationshipActionProvider =
+    StateNotifierProvider.autoDispose<
+      DoctorRelationshipActionController,
+      AsyncValue<void>
+    >(
+      (ref) =>
+          DoctorRelationshipActionController(ref.read(repositoryProvider), ref),
+    );
+
+class DoctorRelationshipActionController
+    extends StateNotifier<AsyncValue<void>> {
+  DoctorRelationshipActionController(this._repository, this._ref)
+    : super(const AsyncData(null));
+
+  final DrAiRepository _repository;
+  final Ref _ref;
+
+  Future<void> act(PatientDoctorContact doctor, String action) async {
+    state = const AsyncLoading();
+    try {
+      await _repository.actOnDoctorRelationship(
+        relationshipId: doctor.relationshipId,
+        expectedVersion: doctor.requestVersion,
+        action: action,
+      );
+      _ref.invalidate(patientDoctorContactsProvider);
+      _ref.invalidate(ownPatientCareProvider);
+      state = const AsyncData(null);
+    } catch (error, stackTrace) {
+      state = AsyncError(error, stackTrace);
+    }
+  }
+}
+
 final doctorPatientContactsProvider =
     FutureProvider.autoDispose<DoctorPatientContactList>((ref) async {
       ref.watch(authControllerProvider);
@@ -798,6 +832,12 @@ class RecoveryPlanEditorController
   final DrAiRepository _repository;
   final Ref _ref;
 
+  void clearError() {
+    if (state.hasError) {
+      state = const AsyncData<RecoveryPlanData?>(null);
+    }
+  }
+
   Future<void> saveDraft({
     required String patientId,
     required String? clinicalEventId,
@@ -855,12 +895,14 @@ class RecoveryPlanEditorController
   Future<void> submitForReview({
     required String patientId,
     required String planId,
+    required int expectedVersion,
   }) async {
     await _transition(
       patientId: patientId,
       action: () => _repository.submitRecoveryPlanForReview(
         patientId: patientId,
         planId: planId,
+        expectedVersion: expectedVersion,
       ),
     );
   }
@@ -868,12 +910,16 @@ class RecoveryPlanEditorController
   Future<void> requestChanges({
     required String patientId,
     required String planId,
+    required int expectedVersion,
+    required String comment,
   }) async {
     await _transition(
       patientId: patientId,
       action: () => _repository.requestRecoveryPlanChanges(
         patientId: patientId,
         planId: planId,
+        expectedVersion: expectedVersion,
+        comment: comment,
       ),
     );
   }
@@ -881,11 +927,17 @@ class RecoveryPlanEditorController
   Future<void> approve({
     required String patientId,
     required String planId,
+    required int expectedVersion,
+    String? comment,
   }) async {
     await _transition(
       patientId: patientId,
-      action: () =>
-          _repository.approveRecoveryPlan(patientId: patientId, planId: planId),
+      action: () => _repository.approveRecoveryPlan(
+        patientId: patientId,
+        planId: planId,
+        expectedVersion: expectedVersion,
+        comment: comment,
+      ),
     );
   }
 
@@ -954,6 +1006,7 @@ class RecoveryTaskCompletionController
         await _repository.uncompleteRecoveryTask(taskId);
       }
       _ref.invalidate(patientTodayProvider);
+      _ref.invalidate(ownPatientCareProvider);
     } catch (error, stackTrace) {
       state = AsyncError<Set<String>>(error, stackTrace);
     }

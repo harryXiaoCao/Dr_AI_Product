@@ -73,16 +73,6 @@ extension AppLocalizationsValues on AppLocalizations {
       'complete hospital details' => completeHospitalDetails,
       'doctor profile' => doctorProfile,
       'clinician' => clinician,
-      'ai supported ct image diagnose' ||
-      'ai-supported ct image review' => ctImageReview,
-      'ai supported x-ray image diagnose' ||
-      'ai-supported x-ray image review' => xrayImageReview,
-      'ai supported mri image diagnose' ||
-      'ai-supported mri image review' => mriImageReview,
-      'check patient medical records' => checkMedicalRecords,
-      'check patient recovery plans' => checkRecoveryPlans,
-      'check imaging results' => checkImagingResults,
-      'book medical equipment' => bookEquipment,
       'no patient activity yet' => noPatientActivity,
       'x-ray' => xray,
       'ultrasound' => ultrasound,

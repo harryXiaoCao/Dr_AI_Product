@@ -103,6 +103,14 @@ def seed_database(db: Session, settings: Settings) -> SeedResult:
         display_name="Dr. Avery Demo",
     )
     users_created += int(created)
+    reviewer, created = _get_or_create_user(
+        db,
+        email="reviewer.doctor@example.com",
+        password=doctor_password,
+        role=UserRole.doctor,
+        display_name="Dr. Rowan Reviewer",
+    )
+    users_created += int(created)
     patient, created = _get_or_create_user(
         db,
         email="patient.demo@example.com",
@@ -150,6 +158,11 @@ def seed_database(db: Session, settings: Settings) -> SeedResult:
                 doctor_id=doctor.doctor_profile.id,
                 patient_id=patient.patient_profile.id,
                 is_active=True,
+                status="active",
+                can_review_recovery_plans=True,
+                requested_at=datetime.now(UTC),
+                responded_at=datetime.now(UTC),
+                approved_at=datetime.now(UTC),
             )
         )
         relationships_created += 1
@@ -166,6 +179,33 @@ def seed_database(db: Session, settings: Settings) -> SeedResult:
                 doctor_id=doctor.doctor_profile.id,
                 patient_id=unrelated.patient_profile.id,
                 is_active=False,
+                status="revoked",
+                can_review_recovery_plans=False,
+                requested_at=datetime.now(UTC),
+                responded_at=datetime.now(UTC),
+                revoked_at=datetime.now(UTC),
+            )
+        )
+        relationships_created += 1
+
+    reviewer_relationship = db.scalar(
+        select(CareRelationship).where(
+            CareRelationship.doctor_id == reviewer.doctor_profile.id,
+            CareRelationship.patient_id == patient.patient_profile.id,
+        )
+    )
+    if reviewer_relationship is None:
+        now = datetime.now(UTC)
+        db.add(
+            CareRelationship(
+                doctor_id=reviewer.doctor_profile.id,
+                patient_id=patient.patient_profile.id,
+                is_active=True,
+                status="active",
+                can_review_recovery_plans=True,
+                requested_at=now,
+                responded_at=now,
+                approved_at=now,
             )
         )
         relationships_created += 1
@@ -184,13 +224,11 @@ def seed_database(db: Session, settings: Settings) -> SeedResult:
             "rating": 4,
         },
         "quick_access": [
-            "AI Supported CT Image Diagnose",
-            "AI Supported X-ray Image Diagnose",
-            "AI Supported MRI Image Diagnose",
-            "Check Patient Medical Records",
-            "Check Patient Recovery Plans",
-            "Check Imaging Results",
-            "Book Medical Equipment",
+            "Imaging records and manual review",
+            "Patient medical records",
+            "Patient recovery plans",
+            "Medical resources (read-only)",
+            "Payer requests",
         ],
         "recent_activity": {
             "title": "Synthetic Patient - Demonstration follow-up",
@@ -238,21 +276,12 @@ def seed_database(db: Session, settings: Settings) -> SeedResult:
             "title": "Head of Synthetic Community Hospital",
             "expertise": "Synthetic care coordination",
         },
-        "fee_items": [
-            {"label": "Consultation", "amount": "10 demo credits", "selected": True},
-            {"label": "Blood Test", "amount": "50 demo credits", "selected": True},
-            {"label": "Medication", "amount": "120 demo credits", "selected": True},
-            {
-                "label": "Ambulance Service",
-                "amount": "50 demo credits",
-                "selected": False,
-            },
-        ],
         "medical_records": [],
         "imaging_results": [],
     }
     for user, payload in (
         (doctor, doctor_dashboard),
+        (reviewer, doctor_dashboard),
         (patient, patient_dashboard),
         (unrelated, patient_dashboard),
     ):
@@ -347,7 +376,14 @@ def seed_database(db: Session, settings: Settings) -> SeedResult:
                 "This is not diagnosis, treatment, or medical advice."
             ),
             status="active",
+            review_status="approved",
+            review_actor_user_id=reviewer.id,
+            assigned_reviewer_doctor_id=reviewer.doctor_profile.id,
+            submitted_version=1,
             safety_label="Synthetic demonstration data only. Do not enter real patient data.",
+            submitted_at=datetime(2026, 7, 5, 9, 0, tzinfo=UTC),
+            reviewed_at=datetime(2026, 7, 5, 9, 30, tzinfo=UTC),
+            approved_at=datetime(2026, 7, 5, 9, 30, tzinfo=UTC),
             activated_at=datetime(2026, 7, 5, 10, 0, tzinfo=UTC),
         )
         db.add(plan)
@@ -361,6 +397,8 @@ def seed_database(db: Session, settings: Settings) -> SeedResult:
                     title="Demo medication reminder",
                     detail="Review the synthetic medication fixture only.",
                     due_label="Today",
+                    scheduled_date=datetime.now(UTC).astimezone().date(),
+                    scheduled_time="09:00",
                     notification_time="09:00",
                     sort_order=0,
                 ),
@@ -371,6 +409,7 @@ def seed_database(db: Session, settings: Settings) -> SeedResult:
                     title="Light demo mobility",
                     detail="Complete a short synthetic walking task if appropriate in the demo.",
                     due_label="Today",
+                    scheduled_date=datetime.now(UTC).astimezone().date(),
                     notification_time=None,
                     sort_order=1,
                 ),
@@ -381,6 +420,7 @@ def seed_database(db: Session, settings: Settings) -> SeedResult:
                     title="Demo hydration check",
                     detail="Use this placeholder to validate diet and hydration task display.",
                     due_label="Today",
+                    scheduled_date=datetime.now(UTC).astimezone().date(),
                     notification_time=None,
                     sort_order=2,
                 ),
@@ -391,6 +431,7 @@ def seed_database(db: Session, settings: Settings) -> SeedResult:
                     title="Synthetic follow-up preparation",
                     detail="Prepare demo questions for the assigned doctor workflow.",
                     due_label="Today",
+                    scheduled_date=datetime.now(UTC).astimezone().date(),
                     notification_time=None,
                     sort_order=3,
                 ),

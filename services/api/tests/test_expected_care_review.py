@@ -41,13 +41,9 @@ class _Provider:
         return ProviderCandidateResponse(
             output={
                 "purpose_code": provider_input["purpose_code"],
-                "purpose_contract_version": provider_input[
-                    "purpose_contract_version"
-                ],
+                "purpose_contract_version": provider_input["purpose_contract_version"],
                 "schema_version": provider_input["schema_version"],
-                "minimum_input_checksum_sha256": provider_input[
-                    "minimum_input_checksum_sha256"
-                ],
+                "minimum_input_checksum_sha256": provider_input["minimum_input_checksum_sha256"],
                 "scenario_release_id": provider_input["scenario_release_id"],
                 "reference_date": context["reference_date"],
                 "jurisdiction": context["jurisdiction"],
@@ -55,12 +51,8 @@ class _Provider:
                 "facility_ownership": context["facility_ownership"],
                 "facility_level": context["facility_level"],
                 "currency": context["currency"],
-                "assumptions": copy.deepcopy(
-                    provider_input["allowed_assumptions"]
-                ),
-                "missing_information": copy.deepcopy(
-                    provider_input["allowed_missing_information"]
-                ),
+                "assumptions": copy.deepcopy(provider_input["allowed_assumptions"]),
+                "missing_information": copy.deepcopy(provider_input["allowed_missing_information"]),
                 "attributable_exceptions": [],
                 "confidence_category": "moderate",
                 "confidence_limitations": copy.deepcopy(
@@ -69,9 +61,7 @@ class _Provider:
                 "items": copy.deepcopy(provider_input["admitted_candidates"]),
                 "total_low_minor": totals["total_low_minor"],
                 "total_high_minor": totals["total_high_minor"],
-                "release_lineage": copy.deepcopy(
-                    provider_input["release_lineage"]
-                ),
+                "release_lineage": copy.deepcopy(provider_input["release_lineage"]),
             },
             provider="deterministic_stub",
             model="stub-expected-care-v1",
@@ -131,11 +121,18 @@ def _case(
     doctor_headers = auth_header(doctor["access_token"])
     care = client.get("/api/v1/patient/me/care", headers=patient_headers).json()
     patient_id = care["patient"]["patient_id"]
+    relationship = client.post(
+        "/api/v1/patients/connect",
+        headers=doctor_headers,
+        json={"patient_code": care["patient"]["synthetic_identifier"]},
+    )
+    assert relationship.status_code == 200
+    pending = client.get("/api/v1/patient/me/contacts", headers=patient_headers).json()["items"][0]
     assert (
         client.post(
-            "/api/v1/patients/connect",
-            headers=doctor_headers,
-            json={"patient_code": care["patient"]["synthetic_identifier"]},
+            f"/api/v1/patient/me/doctor-relationships/{pending['relationship_id']}/approve",
+            headers=patient_headers,
+            json={"expected_version": pending["request_version"]},
         ).status_code
         == 200
     )
@@ -154,9 +151,7 @@ def _case(
     with SessionLocal() as db:
         install_synthetic_care_reference_bundle(db)
         actor_id = db.scalar(
-            select(User.id).where(
-                User.email == f"baseline.doctor.{suffix}@example.com"
-            )
+            select(User.id).where(User.email == f"baseline.doctor.{suffix}@example.com")
         )
         payer_request_id = None
         if payer_email is not None:
@@ -209,10 +204,8 @@ def _case(
         baseline_id = str(
             db.scalar(
                 select(ExpectedCarePublishedBaseline.id).where(
-                    ExpectedCarePublishedBaseline.candidate_result_id
-                    == generated.result.id,
-                    ExpectedCarePublishedBaseline.lifecycle_state
-                    == "validated_baseline_published",
+                    ExpectedCarePublishedBaseline.candidate_result_id == generated.result.id,
+                    ExpectedCarePublishedBaseline.lifecycle_state == "validated_baseline_published",
                 )
             )
         )
@@ -238,12 +231,11 @@ def _response_url(patient_id: str, event_id: str, result_id: str) -> str:
 def test_validated_candidate_publishes_immutable_patient_visible_baseline(
     client, settings, monkeypatch
 ) -> None:
-    patient_headers, doctor_headers, patient_id, event_id, result_id, baseline_id, _ = (
-        _case(client, settings, monkeypatch, "published")
+    patient_headers, doctor_headers, patient_id, event_id, result_id, baseline_id, _ = _case(
+        client, settings, monkeypatch, "published"
     )
     listed = client.get(
-        f"/api/v1/patients/{patient_id}/clinical-events/{event_id}/"
-        "expected-care/candidates",
+        f"/api/v1/patients/{patient_id}/clinical-events/{event_id}/expected-care/candidates",
         headers=doctor_headers,
     )
     assert listed.status_code == 200
@@ -291,8 +283,8 @@ def test_validated_candidate_publishes_immutable_patient_visible_baseline(
 def test_clinician_responses_append_without_changing_or_hiding_baseline(
     client, settings, monkeypatch
 ) -> None:
-    patient_headers, doctor_headers, patient_id, event_id, result_id, baseline_id, _ = (
-        _case(client, settings, monkeypatch, "responses")
+    patient_headers, doctor_headers, patient_id, event_id, result_id, baseline_id, _ = _case(
+        client, settings, monkeypatch, "responses"
     )
     url = _response_url(patient_id, event_id, result_id)
     original = client.get(
@@ -364,19 +356,12 @@ def test_clinician_responses_append_without_changing_or_hiding_baseline(
     with SessionLocal() as db:
         baselines = db.scalars(
             select(ExpectedCarePublishedBaseline).where(
-                ExpectedCarePublishedBaseline.candidate_result_id
-                == uuid.UUID(result_id),
-                ExpectedCarePublishedBaseline.lifecycle_state
-                == "validated_baseline_published",
+                ExpectedCarePublishedBaseline.candidate_result_id == uuid.UUID(result_id),
+                ExpectedCarePublishedBaseline.lifecycle_state == "validated_baseline_published",
             )
         ).all()
         assert len(baselines) == 1
-        assert (
-            db.scalar(
-                select(func.count()).select_from(ExpectedCareClinicianResponse)
-            )
-            == 2
-        )
+        assert db.scalar(select(func.count()).select_from(ExpectedCareClinicianResponse)) == 2
 
 
 def test_doctor_cannot_submit_edits_or_rejection_and_roles_are_isolated(
@@ -428,12 +413,8 @@ def test_doctor_cannot_submit_edits_or_rejection_and_roles_are_isolated(
 def test_payer_sees_baseline_and_clinician_position_only_in_exact_scope(
     client, settings, monkeypatch
 ) -> None:
-    payer, payer_headers = _register_payer(
-        client, "baseline.payer.one@example.com", "Payer One"
-    )
-    _, other_headers = _register_payer(
-        client, "baseline.payer.two@example.com", "Payer Two"
-    )
+    payer, payer_headers = _register_payer(client, "baseline.payer.one@example.com", "Payer One")
+    _, other_headers = _register_payer(client, "baseline.payer.two@example.com", "Payer Two")
     (
         _,
         doctor_headers,
@@ -530,9 +511,7 @@ def test_response_fails_closed_on_release_drift_without_hiding_baseline(
         assert db.scalar(select(ExpectedCareClinicianResponse)) is None
 
 
-def test_concurrent_responses_create_one_transition(
-    client, settings, monkeypatch
-) -> None:
+def test_concurrent_responses_create_one_transition(client, settings, monkeypatch) -> None:
     _, doctor_headers, patient_id, event_id, result_id, _, _ = _case(
         client, settings, monkeypatch, "concurrent"
     )

@@ -178,6 +178,7 @@ class PatientListResponse(BaseModel):
 
 
 class PatientDoctorContactResponse(BaseModel):
+    relationship_id: UUID
     doctor_id: UUID
     display_name: str
     title: str
@@ -185,10 +186,34 @@ class PatientDoctorContactResponse(BaseModel):
     specialty: str | None
     department: str | None
     avatar_url: str | None
+    relationship_status: Literal["pending_patient_approval", "active", "rejected", "revoked"]
+    request_version: int
+    requested_at: datetime
+    approved_at: datetime | None
+    revoked_at: datetime | None
 
 
 class PatientDoctorContactListResponse(BaseModel):
     items: list[PatientDoctorContactResponse]
+
+
+class CareRelationshipActionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    expected_version: int = Field(ge=1)
+
+
+class CareRelationshipResponse(BaseModel):
+    relationship_id: UUID
+    doctor_id: UUID
+    patient_id: UUID
+    status: Literal["pending_patient_approval", "active", "rejected", "revoked"]
+    request_version: int
+    requested_at: datetime
+    responded_at: datetime | None
+    approved_at: datetime | None
+    rejected_at: datetime | None
+    revoked_at: datetime | None
 
 
 class DoctorPatientContactResponse(BaseModel):
@@ -1085,6 +1110,9 @@ class RecoveryTaskInput(BaseModel):
     title: str = Field(min_length=3, max_length=160)
     detail: str = Field(min_length=3, max_length=800)
     due_label: str = Field(min_length=3, max_length=80)
+    scheduled_date: date | None = None
+    scheduled_time: str | None = Field(default=None, pattern=r"^(?:[01]\d|2[0-3]):[0-5]\d$")
+    time_zone: str = Field(default="Asia/Shanghai", min_length=3, max_length=64)
     notification_time: str | None = Field(default=None, max_length=20)
     medication_id: UUID | None = None
     frequency: str = Field(default="as scheduled", min_length=2, max_length=120)
@@ -1142,6 +1170,20 @@ class RecoveryPlanUpdateRequest(RecoveryPlanCreateRequest):
     pass
 
 
+class RecoveryPlanSubmitReviewRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    reviewer_doctor_id: UUID | None = None
+    expected_version: int = Field(ge=1)
+
+
+class RecoveryPlanReviewActionRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    expected_version: int = Field(ge=1)
+    comment: str | None = Field(default=None, max_length=1200)
+
+
 class RecoveryTaskResponse(BaseModel):
     task_id: UUID
     plan_id: UUID
@@ -1150,6 +1192,12 @@ class RecoveryTaskResponse(BaseModel):
     title: str
     detail: str
     due_label: str
+    scheduled_date: date | None
+    scheduled_time: str | None
+    time_zone: str
+    schedule_category: Literal["overdue", "today", "upcoming", "unscheduled"] | None = None
+    plan_title: str
+    clinical_event_id: UUID | None
     notification_time: str | None
     medication_id: UUID | None
     frequency: str | None
@@ -1181,9 +1229,13 @@ class RecoveryPlanResponse(BaseModel):
     version: int
     supersedes_plan_id: UUID | None
     status: Literal[
-        "draft", "active", "published", "paused", "completed", "cancelled", "superseded"
+        "draft", "approved", "active", "published", "paused", "completed", "cancelled", "superseded"
     ]
     review_status: Literal["draft", "in_review", "changes_requested", "approved"]
+    author_doctor_id: UUID
+    assigned_reviewer_doctor_id: UUID | None
+    submitted_version: int | None
+    review_comment: str | None
     safety_label: Literal["Synthetic demonstration data only. Do not enter real patient data."] = (
         "Synthetic demonstration data only. Do not enter real patient data."
     )

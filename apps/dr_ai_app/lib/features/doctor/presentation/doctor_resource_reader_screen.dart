@@ -86,11 +86,14 @@ class _ReaderDocument extends StatefulWidget {
 
 class _ReaderDocumentState extends State<_ReaderDocument> {
   bool _languageInitialized = false;
-  bool _showChinese = false;
+  bool _showAlternateLanguage = false;
 
-  MedicalResourceTranslation? get _chineseTranslation {
+  MedicalResourceTranslation? get _alternateLanguageVersion {
+    final preferredLanguage = widget.detail.originalLanguage == 'zh-Hans'
+        ? 'en'
+        : 'zh-Hans';
     for (final translation in widget.detail.translations) {
-      if (translation.language == 'zh-Hans') return translation;
+      if (translation.language == preferredLanguage) return translation;
     }
     return null;
   }
@@ -99,10 +102,13 @@ class _ReaderDocumentState extends State<_ReaderDocument> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (!_languageInitialized) {
-      _showChinese =
-          _chineseTranslation != null &&
-          (Localizations.localeOf(context).languageCode == 'zh' ||
-              widget.detail.originalLanguage == 'zh-Hant');
+      final alternate = _alternateLanguageVersion;
+      final locale = Localizations.localeOf(context).languageCode;
+      _showAlternateLanguage =
+          alternate != null &&
+          (widget.detail.originalLanguage == 'zh-Hant' ||
+              (alternate.language == 'zh-Hans' && locale == 'zh') ||
+              (alternate.language == 'en' && locale != 'zh'));
       _languageInitialized = true;
     }
   }
@@ -111,21 +117,27 @@ class _ReaderDocumentState extends State<_ReaderDocument> {
   Widget build(BuildContext context) {
     final detail = widget.detail;
     final resource = detail.resource;
-    final chineseTranslation = _chineseTranslation;
-    final showChinese = _showChinese && chineseTranslation != null;
+    final alternate = _alternateLanguageVersion;
+    final showAlternate = _showAlternateLanguage && alternate != null;
     final deterministicScriptConversion =
-        chineseTranslation?.translationType ==
-        'deterministic_script_conversion';
+        alternate?.translationType == 'deterministic_script_conversion';
+    final officialPublisherVersion =
+        alternate?.translationType == 'official_publisher_version';
     final reviewedScriptConversion =
         deterministicScriptConversion &&
-        chineseTranslation?.reviewStatus ==
-            'medical_and_native_chinese_approved';
-    final originalLanguageLabel = detail.originalLanguage == 'zh-Hant'
-        ? (Localizations.localeOf(context).languageCode == 'zh'
-              ? '繁体中文原文'
-              : 'Traditional Chinese original')
-        : context.l10n.originalEnglish;
-    final chineseLanguageLabel = deterministicScriptConversion
+        alternate?.reviewStatus == 'medical_and_native_chinese_approved';
+    final isChineseLocale =
+        Localizations.localeOf(context).languageCode == 'zh';
+    final originalLanguageLabel = switch (detail.originalLanguage) {
+      'zh-Hant' => isChineseLocale ? '繁体中文原文' : 'Traditional Chinese original',
+      'zh-Hans' => isChineseLocale ? '官方中文原文' : 'Official Chinese original',
+      _ => context.l10n.originalEnglish,
+    };
+    final alternateLanguageLabel = officialPublisherVersion
+        ? alternate!.language == 'en'
+              ? (isChineseLocale ? '官方英文版本' : 'Official English version')
+              : (isChineseLocale ? '官方中文版本' : 'Official Chinese version')
+        : deterministicScriptConversion
         ? (Localizations.localeOf(context).languageCode == 'zh'
               ? reviewedScriptConversion
                     ? '简体中文转换（已人工审核）'
@@ -137,11 +149,12 @@ class _ReaderDocumentState extends State<_ReaderDocument> {
     final originalTitle =
         detail.originalLanguage == 'zh-Hant' && detail.sections.isNotEmpty
         ? detail.sections.first.heading
-        : resource.titleEn ?? resource.title;
-    final title = showChinese ? chineseTranslation.title : originalTitle;
-    final sections = showChinese
-        ? chineseTranslation.sections
-        : detail.sections;
+        : resource.title;
+    final title = showAlternate ? alternate.title : originalTitle;
+    final sections = showAlternate ? alternate.sections : detail.sections;
+    final selectedLocator = showAlternate && alternate.language == 'en'
+        ? resource.englishOfficialLocator ?? resource.officialLocator
+        : resource.officialLocator;
     return RepaintBoundary(
       key: const Key('resource-reader-golden-boundary'),
       child: CustomScrollView(
@@ -206,7 +219,7 @@ class _ReaderDocumentState extends State<_ReaderDocument> {
                                     ?.copyWith(color: DrAiColors.inkSecondary),
                               ),
                               const SizedBox(height: DrAiSpacing.md),
-                              if (chineseTranslation != null) ...<Widget>[
+                              if (alternate != null) ...<Widget>[
                                 SegmentedButton<bool>(
                                   key: const Key('resource-reader-language'),
                                   segments: <ButtonSegment<bool>>[
@@ -218,13 +231,13 @@ class _ReaderDocumentState extends State<_ReaderDocument> {
                                     ButtonSegment<bool>(
                                       value: true,
                                       icon: const Icon(Icons.translate),
-                                      label: Text(chineseLanguageLabel),
+                                      label: Text(alternateLanguageLabel),
                                     ),
                                   ],
-                                  selected: <bool>{showChinese},
+                                  selected: <bool>{showAlternate},
                                   onSelectionChanged: (selection) {
                                     setState(() {
-                                      _showChinese = selection.single;
+                                      _showAlternateLanguage = selection.single;
                                     });
                                   },
                                 ),
@@ -236,8 +249,8 @@ class _ReaderDocumentState extends State<_ReaderDocument> {
                                 children: <Widget>[
                                   _ReaderBadge(
                                     icon: Icons.translate,
-                                    label: showChinese
-                                        ? chineseLanguageLabel
+                                    label: showAlternate
+                                        ? alternateLanguageLabel
                                         : originalLanguageLabel,
                                   ),
                                   _ReaderBadge(
@@ -269,7 +282,8 @@ class _ReaderDocumentState extends State<_ReaderDocument> {
                               const SizedBox(height: DrAiSpacing.lg),
                               _ReaderNotice(
                                 text:
-                                    showChinese && deterministicScriptConversion
+                                    showAlternate &&
+                                        deterministicScriptConversion
                                     ? (Localizations.localeOf(
                                                 context,
                                               ).languageCode ==
@@ -280,7 +294,11 @@ class _ReaderDocumentState extends State<_ReaderDocument> {
                                           : reviewedScriptConversion
                                           ? 'This deterministic Simplified-Chinese conversion of licensed Taiwan HPA text has completed human medical, Simplified-Chinese readability, and Mainland-China applicability review. Taiwan-specific programs, contacts, and legal requirements remain explicitly jurisdiction-bound.'
                                           : 'This is a deterministic Simplified-Chinese script conversion of the licensed Traditional-Chinese text from Taiwan\'s Health Promotion Administration. Independent medical and Mainland-China applicability reviews remain pending, so it is not eligible for direct patient answers.')
-                                    : showChinese
+                                    : officialPublisherVersion
+                                    ? (isChineseLocale
+                                          ? '此处展示世界卫生组织官方中英文原文，仅供医生参考。Dr. AI 并非由世界卫生组织开发或发布，亦不代表世界卫生组织认可或与其存在隶属关系。医学及语言审核仍待完成，当前尚未进入医生或患者 AI 检索。'
+                                          : 'Official WHO-language text for doctor reference. Dr. AI was not developed or published by WHO and is not endorsed by or affiliated with WHO. Medical and language review remain pending, so this content is not currently used for doctor or patient AI retrieval.')
+                                    : showAlternate
                                     ? context.l10n.unofficialAiTranslationNotice
                                     : context.l10n.resourceReaderNotice,
                               ),
@@ -293,7 +311,7 @@ class _ReaderDocumentState extends State<_ReaderDocument> {
                                     key: const Key('open-official-source'),
                                     onPressed: () => _openOfficialSource(
                                       context,
-                                      resource.officialLocator,
+                                      selectedLocator,
                                     ),
                                     icon: const Icon(Icons.open_in_new),
                                     label: Text(
@@ -302,8 +320,12 @@ class _ReaderDocumentState extends State<_ReaderDocument> {
                                   ),
                                   OutlinedButton.icon(
                                     key: const Key('copy-document-citation'),
-                                    onPressed: () =>
-                                        _copyCitation(context, title, detail),
+                                    onPressed: () => _copyCitation(
+                                      context,
+                                      title,
+                                      detail,
+                                      selectedLocator,
+                                    ),
                                     icon: const Icon(Icons.content_copy),
                                     label: Text(
                                       context.l10n.copyDocumentCitation,
@@ -367,6 +389,7 @@ class _ReaderDocumentState extends State<_ReaderDocument> {
     BuildContext context,
     String title,
     MedicalResourceDetail detail,
+    String locator,
   ) async {
     final resource = detail.resource;
     await Clipboard.setData(
@@ -376,7 +399,7 @@ class _ReaderDocumentState extends State<_ReaderDocument> {
           detail.publisherName,
           (detail.publicationDate ?? resource.catalogVerifiedAt).year
               .toString(),
-          resource.officialLocator,
+          locator,
         ),
       ),
     );

@@ -219,9 +219,11 @@ void main() {
     'signed-out notification path resumes after role authentication',
     (tester) async {
       const notificationId = '11111111-1111-4111-8111-111111111111';
+      final sessionState = RouterSessionState.hydrated(null);
       final signedOutRouter = createRouter(
         null,
         initialLocation: '/patient/notifications/$notificationId/open',
+        sessionState: sessionState,
       );
       await tester.pumpWidget(
         ProviderScope(
@@ -240,9 +242,11 @@ void main() {
       expect(signedOutRouter.routeInformationProvider.value.uri.path, '/login');
 
       signedOutRouter.dispose();
+      sessionState.setSignedIn(AppRole.patient);
       final authenticatedRouter = createRouter(
         AppRole.patient,
         initialLocation: '/login',
+        sessionState: sessionState,
       );
       addTearDown(authenticatedRouter.dispose);
       await tester.pumpWidget(

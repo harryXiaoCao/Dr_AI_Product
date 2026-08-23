@@ -7,9 +7,11 @@ from dataclasses import dataclass
 from pydantic import ValidationError
 
 from app.chatbot_contracts import (
+    DifferentialPlan,
     EvidencePassage,
     GeneralModelOutput,
     PatientContextBundle,
+    PatientSemanticRoute,
     RetrievalQueryPlan,
     StructuredModelOutput,
 )
@@ -67,7 +69,200 @@ class DeepSeekQueryPlanResult:
     cache_miss_tokens: int | None
 
 
+@dataclass(frozen=True)
+class DeepSeekSemanticRouteResult:
+    output: PatientSemanticRoute
+    model: str
+    input_tokens: int | None
+    output_tokens: int | None
+    cache_hit_tokens: int | None
+    cache_miss_tokens: int | None
+
+
+@dataclass(frozen=True)
+class DeepSeekDifferentialPlanResult:
+    output: DifferentialPlan
+    model: str
+    input_tokens: int | None
+    output_tokens: int | None
+    cache_hit_tokens: int | None
+    cache_miss_tokens: int | None
+
+
 class DeepSeekChatAdapter:
+    def route_patient_message(
+        self,
+        *,
+        message: str,
+        language: str,
+        excluded_content_classes: list[str],
+        recent_user_messages: list[str],
+        settings: Settings,
+    ) -> DeepSeekSemanticRouteResult:
+        """Semantically route and extract a negation-aware presentation."""
+        if settings.deepseek_api_key is None:
+            raise DeepSeekChatError("service_unavailable", diagnostic_code="router_key_missing")
+        schema = PatientSemanticRoute.model_json_schema()
+        bounded_recent = [item[-600:] for item in recent_user_messages[-1:]]
+        body = {
+            "model": settings.deepseek_model,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": (
+                        "Return exactly one JSON object matching the schema. This is a bounded "
+                        "patient-message routing and presentation-extraction task, not diagnosis "
+                        "or medical advice. Understand the complete message semantically; do not "
+                        "route by isolated keywords. Extract symptoms, duration, severity, "
+                        "progression, associated symptoms, explicit negation, and relevant "
+                        "context. "
+                        "Classify candidate urgency from explicitly reported, non-hypothetical "
+                        "information. Set needs_differential exactly for symptom or possible-cause "
+                        "questions. "
+                        "Set emergency_candidate only for a high-confidence presentation that "
+                        "may require immediate emergency services, and include concise danger "
+                        "signals. Never downgrade an emergency, recommend treatment or medication "
+                        "changes, select evidence, access records, or execute tools."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": json.dumps(
+                        {
+                            "question": message,
+                            "language": language,
+                            "jurisdiction": "CN",
+                            "excluded_content_classes": excluded_content_classes,
+                            "recent_user_messages": bounded_recent,
+                            "json_schema": schema,
+                        },
+                        ensure_ascii=False,
+                    ),
+                },
+            ],
+            "response_format": {"type": "json_object"},
+            "thinking": {"type": "disabled"},
+            "stream": False,
+            "max_tokens": 360,
+            "temperature": 0.0,
+        }
+        prompt_characters = sum(len(str(item.get("content") or "")) for item in body["messages"])
+        conservative_cost = round(
+            prompt_characters * settings.deepseek_input_price_per_million_usd
+            + 360 * settings.deepseek_output_price_per_million_usd
+        )
+        if conservative_cost > settings.chatbot_semantic_router_max_cost_microunits:
+            raise DeepSeekChatError("budget", diagnostic_code="router_cost_reservation_exceeded")
+        router_settings = settings.model_copy(
+            update={
+                "deepseek_timeout_seconds": min(
+                    settings.deepseek_timeout_seconds,
+                    settings.chatbot_semantic_router_max_latency_ms / 1000,
+                )
+            }
+        )
+        payload = self._request(body, router_settings)
+        try:
+            content = payload["choices"][0]["message"]["content"]
+            output = PatientSemanticRoute.model_validate(json.loads(content))
+        except (KeyError, IndexError, TypeError, json.JSONDecodeError, ValidationError) as exc:
+            raise DeepSeekChatError(
+                "malformed", diagnostic_code="router_malformed_output", attempt_count=1
+            ) from exc
+        usage = payload.get("usage") or {}
+        if not isinstance(usage, dict):
+            usage = {}
+        details = usage.get("prompt_tokens_details") or {}
+        if not isinstance(details, dict):
+            details = {}
+        return DeepSeekSemanticRouteResult(
+            output=output,
+            model=str(payload.get("model") or settings.deepseek_model),
+            input_tokens=usage.get("prompt_tokens"),
+            output_tokens=usage.get("completion_tokens"),
+            cache_hit_tokens=details.get("cached_tokens") or usage.get("prompt_cache_hit_tokens"),
+            cache_miss_tokens=usage.get("prompt_cache_miss_tokens"),
+        )
+
+    def plan_symptom_differential(
+        self,
+        *,
+        message: str,
+        language: str,
+        presentation: PatientSemanticRoute,
+        settings: Settings,
+    ) -> DeepSeekDifferentialPlanResult:
+        """Produce bounded working hypotheses and independent retrieval queries."""
+        if settings.deepseek_api_key is None:
+            raise DeepSeekChatError(
+                "service_unavailable", diagnostic_code="differential_key_missing"
+            )
+        schema = DifferentialPlan.model_json_schema()
+        body = {
+            "model": settings.deepseek_model,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": (
+                        "Return exactly one JSON object matching the schema. Build a bounded "
+                        "differential plan for retrieval and patient education. Provide 3 to 5 "
+                        "plausible causes or diagnostic categories, including common explanations "
+                        "and important alternatives. They are working hypotheses, never confirmed "
+                        "diagnoses. For each, include a concise rationale, useful distinguishing "
+                        "questions, warning signs, and one standalone retrieval query. Also "
+                        "provide "
+                        "independent general symptom-management and warning-sign queries. Respect "
+                        "negated findings and do not recommend medication changes."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": json.dumps(
+                        {
+                            "question": message,
+                            "language": language,
+                            "jurisdiction": "CN",
+                            "semantic_route": presentation.model_dump(mode="json"),
+                            "json_schema": schema,
+                        },
+                        ensure_ascii=False,
+                    ),
+                },
+            ],
+            "response_format": {"type": "json_object"},
+            "thinking": {"type": "disabled"},
+            "stream": False,
+            "max_tokens": 900,
+            "temperature": 0.0,
+        }
+        differential_settings = settings.model_copy(
+            update={
+                "deepseek_timeout_seconds": min(
+                    settings.deepseek_timeout_seconds,
+                    settings.chatbot_differential_planning_max_latency_ms / 1000,
+                )
+            }
+        )
+        payload = self._request(body, differential_settings)
+        try:
+            content = payload["choices"][0]["message"]["content"]
+            output = DifferentialPlan.model_validate(json.loads(content))
+        except (KeyError, IndexError, TypeError, json.JSONDecodeError, ValidationError) as exc:
+            raise DeepSeekChatError(
+                "malformed", diagnostic_code="differential_malformed_output", attempt_count=1
+            ) from exc
+        usage = payload.get("usage") or {}
+        details = usage.get("prompt_tokens_details") or {}
+        return DeepSeekDifferentialPlanResult(
+            output=output,
+            model=str(payload.get("model") or settings.deepseek_model),
+            input_tokens=usage.get("prompt_tokens"),
+            output_tokens=usage.get("completion_tokens"),
+            cache_hit_tokens=details.get("cached_tokens")
+            or usage.get("prompt_cache_hit_tokens"),
+            cache_miss_tokens=usage.get("prompt_cache_miss_tokens"),
+        )
+
     def plan_retrieval_query(
         self,
         *,
@@ -178,6 +373,8 @@ class DeepSeekChatAdapter:
         evidence: list[EvidencePassage],
         patient_context: PatientContextBundle,
         conversation: list[ConversationTurn],
+        semantic_route: PatientSemanticRoute | None = None,
+        differential_plan: DifferentialPlan | None = None,
         settings: Settings,
     ) -> DeepSeekStructuredResult:
         if settings.deepseek_api_key is None:
@@ -316,6 +513,16 @@ class DeepSeekChatAdapter:
                             "answer_language": language,
                             "evidence": evidence_payload,
                             "patient_context": context_payload,
+                            "semantic_route": (
+                                semantic_route.model_dump(mode="json")
+                                if semantic_route is not None
+                                else None
+                            ),
+                            "differential_plan": (
+                                differential_plan.model_dump(mode="json")
+                                if differential_plan is not None
+                                else None
+                            ),
                             "response_policy": {
                                 "allowed_next_actions": allowed_next_actions,
                                 "section_count": section_count,
@@ -388,6 +595,8 @@ class DeepSeekChatAdapter:
         urgency_route: str,
         allowed_next_actions: list[str],
         decline_prohibited_portion: bool,
+        semantic_route: PatientSemanticRoute | None = None,
+        differential_plan: DifferentialPlan | None = None,
         settings: Settings,
     ) -> DeepSeekGeneralResult:
         """Generate citation-free general information without patient-record context."""
@@ -425,6 +634,16 @@ class DeepSeekChatAdapter:
                             "urgency_route": urgency_route,
                             "allowed_next_actions": allowed_next_actions,
                             "decline_prohibited_portion": decline_prohibited_portion,
+                            "semantic_route": (
+                                semantic_route.model_dump(mode="json")
+                                if semantic_route is not None
+                                else None
+                            ),
+                            "differential_plan": (
+                                differential_plan.model_dump(mode="json")
+                                if differential_plan is not None
+                                else None
+                            ),
                             "requirements": {
                                 "no_citations_or_sources": True,
                                 "no_patient_record_context": True,

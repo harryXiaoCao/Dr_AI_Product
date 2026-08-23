@@ -25,11 +25,13 @@ class ResponsiveAppShell extends ConsumerWidget {
   }) => <NavigationDestination>[
     NavigationDestination(
       icon: const Icon(Icons.dashboard),
-      label: context.l10n.dashboard,
+      label: compact ? _copy(context, 'Home', '首页') : context.l10n.dashboard,
     ),
     NavigationDestination(
       icon: Icon(Icons.people_outline),
-      label: context.l10n.patientManagement,
+      label: compact
+          ? _copy(context, 'Patients', '患者')
+          : context.l10n.patientManagement,
     ),
     NavigationDestination(
       icon: Icon(Icons.menu_book_outlined),

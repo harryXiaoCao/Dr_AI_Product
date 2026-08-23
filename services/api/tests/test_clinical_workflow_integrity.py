@@ -3,6 +3,7 @@ from typing import Any
 
 from fastapi.testclient import TestClient
 
+from tests.helpers import auth_header, register
 from tests.test_care_cost_workflow import _connected_event
 
 
@@ -115,7 +116,31 @@ def test_same_key_concurrent_prescription_submission_creates_one_version(
 def test_structured_recovery_calendar_is_idempotent_and_published_immutable(
     client: TestClient,
 ) -> None:
-    _, doctor_headers, patient_id, event_id = _connected_event(client)
+    patient_headers, doctor_headers, patient_id, event_id = _connected_event(client)
+    reviewer = register(
+        client,
+        email="calendar.reviewer@example.com",
+        password="Doctor9!",
+        role="doctor",
+    )
+    reviewer_headers = auth_header(reviewer["access_token"])
+    patient_code = client.get("/api/v1/patient/me/care", headers=patient_headers).json()["patient"][
+        "synthetic_identifier"
+    ]
+    client.post(
+        "/api/v1/patients/connect",
+        headers=reviewer_headers,
+        json={"patient_code": patient_code},
+    )
+    contacts = client.get("/api/v1/patient/me/contacts", headers=patient_headers).json()["items"]
+    pending = next(
+        item for item in contacts if item["relationship_status"] == "pending_patient_approval"
+    )
+    client.post(
+        f"/api/v1/patient/me/doctor-relationships/{pending['relationship_id']}/approve",
+        headers=patient_headers,
+        json={"expected_version": pending["request_version"]},
+    )
     task = {
         "category": "exercise",
         "title": "Supported range-of-motion session",
@@ -168,14 +193,24 @@ def test_structured_recovery_calendar_is_idempotent_and_published_immutable(
     submitted = client.post(
         f"/api/v1/patients/{patient_id}/recovery-plans/{plan_id}/submit-review",
         headers=doctor_headers,
+        json={
+            "reviewer_doctor_id": pending["doctor_id"],
+            "expected_version": created.json()["version"],
+        },
     )
     approved = client.post(
         f"/api/v1/patients/{patient_id}/recovery-plans/{plan_id}/approve",
-        headers=doctor_headers,
+        headers=reviewer_headers,
+        json={"expected_version": created.json()["version"]},
     )
     assert submitted.status_code == 200
     assert approved.status_code == 200
-    assert approved.json()["published_at"] is not None
+    activated = client.post(
+        f"/api/v1/patients/{patient_id}/recovery-plans/{plan_id}/activate",
+        headers=doctor_headers,
+    )
+    assert activated.status_code == 200
+    assert activated.json()["published_at"] is not None
     immutable = client.put(
         f"/api/v1/patients/{patient_id}/recovery-plans/{plan_id}",
         headers=doctor_headers,

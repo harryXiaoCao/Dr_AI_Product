@@ -297,6 +297,10 @@ def test_demo_bootstrap_is_idempotent_role_visible_and_provider_free(
         "request_clarification",
         "accept",
     ]
+    assert payer_request_body["reviews"][0]["clarification_message"].startswith(
+        "Please explain"
+    )
+    assert payer_request_body["reviews"][0]["note"].startswith("Wholly synthetic")
     assert payer_request_body["doctor_responses"][0]["response_type"] == "justification"
     assert payer_request_body["doctor_responses"][0]["comparison_id"] == str(
         first.combined_comparison_id

@@ -1,4 +1,5 @@
 import hashlib
+import json
 import uuid
 from datetime import datetime
 
@@ -7,7 +8,7 @@ from sqlalchemy import update
 from sqlalchemy.orm import Session
 
 from app.database import engine
-from app.models import PayerMembership, PayerOrganization
+from app.models import AuditEvent, Notification, PayerMembership, PayerOrganization, PayerReview
 from tests.helpers import auth_header, register
 
 
@@ -39,16 +40,18 @@ def _register_payer(
 
 def _connected_event(
     client: TestClient,
+    *,
+    suffix: str = "cost",
 ) -> tuple[dict[str, str], dict[str, str], str, str]:
     patient = register(
         client,
-        email="cost.patient@example.com",
+        email=f"{suffix}.patient@example.com",
         password="Patient9!",
         role="patient",
     )
     doctor = register(
         client,
-        email="cost.doctor@example.com",
+        email=f"{suffix}.doctor@example.com",
         password="Doctor9!",
         role="doctor",
     )
@@ -56,11 +59,19 @@ def _connected_event(
     doctor_headers = auth_header(doctor["access_token"])
     care = client.get("/api/v1/patient/me/care", headers=patient_headers).json()
     patient_id = care["patient"]["patient_id"]
-    client.post(
+    requested = client.post(
         "/api/v1/patients/connect",
         headers=doctor_headers,
         json={"patient_code": care["patient"]["synthetic_identifier"]},
     )
+    assert requested.status_code == 200
+    pending = client.get("/api/v1/patient/me/contacts", headers=patient_headers).json()["items"][0]
+    approved = client.post(
+        f"/api/v1/patient/me/doctor-relationships/{pending['relationship_id']}/approve",
+        headers=patient_headers,
+        json={"expected_version": pending["request_version"]},
+    )
+    assert approved.status_code == 200
     event = client.post(
         f"/api/v1/patients/{patient_id}/clinical-events",
         headers=doctor_headers,
@@ -74,6 +85,57 @@ def _connected_event(
     )
     assert event.status_code == 200
     return patient_headers, doctor_headers, patient_id, event.json()["id"]
+
+
+def _submitted_request(
+    client: TestClient,
+    *,
+    suffix: str,
+    requested_minor: int = 12_000,
+) -> tuple[dict[str, str], dict[str, str], dict[str, str], str]:
+    patient_headers, doctor_headers, patient_id, event_id = _connected_event(client, suffix=suffix)
+    _, payer_headers = _register_payer(
+        client,
+        email=f"payer.{suffix}@example.com",
+        organization_name=f"Synthetic {suffix} Review Fund",
+    )
+    organizations = client.get("/api/v1/payer-organizations", headers=doctor_headers).json()
+    organization_id = next(
+        item["id"] for item in organizations if item["name"] == f"Synthetic {suffix} Review Fund"
+    )
+    medication = client.post(
+        f"/api/v1/patients/{patient_id}/medications",
+        headers=doctor_headers,
+        json={
+            "clinical_event_id": event_id,
+            "name": f"Synthetic {suffix} medication",
+            "dosage": "10 mg",
+            "schedule": "Once daily",
+            "status": "active",
+            "financial": {
+                "pricing_state": "final",
+                "service_date": "2026-08-13",
+                "total_cost_minor": requested_minor + 2_000,
+                "payer_requested_minor": requested_minor,
+                "patient_responsibility_minor": 2_000,
+            },
+        },
+    )
+    assert medication.status_code == 200, medication.text
+    item_id = client.get("/api/v1/patient/me/care-costs", headers=patient_headers).json()["events"][
+        0
+    ]["items"][0]["id"]
+    submitted = client.post(
+        f"/api/v1/patients/{patient_id}/clinical-events/{event_id}/payer-requests",
+        headers=doctor_headers,
+        json={
+            "payer_organization_id": organization_id,
+            "care_cost_item_ids": [item_id],
+            "doctor_summary": "Synthetic request for payer workflow verification.",
+        },
+    )
+    assert submitted.status_code == 201, submitted.text
+    return patient_headers, doctor_headers, payer_headers, submitted.json()["id"]
 
 
 def test_three_role_care_cost_and_human_review_workflow(client: TestClient) -> None:
@@ -132,8 +194,11 @@ def test_three_role_care_cost_and_human_review_workflow(client: TestClient) -> N
     patient_ledger = client.get("/api/v1/patient/me/care-costs", headers=patient_headers)
     assert patient_ledger.status_code == 200
     assert patient_ledger.json()["actual_total_minor"] == 80000
+    assert patient_ledger.json()["estimated_total_minor"] == 12000
+    assert patient_ledger.json()["final_total_minor"] == 68000
     assert patient_ledger.json()["payer_requested_total_minor"] == 58000
     assert patient_ledger.json()["patient_responsibility_total_minor"] == 22000
+    assert patient_ledger.json()["pending_cost_item_count"] == 0
     items = patient_ledger.json()["events"][0]["items"]
     assert len(items) == 2
     assert {item["source_type"] for item in items} == {"medication", "consultation"}
@@ -252,6 +317,9 @@ def test_three_role_care_cost_and_human_review_workflow(client: TestClient) -> N
             "action": "request_clarification",
             "expected_version": 1,
             "reason_code": "documentation_needed",
+            "clarification_message": (
+                "Please provide the synthetic imaging interpretation for this request."
+            ),
             "note": "Attach the imaging interpretation before human resolution.",
         },
     )
@@ -261,6 +329,7 @@ def test_three_role_care_cost_and_human_review_workflow(client: TestClient) -> N
     assert review.json()["reviews"][0]["from_status"] == "submitted"
     assert review.json()["reviews"][0]["to_status"] == "clarification_requested"
     assert review.json()["reviews"][0]["reviewer_display_name"]
+    assert review.json()["reviews"][0]["clarification_message"].startswith("Please provide")
     assert review.json()["reviews"][0]["note"].startswith("Attach")
     replayed_review = client.post(
         f"/api/v1/payer/me/requests/{request_id}/reviews",
@@ -269,6 +338,9 @@ def test_three_role_care_cost_and_human_review_workflow(client: TestClient) -> N
             "action": "request_clarification",
             "expected_version": 1,
             "reason_code": "documentation_needed",
+            "clarification_message": (
+                "Please provide the synthetic imaging interpretation for this request."
+            ),
             "note": "Attach the imaging interpretation before human resolution.",
         },
     )
@@ -322,6 +394,7 @@ def test_three_role_care_cost_and_human_review_workflow(client: TestClient) -> N
     patient_view = patient_requests.json()["items"][0]
     assert patient_view["status"] == "under_review"
     assert patient_view["doctor_responses"][0]["response_type"] == "clarification_response"
+    assert patient_view["reviews"][0]["clarification_message"] is None
     assert patient_view["reviews"][0]["note"] is None
 
     dashboard = client.get("/api/v1/payer/me/dashboard", headers=payer_headers)
@@ -353,6 +426,7 @@ def test_three_role_care_cost_and_human_review_workflow(client: TestClient) -> N
     assert doctor_view["reviewed_at"] is not None
     assert doctor_view["reviews"][-1]["action"] == "reject"
     assert doctor_view["reviews"][-1]["reason_code"] == "unsupported_request"
+    assert doctor_view["reviews"][0]["clarification_message"].startswith("Please provide")
     assert doctor_view["reviews"][-1]["note"] is None
 
     rejected_dashboard = client.get("/api/v1/payer/me/dashboard", headers=payer_headers)
@@ -360,6 +434,200 @@ def test_three_role_care_cost_and_human_review_workflow(client: TestClient) -> N
     assert rejected_dashboard.json()["open_requests"] == 0
     assert rejected_dashboard.json()["completed_reviews"] == 1
     assert rejected_dashboard.json()["pending_requested_total_minor"] == 0
+
+
+def test_clarification_message_is_required_versioned_and_role_safe(
+    client: TestClient,
+) -> None:
+    patient_headers, doctor_headers, payer_headers, request_id = _submitted_request(
+        client, suffix="clarification-contract"
+    )
+    endpoint = f"/api/v1/payer/me/requests/{request_id}/reviews"
+    base = {
+        "action": "request_clarification",
+        "expected_version": 1,
+        "reason_code": "documentation_needed",
+        "note": "SYNTHETIC PRIVATE NOTE 8457",
+    }
+
+    for key, value in (
+        ("missing", None),
+        ("whitespace", "   "),
+        ("over-limit", "x" * 2001),
+    ):
+        payload = dict(base)
+        if value is not None:
+            payload["clarification_message"] = value
+        response = client.post(
+            endpoint,
+            headers={**payer_headers, "Idempotency-Key": f"clarification-invalid-{key}"},
+            json=payload,
+        )
+        assert response.status_code == 422, response.text
+        assert any(
+            detail["field"] == "clarification_message"
+            for detail in response.json()["error"]["details"]
+        )
+
+    not_applicable = client.post(
+        endpoint,
+        headers={**payer_headers, "Idempotency-Key": "clarification-not-applicable"},
+        json={
+            "action": "accept",
+            "expected_version": 1,
+            "reason_code": "review_complete",
+            "clarification_message": "This field must not accompany acceptance.",
+        },
+    )
+    assert not_applicable.status_code == 422
+    assert not_applicable.json()["error"]["details"][0]["field"] == ("clarification_message")
+
+    clarification = "Please upload the synthetic service-date document for review."
+    private_note = "SYNTHETIC PRIVATE NOTE 8457"
+    headers = {**payer_headers, "Idempotency-Key": "clarification-valid-content-001"}
+    valid_payload = {
+        **base,
+        "clarification_message": clarification,
+        "note": private_note,
+    }
+    recorded = client.post(endpoint, headers=headers, json=valid_payload)
+    assert recorded.status_code == 200, recorded.text
+    assert recorded.json()["reviews"][0]["clarification_message"] == clarification
+    assert recorded.json()["reviews"][0]["note"] == private_note
+
+    replay = client.post(endpoint, headers=headers, json=valid_payload)
+    assert replay.status_code == 200
+    assert replay.json()["id"] == recorded.json()["id"]
+    assert replay.json()["version"] == recorded.json()["version"] == 2
+    assert replay.json()["reviews"] == recorded.json()["reviews"]
+    changed_content = client.post(
+        endpoint,
+        headers=headers,
+        json={**valid_payload, "clarification_message": clarification + " Changed."},
+    )
+    assert changed_content.status_code == 409
+
+    doctor_view = client.get("/api/v1/doctor/me/payer-requests", headers=doctor_headers).json()[
+        "items"
+    ][0]["reviews"][0]
+    assert doctor_view["clarification_message"] == clarification
+    assert doctor_view["note"] is None
+
+    patient_view = client.get("/api/v1/patient/me/payer-requests", headers=patient_headers).json()[
+        "items"
+    ][0]["reviews"][0]
+    assert patient_view["clarification_message"] is None
+    assert patient_view["note"] is None
+
+    _, unrelated_payer_headers = _register_payer(
+        client,
+        email="unrelated.clarification.payer@example.com",
+        organization_name="Unrelated Synthetic Payer",
+    )
+    assert (
+        client.get(endpoint.removesuffix("/reviews"), headers=unrelated_payer_headers).status_code
+        == 404
+    )
+    unrelated_doctor = register(
+        client,
+        email="unrelated.clarification.doctor@example.com",
+        password="Doctor9!",
+        role="doctor",
+    )
+    assert (
+        client.get(
+            "/api/v1/doctor/me/payer-requests",
+            headers=auth_header(unrelated_doctor["access_token"]),
+        ).json()["items"]
+        == []
+    )
+
+    with Session(engine) as db:
+        saved_review = (
+            db.query(PayerReview)
+            .filter(PayerReview.payer_request_id == uuid.UUID(request_id))
+            .one()
+        )
+        assert saved_review.clarification_message == clarification
+        serialized_audit = json.dumps(
+            [row.metadata_json for row in db.query(AuditEvent).all()], sort_keys=True
+        )
+        serialized_notifications = json.dumps(
+            [{"title": row.title, "body": row.body} for row in db.query(Notification).all()],
+            sort_keys=True,
+        )
+    for private_text in (clarification, private_note):
+        assert private_text not in serialized_audit
+        assert private_text not in serialized_notifications
+
+
+def test_escalated_requests_remain_in_open_workload_metrics(client: TestClient) -> None:
+    _, _, payer_headers, request_id = _submitted_request(
+        client, suffix="escalated-metrics", requested_minor=34_500
+    )
+
+    def metrics() -> dict:
+        response = client.get("/api/v1/payer/me/dashboard", headers=payer_headers)
+        assert response.status_code == 200, response.text
+        return response.json()
+
+    submitted = metrics()
+    assert submitted["open_requests"] == 1
+    assert submitted["pending_requested_total_minor"] == 34_500
+    assert submitted["escalated_requests"] == 0
+    assert submitted["completed_reviews"] == 0
+
+    endpoint = f"/api/v1/payer/me/requests/{request_id}/reviews"
+    escalated = client.post(
+        endpoint,
+        headers={**payer_headers, "Idempotency-Key": "metrics-escalate-0001"},
+        json={
+            "action": "escalate",
+            "expected_version": 1,
+            "reason_code": "secondary_review",
+        },
+    )
+    assert escalated.status_code == 200, escalated.text
+    assert escalated.json()["status"] == "escalated"
+    escalated_metrics = metrics()
+    assert escalated_metrics["open_requests"] == 1
+    assert escalated_metrics["pending_requested_total_minor"] == 34_500
+    assert escalated_metrics["escalated_requests"] == 1
+    assert escalated_metrics["completed_reviews"] == 0
+
+    clarification = client.post(
+        endpoint,
+        headers={**payer_headers, "Idempotency-Key": "metrics-clarify-0001"},
+        json={
+            "action": "request_clarification",
+            "expected_version": 2,
+            "reason_code": "documentation_needed",
+            "clarification_message": "Please add the synthetic dated service record.",
+        },
+    )
+    assert clarification.status_code == 200, clarification.text
+    clarification_metrics = metrics()
+    assert clarification_metrics["open_requests"] == 1
+    assert clarification_metrics["clarification_requests"] == 1
+    assert clarification_metrics["escalated_requests"] == 0
+    assert clarification_metrics["pending_requested_total_minor"] == 34_500
+
+    closed = client.post(
+        endpoint,
+        headers={**payer_headers, "Idempotency-Key": "metrics-close-000001"},
+        json={
+            "action": "close",
+            "expected_version": 3,
+            "reason_code": "workflow_closed",
+        },
+    )
+    assert closed.status_code == 200, closed.text
+    closed_metrics = metrics()
+    assert closed_metrics["open_requests"] == 0
+    assert closed_metrics["clarification_requests"] == 0
+    assert closed_metrics["escalated_requests"] == 0
+    assert closed_metrics["pending_requested_total_minor"] == 0
+    assert closed_metrics["completed_reviews"] == 1
 
 
 def test_care_cost_authorization_and_validation_fail_closed(client: TestClient) -> None:
@@ -520,6 +788,10 @@ def test_imaging_clinical_service_is_the_single_billable_source(
     assert pending_item["pricing_state"] == "pending_cost"
     assert pending_item["submission_eligible"] is False
     assert pending_item["ineligibility_reason"] == "cost_pending"
+    assert pending_ledger["actual_total_minor"] == 0
+    assert pending_ledger["estimated_total_minor"] == 0
+    assert pending_ledger["final_total_minor"] == 0
+    assert pending_ledger["pending_cost_item_count"] == 1
 
     for filename in ("ct-series.dcm", "radiology-report.pdf"):
         prepared = client.post(
@@ -566,6 +838,7 @@ def test_imaging_clinical_service_is_the_single_billable_source(
         "/api/v1/patient/me/care-costs", headers=patient_headers
     ).json()
     assert len(ledger_after_evidence["events"][0]["items"]) == 1
+    assert ledger_after_evidence["pending_cost_item_count"] == 1
 
     completed_cost = client.put(
         f"/api/v1/patients/{patient_id}/clinical-services/{service['id']}/financial",

@@ -28,8 +28,12 @@ can be treated as available. Phase 5 provides only a tightly scoped non-public
 synthetic operations command for attributable request transitions. Phase 3
 Slice 1 freezes chatbot governance and shared contracts.
 Slice 3 adds a doctor-only authoritative-link catalog route. Slice 4 adds
-release-specific doctor and patient retrieval endpoints while keeping the real
-WHO/NHC passage corpus inactive until rights and clinician-review approval.
+release-specific doctor and patient retrieval endpoints. WHO permission request
+`202609681` now permits the exact non-commercial Product use recorded in the
+rights ledger, and the complete official English/Chinese text corpus is stored
+for governed display and preparation. Its retrieval passages remain inactive
+until clinician, language, Mainland-applicability, audience, and immutable-
+release approval. NHC remains metadata-only and rights-pending.
 The 2026-07-23 care-and-cost slice adds payer registration and membership,
 event-level cost-item CRUD/readback, immutable payer-request snapshots, and an
 organization-scoped human review queue. It does not add claims adjudication,
@@ -694,6 +698,13 @@ this slice calculates a necessity, abuse, fraud, coverage, or payment decision.
   ledger.
 - `GET /api/v1/patients/{patient_id}/care-costs`: active treating-doctor
   ledger readback.
+
+Both ledger reads are the authoritative source for the patient dashboard and
+the full Care & Costs workspace. The response reports CNY
+`actual_total_minor`, server-partitioned `estimated_total_minor` and
+`final_total_minor`, `payer_requested_total_minor`,
+`patient_responsibility_total_minor`, and `pending_cost_item_count`. Clients
+format these values but do not recompute authoritative financial totals.
 - `POST /api/v1/patients/{patient_id}/clinical-events/{event_id}/care-items`:
   legacy generic creation is disabled with `409 integrated_financial_required`;
   create the cost from its price-bearing clinical record instead.
@@ -744,6 +755,10 @@ are scheduling/resource containers and are not automatically billable.
 Diagnoses, history facts, doctor notes, recovery plans/observations, reminders,
 and patient updates remain non-billable clinical documentation.
 
+The patient dashboard snapshot contains no financial line items or static
+credit values. Its summary reads this same patient ledger and links to the full
+Care & Costs workspace.
+
 ### Submission and request readback
 
 - `GET /api/v1/payer-organizations`: doctor-visible synthetic organization
@@ -760,7 +775,10 @@ and patient updates remain non-billable clinical documentation.
   reasons.
 - `GET /api/v1/doctor/me/payer-requests`: submitting doctor's requests.
 - `GET /api/v1/patient/me/payer-requests`: patient's requests. Doctor and
-  patient responses exclude payer reviewer notes. Each immutable line exposes
+  patient responses exclude payer reviewer notes. Doctor responses may expose
+  only the immutable `clarification_message` attached to a payer
+  `request_clarification` transition; patient responses redact both fields.
+  Each immutable line exposes
   its nullable `care_cost_item_id` source link so authorized clients can mark
   previously submitted ledger rows; the remaining line fields stay valid if
   the editable source row is later deleted.
@@ -796,14 +814,28 @@ workspace endpoints. Account email remains owned by the shared
 `PATCH /api/v1/auth/account/email` contract, and password changes continue
 through `PUT /api/v1/auth/password` with session revocation.
 
-Review creation accepts `action`, `reason_code`, and optional `note`. Actions
-are `request_clarification`, `accept`, `reject`, `escalate`, and `close`; they
-map to request statuses `clarification_requested`, `accepted`, `rejected`,
-`escalated`, and `closed`. The doctor request-history contract returns every
-current status, review action, reason code, and review timestamp but redacts the
-reviewer-only note. These are human workflow states, not automatic
+Review creation accepts `action`, `reason_code`, optional payer-private `note`,
+and conditionally applicable `clarification_message`. The clarification message
+is required at 10-2000 trimmed characters only for `request_clarification` and
+is rejected for every other action. `note` remains optional at at most 4000
+trimmed characters and is returned only to an authorized payer organization.
+Both values are included in the idempotency checksum and stored on the immutable
+review transition, but neither is copied to notification summaries, audit
+metadata, CEI/provider payloads, logs, or telemetry. Actions are
+`request_clarification`, `accept`, `reject`, `escalate`, and `close`; they map to
+request statuses `clarification_requested`, `accepted`, `rejected`, `escalated`,
+and `closed`. The doctor request-history contract returns every current status,
+review action, reason code, review timestamp, and authorized clarification
+message while redacting the reviewer-only note. These are human workflow states, not automatic
 reimbursement, payment, coverage, adjudication, or care decisions. Request
 existence and reviewer notes remain organization-scoped.
+
+`GET /api/v1/payer/me/dashboard` classifies `submitted`,
+`clarification_requested`, `under_review`, and `escalated` as unresolved open
+work. `open_requests` and `pending_requested_total_minor` include all four;
+`escalated_requests` counts the escalated subset, and `completed_reviews` counts
+only `accepted`, `rejected`, and `closed`. Each request belongs to exactly one
+open/completed category, and monetary totals remain integer minor units.
 
 ## Internal Governed Care-Reference And Deterministic Contract
 
@@ -1349,6 +1381,13 @@ audit metadata must not store upload URLs, tokens, patient-owned content, or
 secrets.
 
 ## Phase 2 imaging upload and review contract
+
+The doctor dashboard links to `/doctor/patients?section=imaging`. Optional
+`patient` and `event` query parameters preserve an authorized patient/event
+selection across direct navigation and refresh. Without a patient parameter,
+the imaging section opens with an explicit patient-selection state. This is an
+imaging-record and manual-review workflow; it does not represent automated
+interpretation, diagnosis, regulatory approval, or an activated image model.
 
 The imaging workflow now has two explicit layers:
 
@@ -1987,10 +2026,16 @@ and the immediate pre-generation handoff separately re-read source-matched,
 effective, unexpired provider-transmission rights; a stale manifest cannot
 override a revoked or expired live rights decision.
 
-Slice 9B does not change the public patient-evidence response. Patient chat
-first searches the literal user question. Only a server-defined short-
-reference, colloquial/ambiguous, or weak-result trigger may spend one bounded
-schema-constrained planner call and one retrieval retry. The server validates
+Slice 9B does not change the public patient-evidence response. The later
+semantic-routing refinement preserves the literal user question and folds the
+former optional rewrite-only planner into one feature-flagged, schema-
+constrained DeepSeek routing call after deterministic safety and prohibited-
+request gates. That call returns only candidate intent, urgency, explicitly
+reported concepts, danger signals, and bounded retrieval queries. The server
+may accept a high-confidence emergency upgrade but never a downgrade, and fixed
+emergency guidance still returns before retrieval or answer generation. For
+non-emergencies, only a server-defined short-reference, colloquial/ambiguous,
+or weak-result trigger may spend one retrieval retry. The server validates
 meaning preservation, keeps the original result, collapses duplicate passages,
 limits per-source dominance, and uses the fused result only when measured
 retrieval utility improves. Planner timeouts, quota errors, malformed output,
@@ -2029,10 +2074,11 @@ education portion while explicitly declining a prohibited personal treatment
 change. Adequate approved evidence continues to use the grounded schema and
 claim/citation/context validation.
 
-The workflow permits zero or one planner request, one answer-generation
-request, and at most one malformed-output schema-repair request. This is a
-two-stage adaptive workflow with an optional bounded repair, not an absolute
-two-request guarantee. Grounded generation and general-model-knowledge
+The workflow makes only the calls selected by the route: zero for a
+deterministic emergency, one for a semantic emergency, two for an ordinary
+general question, and three for a symptom/possible-cause question. A bounded
+final-schema repair remains an error-recovery attempt, not a normal workflow
+stage. Semantic routing, differential planning, grounded generation, and general-model-knowledge
 generation have separate kill switches and schema versions. There is no
 arbitrary answer-time web browsing.
 
@@ -2042,9 +2088,13 @@ New patient-chat responses populate the additive `urgency_route` field with one
 of `emergency_120`, `urgent_same_day`, `clinician_contact`,
 `routine_education`, or `prohibited_medication_change`. The field remains
 nullable only so previously stored thread metadata can still be read. It is a
-server decision, not model output.
+server decision. The router supplies only an untrusted candidate; deterministic
+routes cannot be downgraded, and only a structurally valid high-confidence
+candidate with a non-empty danger signal may be upgraded to `emergency_120`.
 
-Emergency routes return before retrieval and answer-model generation.
+Deterministic emergencies return before all model calls. A semantic emergency
+upgrade returns the same localized server-owned response after the routing call
+and before retrieval, differential planning, or final generation.
 Prohibited medication actions remain server-owned; a mixed request may pass
 only its safe educational portion to the general-knowledge schema while the
 personalized change is declined. For an allowed non-emergency message, the server passes the model a
@@ -2174,3 +2224,22 @@ The Flutter Consultation section sends only asynchronous specialist-referral
 requests. Normal doctor consultations are saved with a non-referral
 `consultation_type` from the Clinical Event workspace and are rendered beside
 that event's appended encounter updates and diagnosis records.
+
+### Workflow-integrity contract (schema `20260816_0061`)
+
+Doctor code entry creates or reissues a `pending_patient_approval` relationship;
+it never grants patient access. Patients approve, reject, or revoke versioned
+requests through `/patient/me/doctor-relationships/{id}/{action}`. Only active
+relationships pass clinical gates; revoked links can only return to pending and
+require new consent.
+
+Recovery review binds a distinct, active, review-authorized doctor and freezes
+`submitted_version`. Only that reviewer may request changes or approve.
+Approval sets `status=approved` but does not activate; author activation
+rechecks the reviewer's live authority. Decisions and audit events preserve
+content-free provenance and timestamps.
+
+`GET /patient/me/today` aggregates every active plan into `overdue`, `today`,
+`upcoming`, and `unscheduled`. It returns plan and Clinical Event identity.
+Classification uses only `scheduled_date` and IANA `time_zone`, at local
+midnight boundaries; localized display labels are never parsed.

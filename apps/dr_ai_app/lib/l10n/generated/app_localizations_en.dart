@@ -24,6 +24,34 @@ class AppLocalizationsEn extends AppLocalizations {
   String get contacts => 'Contacts';
 
   @override
+  String get connectedDoctors => 'Connected Doctors';
+
+  @override
+  String get pendingPatientApproval => 'Pending approval';
+
+  @override
+  String get approve => 'Approve';
+
+  @override
+  String get reject => 'Reject';
+
+  @override
+  String get removeConnectedDoctor => 'Remove connected doctor';
+
+  @override
+  String get activatePlan => 'Activate approved plan';
+
+  @override
+  String get authorLabel => 'Author';
+
+  @override
+  String get reviewerLabel => 'Reviewer';
+
+  @override
+  String get notAssigned =>
+      'Not assigned — independent review is not established';
+
+  @override
   String get recoveryPlan => 'Recovery Plan';
 
   @override
@@ -287,7 +315,49 @@ class AppLocalizationsEn extends AppLocalizations {
   String get today => 'Today';
 
   @override
-  String get medicalFee => 'Medical Fee';
+  String get overdue => 'Overdue';
+
+  @override
+  String get upcoming => 'Upcoming';
+
+  @override
+  String get unscheduled => 'Unscheduled';
+
+  @override
+  String get noScheduledTasks => 'No tasks in this section.';
+
+  @override
+  String get careCostsSummary => 'Care & Costs summary';
+
+  @override
+  String get loadingCareCostsSummary => 'Loading Care & Costs summary';
+
+  @override
+  String get loadCareCostsSummaryFailed =>
+      'Care & Costs are temporarily unavailable.';
+
+  @override
+  String get noCareCostsYet =>
+      'No billable services or products have been recorded yet.';
+
+  @override
+  String get authoritativeLedgerSummary =>
+      'CNY amounts from the same server ledger as Care & Costs. Uploaded images are evidence, not separate charges.';
+
+  @override
+  String get estimatedAmounts => 'Estimated amounts';
+
+  @override
+  String get finalAmounts => 'Final amounts';
+
+  @override
+  String get requestedFromPayer => 'Requested from payer';
+
+  @override
+  String get expectedPatientResponsibility => 'Expected patient responsibility';
+
+  @override
+  String get pendingCostItems => 'Costs still pending';
 
   @override
   String get askDrAi => 'Ask Dr. AI';
@@ -1373,27 +1443,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Connect patients by code to start care episodes';
 
   @override
-  String get ctImageReview => 'AI-supported CT image review';
-
-  @override
-  String get xrayImageReview => 'AI-supported X-ray image review';
-
-  @override
-  String get mriImageReview => 'AI-supported MRI image review';
-
-  @override
-  String get checkMedicalRecords => 'Check Patient Medical Records';
-
-  @override
-  String get checkRecoveryPlans => 'Check Patient Recovery Plans';
-
-  @override
-  String get checkImagingResults => 'Check Imaging Results';
-
-  @override
-  String get bookEquipment => 'Book Medical Equipment';
-
-  @override
   String get noPatientActivity => 'No patient activity yet';
 
   @override
@@ -1413,6 +1462,41 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get quickAccess => 'Quick Access';
+
+  @override
+  String get imagingRecordsManualReview => 'Imaging records & manual review';
+
+  @override
+  String get imagingRecordsManualReviewDescription =>
+      'Select a patient to view event-linked imaging evidence and doctor-entered review status.';
+
+  @override
+  String get patientMedicalRecords => 'Patient medical records';
+
+  @override
+  String get patientMedicalRecordsDescription =>
+      'Select a patient to review their authorized clinical history and records.';
+
+  @override
+  String get patientRecoveryPlans => 'Patient recovery plans';
+
+  @override
+  String get patientRecoveryPlansDescription =>
+      'Select a patient to open the recovery-plan workspace.';
+
+  @override
+  String get medicalResourcesReadOnly => 'Medical resources (read-only)';
+
+  @override
+  String get medicalResourcesReadOnlyDescription =>
+      'View the current informational resource overview; booking is not enabled.';
+
+  @override
+  String get payerRequests => 'Payer requests';
+
+  @override
+  String get payerRequestsDescription =>
+      'Open the doctor workspace for human-reviewed payer requests.';
 
   @override
   String get teamManagement => 'Team Management';
@@ -2130,6 +2214,35 @@ class AppLocalizationsEn extends AppLocalizations {
   String get planTitle => 'Plan title';
 
   @override
+  String get planTitleLimit => 'Required, 3–160 characters.';
+
+  @override
+  String get planTitleRequired => 'Enter a plan title.';
+
+  @override
+  String get planTitleTooShort =>
+      'Use at least 3 characters for the plan title.';
+
+  @override
+  String get planTitleTooLong =>
+      'Use no more than 160 characters for the plan title.';
+
+  @override
+  String get planTitleInvalidServer =>
+      'Check the plan title and keep it within 160 characters.';
+
+  @override
+  String get recoveryTaskTitleLimit => '3–160 characters when provided.';
+
+  @override
+  String get recoveryTaskTitleTooShort =>
+      'Use at least 3 characters for this task title.';
+
+  @override
+  String get recoveryTaskTitleTooLong =>
+      'Use no more than 160 characters for this task title.';
+
+  @override
   String get instructions => 'Instructions';
 
   @override
@@ -2157,6 +2270,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get requestChanges => 'Request changes';
+
+  @override
+  String get reviewComment => 'Review comment';
+
+  @override
+  String get reviewCommentHelp =>
+      'Required when requesting changes; optional when approving.';
+
+  @override
+  String get reviewCommentRequired =>
+      'Enter a review comment before requesting changes.';
 
   @override
   String get approvePatient => 'Approve for patient';
@@ -2729,6 +2853,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aiContactDoctor => 'Contact my doctor';
 
   @override
+  String get aiCall120Now => 'Call 120 now';
+
+  @override
   String get privateCareConversation => 'Private care conversation';
 
   @override
@@ -2772,7 +2899,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get resourceCatalogPreviewBody =>
-      'These are 200 real WHO fact sheets paired across official Chinese and English pages. Full text is not stored or used for AI retrieval while commercial rights and medical review remain pending.';
+      '247 WHO fact sheets cover 240 official Chinese and 244 official English pages. Licensed text is stored under request 202609681 but remains outside doctor and patient retrieval pending review.';
 
   @override
   String get resourceSearchHint =>
@@ -3943,4 +4070,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get ceiWeaklySupported => 'Weakly supported; human review required';
+
+  @override
+  String get aiPossibleCauses => 'Possible causes';
+
+  @override
+  String get aiPossibleCausesNotDiagnosis =>
+      'These are possibilities, not a confirmed diagnosis.';
+
+  @override
+  String get aiWarningSigns => 'Important warning signs';
+
+  @override
+  String get aiNextSteps => 'Practical next steps';
 }

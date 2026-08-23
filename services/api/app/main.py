@@ -9,7 +9,11 @@ from starlette.middleware.cors import CORSMiddleware
 
 from app.auth import router as auth_router
 from app.care_cost import router as care_cost_router
-from app.chatbot_release_governance import chatbot_generation_readiness
+from app.chatbot_release_governance import (
+    chatbot_generation_readiness,
+    differential_planning_readiness,
+    semantic_routing_readiness,
+)
 from app.clinical_event_intelligence_governance import intelligence_readiness
 from app.clinical_event_intelligence_routes import (
     router as clinical_event_intelligence_router,
@@ -95,6 +99,8 @@ def create_app() -> FastAPI:
             with SessionLocal() as db:
                 compatible_release = explanation_release_ready(db, settings)
                 chatbot_readiness = chatbot_generation_readiness(db, settings)
+                semantic_routing = semantic_routing_readiness(settings)
+                differential_planning = differential_planning_readiness(settings)
                 clinical_intelligence_readiness = intelligence_readiness(db, settings)
                 try:
                     candidate_release = active_candidate_release(db, settings)
@@ -134,6 +140,8 @@ def create_app() -> FastAPI:
                 "web_sha256": settings.deployment_web_sha256,
             },
             "patient_chat_generation": chatbot_readiness.code,
+            "patient_chat_semantic_routing": semantic_routing.code,
+            "patient_chat_differential_planning": differential_planning.code,
             "expected_care_candidate": candidate_readiness,
             "expected_care_candidate_release_version": (
                 candidate_release.version if candidate_release else None

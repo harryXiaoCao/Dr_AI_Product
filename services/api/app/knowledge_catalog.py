@@ -2,7 +2,7 @@ from datetime import date, datetime
 
 from fastapi import APIRouter, Query
 from pydantic import BaseModel, ConfigDict
-from sqlalchemy import Text, cast, exists, or_, select
+from sqlalchemy import Text, case, cast, exists, or_, select
 
 from app.dependencies import CurrentUser, DbSession
 from app.errors import ApiError
@@ -226,7 +226,11 @@ def list_doctor_resource_catalog(
         all_versions = db.scalars(
             select(KbSourceVersion)
             .where(KbSourceVersion.source_id.in_(source_ids))
-            .order_by(KbSourceVersion.valid_from, KbSourceVersion.stable_id)
+            .order_by(
+                KbSourceVersion.valid_from,
+                case((KbSourceVersion.capture_mode == "metadata_only", 0), else_=1),
+                KbSourceVersion.stable_id,
+            )
         ).all()
         for version in all_versions:
             versions_by_source.setdefault(version.source_id, []).append(version)
@@ -358,7 +362,11 @@ def get_doctor_resource(
     version = requested_version or db.scalar(
         select(KbSourceVersion)
         .where(KbSourceVersion.source_id == source.id)
-        .order_by(KbSourceVersion.captured_at.desc())
+        .order_by(
+            KbSourceVersion.captured_at.desc(),
+            case((KbSourceVersion.capture_mode == "metadata_only", 1), else_=0),
+            KbSourceVersion.stable_id.desc(),
+        )
         .limit(1)
     )
     sections: list[KnowledgeResourceSection] = []
@@ -374,6 +382,8 @@ def get_doctor_resource(
             .order_by(KbSection.ordinal, KbPassage.ordinal)
         ).all()
         for section, passage in section_rows:
+            if passage.language != source.original_language:
+                continue
             sections.append(
                 KnowledgeResourceSection(
                     heading=(section.heading_path_json[-1] if section.heading_path_json else ""),
@@ -393,6 +403,46 @@ def get_doctor_resource(
         source, generated_translation
     )
     translations: list[KnowledgeResourceTranslation] = []
+    if (
+        publisher.stable_id == "KBP-WHO"
+        and version is not None
+        and _original_text_display_allowed(rights)
+    ):
+        official_languages = {
+            translation["language"] for translation in source.official_translations_json
+        }
+        for language in sorted(official_languages):
+            official_rows = db.execute(
+                select(KbSection, KbPassage)
+                .join(KbPassage, KbPassage.section_id == KbSection.id)
+                .where(
+                    KbSection.version_id == version.id,
+                    KbPassage.language == language,
+                )
+                .order_by(KbSection.ordinal, KbPassage.ordinal)
+            ).all()
+            if not official_rows:
+                continue
+            official = next(
+                item for item in source.official_translations_json if item["language"] == language
+            )
+            translations.append(
+                KnowledgeResourceTranslation(
+                    language=language,
+                    title=official["title"],
+                    translation_type="official_publisher_version",
+                    review_status="official_text_medical_review_pending",
+                    sections=[
+                        KnowledgeResourceSection(
+                            heading=(
+                                section.heading_path_json[-1] if section.heading_path_json else ""
+                            ),
+                            original_text=passage.text,
+                        )
+                        for section, passage in official_rows
+                    ],
+                )
+            )
     if _translation_display_allowed(source, generated_translation):
         assert generated_translation is not None
         translated_sections = db.scalars(

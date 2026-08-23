@@ -28,6 +28,12 @@ PURPOSE_CODE = "patient_chat_generated_answer"
 RELEASE_KEY = "patient-chat-generated-answer"
 PURPOSE_CONTRACT_VERSION = "patient-chat-generated-answer-purpose.v1"
 PROMPT_VERSION = "patient-chat-deepseek-prompts.v1"
+SEMANTIC_ROUTING_PURPOSE_CODE = "patient_chat_semantic_routing"
+SEMANTIC_ROUTING_CONTRACT_VERSION = "patient-chat-semantic-routing-purpose.v1"
+SEMANTIC_ROUTING_SCHEMA_VERSION = "patient-semantic-route-v1-2026-08-13"
+DIFFERENTIAL_PLANNING_PURPOSE_CODE = "patient_chat_differential_planning"
+DIFFERENTIAL_PLANNING_CONTRACT_VERSION = "patient-chat-differential-planning-purpose.v1"
+DIFFERENTIAL_PLANNING_SCHEMA_VERSION = "patient-differential-plan-v1-2026-08-13"
 MANDATORY_MACHINE_GATES = frozenset(
     {
         "bilingual",
@@ -80,6 +86,48 @@ def chatbot_contract_checksum(settings: Settings) -> str:
             "grounded_output_schema": StructuredModelOutput.model_json_schema(),
             "general_output_schema": GeneralModelOutput.model_json_schema(),
         }
+    )
+
+
+def _local_synthetic_purpose_readiness(
+    settings: Settings,
+    *,
+    enabled: bool,
+    kill_switch: bool,
+    configured_schema_version: str,
+    expected_schema_version: str,
+) -> ChatbotReadiness:
+    if not enabled:
+        return ChatbotReadiness(False, "disabled")
+    if kill_switch:
+        return ChatbotReadiness(False, "kill_switched")
+    if configured_schema_version != expected_schema_version:
+        return ChatbotReadiness(False, "blocked_incompatible_release")
+    if (
+        settings.environment not in {"local", "test"}
+        or settings.chatbot_data_mode != "synthetic_only"
+    ):
+        return ChatbotReadiness(False, "blocked_requires_governed_release")
+    return ChatbotReadiness(True, "ready_local_synthetic")
+
+
+def semantic_routing_readiness(settings: Settings) -> ChatbotReadiness:
+    return _local_synthetic_purpose_readiness(
+        settings,
+        enabled=settings.chatbot_semantic_routing_purpose_enabled,
+        kill_switch=settings.chatbot_semantic_routing_kill_switch,
+        configured_schema_version=settings.chatbot_semantic_routing_schema_version,
+        expected_schema_version=SEMANTIC_ROUTING_SCHEMA_VERSION,
+    )
+
+
+def differential_planning_readiness(settings: Settings) -> ChatbotReadiness:
+    return _local_synthetic_purpose_readiness(
+        settings,
+        enabled=settings.chatbot_differential_planning_purpose_enabled,
+        kill_switch=settings.chatbot_differential_planning_kill_switch,
+        configured_schema_version=settings.chatbot_differential_planning_schema_version,
+        expected_schema_version=DIFFERENTIAL_PLANNING_SCHEMA_VERSION,
     )
 
 

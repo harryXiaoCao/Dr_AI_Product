@@ -33,6 +33,20 @@ CONTRACT = (
         ("我有自残的想法，怕自己会做。", "self_harm_crisis"),
         ("I took too many pills.", "suspected_medication_overdose"),
         ("I have thoughts of self-harm.", "self_harm_crisis"),
+        (
+            "I have severe chest pain and trouble breathing right now.",
+            "chest_pressure_with_breathing_difficulty",
+        ),
+        (
+            "I have chest pressure and difficulty breathing.",
+            "chest_pressure_with_breathing_difficulty",
+        ),
+        (
+            "I am short of breath and have severe chest pain.",
+            "chest_pressure_with_breathing_difficulty",
+        ),
+        ("我胸口发紧，而且呼吸很费劲。", "chest_pressure_with_breathing_difficulty"),
+        ("我胸痛，同时呼吸不畅。", "chest_pressure_with_breathing_difficulty"),
     ],
 )
 def test_combination_emergency_rules(message: str, rule_id: str) -> None:
@@ -95,6 +109,21 @@ def test_explicit_emergency_follow_up_carries_one_user_turn_before_safety() -> N
     assert resolution.carried_previous_user_turn is True
     assert resolution.literal_query == current
     assert assess_safety(resolution.analysis_message).urgency_route == UrgencyRoute.emergency_120
+
+
+def test_chest_pain_breathing_follow_up_is_combined_before_safety() -> None:
+    current = "Now I am having trouble breathing."
+    resolution = resolve_bounded_user_continuity(
+        current,
+        ("I have severe chest pain.",),
+    )
+    assessment = assess_safety(resolution.analysis_message)
+
+    assert resolution.reason == ContinuityReason.temporal_symptom_follow_up
+    assert resolution.literal_query == current
+    assert assessment.safety_code == SafetyCode.emergency
+    assert assessment.urgency_route == UrgencyRoute.emergency_120
+    assert assessment.rule_id == "chest_pressure_with_breathing_difficulty"
 
 
 def test_measurement_method_reference_carries_only_the_previous_user_turn() -> None:
@@ -178,6 +207,20 @@ def test_continuity_admits_only_the_most_recent_non_empty_user_turn() -> None:
 )
 def test_negated_emergency_terms_do_not_trigger_emergency(message: str) -> None:
     assert _safety_route(message) != SafetyCode.emergency
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "I have mild chest pain after lifting, but no trouble breathing.",
+        "I feel short of breath after climbing stairs, but I do not have chest pain.",
+        "我搬东西后有点胸痛，但没有呼吸困难。",
+    ],
+)
+def test_chest_breathing_near_neighbors_do_not_trigger_emergency(message: str) -> None:
+    assessment = assess_safety(message)
+    assert assessment.safety_code != SafetyCode.emergency
+    assert assessment.urgency_route != UrgencyRoute.emergency_120
 
 
 def test_absent_normal_breathing_is_a_positive_danger_signal() -> None:

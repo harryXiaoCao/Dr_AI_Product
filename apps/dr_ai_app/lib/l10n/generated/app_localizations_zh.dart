@@ -24,6 +24,33 @@ class AppLocalizationsZh extends AppLocalizations {
   String get contacts => '联系';
 
   @override
+  String get connectedDoctors => '已连接医生';
+
+  @override
+  String get pendingPatientApproval => '等待您的批准';
+
+  @override
+  String get approve => '批准';
+
+  @override
+  String get reject => '拒绝';
+
+  @override
+  String get removeConnectedDoctor => '移除已连接医生';
+
+  @override
+  String get activatePlan => '启用已批准方案';
+
+  @override
+  String get authorLabel => '作者';
+
+  @override
+  String get reviewerLabel => '审阅医生';
+
+  @override
+  String get notAssigned => '未分配——尚未建立独立审阅';
+
+  @override
   String get recoveryPlan => '康复计划';
 
   @override
@@ -272,7 +299,47 @@ class AppLocalizationsZh extends AppLocalizations {
   String get today => '今日';
 
   @override
-  String get medicalFee => '医疗费用';
+  String get overdue => '已逾期';
+
+  @override
+  String get upcoming => '即将到期';
+
+  @override
+  String get unscheduled => '未排期';
+
+  @override
+  String get noScheduledTasks => '此分区暂无任务。';
+
+  @override
+  String get careCostsSummary => '诊疗与费用摘要';
+
+  @override
+  String get loadingCareCostsSummary => '正在加载诊疗与费用摘要';
+
+  @override
+  String get loadCareCostsSummaryFailed => '诊疗与费用暂时无法加载。';
+
+  @override
+  String get noCareCostsYet => '尚未记录可计费服务或产品。';
+
+  @override
+  String get authoritativeLedgerSummary =>
+      '人民币金额与“诊疗与费用”使用同一服务端账本。上传影像属于证据，不会单独计费。';
+
+  @override
+  String get estimatedAmounts => '估算金额';
+
+  @override
+  String get finalAmounts => '最终金额';
+
+  @override
+  String get requestedFromPayer => '向支付方申请';
+
+  @override
+  String get expectedPatientResponsibility => '预计个人承担';
+
+  @override
+  String get pendingCostItems => '费用待补充';
 
   @override
   String get askDrAi => '咨询 Dr. AI';
@@ -1295,27 +1362,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get connectPatientsEpisodes => '通过患者代码建立连接并开始照护事件';
 
   @override
-  String get ctImageReview => 'AI 辅助 CT 影像查看';
-
-  @override
-  String get xrayImageReview => 'AI 辅助 X 光影像查看';
-
-  @override
-  String get mriImageReview => 'AI 辅助 MRI 影像查看';
-
-  @override
-  String get checkMedicalRecords => '查看患者医疗记录';
-
-  @override
-  String get checkRecoveryPlans => '查看患者康复计划';
-
-  @override
-  String get checkImagingResults => '查看影像结果';
-
-  @override
-  String get bookEquipment => '预约医疗设备';
-
-  @override
   String get noPatientActivity => '暂无患者活动';
 
   @override
@@ -1335,6 +1381,37 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get quickAccess => '快捷入口';
+
+  @override
+  String get imagingRecordsManualReview => '影像记录与人工审核';
+
+  @override
+  String get imagingRecordsManualReviewDescription =>
+      '选择患者后查看与临床事件关联的影像证据及医生填写的审核状态。';
+
+  @override
+  String get patientMedicalRecords => '患者医疗记录';
+
+  @override
+  String get patientMedicalRecordsDescription => '选择患者后查看获授权的临床病史与记录。';
+
+  @override
+  String get patientRecoveryPlans => '患者康复计划';
+
+  @override
+  String get patientRecoveryPlansDescription => '选择患者后打开康复计划工作区。';
+
+  @override
+  String get medicalResourcesReadOnly => '医疗资源（只读）';
+
+  @override
+  String get medicalResourcesReadOnlyDescription => '查看当前信息性资源概览；尚未开放预约。';
+
+  @override
+  String get payerRequests => '支付申请';
+
+  @override
+  String get payerRequestsDescription => '打开由人工审核的医生支付申请工作区。';
 
   @override
   String get teamManagement => '团队管理';
@@ -2007,6 +2084,30 @@ class AppLocalizationsZh extends AppLocalizations {
   String get planTitle => '计划标题';
 
   @override
+  String get planTitleLimit => '必填，3–160 个字符。';
+
+  @override
+  String get planTitleRequired => '请输入计划标题。';
+
+  @override
+  String get planTitleTooShort => '计划标题至少需要 3 个字符。';
+
+  @override
+  String get planTitleTooLong => '计划标题不得超过 160 个字符。';
+
+  @override
+  String get planTitleInvalidServer => '请检查计划标题，并确保不超过 160 个字符。';
+
+  @override
+  String get recoveryTaskTitleLimit => '填写时需为 3–160 个字符。';
+
+  @override
+  String get recoveryTaskTitleTooShort => '此任务标题至少需要 3 个字符。';
+
+  @override
+  String get recoveryTaskTitleTooLong => '此任务标题不得超过 160 个字符。';
+
+  @override
   String get instructions => '说明';
 
   @override
@@ -2034,6 +2135,15 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get requestChanges => '请求修改';
+
+  @override
+  String get reviewComment => '审核意见';
+
+  @override
+  String get reviewCommentHelp => '请求修改时必填；批准时可选。';
+
+  @override
+  String get reviewCommentRequired => '请求修改前请输入审核意见。';
 
   @override
   String get approvePatient => '批准并提供给患者';
@@ -2561,6 +2671,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aiContactDoctor => '联系我的医生';
 
   @override
+  String get aiCall120Now => '立即拨打120';
+
+  @override
   String get privateCareConversation => '私密照护对话';
 
   @override
@@ -2601,7 +2714,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get resourceCatalogPreviewBody =>
-      '以下为 200 项世界卫生组织实况报道，均配对官方中文和英文页面。在商业使用权利和医学审核完成前，不存储全文，也不用于 AI 检索。';
+      '247 项世卫组织实况报道覆盖 240 个官方中文页面和 244 个官方英文页面。原文已依据许可请求 202609681 存储，审核完成前不进入医生或患者检索版本。';
 
   @override
   String get resourceSearchHint => '用中文或英文搜索医疗资源';
@@ -3683,4 +3796,16 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get ceiWeaklySupported => '当前信息支持较弱，需要人工审核';
+
+  @override
+  String get aiPossibleCauses => '可能原因';
+
+  @override
+  String get aiPossibleCausesNotDiagnosis => '以下是可能性，并非确诊。';
+
+  @override
+  String get aiWarningSigns => '重要警示症状';
+
+  @override
+  String get aiNextSteps => '实用的下一步';
 }

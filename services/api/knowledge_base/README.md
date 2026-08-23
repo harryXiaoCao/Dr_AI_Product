@@ -1,31 +1,62 @@
 # Dr. AI Knowledge Ingestion Foundation
 
-This directory contains governed source-catalog inputs, not an unrestricted
-web scrape. The checked-in v1 catalog contains 298 official resources verified
-on 2026-07-14: all 239 WHO Chinese fact sheets, all 241 WHO English fact
-sheets, and 52 国家卫生健康委员会 guidelines or clinical protocols. The 234
-exact WHO slug matches are stored as bilingual records; five Chinese and seven
-English unmatched pages remain accurately monolingual, producing 246 distinct
-WHO catalog records.
+This directory contains governed source-catalog and licensed-corpus inputs, not
+an unrestricted web scrape. The catalog refreshed on 2026-08-13 contains 299
+official resources: all 240 WHO Chinese fact sheets, all 244 WHO English fact
+sheets, and 52 国家卫生健康委员会 guidelines or clinical protocols. The 237
+exact WHO slug matches are bilingual records; three Chinese and seven English
+unmatched pages remain accurately monolingual, producing 247 distinct WHO
+catalog records.
 
 ## Current admission state
 
 - Publisher authority: verified for the official WHO Chinese/English fact-sheet
   channels and the official 国家卫生健康委员会 guideline channels.
-- Stored content: titles, language status, source type, and official locators
-  only.
-- Article body: not stored, transformed, embedded, excerpted, or sent to a
-  model provider.
-- Rights state: pending. Commercial reuse permission has not been recorded for
-  either publisher.
+- WHO stored content: 484 official-language documents, 3,981 structural
+  sections/passages, and 3,085,669 characters captured from the complete live
+  fact-sheet indexes under WHO permission request `202609681`.
+- WHO exclusions: images, logos/emblems, page chrome, and material credited by
+  WHO to third parties. No translation was created.
+- WHO rights state: approved only for the education-only, non-profit,
+  non-commercial Dr. AI Product described in the permission request. Storage,
+  format/style normalization, embeddings, RAG/AI operation, DeepSeek API text
+  processing, attributed excerpts, official updates, and distribution within
+  the Product are permitted. Translation, standalone redistribution,
+  public-LLM release, advertising/promotional association, WHO branding/logo,
+  endorsement claims, and unapproved substantive modification are prohibited.
+- NHC content and rights remain metadata-only and pending.
 - Medical/native-Chinese review: pending.
 - Retrieval eligibility: denied for both doctor and patient retrieval.
-- Doctor Resources visibility: allowed as an official-link catalog, with the
-  pending-rights state shown in the interface.
+- Doctor Resources visibility: WHO licensed original text may be read with
+  provenance and rights notices; NHC remains an official-link catalog.
 
-This distinction is intentional: authoritative publication is not itself
-evidence of commercial AI reuse rights. Catalog visibility must never be
-treated as retrieval admission.
+The structured licence record is
+`rights/who_permission_202609681.v1.json`; the checksum-bound licensed corpus is
+`catalog/who_fact_sheets.official.v1.json`. Raw permission screenshots and the
+agreement are not checked into the repository. Their checksums bind the corpus
+to the supplied evidence without publishing the legal correspondence.
+
+Rights-cleared storage and display are not retrieval admission. WHO passages
+remain lexically and vector ineligible until the separate medical, language,
+Mainland-applicability, audience, and release gates are approved.
+
+Rebuild from the official indexes and permission evidence, then import
+idempotently after the metadata catalog:
+
+```bash
+uv run python scripts/build_who_fact_sheets_corpus.py \
+  --catalog knowledge_base/catalog/authoritative_resources.v1.json \
+  --english-index /tmp/who_fact_sheets_en.html \
+  --chinese-index /tmp/who_fact_sheets_zh.html \
+  --authorization-evidence /secure/who_authorization \
+  --approved-form-evidence /secure/who_approved_form \
+  --agreement-evidence /secure/who_agreement \
+  --output knowledge_base/catalog/who_fact_sheets.official.v1.json \
+  --cache-dir /tmp/who_fact_sheet_cache \
+  --generated-at 2026-08-13T13:30:00Z
+uv run python -m scripts.import_knowledge_catalog
+uv run python -m scripts.import_who_fact_sheets
+```
 
 ## Rights-cleared original English corpus
 
@@ -636,6 +667,18 @@ preflight can be written
 as immutable zero-call evidence and records the call/token/cost counts
 explicitly. The failed v1 result remains
 preserved under `release_artifacts/evaluation/slice9b-rescue.json`.
+
+The current local-synthetic patient-chat runtime can run an independently
+versioned semantic router before retrieval. It classifies intent and extracts a
+negation-aware presentation. Symptom intent may then run the separately
+versioned differential planner for 3-5 bounded working hypotheses. Retrieval
+always preserves the literal question and independently searches normalized
+presentation, general management, warning signs, and every cause query before
+deduplication and reranking. A semantic emergency exits to server-owned fixed
+guidance before any knowledge-base operation. Existing immutable
+Slice 9B artifacts remain historical evidence for the planner-only architecture
+and are not retroactively reinterpreted as semantic-router evaluation.
+
 The failed v2 artifact is also preserved. Do not spend another paid rescue run
 against the local hashed/policy fallback. First deploy the semantic model pair,
 rebuild a new immutable release with exact 768-dimensional embedding lineage,

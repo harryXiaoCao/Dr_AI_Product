@@ -252,6 +252,17 @@ def _source_is_actionable_for_open(
     source_id = notification.source_resource_id
     if source_id is None:
         return False
+    if notification.source_category == "care_relationship":
+        return (
+            db.scalar(
+                select(CareRelationship.id).where(
+                    CareRelationship.id == source_id,
+                    CareRelationship.patient_id == notification.patient_id,
+                    CareRelationship.status == "pending_patient_approval",
+                )
+            )
+            is not None
+        )
     if notification.source_category == "medication_reminder":
         reminder = db.get(MedicationReminder, source_id)
         return (
@@ -791,6 +802,7 @@ def open_notification(notification_id: uuid.UUID, user: CurrentUser, db: DbSessi
     route_path = {
         "patient_medications": "/patient/medical-service/medications",
         "patient_recovery": "/patient/recovery-plan",
+        "patient_contacts": "/patient/contacts",
         "patient_care_cost": "/patient/care-costs",
         "patient_dashboard": "/patient",
         "patient_consultations": "/patient",
@@ -891,6 +903,7 @@ def open_notification(notification_id: uuid.UUID, user: CurrentUser, db: DbSessi
         "patient_consultations",
         "patient_medical_service",
         "patient_imaging",
+        "patient_contacts",
     }:
         authorized = user.patient_profile is not None and (
             notification.patient_id == user.patient_profile.id

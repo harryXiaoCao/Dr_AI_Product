@@ -1344,9 +1344,7 @@ Map<String, dynamic> _doctorDashboardData(
   BuildContext context,
   Map<String, dynamic> source,
 ) {
-  if (source.containsKey('hospital') &&
-      source.containsKey('doctor') &&
-      source.containsKey('quick_access')) {
+  if (source.containsKey('hospital') && source.containsKey('doctor')) {
     return source;
   }
   return <String, dynamic>{
@@ -1362,15 +1360,6 @@ Map<String, dynamic> _doctorDashboardData(
       'expertise': context.l10n.connectPatientsEpisodes,
       'rating': 4,
     },
-    'quick_access': <String>[
-      context.l10n.ctImageReview,
-      context.l10n.xrayImageReview,
-      context.l10n.mriImageReview,
-      context.l10n.checkMedicalRecords,
-      context.l10n.checkRecoveryPlans,
-      context.l10n.checkImagingResults,
-      context.l10n.bookEquipment,
-    ],
     'recent_activity': <String, dynamic>{
       'title': context.l10n.noPatientActivity,
       'time': '--:--',
@@ -1468,11 +1457,42 @@ class _DoctorMainColumn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final quickAccess = <String>[
-      ...List<String>.from(data['quick_access'] as List),
-      Localizations.localeOf(context).languageCode == 'zh'
-          ? '支付申请'
-          : 'Payer requests',
+    final quickAccess = <_DoctorQuickAccessItem>[
+      _DoctorQuickAccessItem(
+        keyName: 'imaging',
+        title: context.l10n.imagingRecordsManualReview,
+        description: context.l10n.imagingRecordsManualReviewDescription,
+        icon: Icons.image_search_outlined,
+        destination: '/doctor/patients?section=imaging',
+      ),
+      _DoctorQuickAccessItem(
+        keyName: 'medical-records',
+        title: context.l10n.patientMedicalRecords,
+        description: context.l10n.patientMedicalRecordsDescription,
+        icon: Icons.description_outlined,
+        destination: '/doctor/patients?section=medicalHistory',
+      ),
+      _DoctorQuickAccessItem(
+        keyName: 'recovery-plans',
+        title: context.l10n.patientRecoveryPlans,
+        description: context.l10n.patientRecoveryPlansDescription,
+        icon: Icons.assignment_outlined,
+        destination: '/doctor/patients?section=recoveryPlans',
+      ),
+      _DoctorQuickAccessItem(
+        keyName: 'resources',
+        title: context.l10n.medicalResourcesReadOnly,
+        description: context.l10n.medicalResourcesReadOnlyDescription,
+        icon: Icons.medical_services_outlined,
+        destination: '/doctor/resources',
+      ),
+      _DoctorQuickAccessItem(
+        keyName: 'payer-requests',
+        title: context.l10n.payerRequests,
+        description: context.l10n.payerRequestsDescription,
+        icon: Icons.outbox_outlined,
+        destination: '/doctor/payer-requests',
+      ),
     ];
     return Column(
       children: <Widget>[
@@ -1484,63 +1504,73 @@ class _DoctorMainColumn extends StatelessWidget {
             physics: const NeverScrollableScrollPhysics(),
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: MediaQuery.sizeOf(context).width >= 1120 ? 2 : 1,
-              childAspectRatio: 2.6,
+              childAspectRatio: 2.25,
               crossAxisSpacing: DrAiSpacing.xs,
               mainAxisSpacing: DrAiSpacing.xs,
             ),
             itemCount: quickAccess.length,
             itemBuilder: (context, index) {
-              final icons = <IconData>[
-                Icons.image_search,
-                Icons.medical_information_outlined,
-                Icons.document_scanner_outlined,
-                Icons.description_outlined,
-                Icons.assignment_outlined,
-                Icons.monitor_heart_outlined,
-                Icons.medical_services_outlined,
-                Icons.outbox_outlined,
-              ];
-              final destination = switch (index) {
-                1 => '/doctor/resources',
-                7 => '/doctor/payer-requests',
-                _ => '/doctor/patients',
-              };
-              return InkWell(
-                borderRadius: BorderRadius.circular(DrAiRadii.md),
-                onTap: () => context.go(destination),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: index.isEven
-                        ? DrAiColors.m3SurfaceContainerHigh
-                        : DrAiColors.patientAccent,
-                    borderRadius: BorderRadius.circular(DrAiRadii.md),
-                    border: Border.all(color: DrAiColors.mutedInk),
-                  ),
-                  child: Stack(
-                    children: <Widget>[
-                      Positioned(
-                        right: 12,
-                        bottom: 8,
-                        child: Icon(
-                          icons[index],
-                          size: 44,
-                          color: DrAiColors.brand.withValues(alpha: 0.22),
+              final item = quickAccess[index];
+              return Semantics(
+                button: true,
+                label: '${item.title}. ${item.description}',
+                child: InkWell(
+                  key: Key('doctor-quick-access-${item.keyName}'),
+                  borderRadius: BorderRadius.circular(DrAiRadii.md),
+                  onTap: () => context.go(item.destination),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: index.isEven
+                          ? DrAiColors.m3SurfaceContainerHigh
+                          : DrAiColors.patientAccent,
+                      borderRadius: BorderRadius.circular(DrAiRadii.md),
+                      border: Border.all(color: DrAiColors.mutedInk),
+                    ),
+                    child: Stack(
+                      children: <Widget>[
+                        Positioned(
+                          right: 12,
+                          bottom: 8,
+                          child: Icon(
+                            item.icon,
+                            size: 44,
+                            color: DrAiColors.brand.withValues(alpha: 0.22),
+                          ),
                         ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.all(DrAiSpacing.md),
-                        child: Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            context.l10n.stableValue(quickAccess[index]),
-                            style: const TextStyle(
-                              color: DrAiColors.brandDark,
-                              fontWeight: FontWeight.w600,
+                        Padding(
+                          padding: const EdgeInsets.all(DrAiSpacing.md),
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                Text(
+                                  item.title,
+                                  style: const TextStyle(
+                                    color: DrAiColors.brandDark,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Padding(
+                                  padding: const EdgeInsets.only(right: 44),
+                                  child: Text(
+                                    item.description,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: DrAiColors.inkSecondary,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               );
@@ -1550,6 +1580,22 @@ class _DoctorMainColumn extends StatelessWidget {
       ],
     );
   }
+}
+
+class _DoctorQuickAccessItem {
+  const _DoctorQuickAccessItem({
+    required this.keyName,
+    required this.title,
+    required this.description,
+    required this.icon,
+    required this.destination,
+  });
+
+  final String keyName;
+  final String title;
+  final String description;
+  final IconData icon;
+  final String destination;
 }
 
 class _DoctorSideColumn extends StatelessWidget {
