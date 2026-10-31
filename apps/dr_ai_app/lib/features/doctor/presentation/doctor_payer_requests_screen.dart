@@ -4,8 +4,11 @@ import 'package:dr_ai_app/design_system/dr_ai_tokens.dart';
 import 'package:dr_ai_app/features/auth/application/auth_controller.dart';
 import 'package:dr_ai_app/features/care_cost/application/care_cost_providers.dart';
 import 'package:dr_ai_app/features/care_cost/domain/care_cost_data.dart';
+import 'package:dr_ai_app/features/clinical_event_intelligence/application/clinical_event_intelligence_providers.dart';
+import 'package:dr_ai_app/features/clinical_event_intelligence/domain/clinical_event_intelligence_data.dart';
 import 'package:dr_ai_app/features/patient/application/patient_care_providers.dart';
 import 'package:dr_ai_app/features/patient/domain/patient_care_data.dart';
+import 'package:dr_ai_app/l10n/l10n.dart';
 import 'package:dr_ai_app/shared/presentation/product_history_copy.dart';
 import 'package:dr_ai_app/shared/widgets/dashboard_states.dart';
 import 'package:dr_ai_app/shared/widgets/responsive_app_shell.dart';
@@ -382,7 +385,7 @@ class _DoctorPayerRequestsScreenState
     } catch (error) {
       if (!mounted) return;
       setState(() {
-        _submissionError = error.toString();
+        _submissionError = context.l10n.actionFailedRetry;
         _submitting = false;
       });
     }
@@ -1511,7 +1514,7 @@ class _RequestHistoryState extends State<_RequestHistory> {
     return widget.requests.when(
       loading: () => const DashboardLoadingView(),
       error: (error, stackTrace) => DashboardErrorView(
-        message: error.toString(),
+        message: context.l10n.pageLoadFailed,
         onRetry: widget.onRetry,
       ),
       data: (items) {
@@ -1609,12 +1612,20 @@ class _RequestHistoryState extends State<_RequestHistory> {
   }
 }
 
-class _HistoryCard extends ConsumerWidget {
+class _HistoryCard extends ConsumerStatefulWidget {
   const _HistoryCard({required this.request});
   final PayerRequestData request;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_HistoryCard> createState() => _HistoryCardState();
+}
+
+class _HistoryCardState extends ConsumerState<_HistoryCard> {
+  bool _hasExpanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final request = widget.request;
     final patientResponsibility = request.lines.fold<int>(
       0,
       (total, line) => total + line.patientResponsibilityMinor,
@@ -1631,6 +1642,11 @@ class _HistoryCard extends ConsumerWidget {
         borderRadius: BorderRadius.circular(16),
       ),
       child: ExpansionTile(
+        onExpansionChanged: (expanded) {
+          if (expanded && !_hasExpanded) {
+            setState(() => _hasExpanded = true);
+          }
+        },
         tilePadding: const EdgeInsets.symmetric(
           horizontal: DrAiSpacing.md,
           vertical: DrAiSpacing.xs,
@@ -1742,18 +1758,18 @@ class _HistoryCard extends ConsumerWidget {
                   '${_copy(context, 'Patient responsibility', '个人承担')} · ${_money(request.currency, patientResponsibility)}',
                 ),
               ),
-              Text(
-                _copy(context, 'AI: Not evaluated', 'AI：尚未评估'),
-                style: const TextStyle(color: DrAiColors.inkSecondary),
-              ),
             ],
           ),
           const SizedBox(height: DrAiSpacing.md),
+          if (_hasExpanded) ...<Widget>[
+            _RequestIntelligenceSummary(requestId: request.id),
+            const SizedBox(height: DrAiSpacing.md),
+          ],
           Align(
             alignment: Alignment.centerRight,
             child: OutlinedButton.icon(
               key: Key('doctor-intelligence-${request.id}'),
-              onPressed: () => context.go(
+              onPressed: () => context.push(
                 '/doctor/payer-requests/${request.id}/intelligence'
                 '?patient=${request.patientId}&event=${request.clinicalEventId}',
               ),
@@ -1856,6 +1872,368 @@ class _HistoryCard extends ConsumerWidget {
       ),
     );
   }
+}
+
+class _RequestIntelligenceSummary extends ConsumerWidget {
+  const _RequestIntelligenceSummary({required this.requestId});
+
+  final String requestId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scope = (
+      role: AppRole.doctor,
+      requestId: requestId,
+      locale: Localizations.localeOf(context).languageCode == 'zh'
+          ? 'zh-Hans'
+          : 'en',
+    );
+    final intelligence = ref.watch(clinicalEventIntelligenceProvider(scope));
+    return intelligence.when(
+      loading: () => _IntelligenceMessage(
+        key: Key('doctor-intelligence-loading-$requestId'),
+        icon: const SizedBox.square(
+          dimension: 16,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+        title: _copy(context, 'Loading AI evaluation…', '正在加载 AI 评估…'),
+      ),
+      error: (error, stackTrace) => _IntelligenceMessage(
+        key: Key('doctor-intelligence-unavailable-$requestId'),
+        icon: const Icon(Icons.info_outline, size: 19),
+        title: error is ApiError && error.code == 'not_found'
+            ? _copy(context, 'AI: Not evaluated', 'AI：尚未评估')
+            : _copy(
+                context,
+                'AI evaluation is temporarily unavailable',
+                'AI 评估暂时不可用',
+              ),
+      ),
+      data: (artifact) {
+        if (artifact == null || artifact.requestedItems.isEmpty) {
+          return _IntelligenceMessage(
+            key: Key('doctor-intelligence-not-evaluated-$requestId'),
+            icon: const Icon(Icons.info_outline, size: 19),
+            title: _copy(context, 'AI: Not evaluated', 'AI：尚未评估'),
+          );
+        }
+        return _IntelligenceEvaluation(
+          key: Key('doctor-intelligence-summary-$requestId'),
+          artifact: artifact,
+        );
+      },
+    );
+  }
+}
+
+class _IntelligenceMessage extends StatelessWidget {
+  const _IntelligenceMessage({
+    required this.icon,
+    required this.title,
+    super.key,
+  });
+
+  final Widget icon;
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(
+        horizontal: DrAiSpacing.sm,
+        vertical: 10,
+      ),
+      decoration: BoxDecoration(
+        color: DrAiColors.surfaceSubtle,
+        borderRadius: BorderRadius.circular(DrAiRadii.md),
+      ),
+      child: Row(
+        children: <Widget>[
+          icon,
+          const SizedBox(width: DrAiSpacing.xs),
+          Expanded(
+            child: Text(
+              title,
+              style: const TextStyle(color: DrAiColors.inkSecondary),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _IntelligenceEvaluation extends StatelessWidget {
+  const _IntelligenceEvaluation({required this.artifact, super.key});
+
+  final ClinicalEventIntelligenceData artifact;
+
+  @override
+  Widget build(BuildContext context) {
+    final assessedItems = artifact.requestedItems
+        .where((item) => !item.isAssessmentUnavailable)
+        .toList(growable: false);
+    if (assessedItems.isEmpty) {
+      return _IntelligenceMessage(
+        icon: const Icon(Icons.info_outline, size: 19),
+        title: _copy(context, 'AI: Not evaluated', 'AI：尚未评估'),
+      );
+    }
+    return Semantics(
+      container: true,
+      label: _copy(context, 'AI evaluation details', 'AI 评估详情'),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(DrAiSpacing.md),
+        decoration: BoxDecoration(
+          color: DrAiColors.pageBackground,
+          border: Border.all(color: DrAiColors.outlineMuted),
+          borderRadius: BorderRadius.circular(DrAiRadii.lg),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              _copy(context, 'AI evaluation', 'AI 评估'),
+              style: const TextStyle(
+                color: DrAiColors.inkStrong,
+                fontSize: 16,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 3),
+            Text(
+              _copy(
+                context,
+                'Each overall score combines six evidence dimensions. It supports, but never replaces, human review.',
+                '每个综合分数由六项证据维度组成，仅辅助而不代替人工审核。',
+              ),
+              style: const TextStyle(
+                color: DrAiColors.inkSecondary,
+                fontSize: 12,
+                height: 1.35,
+              ),
+            ),
+            const SizedBox(height: DrAiSpacing.sm),
+            _EvaluationLegend(),
+            const SizedBox(height: DrAiSpacing.md),
+            for (final entry in assessedItems.indexed) ...<Widget>[
+              if (entry.$1 > 0) const Divider(height: DrAiSpacing.lg),
+              _EvaluatedRequestItem(item: entry.$2),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EvaluationLegend extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    const levels = <(int, String)>[
+      (80, '80–100'),
+      (60, '60–79'),
+      (40, '40–59'),
+      (0, '0–39'),
+    ];
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: levels
+          .map(
+            (level) => Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+              decoration: BoxDecoration(
+                color: _evaluationBackground(level.$1),
+                borderRadius: BorderRadius.circular(DrAiRadii.pill),
+              ),
+              child: Text(
+                '${level.$2} · ${_evaluationBand(context, level.$1)}',
+                style: TextStyle(
+                  color: _evaluationColor(level.$1),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          )
+          .toList(growable: false),
+    );
+  }
+}
+
+class _EvaluatedRequestItem extends StatelessWidget {
+  const _EvaluatedRequestItem({required this.item});
+
+  final RequestedItemAssessmentData item;
+
+  @override
+  Widget build(BuildContext context) {
+    final score = item.scores.aiSupportScore;
+    final dimensions = <(String, int)>[
+      (context.l10n.ceiClinicalFit, item.scores.clinicalFit),
+      (context.l10n.ceiEvidenceSupport, item.scores.evidenceSupport),
+      (context.l10n.ceiTimingSequence, item.scores.timingSequence),
+      (context.l10n.ceiQuantityIntensity, item.scores.quantityIntensity),
+      (
+        context.l10n.ceiDocumentationCompleteness,
+        item.scores.documentationCompleteness,
+      ),
+      (context.l10n.ceiCostAlignment, item.scores.costAlignment),
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    item.label,
+                    style: const TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    '${_copy(context, 'Overall AI support', 'AI 综合支持度')} · '
+                    '${_evaluationBand(context, score)}',
+                    style: TextStyle(
+                      color: _evaluationColor(score),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+              decoration: BoxDecoration(
+                color: _evaluationBackground(score),
+                borderRadius: BorderRadius.circular(DrAiRadii.md),
+              ),
+              child: Text(
+                '$score/100',
+                style: TextStyle(
+                  color: _evaluationColor(score),
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: DrAiSpacing.sm),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final columns = constraints.maxWidth >= 760 ? 3 : 2;
+            final width =
+                (constraints.maxWidth - (columns - 1) * DrAiSpacing.xs) /
+                columns;
+            return Wrap(
+              spacing: DrAiSpacing.xs,
+              runSpacing: DrAiSpacing.xs,
+              children: dimensions
+                  .map(
+                    (dimension) => SizedBox(
+                      width: width,
+                      child: _EvaluationMetric(
+                        label: dimension.$1,
+                        score: dimension.$2,
+                      ),
+                    ),
+                  )
+                  .toList(growable: false),
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _EvaluationMetric extends StatelessWidget {
+  const _EvaluationMetric({required this.label, required this.score});
+
+  final String label;
+  final int score;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _evaluationColor(score);
+    return Semantics(
+      label: '$label $score out of 100, ${_evaluationBand(context, score)}',
+      child: Container(
+        padding: const EdgeInsets.all(9),
+        decoration: BoxDecoration(
+          color: DrAiColors.white,
+          border: Border.all(color: DrAiColors.outline),
+          borderRadius: BorderRadius.circular(DrAiRadii.md),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                Expanded(
+                  child: Text(
+                    label,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 11),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  '$score',
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(DrAiRadii.pill),
+              child: LinearProgressIndicator(
+                value: score.clamp(0, 100) / 100,
+                minHeight: 5,
+                backgroundColor: DrAiColors.outline,
+                valueColor: AlwaysStoppedAnimation<Color>(color),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+String _evaluationBand(BuildContext context, int score) {
+  if (score >= 80) return context.l10n.ceiStronglySupported;
+  if (score >= 60) return context.l10n.ceiPlausible;
+  if (score >= 40) return context.l10n.ceiMateriallyUncertain;
+  return context.l10n.ceiWeaklySupported;
+}
+
+Color _evaluationColor(int score) {
+  if (score >= 80) return const Color(0xFF166534);
+  if (score >= 60) return const Color(0xFF946200);
+  if (score >= 40) return const Color(0xFFC2410C);
+  return DrAiColors.danger;
+}
+
+Color _evaluationBackground(int score) {
+  if (score >= 80) return const Color(0xFFDCFCE7);
+  if (score >= 60) return const Color(0xFFFFF3C4);
+  if (score >= 40) return const Color(0xFFFFE8D5);
+  return const Color(0xFFFDE8E7);
 }
 
 Future<void> _showDoctorResponseDialog(

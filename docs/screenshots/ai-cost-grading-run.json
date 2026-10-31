@@ -1,0 +1,45 @@
+{
+  "fictional_case": true,
+  "database_writes": false,
+  "release_activation": false,
+  "validation_passed": true,
+  "critic_state": "material_disagreement",
+  "usage": [
+    {
+      "purpose": "primary",
+      "provider": "deepseek",
+      "model": "deepseek-v4-pro",
+      "input_tokens": 3597,
+      "output_tokens": 1936,
+      "cost_microunits": 3249
+    },
+    {
+      "purpose": "critic",
+      "provider": "deepseek",
+      "model": "deepseek-v4-pro",
+      "input_tokens": 4120,
+      "output_tokens": 353,
+      "cost_microunits": 2099
+    }
+  ],
+  "scores": [
+    {
+      "label": "Respiratory specialist follow-up",
+      "score": 85,
+      "band": "strongly_supported"
+    },
+    {
+      "label": "Repeat chest CT scan",
+      "score": 19,
+      "band": "weakly_supported_human_review"
+    }
+  ],
+  "capture_method": "Current Flutter grading screen, populated with validated live-provider output through an isolated presentation adapter. Facts are formatted for the UI; scoring values are unchanged.",
+  "reference_prices": "Fictional walkthrough prices; not a real regional tariff.",
+  "primary_output_sha256": "55eaa02119f773a9ae073c836b0558978955f1675f06391013da60d128c17632",
+  "critic_output_sha256": "6fcad463fa9d6e1c1d1a36f7d0739c970b8adad3e872d5874f00d9775b2a9af7",
+  "screenshots": {
+    "ai-cost-grading-details.png": "201cc3a88dce3ad4bcebc4370236183195815195f5ef0ac2568ca882b1ddf43c",
+    "ai-cost-grading-overview.png": "d903597f4fec6c4fb0f7b1817cc5b0d9c2e595c360899578a3a62ab65591af58"
+  }
+}

@@ -230,12 +230,16 @@ void main() {
     expect(find.text('Approve'), findsNothing);
     expect(find.text('Deny'), findsNothing);
 
-    final scrollable = find.byType(Scrollable).last;
-    await tester.scrollUntilVisible(
-      find.text('Plausible predicted pathways'),
-      700,
-      scrollable: scrollable,
-    );
+    final scrollable = find
+        .descendant(
+          of: find.byKey(const Key('clinical-event-intelligence-list')),
+          matching: find.byType(Scrollable),
+        )
+        .first;
+    await tester.ensureVisible(find.byType(ExpansionTile).first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(ExpansionTile).first);
+    await tester.pumpAndSettle();
     expect(find.textContaining('not doctor-requested items'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('Missing-documentation assistant'),
@@ -243,11 +247,10 @@ void main() {
       scrollable: scrollable,
     );
     expect(find.byKey(const Key('cei-missing-documentation')), findsOneWidget);
-    await tester.scrollUntilVisible(
-      find.text('Counterfactual comparisons'),
-      700,
-      scrollable: scrollable,
-    );
+    await tester.ensureVisible(find.byType(ExpansionTile).at(1));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(ExpansionTile).at(1));
+    await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
       find.text('Primary and critic'),
       700,
@@ -257,11 +260,10 @@ void main() {
       find.byKey(const Key('cei-critic-partial_disagreement')),
       findsOneWidget,
     );
-    await tester.scrollUntilVisible(
-      find.text('Immutable outcome lineage'),
-      700,
-      scrollable: scrollable,
-    );
+    await tester.ensureVisible(find.byType(ExpansionTile).at(2));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(ExpansionTile).at(2));
+    await tester.pumpAndSettle();
     expect(find.text('Clinical Event snapshot frozen'), findsOneWidget);
   });
 

@@ -93,7 +93,13 @@ class LegalPlaceholderScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: DrAiSpacing.lg),
                       OutlinedButton.icon(
-                        onPressed: () => context.go('/register'),
+                        onPressed: () {
+                          if (context.canPop()) {
+                            context.pop();
+                          } else {
+                            context.go('/register');
+                          }
+                        },
                         icon: const Icon(Icons.arrow_back),
                         label: Text(context.l10n.backToRegistration),
                       ),

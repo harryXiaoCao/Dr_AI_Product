@@ -266,11 +266,24 @@ void main() {
       find.byKey(const Key('payment-request-history-payer-request-test-id')),
     );
     await tester.pumpAndSettle();
+    expect(
+      find.byKey(
+        const Key('doctor-intelligence-summary-payer-request-test-id'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Overall AI support · Plausible'), findsOneWidget);
+    expect(find.text('79/100'), findsOneWidget);
+    expect(find.text('Clinical fit'), findsWidgets);
+    expect(find.text('Evidence support'), findsWidgets);
+    expect(
+      find.text('80–100 · Strongly supported by current information'),
+      findsOneWidget,
+    );
     final openReview = find.byKey(
       const Key('doctor-intelligence-payer-request-test-id'),
     );
-    await tester.ensureVisible(openReview);
-    await tester.tap(openReview);
+    tester.widget<OutlinedButton>(openReview).onPressed!();
     await tester.pumpAndSettle();
 
     expect(find.text('Clinical Event intelligence review'), findsOneWidget);
@@ -509,6 +522,25 @@ void main() {
     },
   );
 
+  testWidgets('registration code request explains an invalid phone number', (
+    tester,
+  ) async {
+    setViewport(tester, const Size(412, 917));
+    await pumpApp(tester, FakeDrAiRepository());
+    await tester.tap(find.byKey(const Key('auth-mode-toggle')));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byKey(const Key('signup-phone-field')), '12');
+    await tester.tap(find.byKey(const Key('registration-send-code-button')));
+    await tester.pumpAndSettle();
+
+    final status = tester.widget<Text>(
+      find.byKey(const Key('registration-code-status')),
+    );
+    expect(status.data, 'Enter a valid phone number.');
+    expect(status.style?.color, DrAiColors.danger);
+  });
+
   testWidgets(
     'phone registration routes a new patient through medical intake',
     (tester) async {
@@ -633,6 +665,101 @@ void main() {
 
     expect(find.byKey(const Key('login-error')), findsOneWidget);
     expect(find.text('The email or password is incorrect.'), findsOneWidget);
+    expect(
+      tester
+          .widget<TextFormField>(find.byKey(const Key('email-field')))
+          .controller!
+          .text,
+      'doctor.demo@example.com',
+    );
+    expect(
+      tester
+          .widget<TextFormField>(find.byKey(const Key('password-field')))
+          .controller!
+          .text,
+      'wrong test password',
+    );
+  });
+
+  testWidgets('registration preserves entered fields after an API error', (
+    tester,
+  ) async {
+    final repository = FakeDrAiRepository(
+      registerError: const ApiError(
+        code: 'conflict',
+        message: 'An account already exists for this contact.',
+        statusCode: 409,
+      ),
+    );
+    await pumpApp(tester, repository);
+    await tester.tap(find.byKey(const Key('auth-mode-toggle')));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const Key('signup-phone-field')),
+      '13800012345',
+    );
+    await tester.enterText(
+      find.byKey(const Key('verification-code-field')),
+      '123456',
+    );
+    await tester.enterText(
+      find.byKey(const Key('password-field')),
+      'Patient9!',
+    );
+    await tester.enterText(
+      find.byKey(const Key('confirm-password-field')),
+      'Patient9!',
+    );
+    await tester.enterText(
+      find.byKey(const Key('signup-first-name-field')),
+      'Xiao',
+    );
+    await tester.enterText(
+      find.byKey(const Key('signup-last-name-field')),
+      'Wang',
+    );
+    await tester.enterText(
+      find.byKey(const Key('signup-home-address-field')),
+      '100 Recovery Road',
+    );
+    await tester.ensureVisible(find.byKey(const Key('terms-checkbox')));
+    await tester.tap(find.byKey(const Key('terms-checkbox')));
+    await tester.ensureVisible(find.byKey(const Key('login-button')));
+    await tester.tap(find.byKey(const Key('login-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('login-error')), findsOneWidget);
+    expect(
+      tester
+          .widget<TextFormField>(find.byKey(const Key('signup-phone-field')))
+          .controller!
+          .text,
+      '13800012345',
+    );
+    expect(
+      tester
+          .widget<TextFormField>(
+            find.byKey(const Key('verification-code-field')),
+          )
+          .controller!
+          .text,
+      '123456',
+    );
+    expect(
+      tester
+          .widget<TextFormField>(
+            find.byKey(const Key('signup-first-name-field')),
+          )
+          .controller!
+          .text,
+      'Xiao',
+    );
+    expect(find.byKey(const Key('terms-checkbox')), findsOneWidget);
+    expect(
+      tester.widget<Checkbox>(find.byKey(const Key('terms-checkbox'))).value,
+      isTrue,
+    );
   });
 
   testWidgets('login distinguishes network failures from credentials', (
@@ -897,6 +1024,10 @@ void main() {
     expect(find.byKey(const Key('system-contact')), findsOneWidget);
     expect(find.byKey(const Key('dr-ai-contact')), findsOneWidget);
     expect(
+      find.text('Educational chat for general health questions'),
+      findsOneWidget,
+    );
+    expect(
       find.byKey(const Key('doctor-contact-doctor-profile-test-id')),
       findsOneWidget,
     );
@@ -1033,6 +1164,11 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('patient-ai-thread-sidebar')), findsOneWidget);
+    expect(find.byKey(const Key('patient-ai-new-chat')), findsNothing);
+    expect(
+      find.byKey(const Key('patient-ai-new-chat-sidebar')),
+      findsOneWidget,
+    );
     expect(find.byKey(const Key('patient-ai-input')), findsNothing);
     expect(tester.takeException(), isNull);
 
@@ -1040,8 +1176,27 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('patient-ai-thread-sidebar')), findsNothing);
+    expect(find.byKey(const Key('patient-ai-new-chat')), findsOneWidget);
     expect(find.byKey(const Key('patient-ai-input')), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('patient AI chat shows one new-chat action on desktop', (
+    tester,
+  ) async {
+    setViewport(tester, const Size(1280, 832));
+    await pumpApp(tester, FakeDrAiRepository(restoredSession: patientSession));
+
+    await tester.tap(find.text('Contacts'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('dr-ai-contact')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('patient-ai-new-chat')), findsNothing);
+    expect(
+      find.byKey(const Key('patient-ai-new-chat-sidebar')),
+      findsOneWidget,
+    );
   });
 
   test(
@@ -1234,6 +1389,47 @@ void main() {
     expect(find.byKey(const Key('register-role-selector')), findsOneWidget);
   });
 
+  testWidgets('viewing registration terms preserves the form draft', (
+    tester,
+  ) async {
+    setViewport(tester, const Size(412, 917));
+    await pumpApp(tester, FakeDrAiRepository());
+    await tester.tap(find.byKey(const Key('auth-mode-toggle')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('signup-phone-field')),
+      '13800012345',
+    );
+    await tester.enterText(
+      find.byKey(const Key('signup-first-name-field')),
+      'Synthetic',
+    );
+
+    await tester.ensureVisible(find.text('Terms of Service'));
+    await tester.tap(find.text('Terms of Service'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Back to registration'));
+    await tester.tap(find.text('Back to registration'));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester
+          .widget<TextFormField>(find.byKey(const Key('signup-phone-field')))
+          .controller
+          ?.text,
+      '13800012345',
+    );
+    expect(
+      tester
+          .widget<TextFormField>(
+            find.byKey(const Key('signup-first-name-field')),
+          )
+          .controller
+          ?.text,
+      'Synthetic',
+    );
+  });
+
   testWidgets(
     'logout still gives local feedback when the server is unreachable',
     (tester) async {
@@ -1361,7 +1557,7 @@ void main() {
     'future unsupported roles fail closed instead of using doctor UI',
     (tester) async {
       expect(AppRole.fromWire('specialist'), AppRole.unsupported);
-      expect(AppRole.fromWire('admin'), AppRole.unsupported);
+      expect(AppRole.fromWire('admin'), AppRole.admin);
 
       final router = createRouter(AppRole.unsupported);
       addTearDown(router.dispose);
@@ -1482,6 +1678,13 @@ void main() {
 
     await tester.tap(find.text('Review queue'));
     await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const Key('payer-request-payer-request-test-id')),
+    );
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Record human review'), 300,
+      scrollable: find.byType(Scrollable).first);
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Record human review'));
     await tester.pumpAndSettle();
     expect(find.text('Documentation needed'), findsOneWidget);
@@ -1501,6 +1704,13 @@ void main() {
       await pumpApp(tester, repository);
 
       await tester.tap(find.text('Review queue'));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const Key('payer-request-payer-request-test-id')),
+      );
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(find.text('Record human review'), 300,
+        scrollable: find.byType(Scrollable).first);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Record human review'));
       await tester.pumpAndSettle();
@@ -1562,6 +1772,13 @@ void main() {
       await pumpApp(tester, repository);
 
       await tester.tap(find.text('审核队列'));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const Key('payer-request-payer-request-test-id')),
+      );
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(find.text('记录人工审核'), 300,
+        scrollable: find.byType(Scrollable).first);
       await tester.pumpAndSettle();
       await tester.tap(find.text('记录人工审核'));
       await tester.pumpAndSettle();
@@ -1632,6 +1849,14 @@ void main() {
 
     await tester.tap(find.text('Review queue'));
     await tester.pumpAndSettle();
+    expect(
+      find.byKey(const Key('payer-intelligence-payer-request-test-id')),
+      findsNothing,
+    );
+    await tester.tap(
+      find.byKey(const Key('payer-request-payer-request-test-id')),
+    );
+    await tester.pumpAndSettle();
     final openEvidence = find.byKey(
       const Key('payer-intelligence-payer-request-test-id'),
     );
@@ -1651,6 +1876,78 @@ void main() {
       ).routeInformationProvider.value.uri.path,
       '/payer/requests/payer-request-test-id/intelligence',
     );
+  });
+
+  testWidgets('payer queue triage selection never records a review', (
+    tester,
+  ) async {
+    setViewport(tester, const Size(1280, 900));
+    final repository = FakeDrAiRepository(
+      restoredSession: payerSession,
+      payerRequests: <PayerRequestData>[
+        FakeDrAiRepository.payerRequestFixture(),
+        FakeDrAiRepository.payerRequestFixture(
+          id: 'clarification-test-id',
+          clinicalEventTitle: 'Follow-up clarification',
+          status: 'clarification_requested',
+        ),
+      ],
+    );
+    await pumpApp(tester, repository);
+    await tester.tap(find.text('Review queue'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Human review queue'), findsOneWidget);
+    expect(find.text('Follow-up clarification'), findsOneWidget);
+    expect(find.textContaining('doctor can add clarification'), findsWidgets);
+    await tester.tap(find.byType(Checkbox).first);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('1 selected for triage'), findsOneWidget);
+    expect(repository.payerReviewCallCount, 0);
+    await tester.tap(find.text('Show selected'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('1 requests shown'), findsOneWidget);
+  });
+
+  testWidgets('payer queue flags low confidence without an approval signal', (
+    tester,
+  ) async {
+    setViewport(tester, const Size(1280, 900));
+    final repository = FakeDrAiRepository(
+      restoredSession: payerSession,
+      payerRequests: <PayerRequestData>[
+        FakeDrAiRepository.payerRequestFixture(
+          id: 'flagged-request',
+          clinicalEventTitle: 'Flagged request',
+          reviewSignals: const PayerReviewSignalsData(
+            artifactVersion: 2,
+            assessmentUnavailable: false,
+            lowConfidence: true,
+            missingInformation: true,
+            conflictingEvidence: false,
+            costException: false,
+          ),
+        ),
+        FakeDrAiRepository.payerRequestFixture(
+          id: 'unflagged-request',
+          clinicalEventTitle: 'Unflagged request',
+        ),
+      ],
+    );
+    await pumpApp(tester, repository);
+    await tester.tap(find.text('Review queue'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Low AI confidence'), findsOneWidget);
+    expect(find.textContaining('Missing information in intelligence'), findsOneWidget);
+    expect(find.textContaining('eligible for approval'), findsNothing);
+
+    await tester.tap(find.byKey(const Key('payer-queue-filter')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Needs individual review').last);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('payer-request-flagged-request')), findsOneWidget);
+    expect(find.byKey(const Key('payer-request-unflagged-request')), findsNothing);
+    expect(repository.payerReviewCallCount, 0);
   });
 
   testWidgets(
@@ -2731,7 +3028,7 @@ void main() {
     await tester.tap(find.text('Imaging'));
     await tester.pumpAndSettle();
     expect(find.textContaining('image/png'), findsOneWidget);
-    expect(find.textContaining('pending_review'), findsOneWidget);
+    expect(find.textContaining('Pending review'), findsOneWidget);
 
     await tester.tap(find.text('Medications'));
     await tester.pumpAndSettle();
@@ -2991,8 +3288,8 @@ void main() {
       repository.consultations.items.first.clinicalEventId,
       'clinical-event-test-id',
     );
-    expect(find.textContaining('consultation requested'), findsWidgets);
-    expect(find.textContaining('Pulmonology - requested'), findsWidgets);
+    expect(find.textContaining('consultation: Requested'), findsWidgets);
+    expect(find.textContaining('Pulmonology - Requested'), findsWidgets);
 
     expect(
       find.byKey(const Key('edit-consultation-cost-created-consultation-id')),

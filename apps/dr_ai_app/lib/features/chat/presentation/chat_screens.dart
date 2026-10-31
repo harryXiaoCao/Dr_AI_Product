@@ -5,6 +5,7 @@ import 'package:dr_ai_app/features/patient/application/patient_care_providers.da
 import 'package:dr_ai_app/features/patient/domain/patient_care_data.dart';
 import 'package:dr_ai_app/l10n/l10n.dart';
 import 'package:dr_ai_app/shared/widgets/dashboard_states.dart';
+import 'package:dr_ai_app/shared/widgets/navigation_back_button.dart';
 import 'package:dr_ai_app/shared/widgets/responsive_app_shell.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -257,10 +258,8 @@ class _PatientAiChatScreenState extends ConsumerState<PatientAiChatScreen> {
                   children: <Widget>[
                     Row(
                       children: <Widget>[
-                        IconButton(
-                          onPressed: () => context.pop(),
-                          tooltip: 'Back',
-                          icon: const Icon(Icons.arrow_back_rounded),
+                        const NavigationBackButton(
+                          fallbackPath: '/patient/contact',
                         ),
                         IconButton(
                           key: const Key('patient-ai-history-toggle'),
@@ -294,12 +293,13 @@ class _PatientAiChatScreenState extends ConsumerState<PatientAiChatScreen> {
                             ],
                           ),
                         ),
-                        FilledButton.tonalIcon(
-                          key: const Key('patient-ai-new-chat'),
-                          onPressed: _startNewChat,
-                          icon: const Icon(Icons.add_comment_outlined),
-                          label: Text(context.l10n.aiNewChat),
-                        ),
+                        if (!_historyOpen)
+                          FilledButton.tonalIcon(
+                            key: const Key('patient-ai-new-chat'),
+                            onPressed: _startNewChat,
+                            icon: const Icon(Icons.add_comment_outlined),
+                            label: Text(context.l10n.aiNewChat),
+                          ),
                       ],
                     ),
                     const SizedBox(height: DrAiSpacing.sm),
@@ -1242,8 +1242,9 @@ class _PrivateChatScreenState extends ConsumerState<PrivateChatScreen> {
     final messages = ref.watch(privateMessagesProvider(widget.contactId));
     return ResponsiveAppShell(
       role: widget.role,
-      selectedIndex: widget.role == AppRole.doctor ? 3 : 1,
+      selectedIndex: widget.role == AppRole.doctor ? 4 : 1,
       child: _ChatPageFrame(
+        fallbackPath: '/${widget.role.wireValue}/contact',
         title: widget.contactName,
         subtitle: context.l10n.privateCareConversation,
         child: Column(
@@ -1356,10 +1357,12 @@ class _MessageList extends StatelessWidget {
 
 class _ChatPageFrame extends StatelessWidget {
   const _ChatPageFrame({
+    required this.fallbackPath,
     required this.title,
     required this.subtitle,
     required this.child,
   });
+  final String fallbackPath;
   final String title;
   final String subtitle;
   final Widget child;
@@ -1376,11 +1379,7 @@ class _ChatPageFrame extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                IconButton(
-                  onPressed: () => context.pop(),
-                  tooltip: 'Back',
-                  icon: const Icon(Icons.arrow_back_rounded),
-                ),
+                NavigationBackButton(fallbackPath: fallbackPath),
                 Text(
                   title,
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(

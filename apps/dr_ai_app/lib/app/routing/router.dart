@@ -8,6 +8,7 @@ import 'package:dr_ai_app/features/chat/presentation/chat_screens.dart';
 import 'package:dr_ai_app/features/clinical_event_intelligence/presentation/clinical_event_intelligence_screen.dart';
 import 'package:dr_ai_app/features/doctor/presentation/doctor_contacts_screen.dart';
 import 'package:dr_ai_app/features/doctor/presentation/doctor_dashboard_screen.dart';
+import 'package:dr_ai_app/features/doctor/presentation/doctor_hospital_resources_screen.dart';
 import 'package:dr_ai_app/features/doctor/presentation/doctor_payer_requests_screen.dart';
 import 'package:dr_ai_app/features/doctor/presentation/doctor_resource_reader_screen.dart';
 import 'package:dr_ai_app/features/doctor/presentation/doctor_resources_screen.dart';
@@ -15,6 +16,7 @@ import 'package:dr_ai_app/features/doctor/presentation/patient_management_screen
 import 'package:dr_ai_app/features/expected_care/presentation/expected_care_screens.dart';
 import 'package:dr_ai_app/features/foundation/presentation/session_loading_screen.dart';
 import 'package:dr_ai_app/features/foundation/presentation/unauthorized_screen.dart';
+import 'package:dr_ai_app/features/hospital_admin/presentation/hospital_admin_screen.dart';
 import 'package:dr_ai_app/features/notifications/presentation/notification_inbox_screen.dart';
 import 'package:dr_ai_app/features/patient/presentation/patient_contacts_screen.dart';
 import 'package:dr_ai_app/features/patient/presentation/patient_dashboard_screen.dart';
@@ -97,6 +99,7 @@ AppRole? _protectedRoleForPath(String path) {
     AppRole.doctor,
     AppRole.patient,
     AppRole.payer,
+    AppRole.admin,
   ]) {
     final prefix = '/${role.wireValue}';
     if (path == prefix || path.startsWith('$prefix/')) return role;
@@ -109,11 +112,14 @@ GoRouter createRouter(
   String? initialLocation,
   RouterSessionState? sessionState,
 }) {
+  // Detail pages opened with push should have a shareable browser URL.
+  GoRouter.optionURLReflectsImperativeAPIs = true;
   final session = sessionState ?? RouterSessionState.hydrated(initialRole);
   String homePath(AppRole? role) => switch (role) {
     AppRole.doctor => '/doctor',
     AppRole.patient => '/patient',
     AppRole.payer => '/payer',
+    AppRole.admin => '/admin',
     AppRole.unsupported => '/unauthorized',
     null => '/login',
   };
@@ -165,6 +171,11 @@ GoRouter createRouter(
     },
     routes: <RouteBase>[
       GoRoute(
+        path: '/admin',
+        pageBuilder: (context, state) =>
+            _drAiPage(state, const HospitalAdminScreen()),
+      ),
+      GoRoute(
         path: '/session-loading',
         pageBuilder: (context, state) =>
             _drAiPage(state, const SessionLoadingRouteScreen()),
@@ -198,6 +209,11 @@ GoRouter createRouter(
             path: 'resources',
             pageBuilder: (context, state) =>
                 _drAiPage(state, const DoctorResourcesScreen()),
+          ),
+          GoRoute(
+            path: 'hospital-resources',
+            pageBuilder: (context, state) =>
+                _drAiPage(state, const DoctorHospitalResourcesScreen()),
           ),
           GoRoute(
             path: 'resources/:sourceId/read',
@@ -332,7 +348,10 @@ GoRouter createRouter(
           ),
           GoRoute(
             path: 'medical-service',
-            redirect: (context, state) => '/patient/medical-service/records',
+            redirect: (context, state) =>
+                state.uri.path == '/patient/medical-service'
+                ? '/patient/medical-service/records'
+                : null,
             routes: <RouteBase>[
               GoRoute(
                 path: ':section',
@@ -461,8 +480,13 @@ GoRouter createRouter(
 GoRoute _notificationRoute(AppRole role) {
   return GoRoute(
     path: 'notifications',
-    pageBuilder: (context, state) =>
-        _drAiPage(state, NotificationInboxScreen(role: role)),
+    pageBuilder: (context, state) => _drAiPage(
+      state,
+      NotificationInboxScreen(
+        role: role,
+        originIndex: state.extra is int ? state.extra! as int : null,
+      ),
+    ),
     routes: <RouteBase>[
       GoRoute(
         path: ':notificationId/open',

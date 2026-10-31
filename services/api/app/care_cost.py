@@ -11,6 +11,7 @@ from sqlalchemy.orm import selectinload
 
 from app.clinical_event_intelligence_models import (
     ClinicalEventIntelligenceArtifact,
+    ClinicalEventIntelligenceItemAssessment,
     ClinicalEventIntelligenceLineageEvent,
 )
 from app.dependencies import CurrentUser, DbSession
@@ -252,6 +253,38 @@ class PayerRequestResponse(BaseModel):
     lines: list[PayerRequestLineResponse]
     doctor_responses: list[PayerDoctorResponseResponse]
     reviews: list[PayerReviewResponse]
+    review_signals: "PayerReviewSignalsResponse | None" = None
+
+
+class PayerReviewSignalsResponse(BaseModel):
+    artifact_version: int
+    assessment_unavailable: bool
+    low_confidence: bool
+    missing_information: bool
+    conflicting_evidence: bool
+    cost_exception: bool
+
+
+def _payer_review_signals(
+    artifact: ClinicalEventIntelligenceArtifact,
+    items: list[ClinicalEventIntelligenceItemAssessment],
+) -> PayerReviewSignalsResponse:
+    return PayerReviewSignalsResponse(
+        artifact_version=artifact.artifact_version,
+        assessment_unavailable=artifact.lifecycle_state != "validated" or not items,
+        low_confidence=any(item.confidence < 60 for item in items),
+        missing_information=any(bool(item.missing_information_json) for item in items),
+        conflicting_evidence=artifact.disagreement_state not in
+        {"agreement", "unavailable"} or any(
+            bool(item.contradicting_facts_json) for item in items
+        ),
+        cost_exception=any(
+            item.exploratory or item.wide_uncertainty or
+            (item.estimated_cost_high_minor > 0 and
+             item.requested_amount_minor > item.estimated_cost_high_minor)
+            for item in items
+        ),
+    )
 
 
 class PayerRequestListResponse(BaseModel):
@@ -1383,13 +1416,42 @@ def payer_requests(user: CurrentUser, db: DbSession) -> PayerRequestListResponse
         .where(PayerRequest.payer_organization_id == membership.payer_organization_id)
         .order_by(PayerRequest.created_at.desc(), PayerRequest.id)
     ).all()
+    signals_by_request: dict[uuid.UUID, PayerReviewSignalsResponse] = {}
+    if requests:
+        artifacts = db.scalars(
+            select(ClinicalEventIntelligenceArtifact)
+            .where(ClinicalEventIntelligenceArtifact.payer_request_id.in_(
+                [item.id for item in requests]
+            ))
+            .distinct(ClinicalEventIntelligenceArtifact.payer_request_id)
+            .order_by(
+                ClinicalEventIntelligenceArtifact.payer_request_id,
+                ClinicalEventIntelligenceArtifact.artifact_version.desc(),
+            )
+        ).all()
+        latest = {}
+        for artifact in artifacts:
+            latest.setdefault(artifact.payer_request_id, artifact)
+        if latest:
+            assessments = db.scalars(
+                select(ClinicalEventIntelligenceItemAssessment).where(
+                    ClinicalEventIntelligenceItemAssessment.run_id.in_(
+                        [artifact.run_id for artifact in latest.values()]
+                    )
+                )
+            ).all()
+            by_run: dict[uuid.UUID, list[ClinicalEventIntelligenceItemAssessment]] = {}
+            for assessment in assessments:
+                by_run.setdefault(assessment.run_id, []).append(assessment)
+            for request_id, artifact in latest.items():
+                items = by_run.get(artifact.run_id, [])
+                signals_by_request[request_id] = _payer_review_signals(artifact, items)
     return PayerRequestListResponse(
         items=[
             _request_response(
-                item,
-                include_clarification_messages=True,
+                item, include_clarification_messages=True,
                 include_reviewer_notes=True,
-            )
+            ).model_copy(update={"review_signals": signals_by_request.get(item.id)})
             for item in requests
         ]
     )

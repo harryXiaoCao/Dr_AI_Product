@@ -41,6 +41,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _termsAccepted = false;
   bool _customHospital = false;
   bool _registrationCodeRequesting = false;
+  bool _registrationCodeFailed = false;
   String? _registrationCodeStatus;
   AppRole _selectedRole = AppRole.patient;
   String _gender = 'Unspecified';
@@ -700,7 +701,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           Text(
             _registrationCodeStatus!,
             key: const Key('registration-code-status'),
-            style: const TextStyle(color: DrAiColors.mutedInk, fontSize: 12),
+            style: TextStyle(
+              color: _registrationCodeFailed
+                  ? DrAiColors.danger
+                  : DrAiColors.mutedInk,
+              fontSize: 12,
+            ),
           ),
         ],
       ],
@@ -708,14 +714,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<void> _requestRegistrationCode() async {
-    if (_phoneController.text.trim().length < 5) {
+    if (!_isPhone(_fullPhoneNumber())) {
       setState(() {
-        _registrationCodeStatus = context.l10n.enterPhoneFirst;
+        _registrationCodeFailed = true;
+        _registrationCodeStatus = _phoneController.text.trim().isEmpty
+            ? context.l10n.enterPhoneFirst
+            : context.l10n.invalidPhone;
       });
       return;
     }
     setState(() {
       _registrationCodeRequesting = true;
+      _registrationCodeFailed = false;
       _registrationCodeStatus = null;
     });
     try {
@@ -730,6 +740,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       }
       setState(() {
         _registrationCodeRequesting = false;
+        _registrationCodeFailed = false;
         _registrationCodeStatus = result.debugCode == null
             ? result.message
             : context.l10n.localDevelopmentCodeFilled(result.message);
@@ -738,6 +749,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (mounted) {
         setState(() {
           _registrationCodeRequesting = false;
+          _registrationCodeFailed = true;
           _registrationCodeStatus = error.message;
         });
       }
@@ -745,6 +757,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (mounted) {
         setState(() {
           _registrationCodeRequesting = false;
+          _registrationCodeFailed = true;
           _registrationCodeStatus = context.l10n.unableToRequestCode;
         });
       }
@@ -1105,7 +1118,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     return InkWell(
       onTap: () {
         ref.read(authControllerProvider.notifier).clearFeedback();
-        context.go(path);
+        context.push(path);
       },
       child: Text(
         label,

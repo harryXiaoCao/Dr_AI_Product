@@ -126,6 +126,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get payerAccountLoadFailed => '无法加载支付方账户，请检查网络连接后重试。';
 
   @override
+  String get pageLoadFailed => '无法加载此页面，请重试。';
+
+  @override
+  String get actionFailedRetry => '操作未能完成，请重试。';
+
+  @override
   String get payerAccessUnavailable => '当前支付机构访问权限不可用。如非预期，请联系管理员。';
 
   @override
@@ -606,7 +612,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get official => '官方';
 
   @override
-  String get drAiContactDescription => '教育用途的 AI 对话将在第三阶段开放';
+  String get drAiContactDescription => '就一般健康问题进行教育性对话';
 
   @override
   String get comingLater => '即将推出';
@@ -1077,7 +1083,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get phase5MedicationNotificationsReadOnly =>
-      'Phase 5 不会安排系统用药通知。Phase 6 需完成设备注册并接入受治理的通知投递服务；目前请使用已持久化的应用内任务清单。';
+      '第五阶段不会安排系统用药通知。第六阶段需完成设备注册并接入受治理的通知投递服务；目前请使用已保存的应用内任务清单。';
 
   @override
   String get noTodayTasks => '今天没有待完成的康复任务。';
@@ -1197,6 +1203,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get active => '进行中';
+
+  @override
+  String get careRelationshipActive => '诊疗关系有效';
 
   @override
   String get paused => '已暂停';
@@ -2843,6 +2852,117 @@ class AppLocalizationsZh extends AppLocalizations {
   String get resourceSuggestionTwo => '呼吸道感染用药安全';
 
   @override
+  String get serviceCategoryLabel => '服务类别';
+
+  @override
+  String get chooseSyntheticImage => '选择合成影像';
+
+  @override
+  String get movePhaseEarlier => '将阶段前移';
+
+  @override
+  String get movePhaseLater => '将阶段后移';
+
+  @override
+  String get removePhase => '移除阶段';
+
+  @override
+  String get codeLaboratory => '实验室检查';
+
+  @override
+  String get codeProcedure => '医疗操作';
+
+  @override
+  String get codeSurgery => '手术';
+
+  @override
+  String get codeImplantDevice => '植入物或医疗器械';
+
+  @override
+  String get codeAnesthesia => '麻醉';
+
+  @override
+  String get codeTreatment => '治疗';
+
+  @override
+  String get codeRehabilitation => '康复治疗';
+
+  @override
+  String get codeOtherService => '其他服务';
+
+  @override
+  String get codeOrdered => '已开单';
+
+  @override
+  String get codeRequested => '已申请';
+
+  @override
+  String get codeScheduled => '已安排';
+
+  @override
+  String get codeInProgress => '进行中';
+
+  @override
+  String get codePerformed => '已实施';
+
+  @override
+  String get codeCancelled => '已取消';
+
+  @override
+  String get codeNotCompleted => '未完成';
+
+  @override
+  String get codeInPerson => '线下会诊';
+
+  @override
+  String get codeVideo => '视频会诊';
+
+  @override
+  String get codeTelephone => '电话会诊';
+
+  @override
+  String get codeRecordReview => '病历审阅';
+
+  @override
+  String get codeEnteredInError => '误录入';
+
+  @override
+  String get codeDemoVisit => '演示就诊';
+
+  @override
+  String get codeDemoFollowUp => '演示复诊';
+
+  @override
+  String get codeSyntheticHistory => '合成病史';
+
+  @override
+  String get equipmentVentilators => '呼吸机';
+
+  @override
+  String get statusPendingUpload => '等待上传';
+
+  @override
+  String get statusUploaded => '已上传';
+
+  @override
+  String get statusFailed => '失败';
+
+  @override
+  String get statusExpired => '已过期';
+
+  @override
+  String get statusNotReady => '尚不可审核';
+
+  @override
+  String get statusReviewed => '已审核';
+
+  @override
+  String get statusRejected => '已驳回';
+
+  @override
+  String get statusPlanned => '已计划';
+
+  @override
   String get resourceSuggestionThree => '糖尿病生病期间健康教育';
 
   @override
@@ -3571,6 +3691,18 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get ceiUnavailableTitle => '智能信息暂不可用';
+
+  @override
+  String get ceiUnavailableValue => '暂无';
+
+  @override
+  String get ceiRequestedItem => '申请项目';
+
+  @override
+  String get ceiSourceWithheld => '来源未提供';
+
+  @override
+  String get ceiUnitItem => '项';
 
   @override
   String get ceiUnavailableBody => '该申请仍可继续用于常规临床记录、待补费用、澄清及人工审核。';

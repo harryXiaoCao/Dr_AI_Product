@@ -40,6 +40,8 @@ from app.expected_care_explanations import (
     router as expected_care_explanations_router,
 )
 from app.expected_care_review import router as expected_care_review_router
+from app.hospital_admin import doctor_router as doctor_hospital_resource_router
+from app.hospital_admin import router as hospital_admin_router
 from app.knowledge_catalog import router as knowledge_catalog_router
 from app.knowledge_retrieval import router as knowledge_retrieval_router
 from app.notification_delivery import readiness as notification_delivery_readiness
@@ -156,6 +158,8 @@ def create_app() -> FastAPI:
         }
 
     app.include_router(auth_router)
+    app.include_router(hospital_admin_router)
+    app.include_router(doctor_hospital_resource_router)
     app.include_router(care_cost_router)
     app.include_router(clinical_event_intelligence_router)
     app.include_router(dashboard_router)

@@ -1,0 +1,4 @@
+- status "Loading Dr. AI" [ref=e1]:
+  - generic [ref=e2]:
+    - generic [aria-hidden] [ref=e3]: Dr
+    - generic [ref=e4]: Dr. AI

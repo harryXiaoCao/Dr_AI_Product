@@ -8,6 +8,7 @@ import 'package:dr_ai_app/features/notifications/application/notification_provid
 import 'package:dr_ai_app/features/notifications/domain/notification_data.dart';
 import 'package:dr_ai_app/l10n/l10n.dart';
 import 'package:dr_ai_app/shared/widgets/dashboard_states.dart';
+import 'package:dr_ai_app/shared/widgets/navigation_back_button.dart';
 import 'package:dr_ai_app/shared/widgets/responsive_app_shell.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -15,9 +16,14 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 class NotificationInboxScreen extends ConsumerStatefulWidget {
-  const NotificationInboxScreen({required this.role, super.key});
+  const NotificationInboxScreen({
+    required this.role,
+    this.originIndex,
+    super.key,
+  });
 
   final AppRole role;
+  final int? originIndex;
 
   @override
   ConsumerState<NotificationInboxScreen> createState() =>
@@ -40,12 +46,7 @@ class _NotificationInboxScreenState
     super.dispose();
   }
 
-  int get _selectedIndex => switch (widget.role) {
-    AppRole.doctor => 4,
-    AppRole.patient => 1,
-    AppRole.payer => 0,
-    AppRole.unsupported => 0,
-  };
+  int get _selectedIndex => widget.originIndex ?? 0;
 
   @override
   Widget build(BuildContext context) {
@@ -53,17 +54,20 @@ class _NotificationInboxScreenState
     return ResponsiveAppShell(
       role: widget.role,
       selectedIndex: _selectedIndex,
-      child: ColoredBox(
-        color: DrAiColors.pageBackground,
-        child: inbox.when(
-          loading: () => DashboardLoadingView(
-            label: _copy(context, 'Loading notifications', '正在加载通知'),
+      child: NavigationPageFrame(
+        fallbackPath: '/${widget.role.wireValue}',
+        child: ColoredBox(
+          color: DrAiColors.pageBackground,
+          child: inbox.when(
+            loading: () => DashboardLoadingView(
+              label: _copy(context, 'Loading notifications', '正在加载通知'),
+            ),
+            error: (error, stackTrace) => DashboardErrorView(
+              message: _loadError(context, error),
+              onRetry: () => ref.invalidate(notificationInboxProvider),
+            ),
+            data: (data) => _inbox(context, data),
           ),
-          error: (error, stackTrace) => DashboardErrorView(
-            message: _loadError(context, error),
-            onRetry: () => ref.invalidate(notificationInboxProvider),
-          ),
-          data: (data) => _inbox(context, data),
         ),
       ),
     );
@@ -226,7 +230,7 @@ class _NotificationInboxScreenState
         item.isUnread
             ? _copy(context, 'Unread notification', '未读通知')
             : _copy(context, 'Read notification', '已读通知'),
-        item.title,
+        _notificationTitle(context, item),
         _statusLabel(context, _effectiveStatus(item)),
       ].join('. '),
       child: Card(
@@ -252,12 +256,15 @@ class _NotificationInboxScreenState
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
                           Text(
-                            item.title,
+                            _notificationTitle(context, item),
                             style: Theme.of(context).textTheme.titleMedium
                                 ?.copyWith(fontWeight: FontWeight.w800),
                           ),
                           const SizedBox(height: 4),
-                          Text(item.body, style: const TextStyle(height: 1.45)),
+                          Text(
+                            _notificationBody(context, item),
+                            style: const TextStyle(height: 1.45),
+                          ),
                         ],
                       ),
                     ),
@@ -1043,6 +1050,162 @@ class _EmptyFilter extends StatelessWidget {
   }
 }
 
+typedef _NotificationTemplate = ({
+  String enTitle,
+  String enBody,
+  String zhTitle,
+  String zhBody,
+});
+
+// Mirrors the fixed system copy in services/api/app/notification_contracts.py.
+// Match stored text exactly so authored notification content stays untouched.
+const _notificationTemplates = <String, _NotificationTemplate>{
+  "care_relationship_approval_requested": (
+    enTitle: "Doctor connection request",
+    enBody: "Open Dr. AI to review a doctor connection request.",
+    zhTitle: "医生连接请求",
+    zhBody: "打开 Dr. AI 查看医生连接请求。",
+  ),
+  "medication_reminder": (
+    enTitle: "Care reminder",
+    enBody: "Open Dr. AI to review your scheduled care reminder.",
+    zhTitle: "护理提醒",
+    zhBody: "打开 Dr. AI 查看您的计划护理提醒。",
+  ),
+  "refill_reminder": (
+    enTitle: "Refill reminder",
+    enBody: "Open Dr. AI to review a refill reminder.",
+    zhTitle: "续药提醒",
+    zhBody: "打开 Dr. AI 查看续药提醒。",
+  ),
+  "recovery_task_due": (
+    enTitle: "Recovery reminder",
+    enBody: "Open Dr. AI to review a recovery task.",
+    zhTitle: "康复提醒",
+    zhBody: "打开 Dr. AI 查看康复任务。",
+  ),
+  "follow_up_milestone": (
+    enTitle: "Follow-up reminder",
+    enBody: "Open Dr. AI to review a follow-up milestone.",
+    zhTitle: "随访提醒",
+    zhBody: "打开 Dr. AI 查看随访节点。",
+  ),
+  "consultation_milestone": (
+    enTitle: "Consultation update",
+    enBody: "Open Dr. AI to review a consultation update.",
+    zhTitle: "会诊更新",
+    zhBody: "打开 Dr. AI 查看会诊更新。",
+  ),
+  "care_service_milestone": (
+    enTitle: "Care milestone",
+    enBody: "Open Dr. AI to review a scheduled care milestone.",
+    zhTitle: "医疗服务节点",
+    zhBody: "打开 Dr. AI 查看计划医疗服务节点。",
+  ),
+  "imaging_action_available": (
+    enTitle: "Imaging update",
+    enBody: "Open Dr. AI to review an available imaging action.",
+    zhTitle: "影像更新",
+    zhBody: "打开 Dr. AI 查看可执行的影像操作。",
+  ),
+  "missing_information_warning": (
+    enTitle: "Information needs review",
+    enBody: "Required information has not been recorded.",
+    zhTitle: "信息需要审核",
+    zhBody: "尚未记录所需信息。",
+  ),
+  "incomplete_allocation_warning": (
+    enTitle: "Cost allocation incomplete",
+    enBody:
+        "A deterministic allocation check is incomplete. Review is recommended.",
+    zhTitle: "费用分配不完整",
+    zhBody: "确定性分配检查尚未完成，建议审核。",
+  ),
+  "payer_clarification_requested": (
+    enTitle: "Clarification requested",
+    enBody: "Open Dr. AI to review the payer clarification request.",
+    zhTitle: "需要澄清",
+    zhBody: "打开 Dr. AI 查看付款方的澄清请求。",
+  ),
+  "adherence_evidence_available": (
+    enTitle: "Recorded care evidence updated",
+    enBody: "Open Dr. AI to review newly recorded completion evidence.",
+    zhTitle: "护理记录已更新",
+    zhBody: "打开 Dr. AI 查看新记录的完成证据。",
+  ),
+  "imaging_status_warning": (
+    enTitle: "Imaging status updated",
+    enBody: "Open Dr. AI to review the recorded imaging status.",
+    zhTitle: "影像状态已更新",
+    zhBody: "打开 Dr. AI 查看已记录的影像状态。",
+  ),
+  "consultation_follow_up_warning": (
+    enTitle: "Consultation status updated",
+    enBody: "Open Dr. AI to review the consultation status.",
+    zhTitle: "会诊状态已更新",
+    zhBody: "打开 Dr. AI 查看会诊状态。",
+  ),
+  "payer_request_submitted": (
+    enTitle: "Review request available",
+    enBody: "Open Dr. AI to review a newly submitted request.",
+    zhTitle: "有新的审核请求",
+    zhBody: "打开 Dr. AI 查看新提交的请求。",
+  ),
+  "payer_doctor_response_added": (
+    enTitle: "Additional information available",
+    enBody: "Open Dr. AI to review an attributable response.",
+    zhTitle: "有补充信息",
+    zhBody: "打开 Dr. AI 查看可追溯的回复。",
+  ),
+  "payer_manual_review_transition": (
+    enTitle: "Request status updated",
+    enBody: "Open Dr. AI to review the latest human review status.",
+    zhTitle: "请求状态已更新",
+    zhBody: "打开 Dr. AI 查看最新的人工审核状态。",
+  ),
+  "payer_final_outcome": (
+    enTitle: "Human review outcome recorded",
+    enBody: "Open Dr. AI to review the recorded outcome.",
+    zhTitle: "已记录人工审核结果",
+    zhBody: "打开 Dr. AI 查看已记录的审核结果。",
+  ),
+  "payer_request_closed": (
+    enTitle: "Review request closed",
+    enBody: "Open Dr. AI to review the closed request history.",
+    zhTitle: "审核请求已关闭",
+    zhBody: "打开 Dr. AI 查看已关闭请求的历史记录。",
+  ),
+  "cost_variance_warning": (
+    enTitle: "Cost comparison needs review",
+    enBody:
+        "A deterministic comparison is outside the published range. Review is recommended.",
+    zhTitle: "费用比较需要审核",
+    zhBody: "确定性比较结果超出已发布范围，建议进行审核。",
+  ),
+};
+
+String _notificationTitle(BuildContext context, NotificationInboxItem item) {
+  final template = _notificationTemplates[item.eventType];
+  if (template == null ||
+      (item.title != template.enTitle && item.title != template.zhTitle)) {
+    return item.title;
+  }
+  return Localizations.localeOf(context).languageCode == 'zh'
+      ? template.zhTitle
+      : template.enTitle;
+}
+
+String _notificationBody(BuildContext context, NotificationInboxItem item) {
+  final template = _notificationTemplates[item.eventType];
+  if (template == null ||
+      (item.body != template.enBody && item.body != template.zhBody)) {
+    return item.body;
+  }
+  return Localizations.localeOf(context).languageCode == 'zh'
+      ? template.zhBody
+      : template.enBody;
+}
+
 String _loadError(BuildContext context, Object error) {
   if (error is ApiError &&
       (error.code == 'service_unavailable' || error.statusCode == null)) {
@@ -1102,6 +1265,7 @@ String _deliveryLabel(BuildContext context, String value) => switch (value) {
   'unknown' => _copy(context, 'Delivery unknown', '投递状态未知'),
   'quiet_hours' => _copy(context, 'Held for quiet hours', '免打扰期间暂缓'),
   'not_requested' => _copy(context, 'In-product only', '仅应用内'),
+  'in_product_only' => _copy(context, 'In-product only', '仅应用内'),
   _ => context.l10n.stableValue(value),
 };
 

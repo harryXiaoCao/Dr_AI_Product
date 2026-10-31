@@ -4,6 +4,7 @@ import 'package:dr_ai_app/design_system/dr_ai_tokens.dart';
 import 'package:dr_ai_app/features/auth/application/auth_controller.dart';
 import 'package:dr_ai_app/features/care_cost/application/care_cost_providers.dart';
 import 'package:dr_ai_app/features/care_cost/domain/care_cost_data.dart';
+import 'package:dr_ai_app/l10n/l10n.dart';
 import 'package:dr_ai_app/shared/presentation/product_history_copy.dart';
 import 'package:dr_ai_app/shared/widgets/dashboard_states.dart';
 import 'package:dr_ai_app/shared/widgets/responsive_app_shell.dart';
@@ -75,7 +76,7 @@ class PatientCareCostScreen extends ConsumerWidget {
         child: ledger.when(
           loading: () => const DashboardLoadingView(),
           error: (error, stackTrace) => DashboardErrorView(
-            message: error.toString(),
+            message: context.l10n.loadCareCostsSummaryFailed,
             onRetry: () {
               ref.invalidate(ownCareCostLedgerProvider);
               ref.invalidate(ownPatientPayerRequestsProvider);
@@ -452,7 +453,7 @@ class PayerDashboardScreen extends ConsumerWidget {
         child: dashboard.when(
           loading: () => const DashboardLoadingView(),
           error: (error, stackTrace) => DashboardErrorView(
-            message: error.toString(),
+            message: context.l10n.pageLoadFailed,
             onRetry: () => ref.invalidate(payerDashboardProvider),
           ),
           data: (data) => ListView(
@@ -543,82 +544,352 @@ class PayerRequestsScreen extends ConsumerWidget {
     return ResponsiveAppShell(
       role: AppRole.payer,
       selectedIndex: 1,
-      child: _RequestWorkspace(
-        title: _copy(context, 'Human review queue', '人工审核队列'),
-        description: _copy(
-          context,
-          'Inspect the clinical-event context and immutable line-item snapshot before recording a review action.',
-          '记录审核操作前，请查看临床事件背景与不可变更的费用明细快照。',
-        ),
+      child: _PayerReviewQueue(
         requests: requests,
         onRetry: () => ref.invalidate(payerRequestsProvider),
-        payerActions: true,
         onReview: (request) => _showReviewDialog(context, ref, request),
       ),
     );
   }
 }
 
-class _RequestWorkspace extends StatelessWidget {
-  const _RequestWorkspace({
-    required this.title,
-    required this.description,
+class _PayerReviewQueue extends StatefulWidget {
+  const _PayerReviewQueue({
     required this.requests,
     required this.onRetry,
-    this.payerActions = false,
-    this.onReview,
+    required this.onReview,
   });
 
-  final String title;
-  final String description;
   final AsyncValue<List<PayerRequestData>> requests;
   final VoidCallback onRetry;
-  final bool payerActions;
-  final ValueChanged<PayerRequestData>? onReview;
+  final ValueChanged<PayerRequestData> onReview;
+
+  @override
+  State<_PayerReviewQueue> createState() => _PayerReviewQueueState();
+}
+
+class _PayerReviewQueueState extends State<_PayerReviewQueue> {
+  final _selected = <String>{};
+  final _searchController = TextEditingController();
+  String _query = '';
+  String _filter = 'open';
+  String _sort = 'oldest';
+  bool _selectedOnly = false;
+
+  bool _open(PayerRequestData request) => const {
+    'submitted',
+    'under_review',
+    'clarification_requested',
+    'escalated',
+  }.contains(request.status);
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return ColoredBox(
       color: DrAiColors.pageBackground,
-      child: requests.when(
+      child: widget.requests.when(
         loading: () => const DashboardLoadingView(),
-        error: (error, stackTrace) =>
-            DashboardErrorView(message: error.toString(), onRetry: onRetry),
-        data: (items) => ListView(
-          padding: const EdgeInsets.all(DrAiSpacing.lg),
-          children: <Widget>[
-            Text(
-              title,
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                color: DrAiColors.brandDark,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              description,
-              style: const TextStyle(color: DrAiColors.inkSecondary),
-            ),
-            const SizedBox(height: DrAiSpacing.lg),
-            if (items.isEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: DrAiSpacing.xxl),
-                child: Center(
-                  child: Text(_copy(context, 'No requests yet', '暂无申请')),
-                ),
-              )
-            else
-              for (final request in items) ...<Widget>[
-                _PayerRequestDetail(
-                  request: request,
-                  payerActions: payerActions,
-                  onReview: onReview,
-                ),
-                const SizedBox(height: DrAiSpacing.md),
-              ],
-          ],
+        error: (error, stackTrace) => DashboardErrorView(
+          message: context.l10n.pageLoadFailed,
+          onRetry: widget.onRetry,
         ),
+        data: (requests) {
+          final byCurrency = <String, List<int>>{};
+          for (final request in requests.where(_open)) {
+            byCurrency
+                .putIfAbsent(request.currency, () => <int>[])
+                .add(request.requestedTotalMinor);
+          }
+          for (final amounts in byCurrency.values) {
+            amounts.sort();
+          }
+          bool unusualCost(PayerRequestData request) {
+            final amounts = byCurrency[request.currency];
+            if (amounts == null || amounts.length < 3) return false;
+            final middle = amounts.length ~/ 2;
+            final twiceMedian = amounts.length.isOdd
+                ? amounts[middle] * 2
+                : amounts[middle - 1] + amounts[middle];
+            return twiceMedian > 0 && request.requestedTotalMinor >= twiceMedian;
+          }
+
+          final visible = requests.where((request) {
+            final matchesFilter = switch (_filter) {
+              'open' => _open(request),
+              'attention' =>
+                _open(request) &&
+                    (request.reviewSignals?.lowConfidence == true ||
+                        request.reviewSignals?.missingInformation == true ||
+                        request.reviewSignals?.conflictingEvidence == true ||
+                        request.reviewSignals?.costException == true ||
+                        request.reviewSignals?.assessmentUnavailable == true ||
+                        request.status == 'escalated' ||
+                        request.lines.isEmpty ||
+                        request.doctorSummary.trim().isEmpty ||
+                        unusualCost(request)),
+              'clarification' => request.status == 'clarification_requested',
+              'escalated' => request.status == 'escalated',
+              'completed' => !_open(request),
+              _ => true,
+            };
+            final haystack =
+                '${request.clinicalEventTitle} ${request.patientDisplayName} '
+                        '${request.doctorDisplayName} ${request.id} ${request.doctorSummary}'
+                    .toLowerCase();
+            return matchesFilter &&
+                haystack.contains(_query.toLowerCase()) &&
+                (!_selectedOnly || _selected.contains(request.id));
+          }).toList();
+          visible.sort(
+            (a, b) => switch (_sort) {
+              'newest' => b.createdAt.compareTo(a.createdAt),
+              'amount' => b.requestedTotalMinor.compareTo(
+                a.requestedTotalMinor,
+              ),
+              'status' => a.status.compareTo(b.status),
+              _ => a.createdAt.compareTo(b.createdAt),
+            },
+          );
+          final openCount = requests.where(_open).length;
+          return ListView.builder(
+            padding: const EdgeInsets.all(DrAiSpacing.lg),
+            itemCount: visible.isEmpty ? 1 : visible.length + 1,
+            itemBuilder: (context, index) {
+              if (index > 0) {
+                final request = visible[index - 1];
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: _QueueRow(
+                    key: ValueKey(request.id),
+                    request: request,
+                    unusualCost: unusualCost(request),
+                    selected: _selected.contains(request.id),
+                    onSelected: (value) => setState(() {
+                      if (value) {
+                        _selected.add(request.id);
+                      } else {
+                        _selected.remove(request.id);
+                      }
+                    }),
+                    onReview: () => widget.onReview(request),
+                  ),
+                );
+              }
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    _copy(context, 'Human review queue', '人工审核队列'),
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      color: DrAiColors.brandDark,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _copy(
+                      context,
+                      '$openCount open · ${requests.length} total. Review evidence and policy before any coverage decision.',
+                      '$openCount 项待处理 · 共 ${requests.length} 项。作出保障决定前须核查证据与保单。',
+                    ),
+                    style: const TextStyle(color: DrAiColors.inkSecondary),
+                  ),
+                  Text(
+                    _copy(
+                      context,
+                      'Exception flags come from the latest authorized intelligence artifact. Confidence below 60/100 and queue-relative cost outliers are triage prompts, not eligibility findings. Missing artifacts have no score signal.',
+                      '异常提示来自最新获授权的智能产物。置信度低于 60/100 及队列相对费用异常仅用于分诊，不代表保障资格。缺少产物时不显示评分信号。',
+                    ),
+                    style: const TextStyle(color: DrAiColors.inkSecondary),
+                  ),
+                  const SizedBox(height: 16),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: <Widget>[
+                      SizedBox(
+                        width: 280,
+                        child: TextField(
+                          key: const Key('payer-queue-search'),
+                          controller: _searchController,
+                          decoration: InputDecoration(
+                            prefixIcon: const Icon(Icons.search),
+                            labelText: _copy(
+                              context,
+                              'Search requests',
+                              '搜索申请',
+                            ),
+                            border: const OutlineInputBorder(),
+                          ),
+                          onChanged: (value) => setState(() => _query = value),
+                        ),
+                      ),
+                      DropdownButton<String>(
+                        key: const Key('payer-queue-filter'),
+                        value: _filter,
+                        items:
+                            [
+                                  ('open', 'Open', '待处理'),
+                                  (
+                                    'attention',
+                                    'Needs individual review',
+                                    '需单独审核',
+                                  ),
+                                  ('all', 'All', '全部'),
+                                  ('clarification', 'Clarification', '待补充说明'),
+                                  ('escalated', 'Escalated', '已升级'),
+                                  ('completed', 'Completed', '已完成'),
+                                ]
+                                .map(
+                                  (item) => DropdownMenuItem(
+                                    value: item.$1,
+                                    child: Text(
+                                      _copy(context, item.$2, item.$3),
+                                    ),
+                                  ),
+                                )
+                                .toList(),
+                        onChanged: (value) =>
+                            setState(() => _filter = value ?? _filter),
+                      ),
+                      DropdownButton<String>(
+                        key: const Key('payer-queue-sort'),
+                        value: _sort,
+                        items:
+                            [
+                                  ('oldest', 'Oldest first', '最早优先'),
+                                  ('newest', 'Newest first', '最新优先'),
+                                  ('amount', 'Highest amount', '最高金额'),
+                                  ('status', 'Status', '状态'),
+                                ]
+                                .map(
+                                  (item) => DropdownMenuItem(
+                                    value: item.$1,
+                                    child: Text(
+                                      _copy(context, item.$2, item.$3),
+                                    ),
+                                  ),
+                                )
+                                .toList(),
+                        onChanged: (value) =>
+                            setState(() => _sort = value ?? _sort),
+                      ),
+                    ],
+                  ),
+                  if (_selected.isNotEmpty) ...<Widget>[
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: <Widget>[
+                        Text(
+                          _copy(
+                            context,
+                            '${_selected.length} selected for triage in this session',
+                            '本次会话已选择 ${_selected.length} 项供分诊',
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () =>
+                              setState(() => _selectedOnly = !_selectedOnly),
+                          child: Text(
+                            _selectedOnly
+                                ? _copy(context, 'Show all', '显示全部')
+                                : _copy(context, 'Show selected', '仅显示已选'),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () => setState(() {
+                            _selected.clear();
+                            _selectedOnly = false;
+                          }),
+                          child: Text(
+                            _copy(context, 'Clear selection', '清除选择'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                  const SizedBox(height: 12),
+                  Text(
+                    _copy(
+                      context,
+                      '${visible.length} requests shown',
+                      '显示 ${visible.length} 项申请',
+                    ),
+                    style: const TextStyle(color: DrAiColors.inkSecondary),
+                  ),
+                  const SizedBox(height: 8),
+                  if (visible.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.all(32),
+                      child: Text(
+                        _copy(
+                          context,
+                          'No requests match these filters.',
+                          '没有符合筛选条件的申请。',
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          );
+        },
       ),
+    );
+  }
+}
+
+class _QueueRow extends StatelessWidget {
+  const _QueueRow({
+    super.key,
+    required this.request,
+    required this.unusualCost,
+    required this.selected,
+    required this.onSelected,
+    required this.onReview,
+  });
+  final PayerRequestData request;
+  final bool unusualCost;
+  final bool selected;
+  final ValueChanged<bool> onSelected;
+  final VoidCallback onReview;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Padding(
+          padding: const EdgeInsets.only(top: 16),
+          child: Checkbox(
+            value: selected,
+            semanticLabel: _copy(
+              context,
+              'Select ${request.clinicalEventTitle} for triage',
+              '选择${request.clinicalEventTitle}进行分诊',
+            ),
+            onChanged: (value) => onSelected(value ?? false),
+          ),
+        ),
+        Expanded(
+          child: _PayerRequestDetail(
+            request: request,
+            unusualCost: unusualCost,
+            payerActions: true,
+            onReview: (_) => onReview(),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -634,7 +905,7 @@ class _PayerRequestSummary extends StatelessWidget {
         key: Key('patient-intelligence-${request.id}'),
         contentPadding: EdgeInsets.zero,
         onTap: () =>
-            context.go('/patient/payer-requests/${request.id}/intelligence'),
+            context.push('/patient/payer-requests/${request.id}/intelligence'),
         title: Text(request.clinicalEventTitle),
         subtitle: Text.rich(
           TextSpan(
@@ -678,207 +949,358 @@ class _PayerRequestDetail extends StatelessWidget {
     required this.request,
     required this.payerActions,
     required this.onReview,
+    this.unusualCost = false,
   });
   final PayerRequestData request;
   final bool payerActions;
   final ValueChanged<PayerRequestData>? onReview;
+  final bool unusualCost;
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(DrAiSpacing.md),
-      decoration: const BoxDecoration(
-        color: DrAiColors.white,
-        border: Border(
-          top: BorderSide(color: DrAiColors.outline),
-          bottom: BorderSide(color: DrAiColors.outline),
-        ),
+    return Material(
+      key: Key('payer-request-${request.id}'),
+      shape: RoundedRectangleBorder(
+        side: const BorderSide(color: DrAiColors.outline),
+        borderRadius: BorderRadius.circular(DrAiRadii.lg),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: Text(
-                  request.clinicalEventTitle,
-                  style: Theme.of(
+      clipBehavior: Clip.antiAlias,
+      child: ExpansionTile(
+        shape: const Border(),
+        collapsedShape: const Border(),
+        tilePadding: const EdgeInsets.symmetric(
+          horizontal: DrAiSpacing.md,
+          vertical: DrAiSpacing.xs,
+        ),
+        title: Row(
+          children: <Widget>[
+            Expanded(
+              child: Text(
+                request.clinicalEventTitle,
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: DrAiSpacing.sm),
+            _StatusLabel(status: request.status),
+            if (request.status == 'escalated' ||
+                unusualCost ||
+                request.reviewSignals?.lowConfidence == true ||
+                request.reviewSignals?.missingInformation == true ||
+                request.reviewSignals?.conflictingEvidence == true ||
+                request.reviewSignals?.costException == true ||
+                request.reviewSignals?.assessmentUnavailable == true)
+              Padding(
+                padding: const EdgeInsets.only(left: 6),
+                child: Icon(
+                  Icons.priority_high,
+                  color: DrAiColors.danger,
+                  semanticLabel: _copy(
                     context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+                    'Individual review required',
+                    '需要单独审核',
+                  ),
                 ),
               ),
-              _StatusLabel(status: request.status),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            '${request.patientDisplayName} · ${request.doctorDisplayName} · ${request.payerOrganization.name}',
-            style: const TextStyle(color: DrAiColors.inkSecondary),
-          ),
-          const SizedBox(height: DrAiSpacing.sm),
-          Text(request.doctorSummary),
-          if (request.doctorResponses.isNotEmpty) ...<Widget>[
-            const SizedBox(height: DrAiSpacing.md),
+          ],
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            const SizedBox(height: 4),
             Text(
-              _copy(context, 'Doctor responses', '医生补充说明'),
-              style: const TextStyle(fontWeight: FontWeight.w800),
+              '${request.patientDisplayName} · ${request.doctorDisplayName} · ${request.payerOrganization.name}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
-            for (final entry in request.doctorResponses.indexed)
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.medical_information_outlined),
-                title: Text(
-                  _doctorResponseTypeText(context, entry.$2.responseType),
+            const SizedBox(height: 4),
+            Text(
+              '${_copy(context, 'Requested total', '申请总额')}: ${_money(request.currency, request.requestedTotalMinor)}',
+              style: const TextStyle(
+                color: DrAiColors.brandDark,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 4),
+            if (unusualCost)
+              Text(
+                _copy(
+                  context,
+                  'Cost outlier: at least twice the open-queue median in this currency; inspect individually.',
+                  '费用异常：至少为同币种待审申请中位数的两倍；请单独核查。',
                 ),
-                subtitle: Text(
-                  '${entry.$2.doctorDisplayName} · ${formatProductHistoryTime(context, entry.$2.createdAt)}\n'
-                  '${entry.$2.summary}',
+                style: const TextStyle(
+                  color: DrAiColors.danger,
+                  fontWeight: FontWeight.w800,
                 ),
-                trailing: Text(
+              ),
+            if (request.reviewSignals?.assessmentUnavailable == true)
+              Text(
+                _copy(
+                  context,
+                  'Intelligence assessment unavailable · review source record',
+                  '智能评估不可用 · 请核查原始记录',
+                ),
+                style: const TextStyle(
+                  color: DrAiColors.danger,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            if (request.reviewSignals?.lowConfidence == true)
+              Text(
+                _copy(
+                  context,
+                  'Low AI confidence (<60/100) · individual review',
+                  'AI 置信度低于 60/100 · 需单独审核',
+                ),
+                style: const TextStyle(
+                  color: DrAiColors.danger,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            if (request.reviewSignals?.missingInformation == true)
+              Text(
+                _copy(
+                  context,
+                  'Missing information in intelligence artifact',
+                  '智能产物提示信息缺口',
+                ),
+                style: const TextStyle(
+                  color: DrAiColors.danger,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            if (request.reviewSignals?.conflictingEvidence == true)
+              Text(
+                _copy(
+                  context,
+                  'Conflicting evidence or model disagreement',
+                  '证据冲突或模型分歧',
+                ),
+                style: const TextStyle(
+                  color: DrAiColors.danger,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            if (request.reviewSignals?.costException == true)
+              Text(
+                _copy(
+                  context,
+                  'Cost estimate exception · inspect sources',
+                  '费用估算异常 · 请核查来源',
+                ),
+                style: const TextStyle(
+                  color: DrAiColors.danger,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            if (request.lines.isEmpty || request.doctorSummary.trim().isEmpty)
+              Text(
+                _copy(
+                  context,
+                  'Missing submitted summary or line items · individual review',
+                  '缺少已提交摘要或费用明细 · 需单独审核',
+                ),
+                style: const TextStyle(
+                  color: DrAiColors.danger,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            Text(
+              request.doctorSummary,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            Text(
+              _requestNextAction(context, request.status),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: DrAiColors.inkSecondary),
+            ),
+          ],
+        ),
+        children: <Widget>[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              DrAiSpacing.md,
+              0,
+              DrAiSpacing.md,
+              DrAiSpacing.md,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                const SizedBox(height: DrAiSpacing.sm),
+                Text(request.doctorSummary),
+                if (request.doctorResponses.isNotEmpty) ...<Widget>[
+                  const SizedBox(height: DrAiSpacing.md),
+                  Text(
+                    _copy(context, 'Doctor responses', '医生补充说明'),
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  for (final entry in request.doctorResponses.indexed)
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.medical_information_outlined),
+                      title: Text(
+                        _doctorResponseTypeText(context, entry.$2.responseType),
+                      ),
+                      subtitle: Text(
+                        '${entry.$2.doctorDisplayName} · ${formatProductHistoryTime(context, entry.$2.createdAt)}\n'
+                        '${entry.$2.summary}',
+                      ),
+                      trailing: Text(
+                        _copy(
+                          context,
+                          entry.$1 == request.doctorResponses.length - 1
+                              ? 'Current'
+                              : 'Earlier',
+                          entry.$1 == request.doctorResponses.length - 1
+                              ? '当前'
+                              : '较早',
+                        ),
+                      ),
+                    ),
+                ],
+                const SizedBox(height: DrAiSpacing.md),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: DataTable(
+                    columns: <DataColumn>[
+                      DataColumn(label: Text(_copy(context, 'Service', '服务'))),
+                      DataColumn(label: Text(_copy(context, 'Date', '日期'))),
+                      DataColumn(
+                        label: Text(_copy(context, 'Recorded total', '已记录总额')),
+                      ),
+                      DataColumn(
+                        label: Text(
+                          _copy(context, 'Requested from payer', '向支付方申请'),
+                        ),
+                      ),
+                      DataColumn(
+                        label: Text(
+                          _copy(context, 'Expected patient share', '预计个人承担'),
+                        ),
+                      ),
+                    ],
+                    rows: request.lines
+                        .map(
+                          (line) => DataRow(
+                            cells: <DataCell>[
+                              DataCell(Text(line.label)),
+                              DataCell(Text(_date(context, line.serviceDate))),
+                              DataCell(
+                                Text(
+                                  _money(line.currency, line.actualCostMinor),
+                                ),
+                              ),
+                              DataCell(
+                                Text(
+                                  _money(line.currency, line.requestedMinor),
+                                ),
+                              ),
+                              DataCell(
+                                Text(
+                                  _money(
+                                    line.currency,
+                                    line.patientResponsibilityMinor,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ),
+                const Divider(height: DrAiSpacing.lg),
+                Text(
                   _copy(
                     context,
-                    entry.$1 == request.doctorResponses.length - 1
-                        ? 'Current'
-                        : 'Earlier',
-                    entry.$1 == request.doctorResponses.length - 1
-                        ? '当前'
-                        : '较早',
+                    'Versioned AI support: open the intelligence artifact',
+                    '版本化 AI 支持：请打开智能产物查看',
+                  ),
+                  style: const TextStyle(color: DrAiColors.inkSecondary),
+                ),
+                const SizedBox(height: DrAiSpacing.md),
+                Text(
+                  _requestNextAction(context, request.status),
+                  style: const TextStyle(
+                    color: DrAiColors.inkSecondary,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-              ),
-          ],
-          const SizedBox(height: DrAiSpacing.md),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: DataTable(
-              columns: <DataColumn>[
-                DataColumn(label: Text(_copy(context, 'Service', '服务'))),
-                DataColumn(label: Text(_copy(context, 'Date', '日期'))),
-                DataColumn(
-                  label: Text(_copy(context, 'Recorded total', '已记录总额')),
-                ),
-                DataColumn(
-                  label: Text(_copy(context, 'Requested from payer', '向支付方申请')),
-                ),
-                DataColumn(
-                  label: Text(
-                    _copy(context, 'Expected patient share', '预计个人承担'),
+                const SizedBox(height: DrAiSpacing.md),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: OutlinedButton.icon(
+                    key: Key('payer-intelligence-${request.id}'),
+                    onPressed: () => context.push(
+                      '/payer/requests/${request.id}/intelligence',
+                    ),
+                    icon: const Icon(Icons.fact_check_outlined),
+                    label: Text(
+                      _copy(
+                        context,
+                        'View authorized request intelligence',
+                        '查看已授权申请智能',
+                      ),
+                    ),
                   ),
                 ),
-              ],
-              rows: request.lines
-                  .map(
-                    (line) => DataRow(
-                      cells: <DataCell>[
-                        DataCell(Text(line.label)),
-                        DataCell(Text(_date(context, line.serviceDate))),
-                        DataCell(
-                          Text(_money(line.currency, line.actualCostMinor)),
+                if (payerActions) ...<Widget>[
+                  if (request.reviews.isNotEmpty) ...<Widget>[
+                    const Divider(height: DrAiSpacing.lg),
+                    Text(
+                      _copy(context, 'Manual transition history', '人工状态变更记录'),
+                      style: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    for (final entry in request.reviews.indexed)
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(Icons.history),
+                        title: Text(
+                          '${_payerRequestStatusText(context, entry.$2.fromStatus)} → '
+                          '${_payerRequestStatusText(context, entry.$2.toStatus)}',
                         ),
-                        DataCell(
-                          Text(_money(line.currency, line.requestedMinor)),
+                        subtitle: Text(
+                          '${entry.$2.reviewerDisplayName} · ${entry.$2.reviewerTitle} · '
+                          '${formatProductHistoryTime(context, entry.$2.createdAt)}\n'
+                          '${_copy(context, 'Recorded reason', '记录原因')}: '
+                          '${humanizeProductValue(entry.$2.reasonCode)}'
+                          '${entry.$2.clarificationMessage == null ? '' : '\n${_copy(context, 'Question for the doctor', '向医生提出的问题')}: ${entry.$2.clarificationMessage}'}'
+                          '${entry.$2.note == null ? '' : '\n${_copy(context, 'Private internal payer note', '支付方内部私密备注')}: ${entry.$2.note}'}',
                         ),
-                        DataCell(
-                          Text(
-                            _money(
-                              line.currency,
-                              line.patientResponsibilityMinor,
-                            ),
+                        trailing: Text(
+                          _copy(
+                            context,
+                            entry.$1 == request.reviews.length - 1
+                                ? 'Current'
+                                : 'Superseded',
+                            entry.$1 == request.reviews.length - 1
+                                ? '当前'
+                                : '已取代',
                           ),
                         ),
-                      ],
-                    ),
-                  )
-                  .toList(),
-            ),
-          ),
-          const Divider(height: DrAiSpacing.lg),
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: Text(
-                  '${_copy(context, 'Requested total', '申请总额')}: ${_money(request.currency, request.requestedTotalMinor)}',
-                  style: const TextStyle(fontWeight: FontWeight.w800),
-                ),
-              ),
-              Text(
-                _copy(
-                  context,
-                  'Versioned AI support: open the intelligence artifact',
-                  '版本化 AI 支持：请打开智能产物查看',
-                ),
-                style: const TextStyle(color: DrAiColors.inkSecondary),
-              ),
-            ],
-          ),
-          const SizedBox(height: DrAiSpacing.md),
-          Text(
-            _requestNextAction(context, request.status),
-            style: const TextStyle(
-              color: DrAiColors.inkSecondary,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: DrAiSpacing.md),
-          Align(
-            alignment: Alignment.centerRight,
-            child: OutlinedButton.icon(
-              key: Key('payer-intelligence-${request.id}'),
-              onPressed: () =>
-                  context.go('/payer/requests/${request.id}/intelligence'),
-              icon: const Icon(Icons.fact_check_outlined),
-              label: Text(
-                _copy(
-                  context,
-                  'View authorized request intelligence',
-                  '查看已授权申请智能',
-                ),
-              ),
-            ),
-          ),
-          if (payerActions) ...<Widget>[
-            if (request.reviews.isNotEmpty) ...<Widget>[
-              const Divider(height: DrAiSpacing.lg),
-              Text(
-                _copy(context, 'Manual transition history', '人工状态变更记录'),
-                style: const TextStyle(fontWeight: FontWeight.w800),
-              ),
-              for (final entry in request.reviews.indexed)
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.history),
-                  title: Text(
-                    '${_payerRequestStatusText(context, entry.$2.fromStatus)} → '
-                    '${_payerRequestStatusText(context, entry.$2.toStatus)}',
-                  ),
-                  subtitle: Text(
-                    '${entry.$2.reviewerDisplayName} · ${entry.$2.reviewerTitle} · '
-                    '${formatProductHistoryTime(context, entry.$2.createdAt)}\n'
-                    '${_copy(context, 'Recorded reason', '记录原因')}: '
-                    '${humanizeProductValue(entry.$2.reasonCode)}'
-                    '${entry.$2.clarificationMessage == null ? '' : '\n${_copy(context, 'Question for the doctor', '向医生提出的问题')}: ${entry.$2.clarificationMessage}'}'
-                    '${entry.$2.note == null ? '' : '\n${_copy(context, 'Private internal payer note', '支付方内部私密备注')}: ${entry.$2.note}'}',
-                  ),
-                  trailing: Text(
-                    _copy(
-                      context,
-                      entry.$1 == request.reviews.length - 1
-                          ? 'Current'
-                          : 'Superseded',
-                      entry.$1 == request.reviews.length - 1 ? '当前' : '已取代',
+                      ),
+                  ],
+                  const SizedBox(height: DrAiSpacing.md),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: FilledButton.icon(
+                      onPressed: () => onReview?.call(request),
+                      icon: const Icon(Icons.rate_review_outlined),
+                      label: Text(
+                        _copy(context, 'Record human review', '记录人工审核'),
+                      ),
                     ),
                   ),
-                ),
-            ],
-            const SizedBox(height: DrAiSpacing.md),
-            Align(
-              alignment: Alignment.centerRight,
-              child: FilledButton.icon(
-                onPressed: () => onReview?.call(request),
-                icon: const Icon(Icons.rate_review_outlined),
-                label: Text(_copy(context, 'Record human review', '记录人工审核')),
-              ),
+                ],
+              ],
             ),
-          ],
+          ),
         ],
       ),
     );

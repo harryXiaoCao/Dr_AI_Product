@@ -1,143 +1,95 @@
 # Dr. AI
 
-Slices A-G are hardened for wholly synthetic development and controlled
-staging: governed synthetic rehabilitation, laboratory, imaging, and
-consultation reference families; immutable deterministic comparison;
-canonical-claim role explanations; separately evaluated Slice D and Slice F
-DeepSeek purposes; executable machine gates; append-only release operations;
-and complete doctor/patient/payer actions. Baseline display and comparison do
-not require clinician approval; clinician responses remain separate evidence.
-Pending v3 and the separate Slice D release use truthful current-stage waivers
-and remain kill-switched. Real-patient, real-provider, live-payer,
-public-production, and commercial gates remain separate. See
-`docs/periodic_dev_docs/Phase_4_Slices_F_G_Comparison_Explanation_Governance_Record.md`
-and `docs/runbooks/Expected_Care_Explanation_Controlled_Staging_Runbook.md`.
+**AI-supported cost grading, care coordination, and cost transparency.**
 
-Phases 1-7 have now passed the authorized controlled Tencent synthetic-staging
-rehearsal through migration `0054`. Phase 5 completed the persisted three-role account-request lifecycle,
-content-free analytics, unified history language, rendered accessibility
-coverage, and actual built-app journeys. Its exact evidence is in
-`docs/periodic_dev_docs/Phase_5_Closure_Record_2026-07-28.md` and
-`docs/periodic_dev_docs/Phase_5_Live_Gap_Matrix_2026-07-28.md`.
+Dr. AI brings patients, doctors, and payer reviewers together around a clearer
+record of care: what happened, which services were requested or delivered, what
+they cost, and what needs attention next. Built with a focus on healthcare in
+China, its central feature is AI-supported grading of requested services and
+costs: explainable support scores, estimated ranges, and evidence gaps for human
+review. Daily recovery support and clinical records connect that analysis to
+the rest of the care journey, in English and Simplified Chinese.
 
-Phase 6 adds the canonical persisted patient/doctor/payer notification inbox,
-preferences, outbox/attempt history, deterministic source integrations,
-authorized deep links, and fail-closed APNs/Alibaba Cloud EMAS/Web Push
-readiness. External provider activation and target-visible delivery are not
-claimed. See
-`docs/periodic_dev_docs/Phase_6_Closure_Record_2026-07-30.md`.
+## A workspace for each part of care
 
-Phase 7 deployed immutable API/web identities, independently exercised governed
-Slice D, Slice F, and chatbot purposes, restored their disabled states, proved
-backup restoration and exact predecessor API/schema/web rollback, passed
-authenticated patient/doctor/payer smoke, and inspected the deployed responsive
-doctor UI. APNs, EMAS, Web Push target delivery, and image-capable DeepSeek
-remain disabled external gates. See
-`docs/periodic_dev_docs/Phase_7_Closure_Record_2026-07-30.md`.
+| Who it serves | What they can do |
+| --- | --- |
+| **Patients** | Follow recovery plans, track daily tasks, view medical and imaging records, understand recorded costs and review progress, and ask health-education questions. |
+| **Doctors** | Manage assigned patients, review medical histories and imaging, maintain medications and recovery plans, document clinical events and services, and prepare payer requests. |
+| **Payer reviewers** | Work through organization-scoped requests, inspect submitted service and cost details, compare supporting evidence, and record human review outcomes. |
+| **Hospital administrators** | Monitor appointment and equipment demand, handle equipment bookings, update resource availability, and manage doctors’ department access. |
 
-Dr. AI is a production-quality product in development for China-first,
-multi-scenario care-and-cost transparency. The implemented foundation includes
-patient, doctor, and organization-scoped payer-reviewer workflows, Clinical
-Events and Clinical Services, source-linked care-cost records, immutable payer
-request snapshots, human payer-review outcomes, governed medical knowledge,
-and a bounded patient chatbot. An internal, default-off expected-care candidate
-purpose now produces schema-constrained, source-linked synthetic candidates
-over versioned clinical/utilization and pricing references, then revalidates
-every field deterministically. Slice E publishes the validated result as an
-immutable baseline and records clinician positions separately; no doctor can
-edit, reject, or hide the baseline.
+## A look inside
 
-The repository accepts clearly synthetic demonstration data only. Do not enter
-real patient data.
+### AI-supported cost grading
 
-The historical invited-beta foundation is preserved, but it is not the current
-product boundary. Production claims/adjudication, live coverage and payment,
-live reference-pricing releases, production immutable expected-care baselines,
-public AI cost assistance,
-external notification-provider activation, specialist/admin/clinic operations, public
-store distribution, final-domain production deployment, real-patient use, and
-live institutional integration remain independently gated until their
-implementation, evaluation, authorization, and external requirements close.
+Clinical Event Intelligence assesses each requested service against the case
+record and admitted reference information. It shows an overall AI support score
+and six dimensions: **clinical fit, evidence support, timing, quantity,
+documentation, and cost alignment**. Requested amounts appear alongside
+estimated cost ranges, with missing information and uncertainty kept visible.
 
-## Repository map
+The example below uses a fresh AI analysis of a fictional respiratory follow-up
+case and fictional reference prices. A specialist visit and a repeat chest CT
+are assessed separately; the displayed scores are calculated by the backend
+from the validated model output. An independent AI critic checks the analysis,
+and its agreement or disagreement remains visible. See the
+[capture record](docs/screenshots/ai-cost-grading-run.json) for run provenance.
 
-- `apps/dr_ai_app/` - doctor web and patient mobile Flutter application.
-- `services/api/` - FastAPI, SQLAlchemy, Alembic, authentication, and seed flow.
-- `docs/` - current production v1.0 plan, Phase 0 closure, design/API
-  decisions, and historical beta records under `docs/beta/`.
-- `deploy/tencent/staging/` - deployment manifests for existing Tencent Cloud
-  resources; no resources are created by the repository.
+![AI-supported cost grading overview with a decision summary and service-by-service analysis](docs/screenshots/ai-cost-grading-overview.png)
 
-Current production docs:
+The detailed view connects each grade to its scoring dimensions, supporting
+and contradicting facts, cost context, and questions that need clarification.
+These are review signals; clinical decisions and payer outcomes remain human
+actions.
 
-- `Dr_AI_Product_Requirements_Document_v1.0.md`
-- `docs/Dr_AI_v1.0_Implementation_Plan.md`
-- `docs/Dr_AI_v1.0_AI_Platform_Architecture.md`
-- `docs/Dr_AI_v1.0_ERD.md`
-- `docs/Dr_AI_v1.0_API_Contract.md`
-- `docs/Dr_AI_v1.0_Product_Quality_Gate.md`
-- `docs/periodic_dev_docs/Phase_3_Chatbot_Intended_Use_and_Safety_Boundary.md`
-- `docs/periodic_dev_docs/Phase_3_Chatbot_RAG_Agentic_Architecture_and_Knowledge_Base.md`
+![AI cost grading details with support scores, cost ranges, evidence, and uncertainty for each service](docs/screenshots/ai-cost-grading-details.png)
 
-Historical beta records:
+### The doctor’s workspace
 
-- `docs/beta/v1.0.0-beta.1_Release_Notes.md`
-- `docs/beta/Week_4_Days_18_20_Release_Gate_Checklist.md`
-- `docs/beta/Week_4_Days_18_20_Release_Closure_Record.md`
-- `docs/beta/v1.0.0-beta.1_Non_Apple_Closure_Record.md`
+A shared starting point for patient records, recovery plans, medical resources,
+payer requests, and hospital availability.
 
-## Local start
+![Doctor dashboard with clinical shortcuts, hospital resources, and care-team information](docs/screenshots/doctor-workspace.png)
 
-Create PostgreSQL databases named `dr_ai` and `dr_ai_test`, then:
+### Day-to-day care for patients
 
-```bash
-cd services/api
-cp .env.example .env
-uv sync --locked --dev
-uv run alembic upgrade head
-uv run python -m app.seed
-uv run python -m scripts.bootstrap_synthetic_expected_care_demo
-uv run uvicorn app.main:app --reload
-```
+Patients can see their recovery tasks and progress alongside a record of
+services, costs, and payer-review status.
 
-Populate seed passwords and local secrets only in the untracked `.env`.
-The Slice E bootstrap is idempotent, wholly synthetic, restricted to
-local/test environments, and performs no external provider call.
-For normal local development, use Flutter web, widget tests, and CI rather than
-loading iOS or Android simulators. From the repository root, verify Flutter
-with:
+![Patient home screen with recovery tasks and daily progress](docs/screenshots/patient-today.png)
 
-```bash
-./scripts/verify_flutter.sh
-```
+![Patient care and cost timeline with recorded services and payer-review status](docs/screenshots/patient-care-costs.png)
 
-Mobile simulators/emulators are reserved for milestone checks that need native
-runtime behavior, such as secure storage, permissions, notifications, platform
-builds, and beta packaging. Physical devices can replace local simulators when
-disk space is tight.
+### Evidence for payer review
 
-Android development storage is intentionally externalized: the SDK is configured
-at `/Volumes/AndroidAVD/sdk`, with the legacy Homebrew SDK path kept as a
-symlink, and AVD images live under `/Volumes/AndroidAVD/avd`. This APFS volume
-is backed by the `PHILIPS` SSD. Keep `PHILIPS` and `/Volumes/AndroidAVD`
-mounted before Android builds or emulator checks.
+Reviewers can open requests linked to clinical events, examine the submitted
+cost breakdown, and record an attributable decision. Request snapshots preserve
+what was submitted for review.
 
-See the service/app READMEs for the complete verification commands.
+![Payer review workspace showing submitted care requests and their cost details](docs/screenshots/payer-review.png)
 
-## Personal beta access
+### Hospital operations
 
-Current personal-device access should use the lowest-friction channel for each
-surface:
+Administrators can review department-scoped equipment requests and scheduling
+status. Availability, booking transitions, and staff-access changes have
+explicit permissions and audit records.
 
-- Computer: install/open the HTTPS staging Flutter web app as a browser web app
-  or PWA from Chrome, Edge, or Safari at
-  `https://dr-ai.43.132.169.195.sslip.io`. Native desktop packaging remains
-  unnecessary for this beta unless PWA behavior proves insufficient.
-- Android phone: use the local debug APK built for the staging API origin:
-  `apps/dr_ai_app/build/app/outputs/flutter-apk/app-debug.apk`.
-  Play Console release builds now require a local ignored upload keystore via
-  `apps/dr_ai_app/android/key.properties`.
-- iPhone: direct Xcode install to a connected device is the fastest path once
-  an Apple development team is selected for bundle id
-  `com.harrycao.drai.drAiApp`. TestFlight still requires explicit approval and
-  App Store Connect setup before any upload.
+![Hospital operations workspace with equipment booking requests and scheduling actions](docs/screenshots/hospital-requests.png)
+
+## How the pieces connect
+
+A **clinical event** groups the reason for care, related records, and services.
+Those services connect to recorded costs and payer requests, so each role can
+follow the same case through its own authorized view. Recovery plans turn
+follow-up care into patient tasks, while an in-app notification inbox brings
+relevant updates back into the workflow.
+
+AI assistance supports this record rather than making final decisions. The
+patient assistant provides bounded health education and question preparation.
+Expected-care and Clinical Event Intelligence workflows can present care
+pathways, cost context, missing information, and role-specific explanations.
+Versioned evidence, deterministic checks, and preserved analysis history support
+review; clinician positions and payer decisions remain separate, attributable
+records. AI capabilities are independently controlled and require compatible
+configuration and releases.

@@ -108,6 +108,7 @@ class ResponsiveAppShell extends ConsumerWidget {
       ),
       AppRole.patient => _patientDestinations(context),
       AppRole.payer => _payerDestinations(context),
+      AppRole.admin => const <NavigationDestination>[],
       AppRole.unsupported => const <NavigationDestination>[],
     };
 
@@ -267,6 +268,7 @@ class ResponsiveAppShell extends ConsumerWidget {
                         'Payer workspace',
                         '支付方工作台',
                       ),
+                      AppRole.admin => _copy(context, 'Hospital operations', '医院运营'),
                       AppRole.unsupported => context.l10n.appName,
                     }, overflow: TextOverflow.ellipsis),
                   ),
@@ -352,7 +354,10 @@ class ResponsiveAppShell extends ConsumerWidget {
     return IconButton(
       key: Key('${role.wireValue}-notification-button'),
       tooltip: _copy(context, 'Notifications', '通知'),
-      onPressed: () => context.go('/${role.wireValue}/notifications'),
+      onPressed: () => context.push(
+        '/${role.wireValue}/notifications',
+        extra: selectedIndex,
+      ),
       icon: _notificationIcon(unreadCount),
     );
   }

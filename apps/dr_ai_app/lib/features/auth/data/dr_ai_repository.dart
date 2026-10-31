@@ -42,6 +42,13 @@ abstract interface class DrAiRepository {
     PayerSignupProfile? payerProfile,
   });
   Future<void> logout();
+  Future<Map<String, dynamic>> loadHospitalWorkspace({
+    String? clinicId, String? status, int page,
+  });
+  Future<Map<String, dynamic>> loadDoctorHospitalResources();
+  Future<void> updateHospitalResource(String id, Map<String, dynamic> data);
+  Future<void> updateHospitalBooking(String id, Map<String, dynamic> data);
+  Future<void> updateHospitalStaff(Map<String, dynamic> data);
   Future<List<SupportRequestData>> loadSupportRequests();
   Future<SupportRequestData> createSupportRequest({
     required String requestType,
@@ -633,6 +640,34 @@ class DioDrAiRepository implements DrAiRepository {
   final Dio client;
   final FlutterSecureStorage secureStorage;
   AuthSession? _session;
+
+  @override
+  Future<Map<String, dynamic>> loadDoctorHospitalResources() =>
+      _authorizedGet('/api/v1/doctor/hospital-resources');
+
+  @override
+  Future<Map<String, dynamic>> loadHospitalWorkspace({
+    String? clinicId, String? status, int page = 1,
+  }) => _authorizedGet(
+    '/api/v1/hospital-admin/workspace?page=$page'
+    '${clinicId == null ? '' : '&clinic_id=$clinicId'}'
+    '${status == null ? '' : '&status=$status'}',
+  );
+
+  @override
+  Future<void> updateHospitalResource(String id, Map<String, dynamic> data) async {
+    await _authorizedPatch('/api/v1/hospital-admin/resources/$id', data: data);
+  }
+
+  @override
+  Future<void> updateHospitalBooking(String id, Map<String, dynamic> data) async {
+    await _authorizedPatch('/api/v1/hospital-admin/bookings/$id', data: data);
+  }
+
+  @override
+  Future<void> updateHospitalStaff(Map<String, dynamic> data) async {
+    await _authorizedPost('/api/v1/hospital-admin/staff-access', data: data);
+  }
 
   @override
   Future<AuthSession?> restore() async {
@@ -2533,6 +2568,7 @@ class DioDrAiRepository implements DrAiRepository {
         '/api/v1/patient/payer-requests/$requestId/intelligence',
       AppRole.payer => '/api/v1/payer/requests/$requestId/intelligence',
       AppRole.unsupported => throw ArgumentError.value(role, 'role'),
+      AppRole.admin => throw ArgumentError.value(role, 'role'),
     };
     final response = await _authorizedGet(
       path,

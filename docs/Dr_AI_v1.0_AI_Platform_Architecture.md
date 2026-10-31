@@ -58,31 +58,6 @@ platform with bounded AI assistance. The platform has three primary parties:
 - authorized payer reviewers, who retain reimbursement and escalation
   decisions within organization- and case-scoped access.
 
-AI may:
-
-- retrieve and explain admitted medical education;
-- identify missing structured information;
-- draft questions or summaries for human review;
-- draft a sourced expected-care candidate;
-- explain deterministic cost or utilization comparisons from validated facts;
-- produce role-specific language after field-level access filtering; and
-- assist governed translation or corpus preparation outside the live
-  inference path.
-
-AI may not:
-
-- diagnose or rule out a diagnosis;
-- select, stop, delay, or restrict care;
-- invent a service code, price, policy, source, or clinical fact;
-- establish medical necessity;
-- determine eligibility, coverage, reimbursement, denial, payment, or final
-  patient responsibility;
-- label fraud, abuse, waste, over-treatment, poor care, or clinician quality;
-- rank clinicians or patients;
-- execute payer, clinical, account, or financial actions; or
-- bypass human review, deterministic validation, authorization, or release
-  gates.
-
 ## 3. Current Verified State And Planned State
 
 ### 3.1 Implemented foundations

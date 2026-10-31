@@ -32,7 +32,7 @@ class DoctorDashboardScreen extends ConsumerWidget {
       child: dashboard.when(
         loading: () => const DashboardLoadingView(),
         error: (error, stackTrace) => DashboardErrorView(
-          message: error.toString(),
+          message: context.l10n.pageLoadFailed,
           onRetry: () => ref.invalidate(dashboardProvider),
         ),
         data: (data) => _DoctorDashboard(data: data),
@@ -71,7 +71,7 @@ class DoctorAccountScreen extends ConsumerWidget {
             SizedBox(
               height: 220,
               child: DashboardErrorView(
-                message: error.toString(),
+                message: context.l10n.loadAccountFailed,
                 onRetry: () => ref.invalidate(doctorProfileProvider),
               ),
             ),
@@ -1485,6 +1485,15 @@ class _DoctorMainColumn extends StatelessWidget {
         description: context.l10n.medicalResourcesReadOnlyDescription,
         icon: Icons.medical_services_outlined,
         destination: '/doctor/resources',
+      ),
+      _DoctorQuickAccessItem(
+        keyName: 'hospital-availability',
+        title: Localizations.localeOf(context).languageCode == 'zh'
+            ? '科室资源可用情况' : 'Department availability',
+        description: Localizations.localeOf(context).languageCode == 'zh'
+            ? '查看已授权科室的运营资源状态' : 'View operational resources in your assigned departments',
+        icon: Icons.inventory_2_outlined,
+        destination: '/doctor/hospital-resources',
       ),
       _DoctorQuickAccessItem(
         keyName: 'payer-requests',

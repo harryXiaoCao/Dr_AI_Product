@@ -69,7 +69,7 @@ class _DoctorContactList extends StatelessWidget {
           icon: Icons.notifications_active_outlined,
           title: context.l10n.system,
           subtitle: context.l10n.systemReadOnlyDescription,
-          onTap: () => context.push('/doctor/contact/system'),
+          onTap: () => context.push('/doctor/notifications', extra: 4),
         ),
         const SizedBox(height: DrAiSpacing.lg),
         Row(

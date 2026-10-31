@@ -82,6 +82,27 @@ def test_registration_accepts_phone_required_and_optional_email(client: TestClie
         assert profile.weight_kg == 62.5
 
 
+def test_fixed_registration_code_works_without_a_requested_challenge(
+    client: TestClient,
+    settings,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(settings, "environment", "local")
+
+    created = client.post(
+        "/api/v1/auth/register",
+        json={
+            "phone_number": "+8613800098999",
+            "password": "Patient9!",
+            "role": "patient",
+            "verification_code": "123456",
+            "terms_accepted": True,
+        },
+    )
+
+    assert created.status_code == 201
+
+
 def test_phone_registration_login_and_doctor_hospital_intake(client: TestClient) -> None:
     created = client.post(
         "/api/v1/auth/register",
@@ -196,7 +217,7 @@ def test_registration_code_request_creates_and_consumes_phone_challenge(
     )
     assert requested.status_code == 200
     code = requested.json()["debug_code"]
-    assert code is not None
+    assert code == "123456"
 
     registered = client.post(
         "/api/v1/auth/register",

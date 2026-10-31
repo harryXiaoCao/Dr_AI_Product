@@ -1,0 +1,6 @@
+- generic [active]:
+  - button "Enable accessibility" [ref=e1]
+  - status "Loading Dr. AI" [ref=e2]:
+    - generic [ref=e3]:
+      - generic [aria-hidden] [ref=e4]: Dr
+      - generic [ref=e5]: Dr. AI

@@ -332,6 +332,18 @@ abstract class AppLocalizations {
   /// **'Unable to load the payer account. Check your connection and try again.'**
   String get payerAccountLoadFailed;
 
+  /// No description provided for @pageLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'This page could not be loaded. Try again.'**
+  String get pageLoadFailed;
+
+  /// No description provided for @actionFailedRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'The action could not be completed. Try again.'**
+  String get actionFailedRetry;
+
   /// No description provided for @payerAccessUnavailable.
   ///
   /// In en, this message translates to:
@@ -1289,7 +1301,7 @@ abstract class AppLocalizations {
   /// No description provided for @drAiContactDescription.
   ///
   /// In en, this message translates to:
-  /// **'Educational AI chat will be available in Phase 3'**
+  /// **'Educational chat for general health questions'**
   String get drAiContactDescription;
 
   /// No description provided for @comingLater.
@@ -2443,6 +2455,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Active'**
   String get active;
+
+  /// No description provided for @careRelationshipActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Care relationship active'**
+  String get careRelationshipActive;
 
   /// No description provided for @paused.
   ///
@@ -4336,7 +4354,7 @@ abstract class AppLocalizations {
   /// No description provided for @consultationSubmitted.
   ///
   /// In en, this message translates to:
-  /// **'{specialty} consultation {status}.'**
+  /// **'{specialty} consultation: {status}.'**
   String consultationSubmitted(String specialty, String status);
 
   /// No description provided for @bornYear.
@@ -5481,8 +5499,230 @@ abstract class AppLocalizations {
   /// No description provided for @resourceSuggestionTwo.
   ///
   /// In en, this message translates to:
-  /// **'呼吸道感染用药安全'**
+  /// **'Safe medication use for respiratory infections'**
   String get resourceSuggestionTwo;
+
+  /// No description provided for @serviceCategoryLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Service category'**
+  String get serviceCategoryLabel;
+
+  /// No description provided for @chooseSyntheticImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose synthetic image'**
+  String get chooseSyntheticImage;
+
+  /// No description provided for @movePhaseEarlier.
+  ///
+  /// In en, this message translates to:
+  /// **'Move phase earlier'**
+  String get movePhaseEarlier;
+
+  /// No description provided for @movePhaseLater.
+  ///
+  /// In en, this message translates to:
+  /// **'Move phase later'**
+  String get movePhaseLater;
+
+  /// No description provided for @removePhase.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove phase'**
+  String get removePhase;
+
+  /// No description provided for @codeLaboratory.
+  ///
+  /// In en, this message translates to:
+  /// **'Laboratory testing'**
+  String get codeLaboratory;
+
+  /// No description provided for @codeProcedure.
+  ///
+  /// In en, this message translates to:
+  /// **'Procedure'**
+  String get codeProcedure;
+
+  /// No description provided for @codeSurgery.
+  ///
+  /// In en, this message translates to:
+  /// **'Surgery'**
+  String get codeSurgery;
+
+  /// No description provided for @codeImplantDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'Implant or device'**
+  String get codeImplantDevice;
+
+  /// No description provided for @codeAnesthesia.
+  ///
+  /// In en, this message translates to:
+  /// **'Anesthesia'**
+  String get codeAnesthesia;
+
+  /// No description provided for @codeTreatment.
+  ///
+  /// In en, this message translates to:
+  /// **'Treatment'**
+  String get codeTreatment;
+
+  /// No description provided for @codeRehabilitation.
+  ///
+  /// In en, this message translates to:
+  /// **'Rehabilitation'**
+  String get codeRehabilitation;
+
+  /// No description provided for @codeOtherService.
+  ///
+  /// In en, this message translates to:
+  /// **'Other service'**
+  String get codeOtherService;
+
+  /// No description provided for @codeOrdered.
+  ///
+  /// In en, this message translates to:
+  /// **'Ordered'**
+  String get codeOrdered;
+
+  /// No description provided for @codeRequested.
+  ///
+  /// In en, this message translates to:
+  /// **'Requested'**
+  String get codeRequested;
+
+  /// No description provided for @codeScheduled.
+  ///
+  /// In en, this message translates to:
+  /// **'Scheduled'**
+  String get codeScheduled;
+
+  /// No description provided for @codeInProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'In progress'**
+  String get codeInProgress;
+
+  /// No description provided for @codePerformed.
+  ///
+  /// In en, this message translates to:
+  /// **'Performed'**
+  String get codePerformed;
+
+  /// No description provided for @codeCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled'**
+  String get codeCancelled;
+
+  /// No description provided for @codeNotCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Not completed'**
+  String get codeNotCompleted;
+
+  /// No description provided for @codeInPerson.
+  ///
+  /// In en, this message translates to:
+  /// **'In person'**
+  String get codeInPerson;
+
+  /// No description provided for @codeVideo.
+  ///
+  /// In en, this message translates to:
+  /// **'Video call'**
+  String get codeVideo;
+
+  /// No description provided for @codeTelephone.
+  ///
+  /// In en, this message translates to:
+  /// **'Telephone'**
+  String get codeTelephone;
+
+  /// No description provided for @codeRecordReview.
+  ///
+  /// In en, this message translates to:
+  /// **'Record review'**
+  String get codeRecordReview;
+
+  /// No description provided for @codeEnteredInError.
+  ///
+  /// In en, this message translates to:
+  /// **'Entered in error'**
+  String get codeEnteredInError;
+
+  /// No description provided for @codeDemoVisit.
+  ///
+  /// In en, this message translates to:
+  /// **'Demo visit'**
+  String get codeDemoVisit;
+
+  /// No description provided for @codeDemoFollowUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Demo follow-up'**
+  String get codeDemoFollowUp;
+
+  /// No description provided for @codeSyntheticHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'Synthetic history'**
+  String get codeSyntheticHistory;
+
+  /// No description provided for @equipmentVentilators.
+  ///
+  /// In en, this message translates to:
+  /// **'Ventilators'**
+  String get equipmentVentilators;
+
+  /// No description provided for @statusPendingUpload.
+  ///
+  /// In en, this message translates to:
+  /// **'Awaiting upload'**
+  String get statusPendingUpload;
+
+  /// No description provided for @statusUploaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Uploaded'**
+  String get statusUploaded;
+
+  /// No description provided for @statusFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed'**
+  String get statusFailed;
+
+  /// No description provided for @statusExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'Expired'**
+  String get statusExpired;
+
+  /// No description provided for @statusNotReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Not ready for review'**
+  String get statusNotReady;
+
+  /// No description provided for @statusReviewed.
+  ///
+  /// In en, this message translates to:
+  /// **'Reviewed'**
+  String get statusReviewed;
+
+  /// No description provided for @statusRejected.
+  ///
+  /// In en, this message translates to:
+  /// **'Rejected'**
+  String get statusRejected;
+
+  /// No description provided for @statusPlanned.
+  ///
+  /// In en, this message translates to:
+  /// **'Planned'**
+  String get statusPlanned;
 
   /// No description provided for @resourceSuggestionThree.
   ///
@@ -6844,6 +7084,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Intelligence is unavailable'**
   String get ceiUnavailableTitle;
+
+  /// No description provided for @ceiUnavailableValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Unavailable'**
+  String get ceiUnavailableValue;
+
+  /// No description provided for @ceiRequestedItem.
+  ///
+  /// In en, this message translates to:
+  /// **'Requested item'**
+  String get ceiRequestedItem;
+
+  /// No description provided for @ceiSourceWithheld.
+  ///
+  /// In en, this message translates to:
+  /// **'Source withheld'**
+  String get ceiSourceWithheld;
+
+  /// No description provided for @ceiUnitItem.
+  ///
+  /// In en, this message translates to:
+  /// **'item'**
+  String get ceiUnitItem;
 
   /// No description provided for @ceiUnavailableBody.
   ///

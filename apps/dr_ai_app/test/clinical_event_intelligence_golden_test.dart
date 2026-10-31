@@ -36,6 +36,7 @@ Future<void> _pump(
     AppRole.patient => patientSession,
     AppRole.payer => payerSession,
     AppRole.unsupported => null,
+    AppRole.admin => null,
   };
   await tester.pumpWidget(
     ProviderScope(

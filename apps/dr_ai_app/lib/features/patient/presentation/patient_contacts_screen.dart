@@ -74,7 +74,7 @@ class _ContactList extends StatelessWidget {
           title: context.l10n.system,
           subtitle: context.l10n.systemContactDescription,
           badge: context.l10n.official,
-          onTap: () => context.push('/patient/contact/system'),
+          onTap: () => context.push('/patient/notifications', extra: 1),
         ),
         const SizedBox(height: DrAiSpacing.sm),
         _ContactTile(
@@ -84,25 +84,11 @@ class _ContactList extends StatelessWidget {
           iconColor: DrAiColors.accentIndigo,
           title: context.l10n.appName,
           subtitle: context.l10n.drAiContactDescription,
-          badge: Localizations.localeOf(context).languageCode == 'zh'
-              ? '可用'
-              : 'Available',
+          badge: context.l10n.available,
           onTap: () => context.push('/patient/contact/ai'),
         ),
         const SizedBox(height: DrAiSpacing.lg),
-        Row(
-          children: <Widget>[
-            Expanded(child: _SectionLabel(context.l10n.connectedDoctors)),
-            Text(
-              '${doctors.length}',
-              key: const Key('doctor-contact-count'),
-              style: const TextStyle(
-                color: DrAiColors.inkSecondary,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
+        _SectionLabel(context.l10n.connectedDoctors, count: doctors.length),
         const SizedBox(height: DrAiSpacing.sm),
         if (doctors.isEmpty)
           const _EmptyDoctors()
@@ -118,9 +104,10 @@ class _ContactList extends StatelessWidget {
 }
 
 class _SectionLabel extends StatelessWidget {
-  const _SectionLabel(this.label);
+  const _SectionLabel(this.label, {this.count});
 
   final String label;
+  final int? count;
 
   @override
   Widget build(BuildContext context) {
@@ -133,12 +120,27 @@ class _SectionLabel extends StatelessWidget {
         horizontal: DrAiSpacing.md,
         vertical: DrAiSpacing.sm,
       ),
-      child: Text(
-        label,
-        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-          color: DrAiColors.white,
-          fontWeight: FontWeight.w700,
-        ),
+      child: Row(
+        children: <Widget>[
+          Expanded(
+            child: Text(
+              label,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: DrAiColors.white,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          if (count != null)
+            Text(
+              '$count',
+              key: const Key('doctor-contact-count'),
+              style: const TextStyle(
+                color: DrAiColors.white,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+        ],
       ),
     );
   }

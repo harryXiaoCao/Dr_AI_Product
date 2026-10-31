@@ -2,6 +2,7 @@ enum AppRole {
   doctor,
   patient,
   payer,
+  admin,
   unsupported;
 
   static AppRole fromWire(String value) {
@@ -9,6 +10,7 @@ enum AppRole {
       'doctor' => AppRole.doctor,
       'patient' => AppRole.patient,
       'payer' => AppRole.payer,
+      'admin' => AppRole.admin,
       _ => AppRole.unsupported,
     };
   }

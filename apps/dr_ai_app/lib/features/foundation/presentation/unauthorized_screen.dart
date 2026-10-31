@@ -16,6 +16,7 @@ class UnauthorizedScreen extends StatelessWidget {
       AppRole.patient => '/patient',
       AppRole.payer => '/payer',
       AppRole.unsupported || null => null,
+      AppRole.admin => '/admin',
     };
     return Scaffold(
       body: Semantics(

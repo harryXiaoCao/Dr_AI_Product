@@ -111,6 +111,33 @@ void main() {
     expect(find.text('Synthetic Doctor'), findsWidgets);
   });
 
+  for (final section in <String>['imaging', 'medications']) {
+    testWidgets('patient medical $section deep link keeps its section', (
+      tester,
+    ) async {
+      final location = '/patient/medical-service/$section';
+      await pumpRoute(
+        tester,
+        repository: FakeDrAiRepository(restoredSession: patientSession),
+        initialLocation: location,
+      );
+      expect(currentLocation(tester), location);
+    });
+  }
+
+  testWidgets('medical section control updates the shareable route', (
+    tester,
+  ) async {
+    await pumpRoute(
+      tester,
+      repository: FakeDrAiRepository(restoredSession: patientSession),
+      initialLocation: '/patient/medical-service/records',
+    );
+    await tester.tap(find.text('Imaging').last);
+    await tester.pumpAndSettle();
+    expect(currentLocation(tester), '/patient/medical-service/imaging');
+  });
+
   testWidgets('restored payer session preserves a nested payer route', (
     tester,
   ) async {
@@ -121,6 +148,33 @@ void main() {
     );
     expect(currentLocation(tester), '/payer/requests');
     expect(find.byType(Scaffold), findsWidgets);
+  });
+
+  testWidgets('provisioned admin lands in hospital workspace and cannot open doctor routes', (
+    tester,
+  ) async {
+    await pumpRoute(
+      tester,
+      repository: FakeDrAiRepository(restoredSession: adminSession),
+      initialLocation: '/admin',
+    );
+    expect(currentLocation(tester), '/admin');
+    expect(find.text('Hospital operations'), findsOneWidget);
+    final context = tester.element(find.byType(Scaffold).first);
+    GoRouter.of(context).go('/doctor/hospital-resources');
+    await tester.pumpAndSettle();
+    expect(currentLocation(tester), '/unauthorized');
+  });
+
+  testWidgets('payer account exposes the interface language choice', (
+    tester,
+  ) async {
+    await pumpRoute(
+      tester,
+      repository: FakeDrAiRepository(restoredSession: payerSession),
+      initialLocation: '/payer/account',
+    );
+    expect(find.byKey(const Key('interface-language-field')), findsOneWidget);
   });
 
   for (final scenario in <(AuthSession, String, String)>[

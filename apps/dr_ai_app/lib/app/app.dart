@@ -38,7 +38,9 @@ class _DrAiAppState extends ConsumerState<DrAiApp> {
       if (next.isLoading) {
         _authTransitionStartedSignedIn =
             previous?.value?.status == AuthStatus.signedIn;
-        _routerSession.setHydrating();
+        if (_authTransitionStartedSignedIn) {
+          _routerSession.setHydrating();
+        }
         return;
       }
       final auth = next.value;

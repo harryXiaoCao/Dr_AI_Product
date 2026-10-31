@@ -383,6 +383,7 @@ class PayerRequestData {
     this.aiReviewScore,
     this.aiReviewSummary,
     this.reviewedAt,
+    this.reviewSignals,
   });
 
   factory PayerRequestData.fromJson(Map<String, dynamic> json) {
@@ -404,6 +405,11 @@ class PayerRequestData {
       aiReviewStatus: json['ai_review_status'] as String,
       aiReviewScore: json['ai_review_score'] as int?,
       aiReviewSummary: json['ai_review_summary'] as String?,
+      reviewSignals: json['review_signals'] is Map
+          ? PayerReviewSignalsData.fromJson(
+              Map<String, dynamic>.from(json['review_signals'] as Map),
+            )
+          : null,
       createdAt: DateTime.parse(json['created_at'] as String),
       reviewedAt: json['reviewed_at'] == null
           ? null
@@ -447,11 +453,40 @@ class PayerRequestData {
   final String aiReviewStatus;
   final int? aiReviewScore;
   final String? aiReviewSummary;
+  final PayerReviewSignalsData? reviewSignals;
   final DateTime createdAt;
   final DateTime? reviewedAt;
   final List<PayerRequestLineData> lines;
   final List<PayerReviewData> reviews;
   final List<PayerDoctorResponseData> doctorResponses;
+}
+
+class PayerReviewSignalsData {
+  const PayerReviewSignalsData({
+    required this.artifactVersion,
+    required this.assessmentUnavailable,
+    required this.lowConfidence,
+    required this.missingInformation,
+    required this.conflictingEvidence,
+    required this.costException,
+  });
+
+  factory PayerReviewSignalsData.fromJson(Map<String, dynamic> json) =>
+      PayerReviewSignalsData(
+        artifactVersion: json['artifact_version'] as int,
+        assessmentUnavailable: json['assessment_unavailable'] as bool? ?? false,
+        lowConfidence: json['low_confidence'] as bool? ?? false,
+        missingInformation: json['missing_information'] as bool? ?? false,
+        conflictingEvidence: json['conflicting_evidence'] as bool? ?? false,
+        costException: json['cost_exception'] as bool? ?? false,
+      );
+
+  final int artifactVersion;
+  final bool assessmentUnavailable;
+  final bool lowConfidence;
+  final bool missingInformation;
+  final bool conflictingEvidence;
+  final bool costException;
 }
 
 class PayerProfileData {

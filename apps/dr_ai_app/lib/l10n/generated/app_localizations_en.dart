@@ -132,6 +132,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Unable to load the payer account. Check your connection and try again.';
 
   @override
+  String get pageLoadFailed => 'This page could not be loaded. Try again.';
+
+  @override
+  String get actionFailedRetry =>
+      'The action could not be completed. Try again.';
+
+  @override
   String get payerAccessUnavailable =>
       'Your payer organization access is unavailable. Contact an administrator if this is unexpected.';
 
@@ -636,7 +643,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get drAiContactDescription =>
-      'Educational AI chat will be available in Phase 3';
+      'Educational chat for general health questions';
 
   @override
   String get comingLater => 'Coming later';
@@ -1275,6 +1282,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get active => 'Active';
+
+  @override
+  String get careRelationshipActive => 'Care relationship active';
 
   @override
   String get paused => 'Paused';
@@ -2360,7 +2370,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String consultationSubmitted(String specialty, String status) {
-    return '$specialty consultation $status.';
+    return '$specialty consultation: $status.';
   }
 
   @override
@@ -3028,7 +3038,119 @@ class AppLocalizationsEn extends AppLocalizations {
   String get resourceSuggestionOne => 'Hypertension follow-up';
 
   @override
-  String get resourceSuggestionTwo => '呼吸道感染用药安全';
+  String get resourceSuggestionTwo =>
+      'Safe medication use for respiratory infections';
+
+  @override
+  String get serviceCategoryLabel => 'Service category';
+
+  @override
+  String get chooseSyntheticImage => 'Choose synthetic image';
+
+  @override
+  String get movePhaseEarlier => 'Move phase earlier';
+
+  @override
+  String get movePhaseLater => 'Move phase later';
+
+  @override
+  String get removePhase => 'Remove phase';
+
+  @override
+  String get codeLaboratory => 'Laboratory testing';
+
+  @override
+  String get codeProcedure => 'Procedure';
+
+  @override
+  String get codeSurgery => 'Surgery';
+
+  @override
+  String get codeImplantDevice => 'Implant or device';
+
+  @override
+  String get codeAnesthesia => 'Anesthesia';
+
+  @override
+  String get codeTreatment => 'Treatment';
+
+  @override
+  String get codeRehabilitation => 'Rehabilitation';
+
+  @override
+  String get codeOtherService => 'Other service';
+
+  @override
+  String get codeOrdered => 'Ordered';
+
+  @override
+  String get codeRequested => 'Requested';
+
+  @override
+  String get codeScheduled => 'Scheduled';
+
+  @override
+  String get codeInProgress => 'In progress';
+
+  @override
+  String get codePerformed => 'Performed';
+
+  @override
+  String get codeCancelled => 'Cancelled';
+
+  @override
+  String get codeNotCompleted => 'Not completed';
+
+  @override
+  String get codeInPerson => 'In person';
+
+  @override
+  String get codeVideo => 'Video call';
+
+  @override
+  String get codeTelephone => 'Telephone';
+
+  @override
+  String get codeRecordReview => 'Record review';
+
+  @override
+  String get codeEnteredInError => 'Entered in error';
+
+  @override
+  String get codeDemoVisit => 'Demo visit';
+
+  @override
+  String get codeDemoFollowUp => 'Demo follow-up';
+
+  @override
+  String get codeSyntheticHistory => 'Synthetic history';
+
+  @override
+  String get equipmentVentilators => 'Ventilators';
+
+  @override
+  String get statusPendingUpload => 'Awaiting upload';
+
+  @override
+  String get statusUploaded => 'Uploaded';
+
+  @override
+  String get statusFailed => 'Failed';
+
+  @override
+  String get statusExpired => 'Expired';
+
+  @override
+  String get statusNotReady => 'Not ready for review';
+
+  @override
+  String get statusReviewed => 'Reviewed';
+
+  @override
+  String get statusRejected => 'Rejected';
+
+  @override
+  String get statusPlanned => 'Planned';
 
   @override
   String get resourceSuggestionThree => 'Diabetes sick-day education';
@@ -3827,6 +3949,18 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get ceiUnavailableTitle => 'Intelligence is unavailable';
+
+  @override
+  String get ceiUnavailableValue => 'Unavailable';
+
+  @override
+  String get ceiRequestedItem => 'Requested item';
+
+  @override
+  String get ceiSourceWithheld => 'Source withheld';
+
+  @override
+  String get ceiUnitItem => 'item';
 
   @override
   String get ceiUnavailableBody =>

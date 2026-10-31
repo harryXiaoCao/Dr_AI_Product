@@ -1354,7 +1354,7 @@ class _ProfileReviewSection extends StatelessWidget {
           title: patient.displayName,
           subtitle: patient.syntheticIdentifier,
           body:
-              '${patient.relationshipLabel}\n'
+              '${context.l10n.stableValue(patient.relationshipLabel)}\n'
               '${_demographicsLine(context, patient)}\n'
               '${context.l10n.doctorReviewOnly}',
         ),
@@ -1934,7 +1934,9 @@ class _ImagingClinicalServicePanelState
             DropdownButtonFormField<String>(
               key: const Key('clinical-service-category'),
               initialValue: _category,
-              decoration: const InputDecoration(labelText: 'Service category'),
+              decoration: InputDecoration(
+                labelText: context.l10n.serviceCategoryLabel,
+              ),
               items: <DropdownMenuItem<String>>[
                 for (final value in const <String>[
                   'imaging',
@@ -2195,7 +2197,7 @@ class _ImagingClinicalServicePanelState
                   key: const Key('choose-imaging-evidence'),
                   onPressed: imagingState.isLoading ? null : _chooseEvidence,
                   icon: const Icon(Icons.photo_library_outlined),
-                  label: const Text('Choose synthetic image'),
+                  label: Text(context.l10n.chooseSyntheticImage),
                 ),
                 OutlinedButton.icon(
                   key: const Key('prepare-imaging-evidence'),
@@ -3648,7 +3650,7 @@ Widget _medicalRecordsSection(BuildContext context, PatientCareBundle bundle) {
     emptyTitle: context.l10n.noMedicalRecords,
     itemBuilder: (item) => _InfoTile(
       title: item.title,
-      subtitle: item.category,
+      subtitle: context.l10n.stableValue(item.category),
       body: item.summary,
     ),
   );
@@ -5582,21 +5584,21 @@ class _RecoveryPlanEditorState extends ConsumerState<_RecoveryPlanEditor> {
                               spacing: 0,
                               children: <Widget>[
                                 IconButton(
-                                  tooltip: 'Move earlier',
+                                  tooltip: context.l10n.movePhaseEarlier,
                                   onPressed: index == 0
                                       ? null
                                       : () => _movePhase(index, index - 1),
                                   icon: const Icon(Icons.arrow_upward),
                                 ),
                                 IconButton(
-                                  tooltip: 'Move later',
+                                  tooltip: context.l10n.movePhaseLater,
                                   onPressed: index == _draftPhases.length - 1
                                       ? null
                                       : () => _movePhase(index, index + 1),
                                   icon: const Icon(Icons.arrow_downward),
                                 ),
                                 IconButton(
-                                  tooltip: 'Remove phase',
+                                  tooltip: context.l10n.removePhase,
                                   onPressed: () => setState(
                                     () => _draftPhases.removeAt(index),
                                   ),
@@ -6332,7 +6334,7 @@ class _ProfileHeader extends StatelessWidget {
             ),
             const SizedBox(height: DrAiSpacing.sm),
             Text(
-              patient.relationshipLabel,
+              context.l10n.stableValue(patient.relationshipLabel),
               style: const TextStyle(color: DrAiColors.white),
             ),
             const SizedBox(height: DrAiSpacing.xs),

@@ -35,6 +35,19 @@ const payerUser = SessionUser(
   displayName: 'Lin Reviewer',
 );
 
+const adminUser = SessionUser(
+  id: 'admin-test-id',
+  email: 'admin.demo@example.com',
+  role: AppRole.admin,
+  displayName: 'Hospital Administrator',
+);
+
+const adminSession = AuthSession(
+  accessToken: 'admin-test-access',
+  refreshToken: 'admin-test-refresh',
+  user: adminUser,
+);
+
 const unsupportedRoleUser = SessionUser(
   id: 'specialist-test-id',
   email: 'specialist.future@example.com',
@@ -969,6 +982,7 @@ class FakeDrAiRepository implements DrAiRepository {
     this.loginSession = doctorSession,
     DashboardData? dashboard,
     this.loginError,
+    this.registerError,
     this.logoutError,
     this.accountEmailError,
     this.dashboardError,
@@ -1058,11 +1072,41 @@ class FakeDrAiRepository implements DrAiRepository {
            ? null
            : intelligenceArtifact ?? clinicalEventIntelligenceFixture;
 
+  @override
+  Future<Map<String, dynamic>> loadDoctorHospitalResources() async =>
+      <String, dynamic>{'clinics': <dynamic>[], 'resources': <dynamic>[]};
+
+  @override
+  Future<Map<String, dynamic>> loadHospitalWorkspace({
+    String? clinicId,
+    String? status,
+    int page = 1,
+  }) async => <String, dynamic>{
+    'hospital': <String, dynamic>{'name': 'Synthetic Hospital'},
+    'clinics': <dynamic>[],
+    'counts': <String, dynamic>{},
+    'bookings': <dynamic>[],
+    'resources': <dynamic>[],
+    'staff': <dynamic>[],
+    'total': 0,
+    'page': page,
+  };
+
+  @override
+  Future<void> updateHospitalResource(String id, Map<String, dynamic> data) async {}
+
+  @override
+  Future<void> updateHospitalBooking(String id, Map<String, dynamic> data) async {}
+
+  @override
+  Future<void> updateHospitalStaff(Map<String, dynamic> data) async {}
+
   AuthSession? restoredSession;
   Completer<AuthSession?>? restoreCompleter;
   AuthSession loginSession;
   DashboardData dashboard;
   ApiError? loginError;
+  ApiError? registerError;
   Exception? logoutError;
   ApiError? accountEmailError;
   ApiError? dashboardError;
@@ -1997,6 +2041,9 @@ class FakeDrAiRepository implements DrAiRepository {
     PayerSignupProfile? payerProfile,
   }) async {
     registerCalled = true;
+    if (registerError != null) {
+      throw registerError!;
+    }
     return AuthSession(
       accessToken: 'registered-access-token',
       refreshToken: 'registered-refresh-token',
@@ -2008,6 +2055,7 @@ class FakeDrAiRepository implements DrAiRepository {
           AppRole.doctor => 'Invited Doctor',
           AppRole.patient => 'Invited Patient',
           AppRole.payer => 'Invited Reviewer',
+          AppRole.admin => 'Hospital Administrator',
           AppRole.unsupported => 'Unsupported User',
         },
       ),
@@ -3660,6 +3708,7 @@ class FakeDrAiRepository implements DrAiRepository {
     String status = 'submitted',
     DateTime? reviewedAt,
     List<PayerReviewData> reviews = const <PayerReviewData>[],
+    PayerReviewSignalsData? reviewSignals,
     PayerOrganizationData organization = const PayerOrganizationData(
       id: 'payer-organization-test-id',
       name: 'Synthetic Municipal Medical Insurance',
@@ -3681,6 +3730,7 @@ class FakeDrAiRepository implements DrAiRepository {
       requestedTotalMinor: 50000,
       doctorSummary: summary,
       aiReviewStatus: 'not_evaluated',
+      reviewSignals: reviewSignals,
       createdAt: DateTime(2026, 7, 23),
       reviewedAt: reviewedAt,
       lines: <PayerRequestLineData>[

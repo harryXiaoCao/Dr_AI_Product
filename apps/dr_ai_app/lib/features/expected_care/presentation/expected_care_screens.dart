@@ -6,6 +6,7 @@ import 'package:dr_ai_app/features/expected_care/application/expected_care_provi
 import 'package:dr_ai_app/features/expected_care/domain/expected_care_data.dart';
 import 'package:dr_ai_app/shared/presentation/product_history_copy.dart';
 import 'package:dr_ai_app/shared/widgets/dashboard_states.dart';
+import 'package:dr_ai_app/shared/widgets/navigation_back_button.dart';
 import 'package:dr_ai_app/shared/widgets/responsive_app_shell.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -202,98 +203,103 @@ class _DoctorExpectedCareReviewScreenState
     return ResponsiveAppShell(
       role: AppRole.doctor,
       selectedIndex: 1,
-      child: ColoredBox(
-        color: DrAiColors.pageBackground,
-        child: candidates.when(
-          loading: () => DashboardLoadingView(
-            label: _copy(
-              context,
-              'Loading expected-care candidates',
-              '正在加载预期诊疗候选范围',
+      child: NavigationPageFrame(
+        fallbackPath:
+            '/doctor/patients?patient=${Uri.encodeComponent(widget.patientId)}&event=${Uri.encodeComponent(widget.eventId)}',
+        child: ColoredBox(
+          color: DrAiColors.pageBackground,
+          child: candidates.when(
+            loading: () => DashboardLoadingView(
+              label: _copy(
+                context,
+                'Loading expected-care candidates',
+                '正在加载预期诊疗候选范围',
+              ),
             ),
-          ),
-          error: (error, stackTrace) => _UnavailableState(
-            title: _copy(
-              context,
-              'Candidate review is unavailable',
-              '候选范围审核暂不可用',
+            error: (error, stackTrace) => _UnavailableState(
+              title: _copy(
+                context,
+                'Candidate review is unavailable',
+                '候选范围审核暂不可用',
+              ),
+              body: _copy(
+                context,
+                'Continue ordinary clinical documentation and pending-cost work. No AI response is required.',
+                '请继续常规临床记录和待补费用流程，无需等待 AI。',
+              ),
+              onRetry: () =>
+                  ref.invalidate(doctorExpectedCareCandidatesProvider(_scope)),
             ),
-            body: _copy(
-              context,
-              'Continue ordinary clinical documentation and pending-cost work. No AI response is required.',
-              '请继续常规临床记录和待补费用流程，无需等待 AI。',
-            ),
-            onRetry: () =>
-                ref.invalidate(doctorExpectedCareCandidatesProvider(_scope)),
-          ),
-          data: (items) {
-            if (items.isEmpty) {
-              return _UnavailableState(
-                title: _copy(context, 'No reviewable candidate', '暂无可审核候选范围'),
-                body: _copy(
-                  context,
-                  'Care documentation, cost entry, and payer clarification remain available without AI.',
-                  '即使没有 AI，仍可继续诊疗记录、费用录入及支付方澄清。',
-                ),
-                onRetry: () => ref.invalidate(
+            data: (items) {
+              if (items.isEmpty) {
+                return _UnavailableState(
+                  title: _copy(context, 'No reviewable candidate', '暂无可审核候选范围'),
+                  body: _copy(
+                    context,
+                    'Care documentation, cost entry, and payer clarification remain available without AI.',
+                    '即使没有 AI，仍可继续诊疗记录、费用录入及支付方澄清。',
+                  ),
+                  onRetry: () => ref.invalidate(
+                    doctorExpectedCareCandidatesProvider(_scope),
+                  ),
+                );
+              }
+              final selected = items.firstWhere(
+                (item) => item.id == _selectedId,
+                orElse: () => items.first,
+              );
+              return _DoctorWorkspace(
+                items: items,
+                selected: selected,
+                submitting: _submitting,
+                message: _message,
+                messageIsError: _messageIsError,
+                onSelected: (id) => setState(() => _selectedId = id),
+                onAcknowledge: () => _submit(selected, 'acknowledge'),
+                onConcur: () => _submit(selected, 'concur'),
+                onDisagree: () async {
+                  final draft = await showDialog<_ResponseDraft>(
+                    context: context,
+                    builder: (context) =>
+                        const _ClinicianResponseDialog(position: 'disagree'),
+                  );
+                  if (draft != null) {
+                    await _submit(
+                      selected,
+                      'disagree',
+                      exceptionCode: draft.exceptionCode,
+                      rationale: draft.rationale,
+                      patientSafeSummary: draft.patientSafeSummary,
+                      reviewerOnlyNote: draft.reviewerOnlyNote,
+                    );
+                  }
+                },
+                onException: () async {
+                  final draft = await showDialog<_ResponseDraft>(
+                    context: context,
+                    builder: (context) =>
+                        const _ClinicianResponseDialog(position: 'exception'),
+                  );
+                  if (draft != null) {
+                    await _submit(
+                      selected,
+                      'exception',
+                      exceptionCode: draft.exceptionCode,
+                      rationale: draft.rationale,
+                      patientSafeSummary: draft.patientSafeSummary,
+                      reviewerOnlyNote: draft.reviewerOnlyNote,
+                    );
+                  }
+                },
+                onRefresh: () => ref.invalidate(
                   doctorExpectedCareCandidatesProvider(_scope),
                 ),
+                comparison: comparison,
+                patientId: widget.patientId,
+                eventId: widget.eventId,
               );
-            }
-            final selected = items.firstWhere(
-              (item) => item.id == _selectedId,
-              orElse: () => items.first,
-            );
-            return _DoctorWorkspace(
-              items: items,
-              selected: selected,
-              submitting: _submitting,
-              message: _message,
-              messageIsError: _messageIsError,
-              onSelected: (id) => setState(() => _selectedId = id),
-              onAcknowledge: () => _submit(selected, 'acknowledge'),
-              onConcur: () => _submit(selected, 'concur'),
-              onDisagree: () async {
-                final draft = await showDialog<_ResponseDraft>(
-                  context: context,
-                  builder: (context) =>
-                      const _ClinicianResponseDialog(position: 'disagree'),
-                );
-                if (draft != null) {
-                  await _submit(
-                    selected,
-                    'disagree',
-                    exceptionCode: draft.exceptionCode,
-                    rationale: draft.rationale,
-                    patientSafeSummary: draft.patientSafeSummary,
-                    reviewerOnlyNote: draft.reviewerOnlyNote,
-                  );
-                }
-              },
-              onException: () async {
-                final draft = await showDialog<_ResponseDraft>(
-                  context: context,
-                  builder: (context) =>
-                      const _ClinicianResponseDialog(position: 'exception'),
-                );
-                if (draft != null) {
-                  await _submit(
-                    selected,
-                    'exception',
-                    exceptionCode: draft.exceptionCode,
-                    rationale: draft.rationale,
-                    patientSafeSummary: draft.patientSafeSummary,
-                    reviewerOnlyNote: draft.reviewerOnlyNote,
-                  );
-                }
-              },
-              onRefresh: () =>
-                  ref.invalidate(doctorExpectedCareCandidatesProvider(_scope)),
-              comparison: comparison,
-              patientId: widget.patientId,
-              eventId: widget.eventId,
-            );
-          },
+            },
+          ),
         ),
       ),
     );
@@ -969,23 +975,31 @@ class PatientExpectedCareScreen extends ConsumerWidget {
     return ResponsiveAppShell(
       role: AppRole.patient,
       selectedIndex: 2,
-      child: ColoredBox(
-        color: DrAiColors.pageBackground,
-        child: baseline.when(
-          loading: () => DashboardLoadingView(
-            label: _copy(context, 'Loading published baseline', '正在加载已发布基线'),
-          ),
-          error: (error, stackTrace) => _UnavailableState(
-            title: _copy(context, 'No validated baseline available', '暂无有效基线'),
-            body: _copy(
-              context,
-              'Invalid or unsafe model output is never presented as guidance. Your ordinary care and cost records remain available.',
-              '无效或不安全的模型输出不会作为指导展示。常规诊疗和费用记录仍可使用。',
+      child: NavigationPageFrame(
+        fallbackPath: '/patient/care-costs',
+        child: ColoredBox(
+          color: DrAiColors.pageBackground,
+          child: baseline.when(
+            loading: () => DashboardLoadingView(
+              label: _copy(context, 'Loading published baseline', '正在加载已发布基线'),
             ),
-            onRetry: () =>
-                ref.invalidate(patientExpectedCareEnvelopeProvider(eventId)),
+            error: (error, stackTrace) => _UnavailableState(
+              title: _copy(
+                context,
+                'No validated baseline available',
+                '暂无有效基线',
+              ),
+              body: _copy(
+                context,
+                'Invalid or unsafe model output is never presented as guidance. Your ordinary care and cost records remain available.',
+                '无效或不安全的模型输出不会作为指导展示。常规诊疗和费用记录仍可使用。',
+              ),
+              onRetry: () =>
+                  ref.invalidate(patientExpectedCareEnvelopeProvider(eventId)),
+            ),
+            data: (data) =>
+                _PatientBaseline(data: data, comparison: comparison),
           ),
-          data: (data) => _PatientBaseline(data: data, comparison: comparison),
         ),
       ),
     );
@@ -1547,27 +1561,35 @@ class PayerExpectedCareScreen extends ConsumerWidget {
     return ResponsiveAppShell(
       role: AppRole.payer,
       selectedIndex: 1,
-      child: ColoredBox(
-        color: DrAiColors.pageBackground,
-        child: data.when(
-          loading: () => DashboardLoadingView(
-            label: _copy(
-              context,
-              'Loading authorized review evidence',
-              '正在加载已授权审核证据',
+      child: NavigationPageFrame(
+        fallbackPath: '/payer/requests',
+        child: ColoredBox(
+          color: DrAiColors.pageBackground,
+          child: data.when(
+            loading: () => DashboardLoadingView(
+              label: _copy(
+                context,
+                'Loading authorized review evidence',
+                '正在加载已授权审核证据',
+              ),
             ),
-          ),
-          error: (error, stackTrace) => _UnavailableState(
-            title: _copy(context, 'Published baseline unavailable', '已发布基线不可用'),
-            body: _copy(
-              context,
-              'Access requires an active organization membership and the exact immutable payer request.',
-              '访问需要有效的机构成员身份及确切的不可变支付申请。',
+            error: (error, stackTrace) => _UnavailableState(
+              title: _copy(
+                context,
+                'Published baseline unavailable',
+                '已发布基线不可用',
+              ),
+              body: _copy(
+                context,
+                'Access requires an active organization membership and the exact immutable payer request.',
+                '访问需要有效的机构成员身份及确切的不可变支付申请。',
+              ),
+              onRetry: () =>
+                  ref.invalidate(payerExpectedCareEnvelopeProvider(requestId)),
             ),
-            onRetry: () =>
-                ref.invalidate(payerExpectedCareEnvelopeProvider(requestId)),
+            data: (value) =>
+                _PayerEvidence(data: value, comparison: comparison),
           ),
-          data: (value) => _PayerEvidence(data: value, comparison: comparison),
         ),
       ),
     );

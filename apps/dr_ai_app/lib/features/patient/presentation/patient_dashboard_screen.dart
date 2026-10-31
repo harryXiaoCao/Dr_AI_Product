@@ -33,7 +33,7 @@ class PatientDashboardScreen extends ConsumerWidget {
       child: dashboard.when(
         loading: () => const DashboardLoadingView(),
         error: (error, stackTrace) => DashboardErrorView(
-          message: error.toString(),
+          message: context.l10n.pageLoadFailed,
           onRetry: () => ref.invalidate(dashboardProvider),
         ),
         data: (data) => _PatientDashboard(data: data),
@@ -191,6 +191,14 @@ class _PatientMedicalServiceViewState
   late PatientMedicalSection _section = widget.initialSection;
 
   @override
+  void didUpdateWidget(covariant _PatientMedicalServiceView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialSection != oldWidget.initialSection) {
+      _section = widget.initialSection;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return ListView(
       key: const Key('patient-medical-service-list'),
@@ -231,8 +239,11 @@ class _PatientMedicalServiceViewState
             ),
           ],
           selected: <PatientMedicalSection>{_section},
-          onSelectionChanged: (value) =>
-              setState(() => _section = value.single),
+          onSelectionChanged: (value) {
+            final section = value.single;
+            setState(() => _section = section);
+            context.go('/patient/medical-service/${section.name}');
+          },
         ),
         const SizedBox(height: DrAiSpacing.md),
         switch (_section) {
@@ -247,7 +258,10 @@ class _PatientMedicalServiceViewState
                   (record) => ListTile(
                     leading: const Icon(Icons.description_outlined),
                     title: Text(record.title),
-                    subtitle: Text('${record.category}\n${record.summary}'),
+                    subtitle: Text(
+                      '${context.l10n.stableValue(record.category)}\n'
+                      '${record.summary}',
+                    ),
                     isThreeLine: true,
                     trailing: Text(
                       MaterialLocalizations.of(
@@ -273,9 +287,9 @@ class _PatientMedicalServiceViewState
                     ),
                     subtitle: Text(
                       '${_patientCopy(context, 'Upload', '上传')}: '
-                      '${asset.uploadStatus}\n'
+                      '${context.l10n.stableValue(asset.uploadStatus)}\n'
                       '${_patientCopy(context, 'Doctor review', '医生审核')}: '
-                      '${asset.reviewStatus} · '
+                      '${context.l10n.stableValue(asset.reviewStatus)} · '
                       '${asset.provenanceVersions.length} '
                       '${_patientCopy(context, 'verified version(s)', '个已验证版本')}',
                     ),
@@ -311,7 +325,7 @@ class _PatientMedicalServiceViewState
                       '${medication.note}',
                     ),
                     isThreeLine: true,
-                    trailing: Text(medication.status),
+                    trailing: Text(context.l10n.stableValue(medication.status)),
                   ),
                 )
                 .toList(),

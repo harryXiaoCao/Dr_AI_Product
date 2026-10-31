@@ -8,6 +8,7 @@ import 'package:dr_ai_app/l10n/l10n.dart';
 import 'package:dr_ai_app/shared/widgets/account_request_center.dart';
 import 'package:dr_ai_app/shared/widgets/account_security.dart';
 import 'package:dr_ai_app/shared/widgets/dashboard_states.dart';
+import 'package:dr_ai_app/shared/widgets/interface_language_selector.dart';
 import 'package:dr_ai_app/shared/widgets/responsive_app_shell.dart';
 import 'package:dr_ai_app/shared/widgets/sign_out_button.dart';
 import 'package:flutter/material.dart';
@@ -261,6 +262,21 @@ class _PayerAccountViewState extends ConsumerState<_PayerAccountView> {
                   style: const TextStyle(
                     color: DrAiColors.inkSecondary,
                     height: 1.45,
+                  ),
+                ),
+                const SizedBox(height: DrAiSpacing.lg),
+                _PayerAccountCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      _SectionHeading(
+                        icon: Icons.language_outlined,
+                        title: context.l10n.languagePreferences,
+                        description: context.l10n.interfaceLanguageDescription,
+                      ),
+                      const SizedBox(height: DrAiSpacing.md),
+                      const InterfaceLanguageSelector(),
+                    ],
                   ),
                 ),
                 const SizedBox(height: DrAiSpacing.lg),

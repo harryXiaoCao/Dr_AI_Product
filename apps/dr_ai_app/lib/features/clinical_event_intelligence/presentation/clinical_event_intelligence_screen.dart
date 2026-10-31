@@ -6,10 +6,15 @@ import 'package:dr_ai_app/features/clinical_event_intelligence/application/clini
 import 'package:dr_ai_app/features/clinical_event_intelligence/domain/clinical_event_intelligence_data.dart';
 import 'package:dr_ai_app/l10n/l10n.dart';
 import 'package:dr_ai_app/shared/widgets/dashboard_states.dart';
+import 'package:dr_ai_app/shared/widgets/navigation_back_button.dart';
 import 'package:dr_ai_app/shared/widgets/responsive_app_shell.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+
+String _copy(BuildContext context, String en, String zh) =>
+    Localizations.localeOf(context).languageCode == 'zh' ? zh : en;
 
 class ClinicalEventIntelligenceScreen extends ConsumerStatefulWidget {
   const ClinicalEventIntelligenceScreen({
@@ -129,54 +134,82 @@ class _ClinicalEventIntelligenceScreenState
         AppRole.patient => 2,
         AppRole.payer => 1,
         AppRole.unsupported => 0,
+        AppRole.admin => 0,
       },
       child: ColoredBox(
         color: DrAiColors.pageBackground,
-        child: artifact.when(
-          loading: () => DashboardLoadingView(label: context.l10n.ceiLoading),
-          error: (error, stackTrace) {
-            if (widget.role == AppRole.doctor &&
-                error is ApiError &&
-                error.code == 'not_found') {
-              return _EmptyArtifact(
-                role: widget.role,
-                working: _working,
-                message: _message,
-                onGenerate: _generate,
-                onRetry: () =>
-                    ref.invalidate(clinicalEventIntelligenceProvider(_scope)),
-              );
-            }
-            return _LoadFailure(
-              providerUnavailable:
-                  error is ApiError &&
-                  (error.code == 'provider_unavailable' ||
-                      error.code == 'service_unavailable' ||
-                      error.code == 'ai_purpose_unavailable' ||
-                      error.code == 'timeout'),
-              onRetry: () =>
-                  ref.invalidate(clinicalEventIntelligenceProvider(_scope)),
-            );
-          },
-          data: (data) => data == null
-              ? _EmptyArtifact(
-                  role: widget.role,
-                  working: _working,
-                  message: _message,
-                  onGenerate: _generate,
-                  onRetry: () =>
-                      ref.invalidate(clinicalEventIntelligenceProvider(_scope)),
-                )
-              : _ArtifactView(
-                  role: widget.role,
-                  artifact: data,
-                  working: _working,
-                  message: _message,
-                  messageIsError: _messageIsError,
-                  onRefresh: () =>
-                      ref.invalidate(clinicalEventIntelligenceProvider(_scope)),
-                  onRespond: (action) => _respond(data, action),
+        child: Column(
+          children: <Widget>[
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+                child: NavigationBackButton(
+                  fallbackPath: switch (widget.role) {
+                    AppRole.doctor =>
+                      '/doctor/payer-requests/${widget.requestId}',
+                    AppRole.patient => '/patient/care-costs',
+                    AppRole.payer => '/payer/requests',
+                    AppRole.unsupported => '/',
+                    AppRole.admin => '/admin',
+                  },
                 ),
+              ),
+            ),
+            Expanded(
+              child: artifact.when(
+                loading: () =>
+                    DashboardLoadingView(label: context.l10n.ceiLoading),
+                error: (error, stackTrace) {
+                  if (widget.role == AppRole.doctor &&
+                      error is ApiError &&
+                      error.code == 'not_found') {
+                    return _EmptyArtifact(
+                      role: widget.role,
+                      working: _working,
+                      message: _message,
+                      onGenerate: _generate,
+                      onRetry: () => ref.invalidate(
+                        clinicalEventIntelligenceProvider(_scope),
+                      ),
+                    );
+                  }
+                  return _LoadFailure(
+                    providerUnavailable:
+                        error is ApiError &&
+                        (error.code == 'provider_unavailable' ||
+                            error.code == 'service_unavailable' ||
+                            error.code == 'ai_purpose_unavailable' ||
+                            error.code == 'timeout'),
+                    onRetry: () => ref.invalidate(
+                      clinicalEventIntelligenceProvider(_scope),
+                    ),
+                  );
+                },
+                data: (data) => data == null
+                    ? _EmptyArtifact(
+                        role: widget.role,
+                        working: _working,
+                        message: _message,
+                        onGenerate: _generate,
+                        onRetry: () => ref.invalidate(
+                          clinicalEventIntelligenceProvider(_scope),
+                        ),
+                      )
+                    : _ArtifactView(
+                        role: widget.role,
+                        artifact: data,
+                        working: _working,
+                        message: _message,
+                        messageIsError: _messageIsError,
+                        onRefresh: () => ref.invalidate(
+                          clinicalEventIntelligenceProvider(_scope),
+                        ),
+                        onRespond: (action) => _respond(data, action),
+                      ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -258,7 +291,9 @@ class _ArtifactView extends StatelessWidget {
                   const SizedBox(height: 14),
                   _DoctorActions(working: working, onSelected: onRespond),
                 ],
-                const SizedBox(height: 28),
+                const SizedBox(height: 20),
+                _DecisionSummary(artifact: artifact, role: role),
+                const SizedBox(height: 24),
                 _SectionTitle(
                   title: context.l10n.ceiRequestedItems,
                   description: context.l10n.ceiRequestedItemsDescription,
@@ -294,23 +329,177 @@ class _ArtifactView extends StatelessWidget {
                       );
                     },
                   ),
-                const SizedBox(height: 30),
-                _PathwaysSection(pathways: artifact.pathways),
-                const SizedBox(height: 30),
+                const SizedBox(height: 20),
                 _MissingDocumentationSection(
                   items: artifact.missingDocumentation,
                 ),
-                const SizedBox(height: 30),
-                _CounterfactualSection(items: artifact.counterfactuals),
-                const SizedBox(height: 30),
+                const SizedBox(height: 20),
                 _CriticSection(critic: artifact.critic),
-                const SizedBox(height: 30),
-                _LineageSection(items: artifact.lineage),
+                const SizedBox(height: 20),
+                Material(
+                  color: Colors.transparent,
+                  child: ExpansionTile(
+                    title: Text(context.l10n.ceiPredictedPathways),
+                    children: <Widget>[
+                      _PathwaysSection(pathways: artifact.pathways),
+                    ],
+                  ),
+                ),
+                Material(
+                  color: Colors.transparent,
+                  child: ExpansionTile(
+                    title: Text(context.l10n.ceiCounterfactuals),
+                    children: <Widget>[
+                      _CounterfactualSection(items: artifact.counterfactuals),
+                    ],
+                  ),
+                ),
+                Material(
+                  color: Colors.transparent,
+                  child: ExpansionTile(
+                    title: Text(context.l10n.ceiLineage),
+                    children: <Widget>[
+                      _LineageSection(items: artifact.lineage),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
         ),
       ],
+    );
+  }
+}
+
+class _DecisionSummary extends StatelessWidget {
+  const _DecisionSummary({required this.artifact, required this.role});
+  final ClinicalEventIntelligenceData artifact;
+  final AppRole role;
+
+  @override
+  Widget build(BuildContext context) {
+    final items = artifact.requestedItems;
+    final uncertain = items
+        .where(
+          (item) =>
+              item.isAssessmentUnavailable ||
+              item.confidence == 'low' ||
+              item.confidence == 'unknown',
+        )
+        .length;
+    final conflicts = items
+        .where(
+          (item) =>
+              item.contradictingFacts.isNotEmpty ||
+              item.disagreementState != 'agreement',
+        )
+        .length;
+    final missing =
+        artifact.missingDocumentation.length +
+        items.fold<int>(
+          0,
+          (count, item) => count + item.missingInformation.length,
+        );
+    final costExceptions = items
+        .where(
+          (item) =>
+              !item.isAssessmentUnavailable &&
+              (item.estimatedCost.isModelOnlyExploratory ||
+                  item.estimatedCost.provenanceTier == 5 ||
+                  (item.estimatedCost.highMinor > 0 &&
+                      item.requestedAmountMinor >
+                          item.estimatedCost.highMinor)),
+        )
+        .length;
+    final summary = <String>[
+      _copy(
+        context,
+        '${items.length} submitted line items',
+        '${items.length} 项已提交费用明细',
+      ),
+      if (uncertain > 0)
+        _copy(
+          context,
+          '$uncertain low-confidence or unavailable assessments',
+          '$uncertain 项低置信度或无法评估',
+        ),
+      if (missing > 0)
+        _copy(
+          context,
+          '$missing missing-information signals',
+          '$missing 项信息缺口',
+        ),
+      if (conflicts > 0)
+        _copy(
+          context,
+          '$conflicts conflicting-evidence signals',
+          '$conflicts 项证据冲突',
+        ),
+      if (costExceptions > 0)
+        _copy(
+          context,
+          '$costExceptions cost estimates need inspection',
+          '$costExceptions 项费用估算需核查',
+        ),
+    ];
+    return Container(
+      key: const Key('cei-decision-summary'),
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: const BoxDecoration(
+        color: DrAiColors.white,
+        border: Border(left: BorderSide(color: DrAiColors.brand, width: 4)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            _copy(context, 'Decision summary', '决策摘要'),
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 8),
+          ...summary.map(
+            (line) => Padding(
+              padding: const EdgeInsets.only(bottom: 3),
+              child: Text('• $line'),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _copy(
+              context,
+              'AI support scores combine clinical fit, evidence, timing, quantity, documentation, and cost alignment. They do not establish policy eligibility or recommend approval.',
+              'AI 支持评分综合临床匹配、证据、时间、数量、文档和费用匹配；不证明保单资格，也不建议批准。',
+            ),
+            style: const TextStyle(color: DrAiColors.inkSecondary),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            _copy(
+              context,
+              'Sources: the submitted request snapshot and versioned clinical intelligence artifact. Open each line below for supporting and contradicting fact IDs; confirm them against the full clinical and cost record.',
+              '来源：已提交申请快照及版本化临床智能产物。下方每项列出支持与反驳事实编号；请在完整临床及费用记录中核对。',
+            ),
+          ),
+          if (role == AppRole.payer) ...<Widget>[
+            const SizedBox(height: 8),
+            TextButton.icon(
+              onPressed: () => context.go('/payer/requests'),
+              icon: const Icon(Icons.arrow_back),
+              label: Text(
+                _copy(
+                  context,
+                  'Return to full request and cost record',
+                  '返回完整申请及费用记录',
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }
@@ -333,6 +522,7 @@ class _ArtifactHeader extends StatelessWidget {
       AppRole.doctor => context.l10n.ceiDoctorTitle,
       AppRole.payer => context.l10n.ceiPayerTitle,
       AppRole.unsupported => context.l10n.ceiTitle,
+      AppRole.admin => context.l10n.ceiTitle,
     };
     final location = <String>[
       artifact.location.cityCode,
@@ -417,7 +607,7 @@ class _ArtifactHeader extends StatelessWidget {
           const SizedBox(height: 14),
           Text(
             '${context.l10n.ceiLocation}: '
-            '${location.isEmpty ? _humanize('unavailable') : location}',
+            '${location.isEmpty ? context.l10n.ceiUnavailableValue : location}',
             style: const TextStyle(
               color: DrAiColors.white,
               fontWeight: FontWeight.w800,
@@ -467,7 +657,9 @@ class _RequestedItemCard extends StatelessWidget {
             children: <Widget>[
               Expanded(
                 child: Text(
-                  item.label.isEmpty ? _humanize('requested item') : item.label,
+                  item.label.isEmpty
+                      ? context.l10n.ceiRequestedItem
+                      : item.label,
                   style: const TextStyle(
                     color: DrAiColors.brandDark,
                     fontSize: 17,
@@ -503,7 +695,7 @@ class _RequestedItemCard extends StatelessWidget {
               _ValuePair(
                 label: context.l10n.ceiRequested,
                 value:
-                    '${_quantity(item.requestedQuantity)} ${item.requestedUnit} · '
+                    '${_quantity(item.requestedQuantity)} ${_unitLabel(context, item.requestedUnit)} · '
                     '${_money(item.currency, item.requestedAmountMinor)}',
               ),
               if (!unavailable)
@@ -512,7 +704,7 @@ class _RequestedItemCard extends StatelessWidget {
                   value:
                       '${_quantity(item.estimatedQuantity.low)}–'
                       '${_quantity(item.estimatedQuantity.high)} '
-                      '${item.estimatedQuantity.unit} · '
+                      '${_unitLabel(context, item.estimatedQuantity.unit)} · '
                       '${_money(item.estimatedCost.currency, item.estimatedCost.lowMinor)}–'
                       '${_money(item.estimatedCost.currency, item.estimatedCost.highMinor)}',
                 ),
@@ -634,7 +826,7 @@ class _RequestedItemCard extends StatelessWidget {
             tier5
                 ? context.l10n.ceiNoAdmittedPriceSource
                 : '${context.l10n.ceiSources}: '
-                      '${item.estimatedCost.sourceLabels.isEmpty ? _humanize('source withheld') : item.estimatedCost.sourceLabels.join(' · ')}',
+                      '${item.estimatedCost.sourceLabels.isEmpty ? context.l10n.ceiSourceWithheld : item.estimatedCost.sourceLabels.join(' · ')}',
             style: const TextStyle(
               color: DrAiColors.inkSecondary,
               fontSize: 12,
@@ -704,7 +896,9 @@ class _ScoreRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      label: '$label $score out of 100',
+      label: Localizations.localeOf(context).languageCode == 'zh'
+          ? '$label $score 分，满分 100 分'
+          : '$label $score out of 100',
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
@@ -759,7 +953,7 @@ class _PathwaysSection extends StatelessWidget {
                       bullets: pathway.items
                           .map((item) {
                             final quantity = item.quantityHigh > 0
-                                ? '${_quantity(item.quantityLow)}–${_quantity(item.quantityHigh)} ${item.unit}'
+                                ? '${_quantity(item.quantityLow)}–${_quantity(item.quantityHigh)} ${_unitLabel(context, item.unit)}'
                                 : '';
                             return <String>[
                               item.label.isEmpty
@@ -948,6 +1142,7 @@ class _EmptyArtifact extends StatelessWidget {
       AppRole.doctor => context.l10n.ceiEmptyDoctorBody,
       AppRole.payer => context.l10n.ceiEmptyPayerBody,
       AppRole.unsupported => context.l10n.ceiUnavailableBody,
+      AppRole.admin => context.l10n.ceiUnavailableBody,
     };
     return _CenteredState(
       icon: Icons.fact_check_outlined,
@@ -1312,7 +1507,7 @@ class _ValuePair extends StatelessWidget {
             ),
           ),
           Text(
-            value.isEmpty ? _humanize('not recorded') : value,
+            value.isEmpty ? context.l10n.notRecorded : value,
             style: const TextStyle(fontWeight: FontWeight.w800, height: 1.35),
           ),
         ],
@@ -1358,6 +1553,9 @@ String _money(String currency, int minor) => NumberFormat.currency(
 
 String _quantity(num value) =>
     value % 1 == 0 ? value.toInt().toString() : value.toStringAsFixed(1);
+
+String _unitLabel(BuildContext context, String unit) =>
+    unit.trim().toLowerCase() == 'item' ? context.l10n.ceiUnitItem : unit;
 
 String _humanize(String value) {
   if (value.trim().isEmpty) return '';
